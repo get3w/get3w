@@ -1,4 +1,4 @@
-package get3w
+package main
 
 import (
 	"github.com/get3w/get3w/cli"
