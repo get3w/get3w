@@ -16,16 +16,23 @@ import (
 const (
 	// ConfigFileName is the name of config file
 	ConfigFileName = "config.json"
+	oldConfigfile  = ".dockercfg"
 
 	// This constant is only used for really old config files when the
 	// URL wasn't saved as part of the config file and it was just
 	// assumed to be this value.
-	defaultIndexserver = "http://api.g3.com/v1/"
+	defaultIndexserver = "https://index.docker.io/v1/"
 )
 
 var (
-	configDir = filepath.Join(homedir.Get(), ".get3w")
+	configDir = os.Getenv("DOCKER_CONFIG")
 )
+
+func init() {
+	if configDir == "" {
+		configDir = filepath.Join(homedir.Get(), ".docker")
+	}
+}
 
 // ConfigDir returns the directory the configuration file is stored in
 func ConfigDir() string {
@@ -46,9 +53,11 @@ type AuthConfig struct {
 	ServerAddress string `json:"serveraddress,omitempty"`
 }
 
-// ConfigFile ~/.get3w/config.json file info
+// ConfigFile ~/.docker/config.json file info
 type ConfigFile struct {
 	AuthConfigs map[string]AuthConfig `json:"auths"`
+	HTTPHeaders map[string]string     `json:"HttpHeaders,omitempty"`
+	PsFormat    string                `json:"psFormat,omitempty"`
 	filename    string                // Note: not serialized - for internal use only
 }
 
@@ -56,6 +65,7 @@ type ConfigFile struct {
 func NewConfigFile(fn string) *ConfigFile {
 	return &ConfigFile{
 		AuthConfigs: make(map[string]AuthConfig),
+		HTTPHeaders: make(map[string]string),
 		filename:    fn,
 	}
 }
@@ -170,7 +180,18 @@ func Load(configDir string) (*ConfigFile, error) {
 		return &configFile, err
 	}
 
-	return &configFile, nil
+	// Can't find latest config file so check for the old one
+	confFile := filepath.Join(homedir.Get(), oldConfigfile)
+	if _, err := os.Stat(confFile); err != nil {
+		return &configFile, nil //missing file is not an error
+	}
+	file, err := os.Open(confFile)
+	if err != nil {
+		return &configFile, err
+	}
+	defer file.Close()
+	err = configFile.LegacyLoadFromReader(file)
+	return &configFile, err
 }
 
 // SaveToWriter encodes and writes out all the authorization information to
