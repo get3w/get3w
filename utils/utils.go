@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/get3w/get3w/dockerversion"
 	"github.com/get3w/get3w/pkg/archive"
 	"github.com/get3w/get3w/pkg/fileutils"
 	"github.com/get3w/get3w/pkg/stringid"
@@ -60,24 +59,21 @@ func isValidDockerInitPath(target string, selfPath string) bool { // target and 
 	if target == "" {
 		return false
 	}
-	if dockerversion.IAmStatic == "true" {
-		if selfPath == "" {
-			return false
-		}
-		if target == selfPath {
-			return true
-		}
-		targetFileInfo, err := os.Lstat(target)
-		if err != nil {
-			return false
-		}
-		selfPathFileInfo, err := os.Lstat(selfPath)
-		if err != nil {
-			return false
-		}
-		return os.SameFile(targetFileInfo, selfPathFileInfo)
+	if selfPath == "" {
+		return false
 	}
-	return dockerversion.InitSHA1 != "" && dockerInitSha1(target) == dockerversion.InitSHA1
+	if target == selfPath {
+		return true
+	}
+	targetFileInfo, err := os.Lstat(target)
+	if err != nil {
+		return false
+	}
+	selfPathFileInfo, err := os.Lstat(selfPath)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(targetFileInfo, selfPathFileInfo)
 }
 
 // DockerInitPath figures out the path of our dockerinit (which may be SelfPath())
@@ -89,7 +85,6 @@ func DockerInitPath(localCopy string) string {
 	}
 	var possibleInits = []string{
 		localCopy,
-		dockerversion.InitPath,
 		filepath.Join(filepath.Dir(selfPath), "dockerinit"),
 
 		// FHS 3.0 Draft: "/usr/libexec includes internal binaries that are not intended to be executed directly by users or shell scripts. Applications may use a single subdirectory under /usr/libexec."

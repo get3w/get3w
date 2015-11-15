@@ -7,10 +7,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/get3w/get3w/api/client"
 	"github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/dockerversion"
+	"github.com/get3w/get3w/cliconfig"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/term"
-	"github.com/get3w/get3w/utils"
 )
 
 func main() {
@@ -22,7 +21,7 @@ func main() {
 	flag.Merge(flag.CommandLine, clientFlags.FlagSet, commonFlags.FlagSet)
 
 	flag.Usage = func() {
-		fmt.Fprint(os.Stdout, "Usage: docker [OPTIONS] COMMAND [arg...]\n       docker [ --help | -v | --version ]\n\n")
+		fmt.Fprint(os.Stdout, "Usage: www [OPTIONS] COMMAND [arg...]\n       www [ --help | -v | --version ]\n\n")
 		fmt.Fprint(os.Stdout, "A self-sufficient runtime for containers.\n\nOptions:\n")
 
 		flag.CommandLine.SetOutput(os.Stdout)
@@ -71,9 +70,5 @@ func main() {
 }
 
 func showVersion() {
-	if utils.ExperimentalBuild() {
-		fmt.Printf("Docker version %s, build %s, experimental\n", dockerversion.Version, dockerversion.GitCommit)
-	} else {
-		fmt.Printf("Docker version %s, build %s\n", dockerversion.Version, dockerversion.GitCommit)
-	}
+	fmt.Printf("www version %s\n", cliconfig.Version)
 }

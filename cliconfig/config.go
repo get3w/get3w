@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,8 @@ import (
 const (
 	// ConfigFileName is the name of config file
 	ConfigFileName = "config.json"
-	oldConfigfile  = ".dockercfg"
+	// Version is the version of cli
+	Version = "0.0.1"
 
 	// This constant is only used for really old config files when the
 	// URL wasn't saved as part of the config file and it was just
@@ -25,12 +25,12 @@ const (
 )
 
 var (
-	configDir = os.Getenv("DOCKER_CONFIG")
+	configDir = os.Getenv("GET3W_CONFIG")
 )
 
 func init() {
 	if configDir == "" {
-		configDir = filepath.Join(homedir.Get(), ".docker")
+		configDir = filepath.Join(homedir.Get(), ".get3w")
 	}
 }
 
@@ -46,71 +46,23 @@ func SetConfigDir(dir string) {
 
 // AuthConfig contains authorization information for connecting to a Registry
 type AuthConfig struct {
-	Username      string `json:"username,omitempty"`
-	Password      string `json:"password,omitempty"`
-	Auth          string `json:"auth"`
-	Email         string `json:"email"`
-	ServerAddress string `json:"serveraddress,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	Auth     string `json:"auth"`
+	Email    string `json:"email"`
 }
 
 // ConfigFile ~/.docker/config.json file info
 type ConfigFile struct {
-	AuthConfigs map[string]AuthConfig `json:"auths"`
-	HTTPHeaders map[string]string     `json:"HttpHeaders,omitempty"`
-	PsFormat    string                `json:"psFormat,omitempty"`
-	filename    string                // Note: not serialized - for internal use only
+	AuthConfig *AuthConfig `json:"auth"`
+	filename   string      // Note: not serialized - for internal use only
 }
 
 // NewConfigFile initilizes an empty configuration file for the given filename 'fn'
 func NewConfigFile(fn string) *ConfigFile {
 	return &ConfigFile{
-		AuthConfigs: make(map[string]AuthConfig),
-		HTTPHeaders: make(map[string]string),
-		filename:    fn,
+		filename: fn,
 	}
-}
-
-// LegacyLoadFromReader reads the non-nested configuration data given and sets up the
-// auth config information with given directory and populates the receiver object
-func (configFile *ConfigFile) LegacyLoadFromReader(configData io.Reader) error {
-	b, err := ioutil.ReadAll(configData)
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(b, &configFile.AuthConfigs); err != nil {
-		arr := strings.Split(string(b), "\n")
-		if len(arr) < 2 {
-			return fmt.Errorf("The Auth config file is empty")
-		}
-		authConfig := AuthConfig{}
-		origAuth := strings.Split(arr[0], " = ")
-		if len(origAuth) != 2 {
-			return fmt.Errorf("Invalid Auth config file")
-		}
-		authConfig.Username, authConfig.Password, err = DecodeAuth(origAuth[1])
-		if err != nil {
-			return err
-		}
-		origEmail := strings.Split(arr[1], " = ")
-		if len(origEmail) != 2 {
-			return fmt.Errorf("Invalid Auth config file")
-		}
-		authConfig.Email = origEmail[1]
-		authConfig.ServerAddress = defaultIndexserver
-		configFile.AuthConfigs[defaultIndexserver] = authConfig
-	} else {
-		for k, authConfig := range configFile.AuthConfigs {
-			authConfig.Username, authConfig.Password, err = DecodeAuth(authConfig.Auth)
-			if err != nil {
-				return err
-			}
-			authConfig.Auth = ""
-			authConfig.ServerAddress = k
-			configFile.AuthConfigs[k] = authConfig
-		}
-	}
-	return nil
 }
 
 // LoadFromReader reads the configuration data given and sets up the auth config
@@ -120,34 +72,18 @@ func (configFile *ConfigFile) LoadFromReader(configData io.Reader) error {
 		return err
 	}
 	var err error
-	for addr, ac := range configFile.AuthConfigs {
-		ac.Username, ac.Password, err = DecodeAuth(ac.Auth)
-		if err != nil {
-			return err
-		}
-		ac.Auth = ""
-		ac.ServerAddress = addr
-		configFile.AuthConfigs[addr] = ac
+	configFile.AuthConfig.Username, configFile.AuthConfig.Password, err = DecodeAuth(configFile.AuthConfig.Auth)
+	if err != nil {
+		return err
 	}
+	configFile.AuthConfig.Auth = ""
 	return nil
-}
-
-// LegacyLoadFromReader is a convenience function that creates a ConfigFile object from
-// a non-nested reader
-func LegacyLoadFromReader(configData io.Reader) (*ConfigFile, error) {
-	configFile := ConfigFile{
-		AuthConfigs: make(map[string]AuthConfig),
-	}
-	err := configFile.LegacyLoadFromReader(configData)
-	return &configFile, err
 }
 
 // LoadFromReader is a convenience function that creates a ConfigFile object from
 // a reader
 func LoadFromReader(configData io.Reader) (*ConfigFile, error) {
-	configFile := ConfigFile{
-		AuthConfigs: make(map[string]AuthConfig),
-	}
+	configFile := ConfigFile{}
 	err := configFile.LoadFromReader(configData)
 	return &configFile, err
 }
@@ -161,8 +97,7 @@ func Load(configDir string) (*ConfigFile, error) {
 	}
 
 	configFile := ConfigFile{
-		AuthConfigs: make(map[string]AuthConfig),
-		filename:    filepath.Join(configDir, ConfigFileName),
+		filename: filepath.Join(configDir, ConfigFileName),
 	}
 
 	// Try happy path first - latest config file
@@ -179,39 +114,22 @@ func Load(configDir string) (*ConfigFile, error) {
 		// than it doesn't exist then stop
 		return &configFile, err
 	}
-
-	// Can't find latest config file so check for the old one
-	confFile := filepath.Join(homedir.Get(), oldConfigfile)
-	if _, err := os.Stat(confFile); err != nil {
-		return &configFile, nil //missing file is not an error
-	}
-	file, err := os.Open(confFile)
-	if err != nil {
-		return &configFile, err
-	}
-	defer file.Close()
-	err = configFile.LegacyLoadFromReader(file)
-	return &configFile, err
+	return &configFile, nil
 }
 
 // SaveToWriter encodes and writes out all the authorization information to
 // the given writer
 func (configFile *ConfigFile) SaveToWriter(writer io.Writer) error {
 	// Encode sensitive data into a new/temp struct
-	tmpAuthConfigs := make(map[string]AuthConfig, len(configFile.AuthConfigs))
-	for k, authConfig := range configFile.AuthConfigs {
-		authCopy := authConfig
-		// encode and save the authstring, while blanking out the original fields
-		authCopy.Auth = EncodeAuth(&authCopy)
-		authCopy.Username = ""
-		authCopy.Password = ""
-		authCopy.ServerAddress = ""
-		tmpAuthConfigs[k] = authCopy
-	}
+	authCopy := configFile.AuthConfig
+	// encode and save the authstring, while blanking out the original fields
+	authCopy.Auth = EncodeAuth(authCopy)
+	authCopy.Username = ""
+	authCopy.Password = ""
 
-	saveAuthConfigs := configFile.AuthConfigs
-	configFile.AuthConfigs = tmpAuthConfigs
-	defer func() { configFile.AuthConfigs = saveAuthConfigs }()
+	saveAuthConfig := configFile.AuthConfig
+	configFile.AuthConfig = authCopy
+	defer func() { configFile.AuthConfig = saveAuthConfig }()
 
 	data, err := json.MarshalIndent(configFile, "", "\t")
 	if err != nil {

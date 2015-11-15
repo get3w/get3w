@@ -1,22 +1,15 @@
 package cli
 
-import (
-	flag "github.com/get3w/get3w/pkg/mflag"
-	"github.com/get3w/get3w/pkg/tlsconfig"
-)
+import flag "github.com/get3w/get3w/pkg/mflag"
 
 // CommonFlags represents flags that are common to both the client and the daemon.
 type CommonFlags struct {
 	FlagSet   *flag.FlagSet
 	PostParse func()
 
-	Debug      bool
-	Hosts      []string
-	LogLevel   string
-	TLS        bool
-	TLSVerify  bool
-	TLSOptions *tlsconfig.Options
-	TrustKey   string
+	Debug    bool
+	LogLevel string
+	TrustKey string
 }
 
 // Command is the struct contains command name and description

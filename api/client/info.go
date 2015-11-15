@@ -65,7 +65,7 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 	ioutils.FprintfIfNotEmpty(cli.out, "No Proxy: %s\n", info.NoProxy)
 
 	if info.IndexServerAddress != "" {
-		u := cli.configFile.AuthConfigs[info.IndexServerAddress].Username
+		u := cli.configFile.AuthConfig.Username
 		if len(u) > 0 {
 			fmt.Fprintf(cli.out, "Username: %v\n", u)
 			fmt.Fprintf(cli.out, "Registry: %v\n", info.IndexServerAddress)

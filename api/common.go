@@ -13,13 +13,15 @@ import (
 // Common constants for daemon and client.
 const (
 	// Version of Current REST API
-	Version version.Version = "1.22"
+	Version version.Version = "1"
 
 	// MinVersion represents Minimun REST API version supported
 	MinVersion version.Version = "1.12"
 
 	// DefaultDockerfileName is the Default filename with Docker commands, read by docker build
 	DefaultDockerfileName string = "Dockerfile"
+
+	DefaultConfigName string = "config.yml"
 )
 
 func formGroup(key string, start, last int) string {
