@@ -113,7 +113,11 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	log.Println("email:" + cli.configFile.AuthConfig.Email)
 
 	client := get3w.NewClient(nil)
-	user, resp, err := client.Users.Get(username)
+	loginInput := &get3w.LoginInput{
+		Account:  username,
+		Password: password,
+	}
+	loginOutput, resp, err := client.Users.Login(loginInput)
 
 	if err != nil {
 		log.Println("err:" + err.Error())
@@ -123,7 +127,7 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 		}
 		return err
 	}
-	log.Println("user:" + user.String())
+	log.Println("loginOutput:" + loginOutput.Token)
 	log.Println("resp:" + resp.String())
 
 	if err := cli.configFile.Save(); err != nil {
