@@ -1,0 +1,80 @@
+.this {
+  position: relative;
+  padding: 5em 3em 3em 3em;
+  background-color: #fff;
+}
+.this ul.features {
+  margin: 0 0 2em 0;
+  list-style: none;
+  padding: 0;
+}
+.this ul.features li {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  border-top: solid 1px #dedede;
+  margin: 3em 0 0 0;
+  padding: 3em 0 0 0;
+}
+.this ul.features li:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+.this ul.features li:nth-child(3n - 2) h3:before {
+  color: #5f9dd2;
+}
+.this ul.features li:nth-child(3n - 1) h3:before {
+  color: #758ce1;
+}
+.this ul.features li:nth-child(3n) h3:before {
+  color: #e286a9;
+}
+.this ul.features p {
+  display: block;
+  -ms-flex: auto;
+  margin-bottom: 0;
+  padding-left: 3em;
+  margin: 0 0 2em 0;
+  line-height: 1.5em;
+  font-weight: 200;
+}
+.this h3 {
+  display: block;
+  margin-bottom: 0;
+  margin-top: 0;
+  min-width: 20em;
+  padding-left: 4.5em;
+  position: relative;
+  -ms-flex: auto;
+  color: #4d5968;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+.this h3:before {
+  border-radius: 100%;
+  border: solid 2px;
+  font-size: 1.25em;
+  height: 2.5em;
+  left: 0;
+  line-height: 2.25em;
+  position: absolute;
+  text-align: center;
+  top: 0;
+  width: 2.5em;
+  border-color: rgba(144, 144, 144, 0.25);
+}
+.this .icon {
+  text-decoration: none;
+  border-bottom: none;
+  position: relative;
+}
+.this .icon:before {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-family: FontAwesome;
+  font-style: normal;
+  font-weight: normal;
+  text-transform: none !important;
+}

@@ -1,4 +1,4 @@
-package appfile
+package site
 
 import (
 	"bytes"
@@ -10,19 +10,19 @@ import (
 )
 
 // Build all pages in the app.
-func (appfile *Appfile) Build(app *get3w.App) {
+func (site *Site) Build(app *get3w.App) {
 	if app == nil {
 		return
 	}
 
-	config := appfile.GetConfig()
+	config := site.GetConfig()
 	for _, pageName := range config.Pages {
-		page := appfile.GetPage(pageName)
-		appfile.generatePage(page, config, app)
+		page := site.GetPage(pageName)
+		site.generatePage(page, config, app)
 	}
 }
 
-func (appfile *Appfile) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
+func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
 	var buffer bytes.Buffer
 	resourceURL := "http://cdn.get3w.com"
 
@@ -76,7 +76,7 @@ func (appfile *Appfile) getPageHead(page *get3w.Page, config *get3w.Config, app 
 	return buffer.String()
 }
 
-func (appfile *Appfile) getPageBody(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
+func (site *Site) getPageBody(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
 	var buffer bytes.Buffer
 
 	for _, sectionName := range page.Sections {
@@ -84,9 +84,9 @@ func (appfile *Appfile) getPageBody(page *get3w.Page, config *get3w.Config, app 
 			section := &get3w.Section{
 				ID:   stringutils.Base64ForURLEncode(sectionName),
 				Name: sectionName,
-				HTML: appfile.ReadSectionHTML(sectionName),
-				CSS:  appfile.ReadSectionCSS(sectionName),
-				JS:   appfile.ReadSectionJS(sectionName),
+				HTML: site.ReadSectionHTML(sectionName),
+				CSS:  site.ReadSectionCSS(sectionName),
+				JS:   site.ReadSectionJS(sectionName),
 			}
 
 			if len(section.CSS) > 0 {
@@ -113,7 +113,7 @@ func (appfile *Appfile) getPageBody(page *get3w.Page, config *get3w.Config, app 
 	return buffer.String()
 }
 
-func (appfile *Appfile) generatePage(page *get3w.Page, config *get3w.Config, app *get3w.App) {
+func (site *Site) generatePage(page *get3w.Page, config *get3w.Config, app *get3w.App) {
 	if page == nil || page.Sections == nil || len(page.Sections) == 0 {
 		return
 	}
@@ -124,7 +124,7 @@ func (appfile *Appfile) generatePage(page *get3w.Page, config *get3w.Config, app
 %s</head>
 <body>
 %s</body>
-</html>`, appfile.getPageHead(page, config, app), appfile.getPageBody(page, config, app))
+</html>`, site.getPageHead(page, config, app), site.getPageBody(page, config, app))
 
 	url := page.URL
 	if url == "" {
@@ -135,6 +135,6 @@ func (appfile *Appfile) generatePage(page *get3w.Page, config *get3w.Config, app
 		}
 	}
 
-	key := appfile.GetKey(url)
-	appfile.WriteObject(key, parsedContent)
+	key := site.GetKey(url)
+	site.WriteObject(key, parsedContent)
 }

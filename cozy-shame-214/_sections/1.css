@@ -1,0 +1,150 @@
+.this {
+  position: relative;
+  height: 35em;
+  min-height: 70vh;
+  background-image: url('http://cdn.get3w.com/assets/img/overlay.png'), -webkit-linear-gradient(45deg, rgba(39, 161, 227, 0.65), rgba(231, 35, 42, 0.65)), url('http://cdn.get3w.com/assets/img/005-banner.jpg');
+  background-image: url('http://cdn.get3w.com/assets/img/overlay.png'), linear-gradient(45deg, rgba(39, 161, 227, 0.65), rgba(231, 35, 42, 0.65)), url('http://cdn.get3w.com/assets/img/005-banner.jpg');
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-attachment: fixed, fixed, fixed;
+  background-position: center center;
+  background-size: auto, cover, cover;
+}
+.this .nav {
+  position: absolute;
+  color: #ffffff;
+  left: 0;
+  top: 0;
+  width: 100%;
+  z-index: 100;
+}
+.this .nav a {
+  text-decoration: none;
+  color: #fff;
+}
+.this .nav h1.logo {
+  text-decoration: none;
+  color: #ffffff;
+  display: inline-block;
+  height: inherit;
+  line-height: inherit;
+  margin-left: 2.5em;
+}
+.this .nav h1.logo a {
+  display: inline-block;
+  font-size: 0.9em;
+  height: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+.this .nav nav {
+  display: block;
+  height: inherit;
+  line-height: inherit;
+  margin-right: 2.5em;
+  position: absolute;
+  right: 2em;
+  top: 0;
+  height: 5em;
+  line-height: 5em;
+  text-transform: uppercase;
+}
+.this .nav nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.this .nav nav ul li {
+  display: inline-block;
+  padding-left: 0.5em;
+  -webkit-user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 1;
+}
+.this .nav nav ul li:first-child {
+  margin-left: 0;
+}
+.this .content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 4em 3em 2em 3em;
+  color: #fff;
+  background-color: rgba(21, 27, 33, 0.6);
+}
+.this .content h2 {
+  font-weight: 700;
+  line-height: 1.5em;
+  margin: 0 0 1em 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 1.5em;
+  color: #ffffff;
+}
+.this .content p {
+  position: relative;
+  margin: 0 0 1.5em 0;
+  color: #fff;
+}
+.this .content h2 + p {
+  font-size: 1.25em;
+  margin-top: -0.7em;
+  line-height: 1.5em;
+}
+.this .content > .inner {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  width: 100%;
+  margin: 0 auto;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+.this .content > .inner this {
+  width: 75%;
+}
+.this .content > .inner ul.actions {
+  margin: 0 0 2em 0;
+  padding-left: 3em;
+  padding-left: 0;
+  list-style: none;
+  cursor: default;
+  text-align: right;
+}
+.this .content > .inner ul.actions li {
+  display: inline-block;
+  padding: 0 1em 0 0;
+  vertical-align: middle;
+}
+.this .content > .inner ul.actions li:last-child {
+  padding-right: 0;
+}
+.this .button {
+  font-size: 1.1em;
+  font-weight: 700;
+  line-height: 4.1em;
+  display: inline-block;
+  height: 4em;
+  padding: 0 3.5em;
+  -webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+          transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #fff !important;
+  border: 0;
+  border-radius: 5px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 2px #fff;
+  -webkit-appearance: none;
+}
+.this .button:hover {
+  background-color: rgba(255, 255, 255, 0.075);
+}

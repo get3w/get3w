@@ -1,11 +1,11 @@
-package appfile
+package site
 
-import "github.com/get3w/get3w/pkg/awss3"
+import "github.com/get3w/get3w/storage/s3"
 
-// NewAppfileByS3 get key by pageName
-func NewAppfileByS3(contextDir string, appname string) *Appfile {
-	service := awss3.NewService("apps.get3w.com")
-	return &Appfile{
+// NewS3Site get key by pageName
+func NewS3Site(bucketname, appname string) *Site {
+	service := s3.NewService(bucketname)
+	return &Site{
 		Name:                  appname,
 		ReadObject:            service.ReadObject,
 		WriteObject:           service.WriteObject,

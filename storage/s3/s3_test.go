@@ -1,4 +1,4 @@
-package awss3
+package s3
 
 import (
 	"testing"

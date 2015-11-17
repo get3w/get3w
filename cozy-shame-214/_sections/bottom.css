@@ -1,0 +1,95 @@
+.this {
+  display: block;
+  background-image: url("http://cdn.get3w.com/assets/img/overlay.png"), -webkit-linear-gradient(45deg, rgba(39, 161, 227, 0.65), rgba(231, 35, 42, 0.65)), url("http://cdn.get3w.com/assets/img/005-banner.jpg");
+  background-image: url("http://cdn.get3w.com/assets/img/overlay.png"), linear-gradient(45deg, rgba(39, 161, 227, 0.65), rgba(231, 35, 42, 0.65)), url("http://cdn.get3w.com/assets/img/005-banner.jpg");
+  background-position: center center;
+  background-size: auto, cover, cover;
+  background-attachment: fixed, fixed, fixed;
+  background-repeat: repeat, no-repeat, no-repeat; 
+  background-color: rgba(21, 27, 33, 0.6); 
+  color: #ffffff;
+}
+.this ul,
+.this li {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.this a {
+  text-decoration: none;
+  color: #fff;
+}
+.this .button {
+  appearance: none;
+  -webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  border-radius: 5px;
+  border: 0;
+  display: inline-block;
+  font-size: 0.8em;
+  font-weight: 700;
+  height: 3.25em;
+  line-height: 3.35em;
+  padding: 0 2em;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75);
+  color: #fff !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 0.8em;
+}
+.this .button:hover {
+  text-decoration: none;
+  background-color: rgba(255, 255, 255, 0.075);
+}
+.this .content {
+  padding: 5em 3em 3em 3em;
+  background-color: rgba(21, 27, 33, 0.6);
+}
+.this ul.icons li {
+  padding-left: 2em;
+  position: relative;
+  display: block;
+  padding: 0 1em 0 0;
+}
+.this ul.icons li:last-child {
+  padding-right: 0;
+}
+.this ul.icons {
+  padding-left: 2em;
+}
+.this h3 {
+  font-size: 0.9em;
+  line-height: 1.5em;
+  color: #ffffff;
+}
+.this p {
+  margin: 0 0 2em 0;
+  font-weight: 100;
+  line-height: 1.7em;
+}
+.this .copyright {
+  font-size: 0.8em;
+  margin: 0;
+  padding: 6em 0;
+  text-align: center;
+}
+.this i {
+  padding-right: 10px;
+  font-size: 1.2em;
+}
+@media only screen and (max-width: 767px) {
+  .this .content {
+    padding: 2em 0.5em;
+  }
+  .this ul.icons {
+    padding: 0;
+  }
+  .this .about {
+    margin-bottom: 2em;
+  }
+}

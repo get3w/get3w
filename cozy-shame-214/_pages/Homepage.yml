@@ -1,0 +1,9 @@
+name: Homepage
+type: homepage
+title: Homepage
+sections:
+- header
+- content-show
+- about
+- tack a talk
+- bottom
