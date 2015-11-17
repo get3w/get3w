@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
+	"github.com/get3w/get3w/cliconfig"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -19,18 +19,13 @@ func (cli *DockerCli) CmdLogout(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	serverAddress := get3w.DefaultBaseURL
-	if len(cmd.Args()) > 0 {
-		serverAddress = cmd.Arg(0)
-	}
-
-	if cli.configFile.AuthConfig == nil {
-		fmt.Fprintf(cli.out, "Not logged in to %s\n", serverAddress)
+	if cli.configFile.AuthConfig.Token == "" {
+		fmt.Fprintf(cli.out, "Not logged in\n")
 		return nil
 	}
 
-	fmt.Fprintf(cli.out, "Remove login credentials for %s\n", serverAddress)
-	cli.configFile.AuthConfig = nil
+	fmt.Fprintf(cli.out, "Remove login credentials\n")
+	cli.configFile.AuthConfig = cliconfig.AuthConfig{}
 	if err := cli.configFile.Save(); err != nil {
 		return fmt.Errorf("Failed to save docker config: %v", err)
 	}

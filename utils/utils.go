@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/get3w/get3w/pkg/archive"
 	"github.com/get3w/get3w/pkg/fileutils"
 	"github.com/get3w/get3w/pkg/stringid"
 )
@@ -132,11 +131,6 @@ func TestDirectory(templateDir string) (dir string, err error) {
 	dir, err = ioutil.TempDir("", prefix)
 	if err = os.Remove(dir); err != nil {
 		return
-	}
-	if templateDir != "" {
-		if err = archive.CopyWithTar(templateDir, dir); err != nil {
-			return
-		}
 	}
 	return
 }

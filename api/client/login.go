@@ -24,17 +24,15 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	cmd := Cli.Subcmd("login", []string{"[SERVER]"}, Cli.DockerCommands["login"].Description+".\nIf no server is specified is the default.", true)
 	cmd.Require(flag.Max, 1)
 
-	var username, password, email string
+	var username, password string
 
 	cmd.StringVar(&username, []string{"u", "-username"}, "", "Username")
 	cmd.StringVar(&password, []string{"p", "-password"}, "", "Password")
-	cmd.StringVar(&email, []string{"e", "-email"}, "", "Email")
 
 	cmd.ParseFlags(args, true)
 
 	log.Println("username:" + username)
 	log.Println("password:" + password)
-	log.Println("email:" + email)
 
 	// On Windows, force the use of the regular OS stdin stream. Fixes #14336/#14210
 	if runtime.GOOS == "windows" {
@@ -60,9 +58,6 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	}
 
 	authconfig := cli.configFile.AuthConfig
-	if authconfig == nil {
-		authconfig = &cliconfig.AuthConfig{}
-	}
 
 	if username == "" {
 		promptDefault("Username", authconfig.Username)
@@ -83,14 +78,6 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 				password = authconfig.Password
 			}
 		}
-
-		if email == "" {
-			promptDefault("Email", authconfig.Email)
-			email = readInput(cli.in, cli.out)
-			if email == "" {
-				email = authconfig.Email
-			}
-		}
 	} else {
 		// However, if they don't override the username use the
 		// password or email from the cmd line if specified. IOW, allow
@@ -99,18 +86,13 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 		if password == "" {
 			password = authconfig.Password
 		}
-		if email == "" {
-			email = authconfig.Email
-		}
 	}
 	authconfig.Username = username
 	authconfig.Password = password
-	authconfig.Email = email
 	cli.configFile.AuthConfig = authconfig
 
 	log.Println("username:" + cli.configFile.AuthConfig.Username)
 	log.Println("password:" + cli.configFile.AuthConfig.Password)
-	log.Println("email:" + cli.configFile.AuthConfig.Email)
 
 	client := get3w.NewClient(nil)
 	loginInput := &get3w.LoginInput{
@@ -119,25 +101,25 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	}
 	loginOutput, resp, err := client.Users.Login(loginInput)
 
-	if err != nil {
-		log.Println("err:" + err.Error())
-		cli.configFile.AuthConfig = nil
+	if resp.StatusCode == 401 {
+		cli.configFile.AuthConfig = cliconfig.AuthConfig{}
 		if err2 := cli.configFile.Save(); err2 != nil {
 			fmt.Fprintf(cli.out, "WARNING: could not save config file: %v\n", err2)
 		}
 		return err
 	}
-	log.Println("loginOutput:" + loginOutput.Token)
-	log.Println("resp:" + resp.String())
+	if err != nil {
+		return err
+	}
 
+	cli.configFile.AuthConfig.Token = loginOutput.Token
 	if err := cli.configFile.Save(); err != nil {
 		return fmt.Errorf("Error saving config file: %v", err)
 	}
 	fmt.Fprintf(cli.out, "WARNING: login credentials saved in %s\n", cli.configFile.Filename())
 
-	// if response.Status != "" {
-	// 	fmt.Fprintf(cli.out, "%s\n", response.Status)
-	// }
-	// fmt.Fprintf(cli.out, "%s\n", serverResp.statusCode)
+	if resp.Status != "" {
+		fmt.Fprintf(cli.out, "%s\n", resp.Status)
+	}
 	return nil
 }

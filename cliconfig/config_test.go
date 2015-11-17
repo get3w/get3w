@@ -112,7 +112,7 @@ func TestNewJson(t *testing.T) {
 	defer os.RemoveAll(tmpHome)
 
 	fn := filepath.Join(tmpHome, ConfigFileName)
-	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } } }`
+	js := ` { "authConfig": { "auth": "am9lam9lOmhlbGxv" } }`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -122,15 +122,15 @@ func TestNewJson(t *testing.T) {
 		t.Fatalf("Failed loading on empty json file: %q", err)
 	}
 
-	ac := config.AuthConfigs["https://index.docker.io/v1/"]
-	if ac.Email != "user@example.com" || ac.Username != "joejoe" || ac.Password != "hello" {
+	ac := config.AuthConfig
+	if ac.Username != "joejoe" || ac.Password != "hello" {
 		t.Fatalf("Missing data from parsing:\n%q", config)
 	}
 
 	// Now save it and make sure it shows up in new form
 	configStr := saveConfigAndValidateNewFormat(t, config, tmpHome)
 
-	if !strings.Contains(configStr, "user@example.com") {
+	if !strings.Contains(configStr, "am9lam9lOmhlbGxv") {
 		t.Fatalf("Should have save in new form: %s", configStr)
 	}
 }
@@ -143,7 +143,7 @@ func saveConfigAndValidateNewFormat(t *testing.T, config *ConfigFile, homeFolder
 	}
 
 	buf, err := ioutil.ReadFile(filepath.Join(homeFolder, ConfigFileName))
-	if !strings.Contains(string(buf), `"auths":`) {
+	if !strings.Contains(string(buf), `"authConfig":`) {
 		t.Fatalf("Should have save in new form: %s", string(buf))
 	}
 	return string(buf)
@@ -178,38 +178,23 @@ func TestConfigFile(t *testing.T) {
 }
 
 func TestJsonReaderNoFile(t *testing.T) {
-	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } } }`
+	js := ` { "authConfig": { "auth": "am9lam9lOmhlbGxv" } }`
 
 	config, err := LoadFromReader(strings.NewReader(js))
 	if err != nil {
 		t.Fatalf("Failed loading on empty json file: %q", err)
 	}
 
-	ac := config.AuthConfigs["https://index.docker.io/v1/"]
-	if ac.Email != "user@example.com" || ac.Username != "joejoe" || ac.Password != "hello" {
+	ac := config.AuthConfig
+	if ac.Username != "joejoe" || ac.Password != "hello" {
 		t.Fatalf("Missing data from parsing:\n%q", config)
 	}
 
-}
-
-func TestOldJsonReaderNoFile(t *testing.T) {
-	js := `{"https://index.docker.io/v1/":{"auth":"am9lam9lOmhlbGxv","email":"user@example.com"}}`
-
-	config, err := LegacyLoadFromReader(strings.NewReader(js))
-	if err != nil {
-		t.Fatalf("Failed loading on empty json file: %q", err)
-	}
-
-	ac := config.AuthConfigs["https://index.docker.io/v1/"]
-	if ac.Email != "user@example.com" || ac.Username != "joejoe" || ac.Password != "hello" {
-		t.Fatalf("Missing data from parsing:\n%q", config)
-	}
 }
 
 func TestJsonWithPsFormatNoFile(t *testing.T) {
 	js := `{
-		"auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } },
-		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
+		"authConfig": { "auth": "am9lam9lOmhlbGxv" }
 }`
 	_, err := LoadFromReader(strings.NewReader(js))
 	if err != nil {
@@ -220,8 +205,7 @@ func TestJsonWithPsFormatNoFile(t *testing.T) {
 
 func TestJsonSaveWithNoFile(t *testing.T) {
 	js := `{
-		"auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } },
-		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
+		"authConfig": { "auth": "am9lam9lOmhlbGxv" }
 }`
 	config, err := LoadFromReader(strings.NewReader(js))
 	err = config.Save()
@@ -242,36 +226,8 @@ func TestJsonSaveWithNoFile(t *testing.T) {
 		t.Fatalf("Failed saving to file: %q", err)
 	}
 	buf, err := ioutil.ReadFile(filepath.Join(tmpHome, ConfigFileName))
-	if !strings.Contains(string(buf), `"auths":`) ||
-		!strings.Contains(string(buf), "user@example.com") {
+	if !strings.Contains(string(buf), `"authConfig":`) {
 		t.Fatalf("Should have save in new form: %s", string(buf))
 	}
 
-}
-func TestLegacyJsonSaveWithNoFile(t *testing.T) {
-
-	js := `{"https://index.docker.io/v1/":{"auth":"am9lam9lOmhlbGxv","email":"user@example.com"}}`
-	config, err := LegacyLoadFromReader(strings.NewReader(js))
-	err = config.Save()
-	if err == nil {
-		t.Fatalf("Expected error. File should not have been able to save with no file name.")
-	}
-
-	tmpHome, err := ioutil.TempDir("", "config-test")
-	if err != nil {
-		t.Fatalf("Failed to create a temp dir: %q", err)
-	}
-	defer os.RemoveAll(tmpHome)
-
-	fn := filepath.Join(tmpHome, ConfigFileName)
-	f, _ := os.OpenFile(fn, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	err = config.SaveToWriter(f)
-	if err != nil {
-		t.Fatalf("Failed saving to file: %q", err)
-	}
-	buf, err := ioutil.ReadFile(filepath.Join(tmpHome, ConfigFileName))
-	if !strings.Contains(string(buf), `"auths":`) ||
-		!strings.Contains(string(buf), "user@example.com") {
-		t.Fatalf("Should have save in new form: %s", string(buf))
-	}
 }

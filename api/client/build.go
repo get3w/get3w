@@ -17,15 +17,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/get3w/get3w/api"
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/opts"
-	"github.com/get3w/get3w/pkg/archive"
 	"github.com/get3w/get3w/pkg/httputils"
 	"github.com/get3w/get3w/pkg/jsonmessage"
 	"github.com/get3w/get3w/pkg/progressreader"
 	"github.com/get3w/get3w/pkg/streamformatter"
-	"github.com/get3w/get3w/pkg/ulimit"
 	"github.com/get3w/get3w/pkg/urlutil"
 	"github.com/get3w/get3w/utils"
 )
@@ -45,13 +41,6 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	pull := cmd.Bool([]string{"-pull"}, false, "Always attempt to pull a newer version of the image")
 	log.Println(pull)
 
-	flBuildArg := opts.NewListOpts(opts.ValidateEnv)
-	cmd.Var(&flBuildArg, []string{"-build-arg"}, "Set build-time variables")
-
-	ulimits := make(map[string]*ulimit.Ulimit)
-	flUlimits := opts.NewUlimitOpt(&ulimits)
-	cmd.Var(flUlimits, []string{"-ulimit"}, "Ulimit options")
-
 	cmd.ParseFlags(args, true)
 
 	_, err := exec.LookPath("git")
@@ -63,9 +52,8 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	}
 
 	var (
-		contextDir    string
-		tempDir       string
-		relDockerfile = api.DefaultConfigName
+		contextDir string
+		tempDir    string
 	)
 
 	switch {
@@ -86,29 +74,12 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 		contextDir = tempDir
 	}
 
-	// And canonicalize dockerfile name to a platform-independent one
-	relDockerfile, err = archive.CanonicalTarNameForPath(relDockerfile)
-	if err != nil {
-		return fmt.Errorf("cannot canonicalize dockerfile path %s: %v", relDockerfile, err)
-	}
-
 	var excludes []string
 	if err := utils.ValidateContextDirectory(contextDir, excludes); err != nil {
 		return fmt.Errorf("Error checking context: '%s'.", err)
 	}
 
-	var includes = []string{"."}
-
 	log.Println("building...")
-
-	_, err = archive.TarWithOptions(contextDir, &archive.TarOptions{
-		Compression:     archive.Uncompressed,
-		ExcludePatterns: excludes,
-		IncludeFiles:    includes,
-	})
-	if err != nil {
-		return err
-	}
 
 	// Setup an upload progress bar
 	// FIXME: ProgressReader shouldn't be this annoying to use
@@ -200,7 +171,7 @@ func writeToFile(r io.Reader, filename string) error {
 func getContextFromReader(r io.Reader) (absContextDir string, err error) {
 	buf := bufio.NewReader(r)
 
-	magic, err := buf.Peek(tarHeaderSize)
+	_, err = buf.Peek(tarHeaderSize)
 	if err != nil && err != io.EOF {
 		return "", fmt.Errorf("failed to peek context header from STDIN: %v", err)
 	}
@@ -214,14 +185,6 @@ func getContextFromReader(r io.Reader) (absContextDir string, err error) {
 			os.RemoveAll(d)
 		}
 	}(absContextDir)
-
-	if !archive.IsArchive(magic) { // Input should be read as a Dockerfile.
-		return absContextDir, writeToFile(buf, filepath.Join(absContextDir, api.DefaultConfigName))
-	}
-
-	if err := archive.Untar(buf, absContextDir, nil); err != nil {
-		return "", fmt.Errorf("unable to extract stdin to temporary context directory: %v", err)
-	}
 
 	return getDockerfileRelPath(absContextDir)
 }
