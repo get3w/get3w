@@ -1,15 +1,15 @@
 package site
 
-import "github.com/get3w/get3w/storage/s3"
+import "github.com/get3w/get3w/storage/local"
 
-// NewS3Site get key by pageName
-func NewS3Site(bucket, appname string) *Site {
-	service := s3.NewService(bucket, appname)
+// NewLocalSite return local site
+func NewLocalSite(contextDir, appname string) *Site {
+	service := local.NewService(contextDir)
 	return &Site{
 		Name:      appname,
 		Read:      service.Read,
 		Write:     service.Write,
-		Rename:    service.Rename,
+		Rename:    nil,
 		Delete:    service.Delete,
 		DeleteAll: service.DeleteAll,
 		GetFiles:  service.GetFiles,

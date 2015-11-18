@@ -2,12 +2,12 @@ package s3
 
 import (
 	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"mime"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,300 +21,369 @@ import (
 // Service s3 service
 type Service struct {
 	bucket   string
+	name     string
 	instance *s3.S3
 }
 
 // NewService return new service
-func NewService(bucket string) *Service {
-	if bucket == "" {
+func NewService(bucket string, name string) *Service {
+	if bucket == "" || name == "" {
 		return &Service{}
 	}
 
 	return &Service{
 		bucket:   bucket,
+		name:     name,
 		instance: s3.New(session.New(), &aws.Config{}),
 	}
 }
 
-// GetURL get resource url
-func (service *Service) GetURL(key string) string {
-	return fmt.Sprintf("http://%s/%s", service.bucket, key)
+// getAppPrefix return app prefix
+func (service *Service) getAppPrefix(prefix string) string {
+	prefix = path.Join(service.name, prefix)
+	prefix = strings.Trim(prefix, "/") + "/"
+	return prefix
 }
 
-// GetKeys return all keys by prefix
-func (service *Service) GetKeys(prefix string) ([]string, error) {
+// getAppKey return app key
+func (service *Service) getAppKey(key string) string {
+	key = path.Join(service.name, key)
+	key = strings.Trim(key, "/")
+	return key
+}
+
+// getAllKeys return all keys by prefix
+func (service *Service) getAllKeys(prefix string) ([]string, error) {
+	if service.instance == nil {
+		return []string{}, fmt.Errorf("service not avaliable")
+	}
+
 	keys := []string{}
 
-	if service.instance != nil {
-		params := &s3.ListObjectsInput{
-			Bucket: aws.String(service.bucket), // Required
-			Prefix: aws.String(prefix),
-		}
-		resp, err := service.instance.ListObjects(params)
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String(service.bucket), // Required
+		Prefix: aws.String(service.getAppPrefix(prefix)),
+	}
+	resp, err := service.instance.ListObjects(params)
 
-		if err != nil {
-			return nil, err
-		}
-		for _, value := range resp.Contents {
-			keys = append(keys, *value.Key)
-		}
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range resp.Contents {
+		keys = append(keys, *value.Key)
 	}
 
 	return keys, nil
 }
 
 // GetFiles return all files by appname and prefix
-func (service *Service) GetFiles(appname string, prefix string) ([]*get3w.File, error) {
+func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
+	if service.instance == nil {
+		return []*get3w.File{}, fmt.Errorf("service not avaliable")
+	}
+
 	files := []*get3w.File{}
 
-	if service.instance != nil && appname != "" {
-		prefix = path.Join(appname, prefix)
-		prefix = strings.Trim(prefix, "/") + "/"
+	params := &s3.ListObjectsInput{
+		Bucket:    aws.String(service.bucket), // Required
+		Prefix:    aws.String(service.getAppPrefix(prefix)),
+		Delimiter: aws.String("/"),
+	}
+	resp, err := service.instance.ListObjects(params)
 
-		params := &s3.ListObjectsInput{
-			Bucket:    aws.String(service.bucket), // Required
-			Prefix:    aws.String(prefix),
-			Delimiter: aws.String("/"),
+	if err != nil {
+		return nil, err
+	}
+
+	for _, commonPrefix := range resp.CommonPrefixes {
+		filePath := strings.Trim(strings.Replace(*commonPrefix.Prefix, service.name, "", 1), "/")
+		name := path.Base(filePath)
+
+		dir := &get3w.File{
+			IsDir: true,
+			Path:  filePath,
+			Name:  name,
+			Size:  0,
 		}
-		resp, err := service.instance.ListObjects(params)
+		files = append(files, dir)
+	}
 
-		if err != nil {
-			return nil, err
+	for _, content := range resp.Contents {
+		if strings.HasSuffix(*content.Key, "/") {
+			continue
 		}
+		filePath := strings.Trim(strings.Replace(*content.Key, service.name, "", 1), "/")
+		name := path.Base(filePath)
+		size := *content.Size
 
-		for _, commonPrefix := range resp.CommonPrefixes {
-			filePath := strings.Trim(strings.Replace(*commonPrefix.Prefix, appname, "", 1), "/")
-			name := path.Base(filePath)
-
-			dir := &get3w.File{
-				IsDirectory: true,
-				Path:        filePath,
-				Name:        name,
-				Size:        0,
-			}
-			files = append(files, dir)
+		file := &get3w.File{
+			IsDir: false,
+			Path:  filePath,
+			Name:  name,
+			Size:  size,
 		}
-
-		for _, content := range resp.Contents {
-			if strings.HasSuffix(*content.Key, "/") {
-				continue
-			}
-			filePath := strings.Trim(strings.Replace(*content.Key, appname, "", 1), "/")
-			name := path.Base(filePath)
-			size := *content.Size
-
-			file := &get3w.File{
-				IsDirectory: false,
-				Path:        filePath,
-				Name:        name,
-				Size:        size,
-			}
-			files = append(files, file)
-		}
+		files = append(files, file)
 	}
 
 	return files, nil
 }
 
-// ReadObject return resource content
-func (service *Service) ReadObject(key string) (string, error) {
-	if service.instance != nil && len(key) > 0 {
-		params := &s3.GetObjectInput{
-			Bucket: aws.String(service.bucket), // Required
-			Key:    aws.String(key),            // Required
-		}
-		resp, err := service.instance.GetObject(params)
-
-		if err != nil {
-			return "", err
-		}
-
-		return stringutils.ReaderToString(resp.Body), nil
-	}
-	return "", nil
+// Write string content to specified key resource
+func (service *Service) Write(key string, content string) error {
+	return service.WriteBinary(key, []byte(content))
 }
 
-// WriteObject write string content to specified key resource
-func (service *Service) WriteObject(key string, content string) error {
-	if service.instance != nil && key != "" {
-		params := &s3.PutObjectInput{
-			Bucket:      aws.String(service.bucket), // Required
-			Key:         aws.String(key),            // Required
-			ACL:         aws.String(s3.ObjectCannedACLPublicRead),
-			ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-			Body:        bytes.NewReader([]byte(content)),
-		}
-		_, err := service.instance.PutObject(params)
-
-		if err != nil {
-			return err
-		}
+// WriteBinary upload file
+func (service *Service) WriteBinary(key string, bs []byte) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if key == "" {
+		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	return nil
-}
-
-// WriteBinaryObject upload file
-func (service *Service) WriteBinaryObject(key string, bs []byte) (bool, error) {
-	if service.instance != nil && key != "" {
-		params := &s3.PutObjectInput{
-			Bucket:      aws.String(service.bucket), // Required
-			Key:         aws.String(key),            // Required
-			ACL:         aws.String(s3.ObjectCannedACLPublicRead),
-			ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-			Body:        bytes.NewReader(bs),
-		}
-
-		_, err := service.instance.PutObject(params)
-
-		if err != nil {
-			return false, err
-		}
-		return true, nil
+	params := &s3.PutObjectInput{
+		Bucket:      aws.String(service.bucket),         // Required
+		Key:         aws.String(service.getAppKey(key)), // Required
+		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
+		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
+		Body:        bytes.NewReader(bs),
 	}
 
-	return false, nil
+	_, err := service.instance.PutObject(params)
+	return err
 }
 
-// DeleteObject delete specified object
-func (service *Service) DeleteObject(key string) error {
-	if service.instance != nil && key != "" {
-		params := &s3.DeleteObjectInput{
-			Bucket: aws.String(service.bucket), // Required
-			Key:    aws.String(key),            // Required
-		}
-		_, err := service.instance.DeleteObject(params)
+// Copy object to destinatioin
+func (service *Service) Copy(sourceKey string, destinationKey string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if sourceKey == "" {
+		return fmt.Errorf("sourceKey must be a nonempty string")
+	}
+	if destinationKey == "" {
+		return fmt.Errorf("destinationKey must be a nonempty string")
+	}
 
+	params := &s3.CopyObjectInput{
+		Bucket:     aws.String(service.bucket),                                      // Required
+		CopySource: aws.String(service.bucket + "/" + service.getAppKey(sourceKey)), // Required
+		Key:        aws.String(service.getAppKey(destinationKey)),                   // Required
+		ACL:        aws.String(s3.ObjectCannedACLPublicRead),
+	}
+	_, err := service.instance.CopyObject(params)
+	return err
+}
+
+// Rename rename the app
+func (service *Service) Rename(newName string, deleteAll bool) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if newName == "" {
+		return fmt.Errorf("newName must be a nonempty string")
+	}
+
+	allKeys, err := service.getAllKeys("")
+	if err != nil {
 		return err
 	}
-	return nil
-}
 
-// DeleteObjectsByPrefix delete objects by prefix
-func (service *Service) DeleteObjectsByPrefix(prefix string) error {
-	if prefix != "" {
-		keys, err := service.GetKeys(prefix)
-		if err != nil {
-			return err
-		}
-		return service.DeleteObjects(keys)
-	}
-	return nil
-}
-
-// DeleteObjects delete objects
-func (service *Service) DeleteObjects(keys []string) error {
-	if service.instance != nil {
-		objects := make([]*s3.ObjectIdentifier, len(keys))
-		for index, value := range keys {
-			objects[index] = &s3.ObjectIdentifier{ // Required
-				Key: aws.String(value), // Required
-			}
-		}
-
-		params := &s3.DeleteObjectsInput{
-			Bucket: aws.String(service.bucket), // Required
-			Delete: &s3.Delete{ // Required
-				Objects: objects,
-				Quiet:   aws.Bool(true),
-			},
-		}
-		_, err := service.instance.DeleteObjects(params)
-		return err
-	}
-	return nil
-}
-
-// CopyObject copy object to destinatioin
-func (service *Service) CopyObject(sourceKey string, destinationKey string) error {
-	if service.instance != nil && sourceKey != "" && destinationKey != "" {
-		var copySource = service.bucket + "/" + sourceKey
-
+	for _, key := range allKeys {
+		destinationKey := strings.Replace(key, service.name, newName, 1)
 		params := &s3.CopyObjectInput{
-			Bucket:     aws.String(service.bucket), // Required
-			CopySource: aws.String(copySource),     // Required
-			Key:        aws.String(destinationKey), // Required
+			Bucket:     aws.String(service.bucket),             // Required
+			CopySource: aws.String(service.bucket + "/" + key), // Required
+			Key:        aws.String(destinationKey),             // Required
 			ACL:        aws.String(s3.ObjectCannedACLPublicRead),
 		}
 		_, err := service.instance.CopyObject(params)
+		if err != nil {
+			return err
+		}
+	}
+	if deleteAll {
+		return service.DeleteAll("")
+	}
+	return nil
+}
+
+// Read return resource content
+func (service *Service) Read(key string) (string, error) {
+	if service.instance == nil {
+		return "", fmt.Errorf("service not avaliable")
+	}
+	if key == "" {
+		return "", fmt.Errorf("key must be a nonempty string")
+	}
+
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(service.bucket),         // Required
+		Key:    aws.String(service.getAppKey(key)), // Required
+	}
+	resp, err := service.instance.GetObject(params)
+
+	if err != nil {
+		return "", err
+	}
+
+	return stringutils.ReaderToString(resp.Body), nil
+}
+
+// Upload upload object
+func (service *Service) Upload(key string, filePath string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if key == "" {
+		return fmt.Errorf("key must be a nonempty string")
+	}
+	if filePath == "" {
+		return fmt.Errorf("filePath must be a nonempty string")
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
 		return err
 	}
+
+	defer file.Close()
+	uploader := s3manager.NewUploader(session.New())
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String(service.bucket),
+		Key:         aws.String(service.getAppKey(key)),
+		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
+		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
+		Body:        file,
+	})
+
+	return err
+}
+
+// Download download object
+func (service *Service) Download(key string, directoryPath string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if key == "" {
+		return fmt.Errorf("key must be a nonempty string")
+	}
+	if directoryPath == "" {
+		return fmt.Errorf("directoryPath must be a nonempty string")
+	}
+
+	result, err := service.instance.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(service.bucket),
+		Key:    aws.String(service.getAppKey(key)),
+	})
+	if err != nil {
+		return err
+	}
+
+	filePath, err := filepath.Abs(path.Join(directoryPath, path.Base(key)))
+	if err != nil {
+		return err
+	}
+
+	os.MkdirAll(directoryPath, os.ModeDir)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(file, result.Body); err != nil {
+		return err
+	}
+	result.Body.Close()
+	file.Close()
 	return nil
 }
 
-// UploadObject upload object
-func (service *Service) UploadObject(key string, filePath string) (string, error) {
-	if service.instance != nil && key != "" && filePath != "" {
-		file, err := os.Open(filePath)
-		if err != nil {
-			return "", err
-		}
-
-		reader, writer := io.Pipe()
-		go func() {
-			gw := gzip.NewWriter(writer)
-			io.Copy(gw, file)
-
-			file.Close()
-			gw.Close()
-			writer.Close()
-		}()
-
-		uploader := s3manager.NewUploader(nil)
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket:      aws.String(service.bucket),
-			Key:         aws.String(key),
-			ACL:         aws.String(s3.ObjectCannedACLPublicRead),
-			ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-			Body:        reader,
-		})
-
-		if err != nil {
-			return "", err
-		}
-
-		return service.GetURL(key), nil
+// IsExist return true if specified key exists
+func (service *Service) IsExist(key string) bool {
+	if service.instance == nil || key == "" {
+		return false
 	}
-	return "", nil
+
+	_, err := service.instance.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(service.bucket),
+		Key:    aws.String(service.getAppKey(key)),
+	})
+	if err != nil {
+		return false
+	}
+	return true
 }
 
-// DownloadObject download object
-func (service *Service) DownloadObject(key string, directoryPath string) error {
-	if service.instance != nil && key != "" && directoryPath != "" {
-		result, err := service.instance.GetObject(&s3.GetObjectInput{
-			Bucket: aws.String(service.bucket),
-			Key:    aws.String(key),
-		})
-		if err != nil {
-			return err
-		}
-
-		filePath := path.Join(directoryPath, key)
-		file, err := os.Create(filePath)
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(file, result.Body); err != nil {
-			return err
-		}
-		result.Body.Close()
-		file.Close()
+// Delete specified object
+func (service *Service) Delete(key string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
 	}
-	return nil
+	if key == "" {
+		return fmt.Errorf("key must be a nonempty string")
+	}
+
+	params := &s3.DeleteObjectInput{
+		Bucket: aws.String(service.bucket),         // Required
+		Key:    aws.String(service.getAppKey(key)), // Required
+	}
+	_, err := service.instance.DeleteObject(params)
+	return err
 }
 
-// ExistObject return true if specified key exists
-func (service *Service) ExistObject(key string) (bool, error) {
-	if service.instance != nil && key != "" {
-		_, err := service.instance.HeadObject(&s3.HeadObjectInput{
-			Bucket: aws.String(service.bucket),
-			Key:    aws.String(key),
-		})
-		if err != nil {
-			return false, err
-		}
-		return true, nil
+// Deletes delete objects
+func (service *Service) Deletes(keys []string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+	if len(keys) == 0 {
+		return fmt.Errorf("keys must be a nonempty string array")
 	}
 
-	return false, nil
+	objects := make([]*s3.ObjectIdentifier, len(keys))
+	for index, key := range keys {
+		objects[index] = &s3.ObjectIdentifier{ // Required
+			Key: aws.String(service.getAppKey(key)), // Required
+		}
+	}
+
+	params := &s3.DeleteObjectsInput{
+		Bucket: aws.String(service.bucket), // Required
+		Delete: &s3.Delete{ // Required
+			Objects: objects,
+			Quiet:   aws.Bool(true),
+		},
+	}
+	_, err := service.instance.DeleteObjects(params)
+	return err
+}
+
+// DeleteAll delete objects by prefix
+func (service *Service) DeleteAll(prefix string) error {
+	if service.instance == nil {
+		return fmt.Errorf("service not avaliable")
+	}
+
+	keys, err := service.getAllKeys(prefix)
+	if err != nil {
+		return err
+	}
+
+	objects := make([]*s3.ObjectIdentifier, len(keys))
+	for index, key := range keys {
+		objects[index] = &s3.ObjectIdentifier{ // Required
+			Key: aws.String(key), // Required
+		}
+	}
+
+	params := &s3.DeleteObjectsInput{
+		Bucket: aws.String(service.bucket), // Required
+		Delete: &s3.Delete{ // Required
+			Objects: objects,
+			Quiet:   aws.Bool(true),
+		},
+	}
+	_, err = service.instance.DeleteObjects(params)
+	return err
 }
