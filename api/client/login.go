@@ -95,11 +95,11 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	log.Println("password:" + cli.configFile.AuthConfig.Password)
 
 	client := get3w.NewClient(nil)
-	loginInput := &get3w.LoginInput{
+	opts := &get3w.UserLoginOptions{
 		Account:  username,
 		Password: password,
 	}
-	loginOutput, resp, err := client.Users.Login(loginInput)
+	userLogin, resp, err := client.Users.Login(opts)
 
 	if resp.StatusCode == 401 {
 		cli.configFile.AuthConfig = cliconfig.AuthConfig{}
@@ -112,7 +112,7 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 		return err
 	}
 
-	cli.configFile.AuthConfig.Token = loginOutput.Token
+	cli.configFile.AuthConfig.Token = userLogin.Token
 	if err := cli.configFile.Save(); err != nil {
 		return fmt.Errorf("Error saving config file: %v", err)
 	}

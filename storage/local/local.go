@@ -2,8 +2,9 @@ package local
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -15,16 +16,19 @@ import (
 // Service local service
 type Service struct {
 	directoryPath string
+	Name          string
 }
 
 // NewService return new service
 func NewService(contextDir string) *Service {
 	directoryPath, err := getDirectoryPath(contextDir)
+
 	if err != nil {
 		return &Service{}
 	}
 	return &Service{
 		directoryPath: directoryPath,
+		Name:          path.Base(directoryPath),
 	}
 }
 
@@ -97,6 +101,36 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	return files, nil
 }
 
+// GetAllFiles return all files by appname
+func (service *Service) GetAllFiles() ([]*get3w.File, error) {
+	if service.directoryPath == "" {
+		return []*get3w.File{}, fmt.Errorf("service not avaliable")
+	}
+
+	files := []*get3w.File{}
+
+	err := filepath.Walk(service.getAppPrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
+		filePath := strings.TrimRight(path.Join(fileInfo.Name()), "/")
+		name := fileInfo.Name()
+
+		file := &get3w.File{
+			IsDir: fileInfo.IsDir(),
+			Path:  filePath,
+			Name:  name,
+			Size:  fileInfo.Size(),
+		}
+
+		files = append(files, file)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
 // Write string content to specified key resource
 func (service *Service) Write(key string, content string) error {
 	return service.WriteBinary(key, []byte(content))
@@ -112,8 +146,33 @@ func (service *Service) WriteBinary(key string, bs []byte) error {
 	}
 
 	p := service.getAppKey(key)
+	fmt.Printf("Page %s created\n", key)
 	os.MkdirAll(filepath.Dir(p), os.ModeDir)
 	return ioutil.WriteFile(p, bs, 0644)
+}
+
+// WriteReader copies from the given reader and writes it to a file with the
+// given filename.
+func (service *Service) WriteReader(key string, r io.Reader) error {
+	if service.directoryPath == "" {
+		return fmt.Errorf("service not avaliable")
+	}
+	if key == "" {
+		return fmt.Errorf("key must be a nonempty string")
+	}
+
+	p := service.getAppKey(key)
+	file, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("unable to create file: %v", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, r); err != nil {
+		return fmt.Errorf("unable to write file: %v", err)
+	}
+
+	return nil
 }
 
 // Copy object to destinatioin
@@ -145,7 +204,6 @@ func (service *Service) Read(key string) (string, error) {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
 
-	log.Println(service.getAppKey(key))
 	bs, err := ioutil.ReadFile(service.getAppKey(key))
 
 	if err != nil {
@@ -175,30 +233,29 @@ func (service *Service) Upload(key string, path string) error {
 	return service.WriteBinary(key, bs)
 }
 
-// Download download object
-func (service *Service) Download(key string, directoryPath string) error {
+// Download file by appname and key
+func (service *Service) Download(key string, downloadURL string) error {
 	if service.directoryPath == "" {
 		return fmt.Errorf("service not avaliable")
 	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
-	if directoryPath == "" {
-		return fmt.Errorf("directoryPath must be a nonempty string")
+	if downloadURL == "" {
+		return fmt.Errorf("downloadURL must be a nonempty string")
 	}
+	p := service.getAppKey(key)
+	os.MkdirAll(path.Dir(p), os.ModeDir)
 
-	bs, err := ioutil.ReadFile(service.getAppKey(key))
-	if err != nil {
-		return err
-	}
+	out, err := os.Create(p)
+	defer out.Close()
 
-	filePath, err := filepath.Abs(path.Join(directoryPath, key))
-	if err != nil {
-		return err
-	}
+	resp, err := http.Get(downloadURL)
+	defer resp.Body.Close()
 
-	os.MkdirAll(directoryPath, os.ModeDir)
-	return ioutil.WriteFile(filePath, bs, 0644)
+	_, err = io.Copy(out, resp.Body)
+
+	return err
 }
 
 // IsExist return true if specified key exists

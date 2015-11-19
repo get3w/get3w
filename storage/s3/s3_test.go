@@ -8,13 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var service = NewService("apps.get3w.com", "wwwwww")
+
 func TestNewService(t *testing.T) {
-	service := NewService("apps.get3w.com", "")
-	assert.Nil(t, service.instance)
+	assert.Nil(t, NewService("apps.get3w.com", "").instance)
+	assert.NotNil(t, NewService("apps.get3w.com", "name").instance)
 }
 
 func TestGetAppPrefix(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	assert.Equal(t, service.getAppPrefix(""), "wwwwww/")
 	assert.Equal(t, service.getAppPrefix("/"), "wwwwww/")
 	assert.Equal(t, service.getAppPrefix("/test"), "wwwwww/test/")
@@ -22,13 +23,11 @@ func TestGetAppPrefix(t *testing.T) {
 }
 
 func TestGetAppKey(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	assert.Equal(t, service.getAppKey("/test"), "wwwwww/test")
 	assert.Equal(t, service.getAppKey("test"), "wwwwww/test")
 }
 
 func TestGetAllKeys(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	keys, err := service.getAllKeys("/")
 	log.Println(len(keys))
 	assert.Nil(t, err)
@@ -36,21 +35,25 @@ func TestGetAllKeys(t *testing.T) {
 }
 
 func TestGetFiles(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	files, err := service.GetFiles("/")
 	log.Println(len(files))
 	assert.Nil(t, err)
 	assert.True(t, len(files) > 0)
 }
 
+func TestGetAllFiles(t *testing.T) {
+	files, err := service.GetAllFiles()
+	log.Println(len(files))
+	assert.Nil(t, err)
+	assert.True(t, len(files) > 0)
+}
+
 func TestWrite(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	err := service.Write("/_test/index.html", "hello world")
 	assert.Nil(t, err)
 }
 
 func TestWriteBinary(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	bs := []byte("hello world")
 	err := service.WriteBinary("/_test/1.html", bs)
 	assert.Nil(t, err)
@@ -59,20 +62,17 @@ func TestWriteBinary(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	err := service.Copy("/_test/1.html", "/_test/3.html")
 	assert.Nil(t, err)
 }
 
 func TestRead(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	content, err := service.Read("/_test/index.html")
 	log.Println(content)
 	assert.Nil(t, err)
 }
 
 func TestUpload(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	path, _ := filepath.Abs("s3_test.go")
 	log.Println(path)
 	err := service.Upload("/_test/s3_test.go", path)
@@ -80,7 +80,6 @@ func TestUpload(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	path, _ := filepath.Abs("./_test")
 	log.Println(path)
 	err := service.Download("/_test/index.html", path)
@@ -88,19 +87,16 @@ func TestDownload(t *testing.T) {
 }
 
 func TestIsExist(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	assert.True(t, service.IsExist("/_test/index.html"))
 	assert.False(t, service.IsExist("/_test/index2.html"))
 }
 
 func TestDelete(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	err := service.Delete("/_test/index.html")
 	assert.Nil(t, err)
 }
 
 func TestDeletes(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	err := service.Deletes([]string{
 		"/_test/1.html",
 		"/_test/2.html",
@@ -109,7 +105,6 @@ func TestDeletes(t *testing.T) {
 }
 
 func TestDeleteAll(t *testing.T) {
-	service := NewService("apps.get3w.com", "wwwwww")
 	err := service.DeleteAll("/_test")
 	assert.Nil(t, err)
 }

@@ -16,42 +16,45 @@ type Site struct {
 	Read        func(key string) (string, error)
 	Write       func(key, value string) error
 	WriteBinary func(key string, bs []byte) error
+	Download    func(key string, downloadURL string) error
 	Rename      func(newName string, deleteAll bool) error
 	Delete      func(key string) error
 	DeleteAll   func(prefix string) error
 	GetFiles    func(prefix string) ([]*get3w.File, error)
+	GetAllFiles func() ([]*get3w.File, error)
+	IsExist     func(key string) bool
 
 	config *get3w.Config
 }
 
 // GetPageKey get key by pageName
 func (site *Site) GetPageKey(pageName string) string {
-	return path.Join("_pages", pageName+".yml")
+	return path.Join("_pages", pageName) + ".yml"
 }
 
 // GetSectionHTMLKey get html file key by sectionName
 func (site *Site) GetSectionHTMLKey(sectionName string) string {
-	return path.Join("_sections", sectionName+".html")
+	return path.Join("_sections", sectionName) + ".html"
 }
 
 // GetSectionCSSKey get css file key by sectionName
 func (site *Site) GetSectionCSSKey(sectionName string) string {
-	return path.Join("_sections", sectionName+".css")
+	return path.Join("_sections", sectionName) + ".css"
 }
 
 // GetSectionJSKey get js file key by sectionName
 func (site *Site) GetSectionJSKey(sectionName string) string {
-	return path.Join("_sections", sectionName+".js")
+	return path.Join("_sections", sectionName) + ".js"
 }
 
 // GetSectionPreviewHTMLKey get preview file key by sectionName
 func (site *Site) GetSectionPreviewHTMLKey(sectionName string) string {
-	return path.Join("_sections", sectionName+"-preview.html")
+	return path.Join("_sections", sectionName) + "-preview.html"
 }
 
 // GetSectionPreviewPNGKey get preview cover file key by sectionName
 func (site *Site) GetSectionPreviewPNGKey(sectionName string) string {
-	return path.Join("_sections", sectionName+".png")
+	return path.Join("_sections", sectionName) + ".png"
 }
 
 // GetConfigKey get preview config file key
@@ -70,10 +73,8 @@ func (site *Site) GetConfig() *get3w.Config {
 		config := &get3w.Config{}
 		configKey := site.GetConfigKey()
 		configData, err := site.Read(configKey)
-		if err != nil {
-			if len(configData) > 0 {
-				config.Load(configData)
-			}
+		if err == nil {
+			config.Load(configData)
 		}
 
 		site.config = config
@@ -176,10 +177,8 @@ func (site *Site) GetPage(pageName string) *get3w.Page {
 	pageKey := site.GetPageKey(pageName)
 	page := &get3w.Page{}
 	pageData, err := site.Read(pageKey)
-	if err != nil {
-		if len(pageData) > 0 {
-			page.Load(pageData)
-		}
+	if err == nil {
+		page.Load(pageData)
 	}
 
 	page.Name = pageName
@@ -238,10 +237,6 @@ func (site *Site) DeleteFolder(key string) {
 
 // Build all pages in the app.
 func (site *Site) Build(app *get3w.App) {
-	if app == nil {
-		return
-	}
-
 	config := site.GetConfig()
 	for _, pageName := range config.Pages {
 		page := site.GetPage(pageName)
@@ -257,7 +252,7 @@ func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w
 	if title == "" {
 		title = config.Title
 	}
-	if title == "" {
+	if title == "" && app != nil {
 		title = app.Name
 	}
 
@@ -265,7 +260,7 @@ func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w
 	if keywords == "" {
 		keywords = config.Keywords
 	}
-	if keywords == "" {
+	if keywords == "" && app != nil {
 		keywords = app.Tags
 	}
 
@@ -273,7 +268,7 @@ func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w
 	if description == "" {
 		description = config.Description
 	}
-	if description == "" {
+	if description == "" && app != nil {
 		description = app.Description
 	}
 
@@ -303,7 +298,7 @@ func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w
 	return buffer.String()
 }
 
-func (site *Site) getPageBody(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
+func (site *Site) getPageBody(page *get3w.Page, config *get3w.Config) string {
 	var buffer bytes.Buffer
 
 	for _, sectionName := range page.Sections {
@@ -351,7 +346,7 @@ func (site *Site) generatePage(page *get3w.Page, config *get3w.Config, app *get3
 %s</head>
 <body>
 %s</body>
-</html>`, site.getPageHead(page, config, app), site.getPageBody(page, config, app))
+</html>`, site.getPageHead(page, config, app), site.getPageBody(page, config))
 
 	url := page.URL
 	if url == "" {

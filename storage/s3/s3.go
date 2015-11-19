@@ -3,11 +3,9 @@ package s3
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"mime"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -88,6 +86,57 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		Bucket:    aws.String(service.bucket), // Required
 		Prefix:    aws.String(service.getAppPrefix(prefix)),
 		Delimiter: aws.String("/"),
+	}
+	resp, err := service.instance.ListObjects(params)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, commonPrefix := range resp.CommonPrefixes {
+		filePath := strings.Trim(strings.Replace(*commonPrefix.Prefix, service.name, "", 1), "/")
+		name := path.Base(filePath)
+
+		dir := &get3w.File{
+			IsDir: true,
+			Path:  filePath,
+			Name:  name,
+			Size:  0,
+		}
+		files = append(files, dir)
+	}
+
+	for _, content := range resp.Contents {
+		if strings.HasSuffix(*content.Key, "/") {
+			continue
+		}
+		filePath := strings.Trim(strings.Replace(*content.Key, service.name, "", 1), "/")
+		name := path.Base(filePath)
+		size := *content.Size
+
+		file := &get3w.File{
+			IsDir: false,
+			Path:  filePath,
+			Name:  name,
+			Size:  size,
+		}
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+// GetAllFiles return all files by appname and prefix
+func (service *Service) GetAllFiles() ([]*get3w.File, error) {
+	if service.instance == nil {
+		return []*get3w.File{}, fmt.Errorf("service not avaliable")
+	}
+
+	files := []*get3w.File{}
+
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String(service.bucket), // Required
+		Prefix: aws.String(service.getAppPrefix("")),
 	}
 	resp, err := service.instance.ListObjects(params)
 
@@ -262,40 +311,41 @@ func (service *Service) Upload(key string, filePath string) error {
 }
 
 // Download download object
-func (service *Service) Download(key string, directoryPath string) error {
+// TODO complete method
+func (service *Service) Download(key string, downloadURL string) error {
 	if service.instance == nil {
 		return fmt.Errorf("service not avaliable")
 	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
-	if directoryPath == "" {
-		return fmt.Errorf("directoryPath must be a nonempty string")
+	if downloadURL == "" {
+		return fmt.Errorf("downloadURL must be a nonempty string")
 	}
 
-	result, err := service.instance.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(service.bucket),
-		Key:    aws.String(service.getAppKey(key)),
-	})
-	if err != nil {
-		return err
-	}
-
-	filePath, err := filepath.Abs(path.Join(directoryPath, path.Base(key)))
-	if err != nil {
-		return err
-	}
-
-	os.MkdirAll(directoryPath, os.ModeDir)
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(file, result.Body); err != nil {
-		return err
-	}
-	result.Body.Close()
-	file.Close()
+	// result, err := service.instance.GetObject(&s3.GetObjectInput{
+	// 	Bucket: aws.String(service.bucket),
+	// 	Key:    aws.String(service.getAppKey(key)),
+	// })
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// filePath, err := filepath.Abs(path.Join(directoryPath, path.Base(key)))
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// os.MkdirAll(directoryPath, os.ModeDir)
+	// file, err := os.Create(filePath)
+	// if err != nil {
+	// 	return err
+	// }
+	// if _, err := io.Copy(file, result.Body); err != nil {
+	// 	return err
+	// }
+	// result.Body.Close()
+	// file.Close()
 	return nil
 }
 

@@ -6,12 +6,16 @@ import "github.com/get3w/get3w/storage/s3"
 func NewS3Site(bucket, appname string) *Site {
 	service := s3.NewService(bucket, appname)
 	return &Site{
-		Name:      appname,
-		Read:      service.Read,
-		Write:     service.Write,
-		Rename:    service.Rename,
-		Delete:    service.Delete,
-		DeleteAll: service.DeleteAll,
-		GetFiles:  service.GetFiles,
+		Name:        appname,
+		Read:        service.Read,
+		Write:       service.Write,
+		WriteBinary: service.WriteBinary,
+		Download:    service.Download,
+		Rename:      service.Rename,
+		Delete:      service.Delete,
+		DeleteAll:   service.DeleteAll,
+		GetFiles:    service.GetFiles,
+		GetAllFiles: service.GetAllFiles,
+		IsExist:     service.IsExist,
 	}
 }
