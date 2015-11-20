@@ -1,4 +1,4 @@
-package site
+package storage
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 type Site struct {
 	Name        string
 	Read        func(key string) (string, error)
+	Checksum    func(key string) (string, error)
 	Write       func(key, value string) error
 	WriteBinary func(key string, bs []byte) error
 	Download    func(key string, downloadURL string) error

@@ -1,6 +1,7 @@
 package local
 
 import (
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,80 +33,6 @@ func NewService(contextDir string) (*Service, error) {
 	}, nil
 }
 
-// mkdirByFile create directories from filepath
-func mkdirByFile(p string) {
-	dirpath, _ := filepath.Abs(filepath.Dir(p))
-	os.MkdirAll(dirpath, os.ModeDir)
-}
-
-// DirExist return true if directory exists
-func DirExist(contextDir string) bool {
-	if contextDir == "" {
-		contextDir = "./"
-	}
-
-	dirPath, err := filepath.Abs(contextDir)
-	if err != nil {
-		return false
-	}
-
-	stat, err := os.Lstat(dirPath)
-	if err != nil {
-		return false
-	}
-
-	if !stat.IsDir() {
-		return false
-	}
-
-	return true
-}
-
-// getDirPath uses the given context directory and returns the absolute
-// path to the context directory, the relative path of the get3w.yml in that
-// context directory, and a non-nil error on success.
-func getDirPath(contextDir string) (dirPath string, err error) {
-	if contextDir == "" {
-		contextDir = "./"
-	}
-
-	if dirPath, err = filepath.Abs(contextDir); err != nil {
-		return "", fmt.Errorf("unable to get absolute context directory: %v", err)
-	}
-
-	err = os.MkdirAll(dirPath, os.ModeDir)
-	if err != nil {
-		return "", fmt.Errorf("unable to create context directory %q: %v", dirPath, err)
-	}
-
-	stat, err := os.Lstat(dirPath)
-	if err != nil {
-		return "", fmt.Errorf("unable to stat context directory %q: %v", dirPath, err)
-	}
-
-	if !stat.IsDir() {
-		return "", fmt.Errorf("context must be a directory: %s", dirPath)
-	}
-
-	return dirPath, nil
-}
-
-// getAppPrefix return app prefix
-func (service *Service) getAppPrefix(prefix string) string {
-	p := path.Join(service.dirPath, prefix)
-	p = strings.TrimRight(p, "/") + "/"
-	p, _ = filepath.Abs(p)
-	return p
-}
-
-// getAppKey return app key
-func (service *Service) getAppKey(key string) string {
-	p := path.Join(service.dirPath, key)
-	p = strings.TrimRight(p, "/")
-	p, _ = filepath.Abs(p)
-	return p
-}
-
 // GetFiles return all files by appname and prefix
 func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
@@ -116,16 +43,25 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	}
 
 	for _, fileInfo := range fileInfos {
-		filePath := strings.TrimRight(path.Join(prefix, fileInfo.Name()), "/")
+		dir := fileInfo.IsDir()
 		name := fileInfo.Name()
-
-		dir := &get3w.File{
-			IsDir: fileInfo.IsDir(),
-			Path:  filePath,
-			Name:  name,
-			Size:  fileInfo.Size(),
+		filePath := strings.TrimRight(path.Join(prefix, name), "/")
+		size := fileInfo.Size()
+		checksum := ""
+		if dir {
+			checksum, _ = service.Checksum(filePath)
 		}
-		files = append(files, dir)
+
+		lastModified := fileInfo.ModTime()
+		file := &get3w.File{
+			Dir:          dir,
+			Path:         filePath,
+			Name:         name,
+			Size:         size,
+			Checksum:     checksum,
+			LastModified: &lastModified,
+		}
+		files = append(files, file)
 	}
 
 	return files, nil
@@ -136,16 +72,24 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
 	err := filepath.Walk(service.getAppPrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
-		filePath := strings.TrimRight(path.Join(fileInfo.Name()), "/")
+		dir := fileInfo.IsDir()
 		name := fileInfo.Name()
-
-		file := &get3w.File{
-			IsDir: fileInfo.IsDir(),
-			Path:  filePath,
-			Name:  name,
-			Size:  fileInfo.Size(),
+		filePath := strings.TrimRight(name, "/")
+		size := fileInfo.Size()
+		checksum := ""
+		if dir {
+			checksum, _ = service.Checksum(filePath)
 		}
 
+		lastModified := fileInfo.ModTime()
+		file := &get3w.File{
+			Dir:          dir,
+			Path:         filePath,
+			Name:         name,
+			Size:         size,
+			Checksum:     checksum,
+			LastModified: &lastModified,
+		}
 		files = append(files, file)
 		return nil
 	})
@@ -210,6 +154,26 @@ func (service *Service) Copy(sourceKey string, destinationKey string) error {
 	}
 
 	return service.WriteBinary(destinationKey, bs)
+}
+
+// Checksum compute file's MD5 digist
+func (service *Service) Checksum(key string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("key must be a nonempty string")
+	}
+
+	file, err := os.Open(service.getAppKey(key))
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 // Read return resource content

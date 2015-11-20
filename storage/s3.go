@@ -1,21 +1,22 @@
-package site
+package storage
 
-import "github.com/get3w/get3w/storage/local"
+import "github.com/get3w/get3w/storage/s3"
 
-// NewLocalSite return local site
-func NewLocalSite(contextDir string) (*Site, error) {
-	service, err := local.NewService(contextDir)
+// NewS3Site get key by pageName
+func NewS3Site(bucket, appname string) (*Site, error) {
+	service, err := s3.NewService(bucket, appname)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Site{
-		Name:        service.Name,
+		Name:        appname,
 		Read:        service.Read,
+		Checksum:    service.Checksum,
 		Write:       service.Write,
 		WriteBinary: service.WriteBinary,
 		Download:    service.Download,
-		Rename:      nil,
+		Rename:      service.Rename,
 		Delete:      service.Delete,
 		DeleteAll:   service.DeleteAll,
 		GetFiles:    service.GetFiles,

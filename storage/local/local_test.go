@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var service = NewService("")
+var service, _ = NewService("")
 
 func TestNewService(t *testing.T) {
-	assert.Empty(t, NewService("not exists").directoryPath)
-	assert.NotEmpty(t, NewService("").directoryPath)
+	_, err := NewService("_test")
+	assert.Nil(t, err)
+	_, err = NewService("")
+	assert.Nil(t, err)
 }
 
 func TestGetFiles(t *testing.T) {
@@ -51,6 +53,13 @@ func TestCopy(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestChecksum(t *testing.T) {
+	checksum, err := service.Checksum("/_test/1.html")
+	assert.Nil(t, err)
+	log.Println(checksum)
+	assert.NotEmpty(t, checksum)
+}
+
 func TestRead(t *testing.T) {
 	content, err := service.Read("/_test/index.html")
 	log.Println(content)
@@ -73,19 +82,19 @@ func TestIsExist(t *testing.T) {
 	assert.False(t, service.IsExist("/_test/index2.html"))
 }
 
-// func TestDelete(t *testing.T) {
-// 	err := service.Delete("/_test/index.html")
-// 	assert.Nil(t, err)
-// }
-//
-// func TestDeletes(t *testing.T) {
-// 	err := service.Deletes([]string{
-// 		"/_test/1.html",
-// 		"/_test/2.html",
-// 	})
-// 	assert.Nil(t, err)
-// }
-//
+func TestDelete(t *testing.T) {
+	err := service.Delete("/_test/index.html")
+	assert.Nil(t, err)
+}
+
+func TestDeletes(t *testing.T) {
+	err := service.Deletes([]string{
+		"/_test/1.html",
+		"/_test/2.html",
+	})
+	assert.Nil(t, err)
+}
+
 // func TestDeleteAll(t *testing.T) {
 // 	err := service.DeleteAll("/_test")
 // 	assert.Nil(t, err)

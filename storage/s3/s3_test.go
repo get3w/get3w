@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var service = NewService("apps.get3w.com", "wwwwww")
+var service, _ = NewService("apps.get3w.com", "wwwwww")
 
 func TestNewService(t *testing.T) {
-	assert.Nil(t, NewService("apps.get3w.com", "").instance)
-	assert.NotNil(t, NewService("apps.get3w.com", "name").instance)
+	_, err := NewService("apps.get3w.com", "")
+	assert.NotNil(t, err)
+	_, err = NewService("apps.get3w.com", "name")
+	assert.Nil(t, err)
 }
 
 func TestGetAppPrefix(t *testing.T) {
@@ -64,6 +66,13 @@ func TestWriteBinary(t *testing.T) {
 func TestCopy(t *testing.T) {
 	err := service.Copy("/_test/1.html", "/_test/3.html")
 	assert.Nil(t, err)
+}
+
+func TestChecksum(t *testing.T) {
+	checksum, err := service.Checksum("/_test/index.html")
+	assert.Nil(t, err)
+	log.Println(checksum)
+	assert.NotEmpty(t, checksum)
 }
 
 func TestRead(t *testing.T) {

@@ -2,7 +2,7 @@ package client
 
 import (
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/site"
+	"github.com/get3w/get3w/storage"
 )
 
 const (
@@ -19,12 +19,12 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	s, err := site.NewLocalSite("")
+	site, err := storage.NewLocalSite("")
 	if err != nil {
 		return err
 	}
 
-	s.Build(nil)
+	site.Build(nil)
 
 	return nil
 }

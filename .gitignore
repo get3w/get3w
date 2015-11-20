@@ -23,6 +23,7 @@ _testmain.go
 *.test
 *.prof
 
+get3w
 get3w_darwin_386
 get3w_darwin_amd64
 get3w_freebsd_386

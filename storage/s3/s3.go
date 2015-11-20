@@ -93,10 +93,9 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		name := path.Base(filePath)
 
 		dir := &get3w.File{
-			IsDir: true,
-			Path:  filePath,
-			Name:  name,
-			Size:  0,
+			Dir:  true,
+			Path: filePath,
+			Name: name,
 		}
 		files = append(files, dir)
 	}
@@ -108,12 +107,16 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		filePath := strings.Trim(strings.Replace(*content.Key, service.name, "", 1), "/")
 		name := path.Base(filePath)
 		size := *content.Size
+		checksum := strings.Trim(*content.ETag, "\"")
+		lastModified := content.LastModified
 
 		file := &get3w.File{
-			IsDir: false,
-			Path:  filePath,
-			Name:  name,
-			Size:  size,
+			Dir:          false,
+			Path:         filePath,
+			Name:         name,
+			Size:         size,
+			Checksum:     checksum,
+			LastModified: lastModified,
 		}
 		files = append(files, file)
 	}
@@ -140,10 +143,9 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 		name := path.Base(filePath)
 
 		dir := &get3w.File{
-			IsDir: true,
-			Path:  filePath,
-			Name:  name,
-			Size:  0,
+			Dir:  true,
+			Path: filePath,
+			Name: name,
 		}
 		files = append(files, dir)
 	}
@@ -155,12 +157,16 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 		filePath := strings.Trim(strings.Replace(*content.Key, service.name, "", 1), "/")
 		name := path.Base(filePath)
 		size := *content.Size
+		checksum := strings.Trim(*content.ETag, "\"")
+		lastModified := content.LastModified
 
 		file := &get3w.File{
-			IsDir: false,
-			Path:  filePath,
-			Name:  name,
-			Size:  size,
+			Dir:          false,
+			Path:         filePath,
+			Name:         name,
+			Size:         size,
+			Checksum:     checksum,
+			LastModified: lastModified,
 		}
 		files = append(files, file)
 	}
@@ -238,6 +244,23 @@ func (service *Service) Rename(newName string, deleteAll bool) error {
 		return service.DeleteAll("")
 	}
 	return nil
+}
+
+// Checksum compute file's MD5 digist
+func (service *Service) Checksum(key string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("key must be a nonempty string")
+	}
+
+	head, err := service.instance.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(service.bucket),
+		Key:    aws.String(service.getAppKey(key)),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return strings.Trim(*head.ETag, "\""), nil
 }
 
 // Read return resource content

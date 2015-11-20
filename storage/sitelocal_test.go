@@ -1,4 +1,4 @@
-package site
+package storage
 
 import (
 	"testing"
