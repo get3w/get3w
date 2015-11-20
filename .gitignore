@@ -22,3 +22,12 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+get3w_darwin_386
+get3w_darwin_amd64
+get3w_freebsd_386
+get3w_freebsd_amd64
+get3w_freebsd_arm
+get3w_linux_386
+get3w_linux_amd64
+get3w_linux_arm

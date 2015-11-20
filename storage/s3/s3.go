@@ -24,16 +24,19 @@ type Service struct {
 }
 
 // NewService return new service
-func NewService(bucket string, name string) *Service {
-	if bucket == "" || name == "" {
-		return &Service{}
+func NewService(bucket string, name string) (*Service, error) {
+	if bucket == "" {
+		return nil, fmt.Errorf("bucket must be a nonempty string")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("name must be a nonempty string")
 	}
 
 	return &Service{
 		bucket:   bucket,
 		name:     name,
 		instance: s3.New(session.New(), &aws.Config{}),
-	}
+	}, nil
 }
 
 // getAppPrefix return app prefix
@@ -52,10 +55,6 @@ func (service *Service) getAppKey(key string) string {
 
 // getAllKeys return all keys by prefix
 func (service *Service) getAllKeys(prefix string) ([]string, error) {
-	if service.instance == nil {
-		return []string{}, fmt.Errorf("service not avaliable")
-	}
-
 	keys := []string{}
 
 	params := &s3.ListObjectsInput{
@@ -76,10 +75,6 @@ func (service *Service) getAllKeys(prefix string) ([]string, error) {
 
 // GetFiles return all files by appname and prefix
 func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
-	if service.instance == nil {
-		return []*get3w.File{}, fmt.Errorf("service not avaliable")
-	}
-
 	files := []*get3w.File{}
 
 	params := &s3.ListObjectsInput{
@@ -128,10 +123,6 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 
 // GetAllFiles return all files by appname and prefix
 func (service *Service) GetAllFiles() ([]*get3w.File, error) {
-	if service.instance == nil {
-		return []*get3w.File{}, fmt.Errorf("service not avaliable")
-	}
-
 	files := []*get3w.File{}
 
 	params := &s3.ListObjectsInput{
@@ -184,9 +175,6 @@ func (service *Service) Write(key string, content string) error {
 
 // WriteBinary upload file
 func (service *Service) WriteBinary(key string, bs []byte) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -205,9 +193,6 @@ func (service *Service) WriteBinary(key string, bs []byte) error {
 
 // Copy object to destinatioin
 func (service *Service) Copy(sourceKey string, destinationKey string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -227,9 +212,6 @@ func (service *Service) Copy(sourceKey string, destinationKey string) error {
 
 // Rename rename the app
 func (service *Service) Rename(newName string, deleteAll bool) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if newName == "" {
 		return fmt.Errorf("newName must be a nonempty string")
 	}
@@ -260,9 +242,6 @@ func (service *Service) Rename(newName string, deleteAll bool) error {
 
 // Read return resource content
 func (service *Service) Read(key string) (string, error) {
-	if service.instance == nil {
-		return "", fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
@@ -282,9 +261,6 @@ func (service *Service) Read(key string) (string, error) {
 
 // Upload upload object
 func (service *Service) Upload(key string, filePath string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -313,9 +289,6 @@ func (service *Service) Upload(key string, filePath string) error {
 // Download download object
 // TODO complete method
 func (service *Service) Download(key string, downloadURL string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -351,7 +324,7 @@ func (service *Service) Download(key string, downloadURL string) error {
 
 // IsExist return true if specified key exists
 func (service *Service) IsExist(key string) bool {
-	if service.instance == nil || key == "" {
+	if key == "" {
 		return false
 	}
 
@@ -367,9 +340,6 @@ func (service *Service) IsExist(key string) bool {
 
 // Delete specified object
 func (service *Service) Delete(key string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -384,9 +354,6 @@ func (service *Service) Delete(key string) error {
 
 // Deletes delete objects
 func (service *Service) Deletes(keys []string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
 	if len(keys) == 0 {
 		return fmt.Errorf("keys must be a nonempty string array")
 	}
@@ -411,10 +378,6 @@ func (service *Service) Deletes(keys []string) error {
 
 // DeleteAll delete objects by prefix
 func (service *Service) DeleteAll(prefix string) error {
-	if service.instance == nil {
-		return fmt.Errorf("service not avaliable")
-	}
-
 	keys, err := service.getAllKeys(prefix)
 	if err != nil {
 		return err

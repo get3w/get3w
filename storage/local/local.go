@@ -15,50 +15,84 @@ import (
 
 // Service local service
 type Service struct {
-	directoryPath string
-	Name          string
+	dirPath string
+	Name    string
 }
 
 // NewService return new service
-func NewService(contextDir string) *Service {
-	directoryPath, err := getDirectoryPath(contextDir)
-
+func NewService(contextDir string) (*Service, error) {
+	dirPath, err := getDirPath(contextDir)
 	if err != nil {
-		return &Service{}
+		return nil, err
 	}
+
 	return &Service{
-		directoryPath: directoryPath,
-		Name:          path.Base(directoryPath),
-	}
+		dirPath: dirPath,
+		Name:    path.Base(dirPath),
+	}, nil
 }
 
-// getDirectoryPath uses the given context directory and returns the absolute
-// path to the context directory, the relative path of the get3w.yml in that
-// context directory, and a non-nil error on success.
-func getDirectoryPath(contextDir string) (directoryPath string, err error) {
+// mkdirByFile create directories from filepath
+func mkdirByFile(p string) {
+	dirpath, _ := filepath.Abs(filepath.Dir(p))
+	os.MkdirAll(dirpath, os.ModeDir)
+}
+
+// DirExist return true if directory exists
+func DirExist(contextDir string) bool {
 	if contextDir == "" {
 		contextDir = "./"
 	}
 
-	if directoryPath, err = filepath.Abs(contextDir); err != nil {
-		return "", fmt.Errorf("unable to get absolute context directory: %v", err)
+	dirPath, err := filepath.Abs(contextDir)
+	if err != nil {
+		return false
 	}
 
-	stat, err := os.Lstat(directoryPath)
+	stat, err := os.Lstat(dirPath)
 	if err != nil {
-		return "", fmt.Errorf("unable to stat context directory %q: %v", directoryPath, err)
+		return false
 	}
 
 	if !stat.IsDir() {
-		return "", fmt.Errorf("context must be a directory: %s", directoryPath)
+		return false
 	}
 
-	return directoryPath, nil
+	return true
+}
+
+// getDirPath uses the given context directory and returns the absolute
+// path to the context directory, the relative path of the get3w.yml in that
+// context directory, and a non-nil error on success.
+func getDirPath(contextDir string) (dirPath string, err error) {
+	if contextDir == "" {
+		contextDir = "./"
+	}
+
+	if dirPath, err = filepath.Abs(contextDir); err != nil {
+		return "", fmt.Errorf("unable to get absolute context directory: %v", err)
+	}
+
+	err = os.MkdirAll(dirPath, os.ModeDir)
+	if err != nil {
+		return "", fmt.Errorf("unable to create context directory %q: %v", dirPath, err)
+	}
+
+	stat, err := os.Lstat(dirPath)
+	if err != nil {
+		return "", fmt.Errorf("unable to stat context directory %q: %v", dirPath, err)
+	}
+
+	if !stat.IsDir() {
+		return "", fmt.Errorf("context must be a directory: %s", dirPath)
+	}
+
+	return dirPath, nil
 }
 
 // getAppPrefix return app prefix
 func (service *Service) getAppPrefix(prefix string) string {
-	p := path.Join(service.directoryPath, prefix)
+	p := path.Join(service.dirPath, prefix)
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -66,7 +100,7 @@ func (service *Service) getAppPrefix(prefix string) string {
 
 // getAppKey return app key
 func (service *Service) getAppKey(key string) string {
-	p := path.Join(service.directoryPath, key)
+	p := path.Join(service.dirPath, key)
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -74,10 +108,6 @@ func (service *Service) getAppKey(key string) string {
 
 // GetFiles return all files by appname and prefix
 func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
-	if service.directoryPath == "" {
-		return []*get3w.File{}, fmt.Errorf("service not avaliable")
-	}
-
 	files := []*get3w.File{}
 
 	fileInfos, err := ioutil.ReadDir(service.getAppPrefix(prefix))
@@ -103,10 +133,6 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 
 // GetAllFiles return all files by appname
 func (service *Service) GetAllFiles() ([]*get3w.File, error) {
-	if service.directoryPath == "" {
-		return []*get3w.File{}, fmt.Errorf("service not avaliable")
-	}
-
 	files := []*get3w.File{}
 
 	err := filepath.Walk(service.getAppPrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
@@ -138,25 +164,19 @@ func (service *Service) Write(key string, content string) error {
 
 // WriteBinary upload file
 func (service *Service) WriteBinary(key string, bs []byte) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
 	p := service.getAppKey(key)
+	mkdirByFile(p)
 	fmt.Printf("Page %s created\n", key)
-	os.MkdirAll(filepath.Dir(p), os.ModeDir)
 	return ioutil.WriteFile(p, bs, 0644)
 }
 
 // WriteReader copies from the given reader and writes it to a file with the
 // given filename.
 func (service *Service) WriteReader(key string, r io.Reader) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -177,9 +197,6 @@ func (service *Service) WriteReader(key string, r io.Reader) error {
 
 // Copy object to destinatioin
 func (service *Service) Copy(sourceKey string, destinationKey string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -197,9 +214,6 @@ func (service *Service) Copy(sourceKey string, destinationKey string) error {
 
 // Read return resource content
 func (service *Service) Read(key string) (string, error) {
-	if service.directoryPath == "" {
-		return "", fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
@@ -215,9 +229,6 @@ func (service *Service) Read(key string) (string, error) {
 
 // Upload upload object
 func (service *Service) Upload(key string, path string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -235,17 +246,15 @@ func (service *Service) Upload(key string, path string) error {
 
 // Download file by appname and key
 func (service *Service) Download(key string, downloadURL string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 	if downloadURL == "" {
 		return fmt.Errorf("downloadURL must be a nonempty string")
 	}
+
 	p := service.getAppKey(key)
-	os.MkdirAll(path.Dir(p), os.ModeDir)
+	mkdirByFile(p)
 
 	out, err := os.Create(p)
 	defer out.Close()
@@ -260,7 +269,7 @@ func (service *Service) Download(key string, downloadURL string) error {
 
 // IsExist return true if specified key exists
 func (service *Service) IsExist(key string) bool {
-	if service.directoryPath == "" || key == "" {
+	if key == "" {
 		return false
 	}
 
@@ -270,9 +279,6 @@ func (service *Service) IsExist(key string) bool {
 
 // Delete specified object
 func (service *Service) Delete(key string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -282,9 +288,6 @@ func (service *Service) Delete(key string) error {
 
 // Deletes delete objects
 func (service *Service) Deletes(keys []string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
 	if len(keys) == 0 {
 		return fmt.Errorf("keys must be a nonempty string array")
 	}
@@ -301,9 +304,5 @@ func (service *Service) Deletes(keys []string) error {
 
 // DeleteAll delete objects by prefix
 func (service *Service) DeleteAll(prefix string) error {
-	if service.directoryPath == "" {
-		return fmt.Errorf("service not avaliable")
-	}
-
 	return os.RemoveAll(service.getAppPrefix(prefix))
 }

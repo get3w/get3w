@@ -3,8 +3,12 @@ package site
 import "github.com/get3w/get3w/storage/local"
 
 // NewLocalSite return local site
-func NewLocalSite(contextDir string) *Site {
-	service := local.NewService(contextDir)
+func NewLocalSite(contextDir string) (*Site, error) {
+	service, err := local.NewService(contextDir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Site{
 		Name:        service.Name,
 		Read:        service.Read,
@@ -17,5 +21,5 @@ func NewLocalSite(contextDir string) *Site {
 		GetFiles:    service.GetFiles,
 		GetAllFiles: service.GetAllFiles,
 		IsExist:     service.IsExist,
-	}
+	}, nil
 }

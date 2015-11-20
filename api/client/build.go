@@ -19,7 +19,11 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	s := site.NewLocalSite("")
+	s, err := site.NewLocalSite("")
+	if err != nil {
+		return err
+	}
+
 	s.Build(nil)
 
 	return nil

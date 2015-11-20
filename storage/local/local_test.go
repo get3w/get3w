@@ -64,7 +64,7 @@ func TestUpload(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	err := service.Download("/_test/baidu.html", "http://www.baidu.com")
+	err := service.Download("/_test/_sections/1.html", "http://mucho.get3w.net/_sections/1.html")
 	assert.Nil(t, err)
 }
 
