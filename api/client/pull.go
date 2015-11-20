@@ -1,6 +1,8 @@
 package client
 
 import (
+	"log"
+
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
@@ -23,10 +25,12 @@ func (cli *DockerCli) CmdPull(args ...string) error {
 	}
 
 	files, _, err := client.Files.List(appname, opts)
-	if err != nil {
+	if err == nil {
 		s := site.NewLocalSite("")
+		log.Printf("Prepare downloading, file count:%d\n", len(files))
 		for _, file := range files {
 			downloadURL := "http://" + appname + ".get3w.net/" + file.Path
+			log.Println("downloading:" + downloadURL)
 			s.Download(file.Path, downloadURL)
 		}
 	}
