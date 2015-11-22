@@ -22,7 +22,7 @@ type Service struct {
 
 // NewService return new service
 func NewService(contextDir string) (*Service, error) {
-	dirPath, err := getDirPath(contextDir)
+	dirPath, err := GetDirPath(contextDir)
 	if err != nil {
 		return nil, err
 	}
@@ -43,23 +43,23 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	}
 
 	for _, fileInfo := range fileInfos {
-		dir := fileInfo.IsDir()
+		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
 		filePath := strings.TrimRight(path.Join(prefix, name), "/")
 		size := fileInfo.Size()
 		checksum := ""
-		if dir {
+		if isDir {
 			checksum, _ = service.Checksum(filePath)
 		}
 
 		lastModified := fileInfo.ModTime()
 		file := &get3w.File{
-			Dir:          dir,
+			IsDir:        isDir,
 			Path:         filePath,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: &lastModified,
+			LastModified: lastModified.Unix(),
 		}
 		files = append(files, file)
 	}
@@ -72,23 +72,23 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
 	err := filepath.Walk(service.getAppPrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
-		dir := fileInfo.IsDir()
+		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
 		filePath := strings.TrimRight(name, "/")
 		size := fileInfo.Size()
 		checksum := ""
-		if dir {
+		if isDir {
 			checksum, _ = service.Checksum(filePath)
 		}
 
 		lastModified := fileInfo.ModTime()
 		file := &get3w.File{
-			Dir:          dir,
+			IsDir:        isDir,
 			Path:         filePath,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: &lastModified,
+			LastModified: lastModified.Unix(),
 		}
 		files = append(files, file)
 		return nil

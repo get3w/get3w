@@ -35,7 +35,7 @@ func NewService(bucket string, name string) (*Service, error) {
 	return &Service{
 		bucket:   bucket,
 		name:     name,
-		instance: s3.New(session.New(), &aws.Config{}),
+		instance: s3.New(session.New()),
 	}, nil
 }
 
@@ -93,9 +93,9 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		name := path.Base(filePath)
 
 		dir := &get3w.File{
-			Dir:  true,
-			Path: filePath,
-			Name: name,
+			IsDir: true,
+			Path:  filePath,
+			Name:  name,
 		}
 		files = append(files, dir)
 	}
@@ -111,12 +111,12 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		lastModified := content.LastModified
 
 		file := &get3w.File{
-			Dir:          false,
+			IsDir:        false,
 			Path:         filePath,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified,
+			LastModified: lastModified.Unix(),
 		}
 		files = append(files, file)
 	}
@@ -143,9 +143,9 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 		name := path.Base(filePath)
 
 		dir := &get3w.File{
-			Dir:  true,
-			Path: filePath,
-			Name: name,
+			IsDir: true,
+			Path:  filePath,
+			Name:  name,
 		}
 		files = append(files, dir)
 	}
@@ -161,12 +161,12 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 		lastModified := content.LastModified
 
 		file := &get3w.File{
-			Dir:          false,
+			IsDir:        false,
 			Path:         filePath,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified,
+			LastModified: lastModified.Unix(),
 		}
 		files = append(files, file)
 	}

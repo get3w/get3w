@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// getDirPath uses the given context directory and returns the absolute
+// GetDirPath uses the given context directory and returns the absolute
 // path to the context directory, the relative path of the get3w.yml in that
 // context directory, and a non-nil error on success.
-func getDirPath(contextDir string) (dirPath string, err error) {
+func GetDirPath(contextDir string) (dirPath string, err error) {
 	if contextDir == "" {
 		contextDir = "./"
 	}

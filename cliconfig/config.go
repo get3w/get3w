@@ -17,11 +17,6 @@ const (
 	ConfigFileName = "config.json"
 	// Version is the version of cli
 	Version = "0.0.1"
-
-	// This constant is only used for really old config files when the
-	// URL wasn't saved as part of the config file and it was just
-	// assumed to be this value.
-	defaultIndexserver = "https://index.docker.io/v1/"
 )
 
 var (
@@ -54,14 +49,16 @@ type AuthConfig struct {
 
 // ConfigFile ~/.docker/config.json file info
 type ConfigFile struct {
-	AuthConfig AuthConfig `json:"authConfig"`
-	filename   string     // Note: not serialized - for internal use only
+	AuthConfig AuthConfig       `json:"authConfig"`
+	Timestamps map[string]int64 `json:"timestamps,omitempty"`
+	filename   string           // Note: not serialized - for internal use only
 }
 
 // NewConfigFile initilizes an empty configuration file for the given filename 'fn'
 func NewConfigFile(fn string) *ConfigFile {
 	return &ConfigFile{
-		filename: fn,
+		Timestamps: make(map[string]int64),
+		filename:   fn,
 	}
 }
 

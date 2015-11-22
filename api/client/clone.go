@@ -24,15 +24,15 @@ func (cli *DockerCli) CmdClone(args ...string) error {
 		return fmt.Errorf("fatal: destination path '%s' already exists and is not an empty directory", appname)
 	}
 
-	site, err := storage.NewLocalSite(appname)
+	client := get3w.NewClient(nil)
+
+	fmt.Printf("Cloning into '%s'...\n", appname)
+	timestamp, files, _, err := client.Apps.Clone(appname)
 	if err != nil {
 		return err
 	}
 
-	client := get3w.NewClient(nil)
-
-	fmt.Printf("Cloning into '%s'...\n", appname)
-	files, _, err := client.Apps.Clone(appname)
+	site, err := storage.NewLocalSite(appname)
 	if err != nil {
 		return err
 	}
@@ -42,6 +42,12 @@ func (cli *DockerCli) CmdClone(args ...string) error {
 		downloadURL := "http://" + appname + ".get3w.net/" + file.Path
 		fmt.Printf("Receiving object: %s, done.\n", file.Path)
 		site.Download(file.Path, downloadURL)
+	}
+
+	dirPath, _ := local.GetDirPath(appname)
+	cli.configFile.Timestamps[dirPath] = timestamp
+	if err := cli.configFile.Save(); err != nil {
+		return fmt.Errorf("Error saving config file: %v", err)
 	}
 	fmt.Println("Checking connectivity... done.")
 
