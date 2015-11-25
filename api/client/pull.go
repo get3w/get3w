@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
@@ -24,17 +23,23 @@ func (cli *DockerCli) CmdPull(args ...string) error {
 		return err
 	}
 
-	config := site.GetConfig()
-
-	if !site.IsExist(site.GetConfigKey()) || config.Name == "" {
-		dirPath, _ := filepath.Abs(".")
-		return fmt.Errorf("fatal: Not a get3w repository: '%s'", dirPath)
+	if !site.IsExist(site.GetConfigKey()) {
+		return fmt.Errorf("fatal: Not a get3w repository: '%s'", site.Path)
 	}
 
 	client := get3w.NewClient(nil)
 
-	fmt.Printf("Pulling into '%s'...\n", config.Name)
-	files, _, err := client.Apps.Pull(config.Name)
+	fmt.Printf("Pulling into '%s'...\n", site.Name)
+
+	lastModified := ""
+	if appConfig := cli.configFile.AppConfigs[site.Path]; appConfig != nil {
+		lastModified = appConfig.LastModified
+	}
+
+	input := &get3w.AppPullInput{
+		LastModified: lastModified,
+	}
+	files, _, err := client.Apps.Pull(site.Name, input)
 	if err != nil {
 		return err
 	}
@@ -52,7 +57,7 @@ func (cli *DockerCli) CmdPull(args ...string) error {
 		}
 
 		if pull {
-			downloadURL := "http://" + config.Name + ".get3w.net/" + file.Path
+			downloadURL := "http://" + site.Name + ".get3w.net/" + file.Path
 			fmt.Printf("Receiving object: %s, done.\n", file.Path)
 			site.Download(file.Path, downloadURL)
 		}

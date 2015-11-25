@@ -39,25 +39,30 @@ func SetConfigDir(dir string) {
 	configDir = dir
 }
 
-// AuthConfig contains authorization information for connecting to a Registry
+// AuthConfig contains authorization information
 type AuthConfig struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-	Auth     string `json:"auth"`
-	Token    string `json:"token"`
+	Username    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+	Auth        string `json:"auth"`
+	AccessToken string `json:"access_token"`
 }
 
-// ConfigFile ~/.docker/config.json file info
+// AppConfig constains app information
+type AppConfig struct {
+	LastModified string `json:"last_modified,omitempty"`
+}
+
+// ConfigFile ~/.get3w/config.json file info
 type ConfigFile struct {
-	AuthConfig AuthConfig       `json:"authConfig"`
-	Timestamps map[string]int64 `json:"timestamps,omitempty"`
-	filename   string           // Note: not serialized - for internal use only
+	AuthConfig AuthConfig            `json:"auth_config"`
+	AppConfigs map[string]*AppConfig `json:"app_configs,omitempty"`
+	filename   string                // Note: not serialized - for internal use only
 }
 
 // NewConfigFile initilizes an empty configuration file for the given filename 'fn'
 func NewConfigFile(fn string) *ConfigFile {
 	return &ConfigFile{
-		Timestamps: make(map[string]int64),
+		AppConfigs: make(map[string]*AppConfig),
 		filename:   fn,
 	}
 }

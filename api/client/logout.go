@@ -19,7 +19,7 @@ func (cli *DockerCli) CmdLogout(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	if cli.configFile.AuthConfig.Token == "" {
+	if cli.configFile.AuthConfig.AccessToken == "" {
 		fmt.Fprintf(cli.out, "Not logged in\n")
 		return nil
 	}

@@ -34,3 +34,17 @@ func GetTimestamp(value string, reference time.Time) string {
 	}
 	return strconv.FormatInt(t.Unix(), 10)
 }
+
+// ToTime translate string to time
+func ToTime(str string) time.Time {
+	t, err := time.Parse(time.RFC3339, str)
+	if err != nil {
+		return time.Now()
+	}
+	return t
+}
+
+// ToString translate time to string
+func ToString(t time.Time) string {
+	return t.Format(time.RFC3339)
+}

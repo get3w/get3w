@@ -12,12 +12,13 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/pkg/timeutils"
 )
 
 // Service local service
 type Service struct {
-	dirPath string
-	Name    string
+	Path string
+	Name string
 }
 
 // NewService return new service
@@ -28,8 +29,8 @@ func NewService(contextDir string) (*Service, error) {
 	}
 
 	return &Service{
-		dirPath: dirPath,
-		Name:    path.Base(dirPath),
+		Path: dirPath,
+		Name: path.Base(dirPath),
 	}, nil
 }
 
@@ -59,7 +60,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified.Unix(),
+			LastModified: timeutils.ToString(lastModified),
 		}
 		files = append(files, file)
 	}
@@ -88,7 +89,7 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified.Unix(),
+			LastModified: timeutils.ToString(lastModified),
 		}
 		files = append(files, file)
 		return nil

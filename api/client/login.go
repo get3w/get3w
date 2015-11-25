@@ -19,7 +19,7 @@ import (
 //
 // If no server is specified, the user will be logged into or registered to the registry's index server.
 //
-// Usage: docker login SERVER
+// Usage: get3w login SERVER
 func (cli *DockerCli) CmdLogin(args ...string) error {
 	cmd := Cli.Subcmd("login", []string{"[SERVER]"}, Cli.DockerCommands["login"].Description+".\nIf no server is specified is the default.", true)
 	cmd.Require(flag.Max, 1)
@@ -91,15 +91,12 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	authconfig.Password = password
 	cli.configFile.AuthConfig = authconfig
 
-	log.Println("username:" + cli.configFile.AuthConfig.Username)
-	log.Println("password:" + cli.configFile.AuthConfig.Password)
-
 	client := get3w.NewClient(nil)
-	opts := &get3w.UserLoginOptions{
+	input := &get3w.UserLoginInput{
 		Account:  username,
 		Password: password,
 	}
-	userLogin, resp, err := client.Users.Login(opts)
+	output, resp, err := client.Users.Login(input)
 
 	if resp.StatusCode == 401 {
 		cli.configFile.AuthConfig = cliconfig.AuthConfig{}
@@ -112,11 +109,11 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 		return err
 	}
 
-	cli.configFile.AuthConfig.Token = userLogin.Token
+	cli.configFile.AuthConfig.AccessToken = output.AccessToken
 	if err := cli.configFile.Save(); err != nil {
 		return fmt.Errorf("Error saving config file: %v", err)
 	}
-	fmt.Fprintf(cli.out, "WARNING: login credentials saved in %s\n", cli.configFile.Filename())
+	fmt.Fprintf(cli.out, "INFO: login credentials saved in %s\n", cli.configFile.Filename())
 
 	if resp.Status != "" {
 		fmt.Fprintf(cli.out, "%s\n", resp.Status)

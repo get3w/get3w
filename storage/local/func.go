@@ -68,7 +68,7 @@ func IsDirExist(contextDir string) bool {
 
 // getAppPrefix return app prefix
 func (service *Service) getAppPrefix(prefix string) string {
-	p := path.Join(service.dirPath, prefix)
+	p := path.Join(service.Path, prefix)
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -76,7 +76,7 @@ func (service *Service) getAppPrefix(prefix string) string {
 
 // getAppKey return app key
 func (service *Service) getAppKey(key string) string {
-	p := path.Join(service.dirPath, key)
+	p := path.Join(service.Path, key)
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p

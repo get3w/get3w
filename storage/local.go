@@ -11,6 +11,7 @@ func NewLocalSite(contextDir string) (*Site, error) {
 
 	return &Site{
 		Name:        service.Name,
+		Path:        service.Path,
 		Read:        service.Read,
 		Checksum:    service.Checksum,
 		Write:       service.Write,

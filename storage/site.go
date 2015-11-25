@@ -13,6 +13,7 @@ import (
 // Site contains attributes and operations of the app
 type Site struct {
 	Name        string
+	Path        string
 	Read        func(key string) (string, error)
 	Checksum    func(key string) (string, error)
 	Write       func(key, value string) error
@@ -78,8 +79,16 @@ func (site *Site) GetConfig() *get3w.Config {
 			config.Load(configData)
 		}
 
+		if len(config.Pages) == 0 {
+			config.Pages = append(config.Pages, "Homepage")
+		}
+		if len(config.Sections) == 0 {
+			config.Sections = append(config.Sections, "Default")
+		}
+
 		site.config = config
 	}
+
 	return site.config
 }
 
@@ -165,10 +174,6 @@ func (site *Site) SaveSection(section *get3w.Section) {
 // ChangeAppName change the name of app
 func (site *Site) ChangeAppName(newName string) {
 	if site.Rename != nil && site.Name != newName {
-		config := site.GetConfig()
-		config.Name = newName
-		site.WriteConfig(config)
-
 		site.Rename(newName, true)
 	}
 }

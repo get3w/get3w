@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/stringutils"
+	"github.com/get3w/get3w/pkg/timeutils"
 )
 
 // Service s3 service
@@ -108,7 +109,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		name := path.Base(filePath)
 		size := *content.Size
 		checksum := strings.Trim(*content.ETag, "\"")
-		lastModified := content.LastModified
+		lastModified := *content.LastModified
 
 		file := &get3w.File{
 			IsDir:        false,
@@ -116,7 +117,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified.Unix(),
+			LastModified: timeutils.ToString(lastModified),
 		}
 		files = append(files, file)
 	}
@@ -158,7 +159,7 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 		name := path.Base(filePath)
 		size := *content.Size
 		checksum := strings.Trim(*content.ETag, "\"")
-		lastModified := content.LastModified
+		lastModified := *content.LastModified
 
 		file := &get3w.File{
 			IsDir:        false,
@@ -166,7 +167,7 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
-			LastModified: lastModified.Unix(),
+			LastModified: timeutils.ToString(lastModified),
 		}
 		files = append(files, file)
 	}
