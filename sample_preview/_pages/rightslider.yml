@@ -1,0 +1,10 @@
+name: rightslider
+type: singlepage
+title: rightslider
+keywords: ""
+description: ""
+url: ""
+sections:
+- menu
+- rightslider
+- footer

@@ -1,0 +1,10 @@
+name: noslider
+type: singlepage
+title: noslider
+keywords: ""
+description: ""
+url: ""
+sections:
+- menu
+- noslider
+- footer

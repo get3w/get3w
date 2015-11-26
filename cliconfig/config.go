@@ -13,19 +13,21 @@ import (
 )
 
 const (
-	// ConfigFileName is the name of config file
-	ConfigFileName = "config.json"
+	// ConfigDirName is the config directory name
+	ConfigDirName = ".get3w"
+	// RootConfigFileName is the name of root config file
+	RootConfigFileName = "config.json"
 	// Version is the version of cli
 	Version = "0.0.1"
 )
 
 var (
-	configDir = os.Getenv("GET3W_CONFIG")
+	configDir string
 )
 
 func init() {
 	if configDir == "" {
-		configDir = filepath.Join(homedir.Get(), ".get3w")
+		configDir = filepath.Join(homedir.Get(), ConfigDirName)
 	}
 }
 
@@ -100,7 +102,7 @@ func Load(configDir string) (*ConfigFile, error) {
 	}
 
 	configFile := ConfigFile{
-		filename: filepath.Join(configDir, ConfigFileName),
+		filename: filepath.Join(configDir, RootConfigFileName),
 	}
 
 	// Try happy path first - latest config file

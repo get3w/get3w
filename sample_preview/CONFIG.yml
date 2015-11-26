@@ -1,0 +1,21 @@
+type: site
+title: ""
+keywords: ""
+description: ""
+faviconUrl: ""
+pages:
+- Homepage
+- leftslider
+- rightslider
+- noslider
+sections:
+- menu
+- noslider
+- rightslider
+- left
+- banner
+- content
+- item
+- list
+- contact
+- footer

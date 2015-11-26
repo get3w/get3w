@@ -29,54 +29,71 @@ type Site struct {
 	config *get3w.Config
 }
 
+// GetKey get file key by relatedURL
+func (site *Site) GetKey(url ...string) string {
+	return path.Join(url...)
+}
+
+// GetConfigKey get CONFIG.yml file key
+func (site *Site) GetConfigKey() string {
+	return site.GetKey("CONFIG.yml")
+}
+
+// GetSummaryKey get SUMMARY.md file key
+func (site *Site) GetSummaryKey() string {
+	return site.GetKey("SUMMARY.md")
+}
+
+// GetWWWRootKey get wwwroot file key by relatedURL
+func (site *Site) GetWWWRootKey(relatedURL string) string {
+	return site.GetKey("_wwwroot", relatedURL)
+}
+
 // GetPageKey get key by pageName
 func (site *Site) GetPageKey(pageName string) string {
-	return path.Join("_pages", pageName) + ".yml"
+	return site.GetKey("_pages", pageName) + ".yml"
 }
 
 // GetSectionHTMLKey get html file key by sectionName
 func (site *Site) GetSectionHTMLKey(sectionName string) string {
-	return path.Join("_sections", sectionName) + ".html"
+	return site.GetKey("_sections", sectionName) + ".html"
 }
 
 // GetSectionCSSKey get css file key by sectionName
 func (site *Site) GetSectionCSSKey(sectionName string) string {
-	return path.Join("_sections", sectionName) + ".css"
+	return site.GetKey("_sections", sectionName) + ".css"
 }
 
 // GetSectionJSKey get js file key by sectionName
 func (site *Site) GetSectionJSKey(sectionName string) string {
-	return path.Join("_sections", sectionName) + ".js"
+	return site.GetKey("_sections", sectionName) + ".js"
 }
 
 // GetSectionPreviewHTMLKey get preview file key by sectionName
 func (site *Site) GetSectionPreviewHTMLKey(sectionName string) string {
-	return path.Join("_sections", sectionName) + "-preview.html"
+	return site.GetKey("_sections", sectionName) + "-preview.html"
 }
 
 // GetSectionPreviewPNGKey get preview cover file key by sectionName
 func (site *Site) GetSectionPreviewPNGKey(sectionName string) string {
-	return path.Join("_sections", sectionName) + ".png"
-}
-
-// GetConfigKey get preview config file key
-func (site *Site) GetConfigKey() string {
-	return path.Join("_config.yml")
-}
-
-// GetKey get file key by relatedURL
-func (site *Site) GetKey(relatedURL string) string {
-	return relatedURL
+	return site.GetKey("_sections", sectionName) + ".png"
 }
 
 // GetConfig get config file content
 func (site *Site) GetConfig() *get3w.Config {
 	if site.config == nil {
 		config := &get3w.Config{}
+
 		configKey := site.GetConfigKey()
 		configData, err := site.Read(configKey)
 		if err == nil {
-			config.Load(configData)
+			config.LoadConfig(configData)
+		}
+
+		summaryKey := site.GetSummaryKey()
+		summaryData, err := site.Read(summaryKey)
+		if err == nil {
+			config.LoadSummary(summaryData)
 		}
 
 		if len(config.Pages) == 0 {
@@ -363,6 +380,6 @@ func (site *Site) generatePage(page *get3w.Page, config *get3w.Config, app *get3
 		}
 	}
 
-	key := site.GetKey(url)
+	key := site.GetWWWRootKey(url)
 	site.Write(key, parsedContent)
 }

@@ -1,0 +1,14 @@
+name: Homepage
+type: homepage
+title: Homepage
+keywords: ""
+description: ""
+url: ""
+sections:
+- menu
+- banner
+- content
+- item
+- list
+- contact
+- footer

@@ -5,10 +5,6 @@ import (
 	"github.com/get3w/get3w/storage"
 )
 
-const (
-	tarHeaderSize = 512
-)
-
 // CmdBuild builds a new image from the source code at a given path.
 //
 // If '-' is provided instead of a path or URL, Docker will build an image from either a Dockerfile or tar archive read from STDIN.
