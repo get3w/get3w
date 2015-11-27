@@ -1,12 +1,12 @@
 package storage
 
 import (
-	"bytes"
-	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
@@ -26,12 +26,14 @@ type Site struct {
 	GetAllFiles func() ([]*get3w.File, error)
 	IsExist     func(key string) bool
 
-	config *get3w.Config
+	config   *get3w.Config
+	pages    []*get3w.Page
+	sections map[string]*get3w.Section
 }
 
 // GetKey get file key by relatedURL
 func (site *Site) GetKey(url ...string) string {
-	return path.Join(url...)
+	return strings.Trim(path.Join(url...), "/")
 }
 
 // GetConfigKey get CONFIG.yml file key
@@ -49,58 +51,23 @@ func (site *Site) GetWWWRootKey(relatedURL string) string {
 	return site.GetKey("_wwwroot", relatedURL)
 }
 
-// GetPageKey get key by pageName
-func (site *Site) GetPageKey(pageName string) string {
-	return site.GetKey("_pages", pageName) + ".yml"
+// GetSectionKey get html file key by sectionName
+func (site *Site) GetSectionKey(relatedURL string) string {
+	return site.GetKey("_sections", relatedURL)
 }
 
-// GetSectionHTMLKey get html file key by sectionName
-func (site *Site) GetSectionHTMLKey(sectionName string) string {
-	return site.GetKey("_sections", sectionName) + ".html"
-}
-
-// GetSectionCSSKey get css file key by sectionName
-func (site *Site) GetSectionCSSKey(sectionName string) string {
-	return site.GetKey("_sections", sectionName) + ".css"
-}
-
-// GetSectionJSKey get js file key by sectionName
-func (site *Site) GetSectionJSKey(sectionName string) string {
-	return site.GetKey("_sections", sectionName) + ".js"
-}
-
-// GetSectionPreviewHTMLKey get preview file key by sectionName
-func (site *Site) GetSectionPreviewHTMLKey(sectionName string) string {
-	return site.GetKey("_sections", sectionName) + "-preview.html"
-}
-
-// GetSectionPreviewPNGKey get preview cover file key by sectionName
-func (site *Site) GetSectionPreviewPNGKey(sectionName string) string {
-	return site.GetKey("_sections", sectionName) + ".png"
+// GetPreviewKey get preview file key by sectionName
+func (site *Site) GetPreviewKey(relatedURL string) string {
+	return site.GetKey("_preview", relatedURL)
 }
 
 // GetConfig get config file content
 func (site *Site) GetConfig() *get3w.Config {
 	if site.config == nil {
 		config := &get3w.Config{}
-
-		configKey := site.GetConfigKey()
-		configData, err := site.Read(configKey)
+		configData, err := site.Read(site.GetConfigKey())
 		if err == nil {
-			config.LoadConfig(configData)
-		}
-
-		summaryKey := site.GetSummaryKey()
-		summaryData, err := site.Read(summaryKey)
-		if err == nil {
-			config.LoadSummary(summaryData)
-		}
-
-		if len(config.Pages) == 0 {
-			config.Pages = append(config.Pages, "Homepage")
-		}
-		if len(config.Sections) == 0 {
-			config.Sections = append(config.Sections, "Default")
+			parser.LoadConfig(config, configData)
 		}
 
 		site.config = config
@@ -109,29 +76,72 @@ func (site *Site) GetConfig() *get3w.Config {
 	return site.config
 }
 
-// ReadSectionHTML get section html file content
-func (site *Site) ReadSectionHTML(sectionName string) string {
-	keyName := site.GetSectionHTMLKey(sectionName)
-	str, err := site.Read(keyName)
-	if err != nil {
-		return ""
+// GetPages get SUMMARY.md file content
+func (site *Site) GetPages() []*get3w.Page {
+	if site.pages == nil {
+		pages := []*get3w.Page{}
+
+		data, err := site.Read(site.GetSummaryKey())
+		if err == nil {
+			summaries := parser.UnmarshalSummary(data)
+			site.loadPages(summaries, pages)
+		}
+
+		site.pages = pages
 	}
-	return str
+
+	return site.pages
 }
 
-// ReadSectionCSS get section css file content
-func (site *Site) ReadSectionCSS(sectionName string) string {
-	keyName := site.GetSectionCSSKey(sectionName)
-	str, err := site.Read(keyName)
-	if err != nil {
-		return ""
+func (site *Site) loadPages(summaries []*get3w.PageSummary, pages []*get3w.Page) {
+	for _, summary := range summaries {
+		page := site.GetPage(summary)
+		pages = append(pages, page)
+
+		if len(summary.Children) > 0 {
+			site.loadPages(summary.Children, pages)
+		}
 	}
-	return str
 }
 
-// ReadSectionJS get section js file content
-func (site *Site) ReadSectionJS(sectionName string) string {
-	keyName := site.GetSectionJSKey(sectionName)
+// GetSections get page models by pageName
+func (site *Site) GetSections() map[string]*get3w.Section {
+	if site.sections == nil {
+		sections := make(map[string]*get3w.Section)
+		files, _ := site.GetFiles(site.GetSectionKey(""))
+		for _, file := range files {
+			ext := filepath.Ext(file.Path)
+			if ext != parser.ExtHTML && ext != parser.ExtCSS && ext != parser.ExtJS {
+				continue
+			}
+			sectionName := strings.Replace(file.Name, ext, "", 1)
+			section := sections[sectionName]
+			if section == nil {
+				section = &get3w.Section{
+					ID:   stringutils.Base64ForURLEncode(sectionName),
+					Name: sectionName,
+				}
+			}
+			if ext == parser.ExtHTML {
+				section.HTML = site.ReadSectionContent(file)
+			} else if ext == parser.ExtCSS {
+				section.CSS = site.ReadSectionContent(file)
+			} else if ext == parser.ExtJS {
+				section.JS = site.ReadSectionContent(file)
+			}
+
+			sections[sectionName] = section
+		}
+
+		site.sections = sections
+	}
+
+	return site.sections
+}
+
+// ReadSectionContent get section file content
+func (site *Site) ReadSectionContent(file *get3w.File) string {
+	keyName := site.GetSectionKey(file.Name)
 	str, err := site.Read(keyName)
 	if err != nil {
 		return ""
@@ -153,7 +163,7 @@ func (site *Site) WriteConfig(config *get3w.Config) {
 // WritePage write content to page file
 func (site *Site) WritePage(page *get3w.Page) {
 	if page != nil {
-		pageKey := site.GetPageKey(page.Name)
+		pageKey := site.GetKey(page.TemplateURL)
 		yaml, err := page.String()
 		if err != nil {
 			site.Write(pageKey, yaml)
@@ -163,9 +173,9 @@ func (site *Site) WritePage(page *get3w.Page) {
 
 // SaveSection write content to section
 func (site *Site) SaveSection(section *get3w.Section) {
-	site.Write(site.GetSectionHTMLKey(section.Name), section.HTML)
-	site.Write(site.GetSectionCSSKey(section.Name), section.CSS)
-	site.Write(site.GetSectionJSKey(section.Name), section.JS)
+	site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), section.HTML)
+	site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), section.CSS)
+	site.Write(site.GetSectionKey(section.Name+parser.ExtJS), section.JS)
 	previewHTML := `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -185,7 +195,7 @@ func (site *Site) SaveSection(section *get3w.Section) {
 <script src="` + section.Name + `.js"></script>
 </body>
 </html>`
-	site.Write(site.GetSectionPreviewHTMLKey(section.Name), previewHTML)
+	site.Write(site.GetPreviewKey(section.Name+parser.ExtHTML), previewHTML)
 }
 
 // ChangeAppName change the name of app
@@ -196,30 +206,28 @@ func (site *Site) ChangeAppName(newName string) {
 }
 
 // GetPage get page models by pageName
-func (site *Site) GetPage(pageName string) *get3w.Page {
-	pageKey := site.GetPageKey(pageName)
-	page := &get3w.Page{}
-	pageData, err := site.Read(pageKey)
-	if err == nil {
-		page.Load(pageData)
+func (site *Site) GetPage(summary *get3w.PageSummary) *get3w.Page {
+	data := ""
+	if parser.IsExt(summary.TemplateURL) {
+		pageKey := site.GetKey(summary.TemplateURL)
+		data, _ = site.Read(pageKey)
 	}
 
-	page.Name = pageName
-	return page
+	return parser.UnmarshalPage(summary, data)
 }
 
 // DeletePage delete page file
-func (site *Site) DeletePage(pageName string) {
-	site.Delete(site.GetPageKey(pageName))
+func (site *Site) DeletePage(summary *get3w.PageSummary) {
+	site.Delete(site.GetKey(summary.TemplateURL))
 }
 
 // DeleteSection delete section files
 func (site *Site) DeleteSection(sectionName string) {
-	site.Delete(site.GetSectionHTMLKey(sectionName))
-	site.Delete(site.GetSectionCSSKey(sectionName))
-	site.Delete(site.GetSectionJSKey(sectionName))
-	site.Delete(site.GetSectionPreviewHTMLKey(sectionName))
-	site.Delete(site.GetSectionPreviewPNGKey(sectionName))
+	site.Delete(site.GetSectionKey(sectionName + parser.ExtHTML))
+	site.Delete(site.GetSectionKey(sectionName + parser.ExtCSS))
+	site.Delete(site.GetSectionKey(sectionName + parser.ExtJS))
+	site.Delete(site.GetPreviewKey(sectionName + parser.ExtHTML))
+	site.Delete(site.GetPreviewKey(sectionName + parser.ExtPNG))
 }
 
 // ReadFileContent return file content
@@ -261,125 +269,20 @@ func (site *Site) DeleteFolder(key string) {
 // Build all pages in the app.
 func (site *Site) Build(app *get3w.App) {
 	config := site.GetConfig()
-	for _, pageName := range config.Pages {
-		page := site.GetPage(pageName)
-		site.generatePage(page, config, app)
-	}
+	pages := site.GetPages()
+	sections := site.GetSections()
+
+	site.buildPages(app, config, pages, sections)
 }
 
-func (site *Site) getPageHead(page *get3w.Page, config *get3w.Config, app *get3w.App) string {
-	var buffer bytes.Buffer
-	resourceURL := "http://cdn.get3w.com"
+func (site *Site) buildPages(app *get3w.App, config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) {
+	for _, page := range pages {
+		parsedContent := parser.ParsePage(app, config, page, sections)
+		key := site.GetWWWRootKey(page.PageURL)
+		site.Write(key, parsedContent)
 
-	title := page.Title
-	if title == "" {
-		title = config.Title
-	}
-	if title == "" && app != nil {
-		title = app.Name
-	}
-
-	keywords := page.Keywords
-	if keywords == "" {
-		keywords = config.Keywords
-	}
-	if keywords == "" && app != nil {
-		keywords = app.Tags
-	}
-
-	description := page.Description
-	if description == "" {
-		description = config.Description
-	}
-	if description == "" && app != nil {
-		description = app.Description
-	}
-
-	buffer.WriteString(`<meta charset="utf-8">
-`)
-	buffer.WriteString(`<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-`)
-	buffer.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">
-`)
-	if len(keywords) > 0 {
-		buffer.WriteString(fmt.Sprintf(`<meta name="keywords" content="%s"/>
-`, keywords))
-	}
-	if len(description) > 0 {
-		buffer.WriteString(fmt.Sprintf(`<meta name="description" content="%s"/>
-`, description))
-	}
-	buffer.WriteString(fmt.Sprintf(`<title>%s</title>
-`, title))
-	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
-`, resourceURL))
-	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/animate.css/3.4.0/animate.min.css" rel="stylesheet">
-`, resourceURL))
-	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/csstoolkits/0.0.1/ct.min.css" rel="stylesheet">
-`, resourceURL))
-
-	return buffer.String()
-}
-
-func (site *Site) getPageBody(page *get3w.Page, config *get3w.Config) string {
-	var buffer bytes.Buffer
-
-	for _, sectionName := range page.Sections {
-		if stringutils.Contains(config.Sections, sectionName) {
-			section := &get3w.Section{
-				ID:   stringutils.Base64ForURLEncode(sectionName),
-				Name: sectionName,
-				HTML: site.ReadSectionHTML(sectionName),
-				CSS:  site.ReadSectionCSS(sectionName),
-				JS:   site.ReadSectionJS(sectionName),
-			}
-
-			if len(section.CSS) > 0 {
-				buffer.WriteString(fmt.Sprintf(`<style>
-%s
-</style>
-`, strings.Replace(section.CSS, ".this", "#"+section.ID, -1)))
-			}
-			if len(section.HTML) > 0 {
-				buffer.WriteString(fmt.Sprintf(`<section id="%s">
-%s
-</section>
-`, section.ID, section.HTML))
-			}
-			if len(section.JS) > 0 {
-				buffer.WriteString(fmt.Sprintf(`<script>
-%s
-</script>
-`, section.JS))
-			}
+		if len(page.Children) > 0 {
+			site.buildPages(app, config, page.Children, sections)
 		}
 	}
-
-	return buffer.String()
-}
-
-func (site *Site) generatePage(page *get3w.Page, config *get3w.Config, app *get3w.App) {
-	if page == nil || page.Sections == nil || len(page.Sections) == 0 {
-		return
-	}
-
-	parsedContent := fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en">
-<head>
-%s</head>
-<body>
-%s</body>
-</html>`, site.getPageHead(page, config, app), site.getPageBody(page, config))
-
-	url := page.URL
-	if url == "" {
-		if page.Type == get3w.PageHomepage {
-			url = "index.html"
-		} else {
-			url = page.Name + ".html"
-		}
-	}
-
-	key := site.GetWWWRootKey(url)
-	site.Write(key, parsedContent)
 }
