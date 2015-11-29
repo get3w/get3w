@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var s, _ = NewLocalSite("sample")
+var s, _ = NewLocalSite("../sample")
 
 func TestGetKey(t *testing.T) {
 	assert.Equal(t, s.GetKey("SUMMARY.md"), "SUMMARY.md")
@@ -42,10 +42,10 @@ func TestGetConfig(t *testing.T) {
 	assert.Equal(t, config.Title, "title")
 }
 
-func TestGetSummaries(t *testing.T) {
-	summaries := s.GetSummaries()
-	assert.NotNil(t, summaries)
-	assert.Equal(t, len(summaries), 4)
+func TestGetPages(t *testing.T) {
+	pages := s.GetPages()
+	assert.NotNil(t, pages)
+	assert.Equal(t, len(pages), 6)
 }
 
 func TestGetSections(t *testing.T) {

@@ -30,7 +30,7 @@ func NewService(contextDir string) (*Service, error) {
 
 	return &Service{
 		Path: dirPath,
-		Name: path.Base(dirPath),
+		Name: filepath.Base(dirPath),
 	}, nil
 }
 

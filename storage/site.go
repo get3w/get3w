@@ -84,7 +84,10 @@ func (site *Site) GetPages() []*get3w.Page {
 		data, err := site.Read(site.GetSummaryKey())
 		if err == nil {
 			summaries := parser.UnmarshalSummary(data)
-			site.loadPages(summaries, pages)
+			for _, summary := range summaries {
+				page := site.getPageBySummary(summary)
+				pages = append(pages, page)
+			}
 		}
 
 		site.pages = pages
@@ -93,15 +96,17 @@ func (site *Site) GetPages() []*get3w.Page {
 	return site.pages
 }
 
-func (site *Site) loadPages(summaries []*get3w.PageSummary, pages []*get3w.Page) {
-	for _, summary := range summaries {
-		page := site.GetPage(summary)
-		pages = append(pages, page)
+func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
+	page := site.GetPage(summary)
 
-		if len(summary.Children) > 0 {
-			site.loadPages(summary.Children, pages)
+	if len(summary.Children) > 0 {
+		for _, child := range summary.Children {
+			childPage := site.getPageBySummary(child)
+			page.Children = append(page.Children, childPage)
 		}
 	}
+
+	return page
 }
 
 // GetSections get page models by pageName
@@ -267,22 +272,22 @@ func (site *Site) DeleteFolder(key string) {
 }
 
 // Build all pages in the app.
-func (site *Site) Build(app *get3w.App) {
+func (site *Site) Build() {
 	config := site.GetConfig()
 	pages := site.GetPages()
 	sections := site.GetSections()
 
-	site.buildPages(app, config, pages, sections)
+	site.buildPages(config, pages, sections)
 }
 
-func (site *Site) buildPages(app *get3w.App, config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) {
+func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) {
 	for _, page := range pages {
-		parsedContent := parser.ParsePage(app, config, page, sections)
+		parsedContent := parser.ParsePage(config, page, sections)
 		key := site.GetWWWRootKey(page.PageURL)
 		site.Write(key, parsedContent)
 
 		if len(page.Children) > 0 {
-			site.buildPages(app, config, page.Children, sections)
+			site.buildPages(config, page.Children, sections)
 		}
 	}
 }

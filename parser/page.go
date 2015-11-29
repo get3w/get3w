@@ -33,7 +33,7 @@ func UnmarshalPage(summary *get3w.PageSummary, data string) *get3w.Page {
 	return page
 }
 
-func getPageHead(app *get3w.App, config *get3w.Config, page *get3w.Page) string {
+func getPageHead(config *get3w.Config, page *get3w.Page) string {
 	var buffer bytes.Buffer
 	resourceURL := "http://cdn.get3w.com"
 
@@ -41,24 +41,18 @@ func getPageHead(app *get3w.App, config *get3w.Config, page *get3w.Page) string 
 	if title == "" {
 		title = config.Title
 	}
-	if title == "" && app != nil {
-		title = app.Name
+	if title == "" {
+		title = page.Name
 	}
 
 	keywords := page.Keywords
 	if keywords == "" {
 		keywords = config.Keywords
 	}
-	if keywords == "" && app != nil {
-		keywords = app.Tags
-	}
 
 	description := page.Description
 	if description == "" {
 		description = config.Description
-	}
-	if description == "" && app != nil {
-		description = app.Description
 	}
 
 	buffer.WriteString(`<meta charset="utf-8">
@@ -120,7 +114,7 @@ func getPageBody(config *get3w.Config, page *get3w.Page, sections map[string]*ge
 }
 
 // ParsePage parse page and returns content
-func ParsePage(app *get3w.App, config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section) string {
+func ParsePage(config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section) string {
 	parsedContent := ""
 	ext := GetExt(page.TemplateURL)
 	if ext == ExtHTML {
@@ -138,7 +132,7 @@ func ParsePage(app *get3w.App, config *get3w.Config, page *get3w.Page, sections 
 %s</head>
 <body>
 %s</body>
-</html>`, getPageHead(app, config, page), bodyContent)
+</html>`, getPageHead(config, page), bodyContent)
 	}
 
 	return parsedContent

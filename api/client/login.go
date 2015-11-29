@@ -20,7 +20,7 @@ import (
 // If no server is specified, the user will be logged into or registered to the registry's index server.
 //
 // Usage: get3w login SERVER
-func (cli *DockerCli) CmdLogin(args ...string) error {
+func (cli *Get3WCli) CmdLogin(args ...string) error {
 	cmd := Cli.Subcmd("login", []string{"[SERVER]"}, Cli.DockerCommands["login"].Description+".\nIf no server is specified is the default.", true)
 	cmd.Require(flag.Max, 1)
 
@@ -91,7 +91,7 @@ func (cli *DockerCli) CmdLogin(args ...string) error {
 	authconfig.Password = password
 	cli.configFile.AuthConfig = authconfig
 
-	client := get3w.NewClient(nil)
+	client := get3w.NewClient("")
 	input := &get3w.UserLoginInput{
 		Account:  username,
 		Password: password,

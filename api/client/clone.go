@@ -14,7 +14,7 @@ import (
 // CmdClone clone an app repository from the remote address.
 //
 // Usage: get3w clone [OPTIONS] IMAGENAME[:TAG|@DIGEST]
-func (cli *DockerCli) CmdClone(args ...string) error {
+func (cli *Get3WCli) CmdClone(args ...string) error {
 	cmd := Cli.Subcmd("clone", []string{"NAME[:TAG|@DIGEST]"}, Cli.DockerCommands["clone"].Description, true)
 	cmd.Require(flag.Exact, 1)
 
@@ -25,7 +25,7 @@ func (cli *DockerCli) CmdClone(args ...string) error {
 		return fmt.Errorf("fatal: destination path '%s' already exists and is not an empty directory", name)
 	}
 
-	client := get3w.NewClient(nil)
+	client := get3w.NewClient("")
 
 	fmt.Printf("Cloning into '%s'...\n", name)
 	output, _, err := client.Apps.Clone(name)

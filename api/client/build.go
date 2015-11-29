@@ -10,17 +10,19 @@ import (
 // If '-' is provided instead of a path or URL, Docker will build an image from either a Dockerfile or tar archive read from STDIN.
 //
 // Usage: docker build [OPTIONS] PATH | URL | -
-func (cli *DockerCli) CmdBuild(args ...string) error {
+func (cli *Get3WCli) CmdBuild(args ...string) error {
 	cmd := Cli.Subcmd("build", []string{}, Cli.DockerCommands["build"].Description, true)
-
 	cmd.ParseFlags(args, true)
 
-	site, err := storage.NewLocalSite("")
+	return build("")
+}
+
+func build(contextDir string) error {
+	site, err := storage.NewLocalSite(contextDir)
 	if err != nil {
 		return err
 	}
 
-	site.Build(nil)
-
+	site.Build()
 	return nil
 }

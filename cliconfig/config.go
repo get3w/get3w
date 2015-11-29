@@ -95,7 +95,6 @@ func LoadFromReader(configData io.Reader) (*ConfigFile, error) {
 
 // Load reads the configuration files in the given directory, and sets up
 // the auth config information and return values.
-// FIXME: use the internal golang config parser
 func Load(configDir string) (*ConfigFile, error) {
 	if configDir == "" {
 		configDir = ConfigDir()

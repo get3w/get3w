@@ -13,7 +13,7 @@ import (
 // If no server is specified, the user will be logged out from the registry's index server.
 //
 // Usage: docker logout [SERVER]
-func (cli *DockerCli) CmdLogout(args ...string) error {
+func (cli *Get3WCli) CmdLogout(args ...string) error {
 	cmd := Cli.Subcmd("logout", []string{"[SERVER]"}, Cli.DockerCommands["logout"].Description+".\nIf no server is specified is the default.", true)
 	cmd.Require(flag.Max, 1)
 

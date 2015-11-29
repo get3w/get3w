@@ -13,7 +13,7 @@ import (
 // CmdInfo displays system-wide information.
 //
 // Usage: docker info
-func (cli *DockerCli) CmdInfo(args ...string) error {
+func (cli *Get3WCli) CmdInfo(args ...string) error {
 	cmd := Cli.Subcmd("info", nil, Cli.DockerCommands["info"].Description, true)
 	cmd.Require(flag.Exact, 0)
 

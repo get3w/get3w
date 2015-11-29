@@ -53,7 +53,7 @@ func main() {
 
 	// TODO: remove once `-d` is retired
 
-	clientCli := client.NewDockerCli(stdin, stdout, stderr, clientFlags)
+	clientCli := client.NewGet3WCli(stdin, stdout, stderr, clientFlags)
 
 	c := cli.New(clientCli)
 	if err := c.Run(flag.Args()...); err != nil {

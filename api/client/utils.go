@@ -30,11 +30,11 @@ type serverResponse struct {
 }
 
 // HTTPClient creates a new HTTP client with the cli's client transport instance.
-func (cli *DockerCli) HTTPClient() *http.Client {
+func (cli *Get3WCli) HTTPClient() *http.Client {
 	return &http.Client{}
 }
 
-func (cli *DockerCli) encodeData(data interface{}) (*bytes.Buffer, error) {
+func (cli *Get3WCli) encodeData(data interface{}) (*bytes.Buffer, error) {
 	params := bytes.NewBuffer(nil)
 	if data != nil {
 		if err := json.NewEncoder(params).Encode(data); err != nil {
@@ -52,7 +52,7 @@ type streamOpts struct {
 	headers     map[string][]string
 }
 
-func (cli *DockerCli) resizeTty(id string, isExec bool) {
+func (cli *Get3WCli) resizeTty(id string, isExec bool) {
 	height, width := cli.getTtySize()
 	if height == 0 && width == 0 {
 		return
@@ -62,7 +62,7 @@ func (cli *DockerCli) resizeTty(id string, isExec bool) {
 	v.Set("w", strconv.Itoa(width))
 }
 
-func (cli *DockerCli) monitorTtySize(id string, isExec bool) error {
+func (cli *Get3WCli) monitorTtySize(id string, isExec bool) error {
 	cli.resizeTty(id, isExec)
 
 	if runtime.GOOS == "windows" {
@@ -91,7 +91,7 @@ func (cli *DockerCli) monitorTtySize(id string, isExec bool) error {
 	return nil
 }
 
-func (cli *DockerCli) getTtySize() (int, int) {
+func (cli *Get3WCli) getTtySize() (int, int) {
 	if !cli.isTerminalOut {
 		return 0, 0
 	}
