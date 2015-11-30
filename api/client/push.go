@@ -19,6 +19,8 @@ func (cli *Get3WCli) CmdPush(args ...string) error {
 	cmd.ParseFlags(args, true)
 	appname := cmd.Arg(0)
 
+	owner := cli.configFile.AuthConfig.Username
+
 	// if cli.configFile.AuthConfig.AccessToken == "" {
 	// 	fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")
 	// 	if err := cli.CmdLogin(); err != nil {
@@ -32,7 +34,7 @@ func (cli *Get3WCli) CmdPush(args ...string) error {
 	}
 
 	inputAttempt := &get3w.AppPushInput{}
-	resp, err := client.Apps.Push(site.Name, inputAttempt)
+	resp, err := client.Apps.Push(owner, site.Name, inputAttempt)
 	if err != nil && resp.StatusCode == http.StatusUnauthorized {
 		fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")
 		if err = cli.CmdLogin(); err != nil {
@@ -42,7 +44,7 @@ func (cli *Get3WCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	output, _, err := client.Apps.Pull(site.Name)
+	output, _, err := client.Apps.Pull(owner, site.Name)
 	if err != nil {
 		return err
 	}
@@ -75,6 +77,6 @@ func (cli *Get3WCli) CmdPush(args ...string) error {
 		}
 	}
 
-	_, err = client.Apps.Push(site.Name, input)
+	_, err = client.Apps.Push(owner, site.Name, input)
 	return err
 }

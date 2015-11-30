@@ -66,17 +66,33 @@ func IsDirExist(contextDir string) bool {
 	return true
 }
 
-// getAppPrefix return app prefix
-func (service *Service) getAppPrefix(prefix string) string {
+// getSourcePrefix return app prefix
+func (service *Service) getSourcePrefix(prefix string) string {
 	p := path.Join(service.Path, prefix)
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
 }
 
-// getAppKey return app key
-func (service *Service) getAppKey(key string) string {
+// getSourceKey return app key
+func (service *Service) getSourceKey(key string) string {
 	p := path.Join(service.Path, key)
+	p = strings.TrimRight(p, "/")
+	p, _ = filepath.Abs(p)
+	return p
+}
+
+// getPreviewKey return app key
+func (service *Service) getPreviewKey(key string) string {
+	p := path.Join(service.Path, "_preview", key)
+	p = strings.TrimRight(p, "/")
+	p, _ = filepath.Abs(p)
+	return p
+}
+
+// getBuildKey return app key
+func (service *Service) getBuildKey(key string) string {
+	p := path.Join(service.Path, "_wwwroot", key)
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p

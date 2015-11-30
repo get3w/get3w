@@ -8,25 +8,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var service, _ = NewService("apps.get3w.com", "wwwwww")
+var service, _ = NewService("app-source", "app-build", "local", "local")
 
 func TestNewService(t *testing.T) {
-	_, err := NewService("apps.get3w.com", "")
+	_, err := NewService("app-source", "app-build", "local", "")
 	assert.NotNil(t, err)
-	_, err = NewService("apps.get3w.com", "name")
+	_, err = NewService("app-source", "app-build", "owner", "name")
 	assert.Nil(t, err)
 }
 
 func TestGetAppPrefix(t *testing.T) {
-	assert.Equal(t, service.getAppPrefix(""), "wwwwww/")
-	assert.Equal(t, service.getAppPrefix("/"), "wwwwww/")
-	assert.Equal(t, service.getAppPrefix("/test"), "wwwwww/test/")
-	assert.Equal(t, service.getAppPrefix("test"), "wwwwww/test/")
+	assert.Equal(t, service.getAppPrefix(""), "local/local/")
+	assert.Equal(t, service.getAppPrefix("/"), "local/local/")
+	assert.Equal(t, service.getAppPrefix("/test"), "local/local/test/")
+	assert.Equal(t, service.getAppPrefix("test"), "local/local/test/")
 }
 
 func TestGetAppKey(t *testing.T) {
-	assert.Equal(t, service.getAppKey("/test"), "wwwwww/test")
-	assert.Equal(t, service.getAppKey("test"), "wwwwww/test")
+	assert.Equal(t, service.getAppKey("/test"), "local/local/test")
+	assert.Equal(t, service.getAppKey("test"), "local/local/test")
 }
 
 func TestGetAllKeys(t *testing.T) {

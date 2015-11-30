@@ -12,19 +12,22 @@ import (
 
 // Site contains attributes and operations of the app
 type Site struct {
-	Name        string
-	Path        string
-	Read        func(key string) (string, error)
-	Checksum    func(key string) (string, error)
-	Write       func(key, value string) error
-	WriteBinary func(key string, bs []byte) error
-	Download    func(key string, downloadURL string) error
-	Rename      func(newName string, deleteAll bool) error
-	Delete      func(key string) error
-	DeleteAll   func(prefix string) error
-	GetFiles    func(prefix string) ([]*get3w.File, error)
-	GetAllFiles func() ([]*get3w.File, error)
-	IsExist     func(key string) bool
+	Name          string
+	Path          string
+	Read          func(key string) (string, error)
+	Checksum      func(key string) (string, error)
+	Write         func(key string, bs []byte) error
+	WritePreview  func(key string, bs []byte) error
+	WriteBuild    func(key string, bs []byte) error
+	Download      func(key string, downloadURL string) error
+	Rename        func(owner, newName string, deleteAll bool) error
+	Delete        func(key string) error
+	DeletePreview func(key string) error
+	DeleteBuild   func(key string) error
+	DeleteAll     func(prefix string) error
+	GetFiles      func(prefix string) ([]*get3w.File, error)
+	GetAllFiles   func() ([]*get3w.File, error)
+	IsExist       func(key string) bool
 
 	config   *get3w.Config
 	pages    []*get3w.Page
@@ -46,19 +49,9 @@ func (site *Site) GetSummaryKey() string {
 	return site.GetKey("SUMMARY.md")
 }
 
-// GetWWWRootKey get wwwroot file key by relatedURL
-func (site *Site) GetWWWRootKey(relatedURL string) string {
-	return site.GetKey("_wwwroot", relatedURL)
-}
-
 // GetSectionKey get html file key by sectionName
 func (site *Site) GetSectionKey(relatedURL string) string {
 	return site.GetKey("_sections", relatedURL)
-}
-
-// GetPreviewKey get preview file key by sectionName
-func (site *Site) GetPreviewKey(relatedURL string) string {
-	return site.GetKey("_preview", relatedURL)
 }
 
 // GetConfig get config file content
@@ -160,7 +153,7 @@ func (site *Site) WriteConfig(config *get3w.Config) {
 		configKey := site.GetConfigKey()
 		yaml, err := config.String()
 		if err != nil {
-			site.Write(configKey, yaml)
+			site.Write(configKey, []byte(yaml))
 		}
 	}
 }
@@ -171,16 +164,16 @@ func (site *Site) WritePage(page *get3w.Page) {
 		pageKey := site.GetKey(page.TemplateURL)
 		yaml, err := page.String()
 		if err != nil {
-			site.Write(pageKey, yaml)
+			site.Write(pageKey, []byte(yaml))
 		}
 	}
 }
 
 // SaveSection write content to section
 func (site *Site) SaveSection(section *get3w.Section) {
-	site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), section.HTML)
-	site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), section.CSS)
-	site.Write(site.GetSectionKey(section.Name+parser.ExtJS), section.JS)
+	site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(section.HTML))
+	site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), []byte(section.CSS))
+	site.Write(site.GetSectionKey(section.Name+parser.ExtJS), []byte(section.JS))
 	previewHTML := `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -200,13 +193,13 @@ func (site *Site) SaveSection(section *get3w.Section) {
 <script src="` + section.Name + `.js"></script>
 </body>
 </html>`
-	site.Write(site.GetPreviewKey(section.Name+parser.ExtHTML), previewHTML)
+	site.WritePreview(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
 }
 
 // ChangeAppName change the name of app
-func (site *Site) ChangeAppName(newName string) {
+func (site *Site) ChangeAppName(owner, newName string) {
 	if site.Rename != nil && site.Name != newName {
-		site.Rename(newName, true)
+		site.Rename(owner, newName, true)
 	}
 }
 
@@ -231,8 +224,8 @@ func (site *Site) DeleteSection(sectionName string) {
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtHTML))
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtCSS))
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtJS))
-	site.Delete(site.GetPreviewKey(sectionName + parser.ExtHTML))
-	site.Delete(site.GetPreviewKey(sectionName + parser.ExtPNG))
+	site.DeletePreview(site.GetSectionKey(sectionName + parser.ExtHTML))
+	site.DeletePreview(site.GetSectionKey(sectionName + parser.ExtPNG))
 }
 
 // ReadFileContent return file content
@@ -248,14 +241,14 @@ func (site *Site) ReadFileContent(key string) string {
 // WriteFileContent update file content
 func (site *Site) WriteFileContent(key string, content string) {
 	key = site.GetKey(key)
-	site.Write(key, content)
+	site.Write(key, []byte(content))
 }
 
 // NewFolder create folder
 func (site *Site) NewFolder(key string) {
 	key = site.GetKey(key)
 	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
-	site.Write(key, "")
+	site.Write(key, []byte(""))
 }
 
 // DeleteFile delete file
@@ -283,8 +276,8 @@ func (site *Site) Build() {
 func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) {
 	for _, page := range pages {
 		parsedContent := parser.ParsePage(config, page, sections)
-		key := site.GetWWWRootKey(page.PageURL)
-		site.Write(key, parsedContent)
+		key := site.GetKey(page.PageURL)
+		site.WriteBuild(key, []byte(parsedContent))
 
 		if len(page.Children) > 0 {
 			site.buildPages(config, page.Children, sections)

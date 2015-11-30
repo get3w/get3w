@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
@@ -14,34 +15,34 @@ import (
 // Usage: get3w clone [OPTIONS] IMAGENAME[:TAG|@DIGEST]
 func (cli *Get3WCli) CmdPull(args ...string) error {
 	cmd := Cli.Subcmd("pull", []string{"NAME[:TAG|@DIGEST]"}, Cli.DockerCommands["pull"].Description, true)
-	cmd.Require(flag.Exact, 0)
+	cmd.Require(flag.Min, 1)
 	cmd.ParseFlags(args, true)
 
-	name := cmd.Arg(0)
+	origin := cmd.Arg(0)
 
-	return pull("", name)
+	return pull("", origin)
 }
 
-func pull(contextDir, name string) error {
+func pull(contextDir, origin string) error {
 	site, err := storage.NewLocalSite(contextDir)
 	if err != nil {
 		return err
+	}
+
+	arr := strings.Split(origin, "/")
+	if len(arr) != 2 {
+		return fmt.Errorf("fatal: pull source '%s' not valid", origin)
 	}
 
 	if !site.IsExist(site.GetConfigKey()) {
 		return fmt.Errorf("fatal: Not a get3w repository: '%s'", site.Path)
 	}
 
-	appname := name
-	if appname == "" {
-		appname = site.Name
-	}
-
 	client := get3w.NewClient("")
 
-	fmt.Printf("Pulling '%s' into '%s'...\n", appname, site.Name)
+	fmt.Printf("Pulling '%s' into '%s'...\n", origin, site.Name)
 
-	output, _, err := client.Apps.Pull(appname)
+	output, _, err := client.Apps.Pull(arr[0], arr[1])
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func pull(contextDir, name string) error {
 		}
 
 		if pull {
-			downloadURL := "http://" + appname + ".get3w.net/" + path
+			downloadURL := "http://" + arr[0] + ".get3w.net/" + path
 			fmt.Printf("Receiving object: %s, done.\n", path)
 			site.Download(path, downloadURL)
 		}

@@ -2,25 +2,28 @@ package storage
 
 import "github.com/get3w/get3w/storage/s3"
 
-// NewS3Site get key by pageName
-func NewS3Site(bucket, appname string) (*Site, error) {
-	service, err := s3.NewService(bucket, appname)
+// NewS3Site returns a new s3 site
+func NewS3Site(bucketSource, bucketPreview, bucketBuild, owner, name string) (*Site, error) {
+	service, err := s3.NewService(bucketSource, bucketPreview, bucketBuild, owner, name)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Site{
-		Name:        appname,
-		Read:        service.Read,
-		Checksum:    service.Checksum,
-		Write:       service.Write,
-		WriteBinary: service.WriteBinary,
-		Download:    service.Download,
-		Rename:      service.Rename,
-		Delete:      service.Delete,
-		DeleteAll:   service.DeleteAll,
-		GetFiles:    service.GetFiles,
-		GetAllFiles: service.GetAllFiles,
-		IsExist:     service.IsExist,
+		Name:          name,
+		Read:          service.Read,
+		Checksum:      service.Checksum,
+		Write:         service.Write,
+		WritePreview:  service.WritePreview,
+		WriteBuild:    service.WriteBuild,
+		Download:      service.Download,
+		Rename:        service.Rename,
+		Delete:        service.Delete,
+		DeletePreview: service.DeletePreview,
+		DeleteBuild:   service.DeleteBuild,
+		DeleteAll:     service.DeleteAll,
+		GetFiles:      service.GetFiles,
+		GetAllFiles:   service.GetAllFiles,
+		IsExist:       service.IsExist,
 	}, nil
 }

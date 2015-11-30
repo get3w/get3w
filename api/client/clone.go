@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
@@ -16,11 +17,19 @@ import (
 // Usage: get3w clone [OPTIONS] IMAGENAME[:TAG|@DIGEST]
 func (cli *Get3WCli) CmdClone(args ...string) error {
 	cmd := Cli.Subcmd("clone", []string{"NAME[:TAG|@DIGEST]"}, Cli.DockerCommands["clone"].Description, true)
-	cmd.Require(flag.Exact, 1)
+	cmd.Require(flag.Min, 1)
 
 	cmd.ParseFlags(args, true)
-	name := cmd.Arg(0)
+	origin := cmd.Arg(0)
+	name := cmd.Arg(1)
 
+	arr := strings.Split(origin, "/")
+	if len(arr) != 2 {
+		return fmt.Errorf("fatal: clone source '%s' not valid", origin)
+	}
+	if name == "" {
+		name = arr[1]
+	}
 	if local.IsDirExist(name) {
 		return fmt.Errorf("fatal: destination path '%s' already exists and is not an empty directory", name)
 	}
@@ -28,7 +37,7 @@ func (cli *Get3WCli) CmdClone(args ...string) error {
 	client := get3w.NewClient("")
 
 	fmt.Printf("Cloning into '%s'...\n", name)
-	output, _, err := client.Apps.Clone(name)
+	output, _, err := client.Apps.Clone(arr[0], arr[1])
 	if err != nil {
 		return err
 	}
