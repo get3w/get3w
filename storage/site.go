@@ -10,6 +10,13 @@ import (
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
+// system file name
+const (
+	KeyReadme  = "README.md"
+	KeyConfig  = "CONFIG.yml"
+	KeySummary = "SUMMARY.md"
+)
+
 // Site contains attributes and operations of the app
 type Site struct {
 	Name          string
@@ -29,9 +36,10 @@ type Site struct {
 	GetAllFiles   func() ([]*get3w.File, error)
 	IsExist       func(key string) bool
 
-	config   *get3w.Config
-	pages    []*get3w.Page
-	sections map[string]*get3w.Section
+	config        *get3w.Config
+	pageSummaries []*get3w.PageSummary
+	pages         []*get3w.Page
+	sections      map[string]*get3w.Section
 }
 
 // GetKey get file key by relatedURL
@@ -41,12 +49,12 @@ func (site *Site) GetKey(url ...string) string {
 
 // GetConfigKey get CONFIG.yml file key
 func (site *Site) GetConfigKey() string {
-	return site.GetKey("CONFIG.yml")
+	return site.GetKey(KeyConfig)
 }
 
 // GetSummaryKey get SUMMARY.md file key
 func (site *Site) GetSummaryKey() string {
-	return site.GetKey("SUMMARY.md")
+	return site.GetKey(KeySummary)
 }
 
 // GetSectionKey get html file key by sectionName
@@ -69,18 +77,31 @@ func (site *Site) GetConfig() *get3w.Config {
 	return site.config
 }
 
-// GetPages get SUMMARY.md file content
+// GetPageSummaries get SUMMARY.md file content
+func (site *Site) GetPageSummaries() []*get3w.PageSummary {
+	if site.pageSummaries == nil {
+		summaries := []*get3w.PageSummary{}
+
+		data, err := site.Read(site.GetSummaryKey())
+		if err == nil {
+			summaries = parser.UnmarshalSummary(data)
+		}
+
+		site.pageSummaries = summaries
+	}
+
+	return site.pageSummaries
+}
+
+// GetPages parse SUMMARY.md file and returns pages
 func (site *Site) GetPages() []*get3w.Page {
 	if site.pages == nil {
 		pages := []*get3w.Page{}
 
-		data, err := site.Read(site.GetSummaryKey())
-		if err == nil {
-			summaries := parser.UnmarshalSummary(data)
-			for _, summary := range summaries {
-				page := site.getPageBySummary(summary)
-				pages = append(pages, page)
-			}
+		summaries := site.GetPageSummaries()
+		for _, summary := range summaries {
+			page := site.getPageBySummary(summary)
+			pages = append(pages, page)
 		}
 
 		site.pages = pages

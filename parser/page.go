@@ -122,7 +122,7 @@ func ParsePage(config *get3w.Config, page *get3w.Page, sections map[string]*get3
 	} else {
 		bodyContent := ""
 		if ext == ExtMD {
-			bodyContent = fmt.Sprintf("%s", blackfriday.MarkdownCommon([]byte(page.TemplateContent)))
+			bodyContent = string(blackfriday.MarkdownCommon([]byte(page.TemplateContent)))
 		} else {
 			bodyContent = getPageBody(config, page, sections)
 		}
