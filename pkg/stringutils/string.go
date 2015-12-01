@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/satori/go.uuid"
@@ -50,36 +49,10 @@ func Contains(strlist []string, str string) bool {
 	return false
 }
 
-// ToTime convert the string to a time
-func ToTime(str string) time.Time {
-	t, err := time.Parse(time.RFC3339, str)
-	if err != nil {
-		return time.Now()
-	}
-	return t
-}
-
-// TimeToString convert the time to a string
-func TimeToString(t *time.Time) string {
-	if t != nil {
-		return t.Format(time.RFC3339)
-	}
-	return time.Now().Format(time.RFC3339)
-}
-
 // ToString convert the input to a string.
 func ToString(obj interface{}) string {
 	res := fmt.Sprintf("%v", obj)
 	return string(res)
-}
-
-// ToJSON convert the input to a valid JSON string
-func ToJSON(obj interface{}) (string, error) {
-	res, err := json.Marshal(obj)
-	if err != nil {
-		res = []byte("")
-	}
-	return string(res), err
 }
 
 // ToFloat convert the input string to a float, or 0.0 if the input is not a float.
