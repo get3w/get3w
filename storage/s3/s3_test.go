@@ -51,15 +51,7 @@ func TestGetAllFiles(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	err := service.Write("/_test/index.html", "hello world")
-	assert.Nil(t, err)
-}
-
-func TestWriteBinary(t *testing.T) {
-	bs := []byte("hello world")
-	err := service.WriteBinary("/_test/1.html", bs)
-	assert.Nil(t, err)
-	err = service.WriteBinary("/_test/2.html", bs)
+	err := service.Write("/_test/index.html", []byte("hello world"))
 	assert.Nil(t, err)
 }
 

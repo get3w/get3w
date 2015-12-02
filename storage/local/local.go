@@ -114,25 +114,13 @@ func (service *Service) Write(key string, bs []byte) error {
 	return ioutil.WriteFile(p, bs, 0644)
 }
 
-// WritePreview string content to specified key resource
-func (service *Service) WritePreview(key string, bs []byte) error {
+// WriteDestination string content to specified key resource
+func (service *Service) WriteDestination(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	p := service.getPreviewKey(key)
-	mkdirByFile(p)
-	fmt.Printf("Page %s created\n", key)
-	return ioutil.WriteFile(p, bs, 0644)
-}
-
-// WriteBuild string content to specified key resource
-func (service *Service) WriteBuild(key string, bs []byte) error {
-	if key == "" {
-		return fmt.Errorf("key must be a nonempty string")
-	}
-
-	p := service.getBuildKey(key)
+	p := service.getDestinationKey(key)
 	mkdirByFile(p)
 	fmt.Printf("Page %s created\n", key)
 	return ioutil.WriteFile(p, bs, 0644)
@@ -270,22 +258,13 @@ func (service *Service) Delete(key string) error {
 	return os.Remove(service.getSourceKey(key))
 }
 
-// DeletePreview specified object
-func (service *Service) DeletePreview(key string) error {
+// DeleteDestination specified object
+func (service *Service) DeleteDestination(key string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	return os.Remove(service.getPreviewKey(key))
-}
-
-// DeleteBuild specified object
-func (service *Service) DeleteBuild(key string) error {
-	if key == "" {
-		return fmt.Errorf("key must be a nonempty string")
-	}
-
-	return os.Remove(service.getBuildKey(key))
+	return os.Remove(service.getDestinationKey(key))
 }
 
 // Deletes delete objects
@@ -295,7 +274,7 @@ func (service *Service) Deletes(keys []string) error {
 	}
 
 	for _, key := range keys {
-		err := os.Remove(service.getBuildKey(key))
+		err := os.Remove(service.getSourceKey(key))
 		if err != nil {
 			return err
 		}

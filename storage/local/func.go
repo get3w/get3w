@@ -82,16 +82,8 @@ func (service *Service) getSourceKey(key string) string {
 	return p
 }
 
-// getPreviewKey return app key
-func (service *Service) getPreviewKey(key string) string {
-	p := path.Join(service.Path, "_preview", key)
-	p = strings.TrimRight(p, "/")
-	p, _ = filepath.Abs(p)
-	return p
-}
-
-// getBuildKey return app key
-func (service *Service) getBuildKey(key string) string {
+// getDestinationKey return app key
+func (service *Service) getDestinationKey(key string) string {
 	p := path.Join(service.Path, "_wwwroot", key)
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)

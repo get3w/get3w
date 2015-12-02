@@ -22,7 +22,7 @@ func TestEmptyConfigDir(t *testing.T) {
 		t.Fatalf("Failed loading on empty config dir: %q", err)
 	}
 
-	expectedConfigFilename := filepath.Join(tmpHome, ConfigFileName)
+	expectedConfigFilename := filepath.Join(tmpHome, RootConfigFileName)
 	if config.Filename() != expectedConfigFilename {
 		t.Fatalf("Expected config filename %s, got %s", expectedConfigFilename, config.Filename())
 	}
@@ -72,7 +72,7 @@ func TestEmptyFile(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpHome)
 
-	fn := filepath.Join(tmpHome, ConfigFileName)
+	fn := filepath.Join(tmpHome, RootConfigFileName)
 	if err := ioutil.WriteFile(fn, []byte(""), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestEmptyJson(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpHome)
 
-	fn := filepath.Join(tmpHome, ConfigFileName)
+	fn := filepath.Join(tmpHome, RootConfigFileName)
 	if err := ioutil.WriteFile(fn, []byte("{}"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestNewJson(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpHome)
 
-	fn := filepath.Join(tmpHome, ConfigFileName)
+	fn := filepath.Join(tmpHome, RootConfigFileName)
 	js := ` { "authConfig": { "auth": "am9lam9lOmhlbGxv" } }`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func saveConfigAndValidateNewFormat(t *testing.T, config *ConfigFile, homeFolder
 		t.Fatalf("Failed to save: %q", err)
 	}
 
-	buf, err := ioutil.ReadFile(filepath.Join(homeFolder, ConfigFileName))
+	buf, err := ioutil.ReadFile(filepath.Join(homeFolder, RootConfigFileName))
 	if !strings.Contains(string(buf), `"authConfig":`) {
 		t.Fatalf("Should have save in new form: %s", string(buf))
 	}
@@ -219,13 +219,13 @@ func TestJsonSaveWithNoFile(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpHome)
 
-	fn := filepath.Join(tmpHome, ConfigFileName)
+	fn := filepath.Join(tmpHome, RootConfigFileName)
 	f, _ := os.OpenFile(fn, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	err = config.SaveToWriter(f)
 	if err != nil {
 		t.Fatalf("Failed saving to file: %q", err)
 	}
-	buf, err := ioutil.ReadFile(filepath.Join(tmpHome, ConfigFileName))
+	buf, err := ioutil.ReadFile(filepath.Join(tmpHome, RootConfigFileName))
 	if !strings.Contains(string(buf), `"authConfig":`) {
 		t.Fatalf("Should have save in new form: %s", string(buf))
 	}

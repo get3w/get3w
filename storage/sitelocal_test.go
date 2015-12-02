@@ -22,18 +22,9 @@ func TestGetSummaryKey(t *testing.T) {
 	assert.Equal(t, s.GetSummaryKey(), "SUMMARY.md")
 }
 
-func TestGetWWWRootKey(t *testing.T) {
-	assert.Equal(t, s.GetWWWRootKey("index.html"), "_wwwroot/index.html")
-}
-
 func TestGetSectionKey(t *testing.T) {
 	assert.Equal(t, s.GetSectionKey(""), "_sections")
 	assert.Equal(t, s.GetSectionKey("section"+parser.ExtHTML), "_sections/section.html")
-}
-
-func TestGetPreviewKey(t *testing.T) {
-	assert.Equal(t, s.GetPreviewKey(""), "_preview")
-	assert.Equal(t, s.GetPreviewKey("preview"+parser.ExtHTML), "_preview/preview.html")
 }
 
 func TestGetConfig(t *testing.T) {

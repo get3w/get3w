@@ -19,23 +19,19 @@ import (
 
 // Service s3 service
 type Service struct {
-	bucketSource  string
-	bucketPreview string
-	bucketBuild   string
-	prefix        string
-	instance      *s3.S3
+	bucketSource      string
+	bucketDestination string
+	prefix            string
+	instance          *s3.S3
 }
 
 // NewService return new service
-func NewService(bucketSource, bucketPreview, bucketBuild, owner, name string) (*Service, error) {
+func NewService(bucketSource, bucketDestination, owner, name string) (*Service, error) {
 	if bucketSource == "" {
 		return nil, fmt.Errorf("bucketSource must be a nonempty string")
 	}
-	if bucketPreview == "" {
-		return nil, fmt.Errorf("bucketPreview must be a nonempty string")
-	}
-	if bucketBuild == "" {
-		return nil, fmt.Errorf("bucketBuild must be a nonempty string")
+	if bucketDestination == "" {
+		return nil, fmt.Errorf("bucketDestination must be a nonempty string")
 	}
 	if owner == "" {
 		return nil, fmt.Errorf("owner must be a nonempty string")
@@ -45,11 +41,10 @@ func NewService(bucketSource, bucketPreview, bucketBuild, owner, name string) (*
 	}
 
 	return &Service{
-		bucketSource:  bucketSource,
-		bucketPreview: bucketPreview,
-		bucketBuild:   bucketBuild,
-		prefix:        owner + "/" + name,
-		instance:      s3.New(session.New()),
+		bucketSource:      bucketSource,
+		bucketDestination: bucketDestination,
+		prefix:            owner + "/" + name,
+		instance:          s3.New(session.New()),
 	}, nil
 }
 
@@ -206,33 +201,15 @@ func (service *Service) Write(key string, bs []byte) error {
 	return err
 }
 
-// WritePreview write string content to specified key resource
-func (service *Service) WritePreview(key string, bs []byte) error {
+// WriteDestination write string content to specified key resource
+func (service *Service) WriteDestination(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
 	params := &s3.PutObjectInput{
-		Bucket:      aws.String(service.bucketPreview),  // Required
-		Key:         aws.String(service.getAppKey(key)), // Required
-		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
-		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-		Body:        bytes.NewReader(bs),
-	}
-
-	_, err := service.instance.PutObject(params)
-	return err
-}
-
-// WriteBuild write string content to specified key resource
-func (service *Service) WriteBuild(key string, bs []byte) error {
-	if key == "" {
-		return fmt.Errorf("key must be a nonempty string")
-	}
-
-	params := &s3.PutObjectInput{
-		Bucket:      aws.String(service.bucketBuild),    // Required
-		Key:         aws.String(service.getAppKey(key)), // Required
+		Bucket:      aws.String(service.bucketDestination), // Required
+		Key:         aws.String(service.getAppKey(key)),    // Required
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
 		Body:        bytes.NewReader(bs),
@@ -420,29 +397,15 @@ func (service *Service) Delete(key string) error {
 	return err
 }
 
-// DeletePreview specified object
-func (service *Service) DeletePreview(key string) error {
+// DeleteDestination specified object
+func (service *Service) DeleteDestination(key string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
 	params := &s3.DeleteObjectInput{
-		Bucket: aws.String(service.bucketPreview),  // Required
-		Key:    aws.String(service.getAppKey(key)), // Required
-	}
-	_, err := service.instance.DeleteObject(params)
-	return err
-}
-
-// DeleteBuild specified object
-func (service *Service) DeleteBuild(key string) error {
-	if key == "" {
-		return fmt.Errorf("key must be a nonempty string")
-	}
-
-	params := &s3.DeleteObjectInput{
-		Bucket: aws.String(service.bucketBuild),    // Required
-		Key:    aws.String(service.getAppKey(key)), // Required
+		Bucket: aws.String(service.bucketDestination), // Required
+		Key:    aws.String(service.getAppKey(key)),    // Required
 	}
 	_, err := service.instance.DeleteObject(params)
 	return err

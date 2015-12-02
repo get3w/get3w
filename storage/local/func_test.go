@@ -8,9 +8,9 @@ import (
 )
 
 func TestGetDirPath(t *testing.T) {
-	_, err := getDirPath("")
+	_, err := GetDirPath("")
 	assert.Nil(t, err)
-	_, err = getDirPath("_test")
+	_, err = GetDirPath("_test")
 	assert.Nil(t, err)
 }
 

@@ -19,22 +19,20 @@ const (
 
 // Site contains attributes and operations of the app
 type Site struct {
-	Name          string
-	Path          string
-	Read          func(key string) (string, error)
-	Checksum      func(key string) (string, error)
-	Write         func(key string, bs []byte) error
-	WritePreview  func(key string, bs []byte) error
-	WriteBuild    func(key string, bs []byte) error
-	Download      func(key string, downloadURL string) error
-	Rename        func(owner, newName string, deleteAll bool) error
-	Delete        func(key string) error
-	DeletePreview func(key string) error
-	DeleteBuild   func(key string) error
-	DeleteAll     func(prefix string) error
-	GetFiles      func(prefix string) ([]*get3w.File, error)
-	GetAllFiles   func() ([]*get3w.File, error)
-	IsExist       func(key string) bool
+	Name              string
+	Path              string
+	Read              func(key string) (string, error)
+	Checksum          func(key string) (string, error)
+	Write             func(key string, bs []byte) error
+	WriteDestination  func(key string, bs []byte) error
+	Download          func(key string, downloadURL string) error
+	Rename            func(owner, newName string, deleteAll bool) error
+	Delete            func(key string) error
+	DeleteDestination func(key string) error
+	DeleteAll         func(prefix string) error
+	GetFiles          func(prefix string) ([]*get3w.File, error)
+	GetAllFiles       func() ([]*get3w.File, error)
+	IsExist           func(key string) bool
 
 	config        *get3w.Config
 	pageSummaries []*get3w.PageSummary
@@ -195,26 +193,26 @@ func (site *Site) SaveSection(section *get3w.Section) {
 	site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(section.HTML))
 	site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), []byte(section.CSS))
 	site.Write(site.GetSectionKey(section.Name+parser.ExtJS), []byte(section.JS))
-	previewHTML := `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>` + section.Name + `</title>
-    <link href="http://cdn.get3w.com/assets/css/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
-    <link href="http://cdn.get3w.com/assets/css/animate.css/3.4.0/animate.min.css" rel="stylesheet">
-    <link href="http://cdn.get3w.com/assets/css/csstoolkits/0.0.1/ct.min.css" rel="stylesheet">
-    <link href="` + section.Name + `.css" rel="stylesheet">
-</head>
-<body>
-<section class="this">
-    ` + section.HTML + `
-</section>
-<script src="` + section.Name + `.js"></script>
-</body>
-</html>`
-	site.WritePreview(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
+	// 	previewHTML := `<!DOCTYPE html>
+	// <html lang="en">
+	// <head>
+	//     <meta charset="utf-8">
+	//     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	//     <meta name="viewport" content="width=device-width, initial-scale=1">
+	//     <title>` + section.Name + `</title>
+	//     <link href="http://cdn.get3w.com/assets/css/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
+	//     <link href="http://cdn.get3w.com/assets/css/animate.css/3.4.0/animate.min.css" rel="stylesheet">
+	//     <link href="http://cdn.get3w.com/assets/css/csstoolkits/0.0.1/ct.min.css" rel="stylesheet">
+	//     <link href="` + section.Name + `.css" rel="stylesheet">
+	// </head>
+	// <body>
+	// <section class="this">
+	//     ` + section.HTML + `
+	// </section>
+	// <script src="` + section.Name + `.js"></script>
+	// </body>
+	// </html>`
+	// 	site.WritePreview(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
 }
 
 // ChangeAppName change the name of app
@@ -245,8 +243,6 @@ func (site *Site) DeleteSection(sectionName string) {
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtHTML))
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtCSS))
 	site.Delete(site.GetSectionKey(sectionName + parser.ExtJS))
-	site.DeletePreview(site.GetSectionKey(sectionName + parser.ExtHTML))
-	site.DeletePreview(site.GetSectionKey(sectionName + parser.ExtPNG))
 }
 
 // ReadFileContent return file content
@@ -298,7 +294,7 @@ func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections
 	for _, page := range pages {
 		parsedContent := parser.ParsePage(config, page, sections)
 		key := site.GetKey(page.PageURL)
-		site.WriteBuild(key, []byte(parsedContent))
+		site.WriteDestination(key, []byte(parsedContent))
 
 		if len(page.Children) > 0 {
 			site.buildPages(config, page.Children, sections)
