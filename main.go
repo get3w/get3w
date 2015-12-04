@@ -21,7 +21,7 @@ func main() {
 	flag.Merge(flag.CommandLine, clientFlags.FlagSet, commonFlags.FlagSet)
 
 	flag.Usage = func() {
-		fmt.Fprint(os.Stdout, "Usage: www [OPTIONS] COMMAND [arg...]\n       www [ --help | -v | --version ]\n\n")
+		fmt.Fprint(os.Stdout, "Usage: get3w [OPTIONS] COMMAND [arg...]\n       www [ --help | -v | --version ]\n\n")
 		fmt.Fprint(os.Stdout, "A self-sufficient runtime for containers.\n\nOptions:\n")
 
 		flag.CommandLine.SetOutput(os.Stdout)
@@ -29,11 +29,11 @@ func main() {
 
 		help := "\nCommands:\n"
 
-		for _, cmd := range dockerCommands {
+		for _, cmd := range get3wCommands {
 			help += fmt.Sprintf("    %-10.10s%s\n", cmd.Name, cmd.Description)
 		}
 
-		help += "\nRun 'docker COMMAND --help' for more information on a command."
+		help += "\nRun 'get3w COMMAND --help' for more information on a command."
 		fmt.Fprintf(os.Stdout, "%s\n", help)
 	}
 
@@ -70,5 +70,5 @@ func main() {
 }
 
 func showVersion() {
-	fmt.Printf("www version %s\n", cliconfig.Version)
+	fmt.Printf("get3w version %s\n", cliconfig.Version)
 }

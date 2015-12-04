@@ -12,9 +12,9 @@ import (
 
 // CmdPush pushs an app or a repository to the registry.
 //
-// Usage: docker pull [OPTIONS] IMAGENAME[:TAG|@DIGEST]
+// Usage: get3w pull [OPTIONS] IMAGENAME[:TAG|@DIGEST]
 func (cli *Get3WCli) CmdPush(args ...string) error {
-	cmd := Cli.Subcmd("push", []string{"NAME[:TAG|@DIGEST]"}, Cli.DockerCommands["push"].Description, true)
+	cmd := Cli.Subcmd("push", []string{"NAME[:TAG|@DIGEST]"}, Cli.Get3WCommands["push"].Description, true)
 	cmd.Require(flag.Exact, 0)
 	cmd.ParseFlags(args, true)
 	appname := cmd.Arg(0)
@@ -44,7 +44,7 @@ func (cli *Get3WCli) CmdPush(args ...string) error {
 		return err
 	}
 
-	output, _, err := client.Apps.Pull(owner, site.Name)
+	output, _, err := client.Apps.FilesChecksum(owner, site.Name)
 	if err != nil {
 		return err
 	}

@@ -43,10 +43,10 @@ func setSocketGroup(path, group string) error {
 		return nil
 	}
 	if err := changeGroup(path, group); err != nil {
-		if group != "docker" {
+		if group != "get3w" {
 			return err
 		}
-		logrus.Debugf("Warning: could not change group %s to docker: %v", path, err)
+		logrus.Debugf("Warning: could not change group %s to get3w: %v", path, err)
 	}
 	return nil
 }

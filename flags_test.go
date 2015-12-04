@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// Tests if the subcommands of docker are sorted
-func TestDockerSubcommandsAreSorted(t *testing.T) {
-	if !sort.IsSorted(byName(dockerCommands)) {
-		t.Fatal("Docker subcommands are not in sorted order")
+// Tests if the subcommands of get3w are sorted
+func TestGet3WSubcommandsAreSorted(t *testing.T) {
+	if !sort.IsSorted(byName(get3wCommands)) {
+		t.Fatal("Get3W subcommands are not in sorted order")
 	}
 }

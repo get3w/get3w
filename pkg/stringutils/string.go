@@ -84,12 +84,20 @@ func ToBoolean(str string) (bool, error) {
 
 // Base64Encode base64 encode string
 func Base64Encode(str string) string {
+	if str == "" {
+		return ""
+	}
+
 	data := []byte(str)
 	return base64.StdEncoding.EncodeToString(data)
 }
 
 // Base64Decode base64 decode string
 func Base64Decode(str string) string {
+	if str == "" {
+		return ""
+	}
+
 	data, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
 		return ""
@@ -99,6 +107,10 @@ func Base64Decode(str string) string {
 
 // Base64ForURLEncode encode string from url base64
 func Base64ForURLEncode(unencodedText string) string {
+	if unencodedText == "" {
+		return ""
+	}
+
 	s := Base64Encode(unencodedText)
 
 	arr := strings.Split(s, "=")
@@ -111,6 +123,10 @@ func Base64ForURLEncode(unencodedText string) string {
 
 // Base64ForURLDecode decode string to url base64
 func Base64ForURLDecode(str string) string {
+	if str == "" {
+		return ""
+	}
+
 	s := str
 	s = strings.Replace(s, "-", "+", -1) // 62nd char of encoding
 	s = strings.Replace(s, "_", "/", -1) // 63rd char of encoding

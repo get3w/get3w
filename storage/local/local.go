@@ -110,7 +110,6 @@ func (service *Service) Write(key string, bs []byte) error {
 
 	p := service.getSourceKey(key)
 	mkdirByFile(p)
-	fmt.Printf("Page %s created\n", key)
 	return ioutil.WriteFile(p, bs, 0644)
 }
 

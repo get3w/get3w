@@ -18,9 +18,9 @@ type Command struct {
 	Description string
 }
 
-var dockerCommands = []Command{
+var get3wCommands = []Command{
 	{"attach", "Attach to a running container"},
-	{"build", "Build an image from a Dockerfile"},
+	{"build", "Build an image from a Get3Wfile"},
 	{"clone", "Clone an app to current directory"},
 	{"cp", "Copy files/folders between a container and the local filesystem"},
 	{"create", "Create a new container"},
@@ -28,6 +28,7 @@ var dockerCommands = []Command{
 	{"events", "Get real time events from the server"},
 	{"exec", "Run a command in a running container"},
 	{"export", "Export a container's filesystem as a tar archive"},
+	{"get", "Get downloads and builds the app"},
 	{"history", "Show the history of an image"},
 	{"images", "List images"},
 	{"import", "Import the contents from a tarball to create a filesystem image"},
@@ -35,10 +36,10 @@ var dockerCommands = []Command{
 	{"inspect", "Return low-level information on a container or image"},
 	{"kill", "Kill a running container"},
 	{"load", "Load an image from a tar archive or STDIN"},
-	{"login", "Register or log in to a Docker registry"},
-	{"logout", "Log out from a Docker registry"},
+	{"login", "Register or log in to a Get3W registry"},
+	{"logout", "Log out from a Get3W registry"},
 	{"logs", "Fetch the logs of a container"},
-	{"network", "Manage Docker networks"},
+	{"network", "Manage Get3W networks"},
 	{"pause", "Pause all processes within a container"},
 	{"port", "List port mappings or a specific mapping for the CONTAINER"},
 	{"ps", "List containers"},
@@ -50,23 +51,23 @@ var dockerCommands = []Command{
 	{"rmi", "Remove one or more images"},
 	{"run", "Run a command in a new container"},
 	{"save", "Save an image(s) to a tar archive"},
-	{"search", "Search the Docker Hub for images"},
+	{"search", "Search the Get3W Hub for images"},
 	{"start", "Start one or more stopped containers"},
-	{"stats", "Display a live stream of container(s) resource usage statistics"},
+	{"status", "Show the working app status"},
 	{"stop", "Stop a running container"},
 	{"tag", "Tag an image into a repository"},
 	{"top", "Display the running processes of a container"},
 	{"unpause", "Unpause all processes within a container"},
-	{"version", "Show the Docker version information"},
-	{"volume", "Manage Docker volumes"},
+	{"version", "Show the Get3W version information"},
+	{"volume", "Manage Get3W volumes"},
 	{"wait", "Block until a container stops, then print its exit code"},
 }
 
-// DockerCommands stores all the docker command
-var DockerCommands = make(map[string]Command)
+// Get3WCommands stores all the Get3W command
+var Get3WCommands = make(map[string]Command)
 
 func init() {
-	for _, cmd := range dockerCommands {
-		DockerCommands[cmd.Name] = cmd
+	for _, cmd := range get3wCommands {
+		Get3WCommands[cmd.Name] = cmd
 	}
 }

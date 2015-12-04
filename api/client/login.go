@@ -21,7 +21,7 @@ import (
 //
 // Usage: get3w login SERVER
 func (cli *Get3WCli) CmdLogin(args ...string) error {
-	cmd := Cli.Subcmd("login", []string{"[SERVER]"}, Cli.DockerCommands["login"].Description+".\nIf no server is specified is the default.", true)
+	cmd := Cli.Subcmd("login", []string{"[SERVER]"}, Cli.Get3WCommands["login"].Description+".\nIf no server is specified is the default.", true)
 	cmd.Require(flag.Max, 1)
 
 	var username, password string

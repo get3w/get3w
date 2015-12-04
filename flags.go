@@ -18,13 +18,13 @@ func (a byName) Len() int           { return len(a) }
 func (a byName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byName) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
-var dockerCommands []cli.Command
+var get3wCommands []cli.Command
 
 // TODO(tiborvass): do not show 'daemon' on client-only binaries
 
 func init() {
-	for _, cmd := range cli.DockerCommands {
-		dockerCommands = append(dockerCommands, cmd)
+	for _, cmd := range cli.Get3WCommands {
+		get3wCommands = append(get3wCommands, cmd)
 	}
-	sort.Sort(byName(dockerCommands))
+	sort.Sort(byName(get3wCommands))
 }

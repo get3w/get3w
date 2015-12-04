@@ -61,42 +61,53 @@ func (site *Site) GetSectionKey(relatedURL string) string {
 }
 
 // GetConfig get config file content
-func (site *Site) GetConfig() *get3w.Config {
+func (site *Site) GetConfig() (*get3w.Config, error) {
 	if site.config == nil {
 		config := &get3w.Config{}
 		configData, err := site.Read(site.GetConfigKey())
-		if err == nil {
-			parser.LoadConfig(config, configData)
+		if err != nil {
+			return nil, err
+		}
+
+		err = parser.LoadConfig(config, configData)
+		if err != nil {
+			return nil, err
 		}
 
 		site.config = config
 	}
 
-	return site.config
+	return site.config, nil
 }
 
 // GetPageSummaries get SUMMARY.md file content
-func (site *Site) GetPageSummaries() []*get3w.PageSummary {
+func (site *Site) GetPageSummaries() ([]*get3w.PageSummary, error) {
 	if site.pageSummaries == nil {
 		summaries := []*get3w.PageSummary{}
 
 		data, err := site.Read(site.GetSummaryKey())
-		if err == nil {
-			summaries = parser.UnmarshalSummary(data)
+		if err != nil {
+			return nil, err
 		}
+
+		summaries = parser.UnmarshalSummary(data)
 
 		site.pageSummaries = summaries
 	}
 
-	return site.pageSummaries
+	return site.pageSummaries, nil
 }
 
 // GetPages parse SUMMARY.md file and returns pages
-func (site *Site) GetPages() []*get3w.Page {
+func (site *Site) GetPages() ([]*get3w.Page, error) {
 	if site.pages == nil {
 		pages := []*get3w.Page{}
 
-		summaries := site.GetPageSummaries()
+		summaries, err := site.GetPageSummaries()
+		if err != nil {
+			return nil, err
+		}
+
 		for _, summary := range summaries {
 			page := site.getPageBySummary(summary)
 			pages = append(pages, page)
@@ -105,7 +116,7 @@ func (site *Site) GetPages() []*get3w.Page {
 		site.pages = pages
 	}
 
-	return site.pages
+	return site.pages, nil
 }
 
 func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
@@ -122,10 +133,14 @@ func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
 }
 
 // GetSections get page models by pageName
-func (site *Site) GetSections() map[string]*get3w.Section {
+func (site *Site) GetSections() (map[string]*get3w.Section, error) {
 	if site.sections == nil {
 		sections := make(map[string]*get3w.Section)
-		files, _ := site.GetFiles(site.GetSectionKey(""))
+		files, err := site.GetFiles(site.GetSectionKey(""))
+		if err != nil {
+			return nil, err
+		}
+
 		for _, file := range files {
 			ext := filepath.Ext(file.Path)
 			if ext != parser.ExtHTML && ext != parser.ExtCSS && ext != parser.ExtJS {
@@ -140,11 +155,12 @@ func (site *Site) GetSections() map[string]*get3w.Section {
 				}
 			}
 			if ext == parser.ExtHTML {
-				section.HTML = site.ReadSectionContent(file)
+				section.HTML, _ = site.ReadSectionContent(file)
+
 			} else if ext == parser.ExtCSS {
-				section.CSS = site.ReadSectionContent(file)
+				section.CSS, _ = site.ReadSectionContent(file)
 			} else if ext == parser.ExtJS {
-				section.JS = site.ReadSectionContent(file)
+				section.JS, _ = site.ReadSectionContent(file)
 			}
 
 			sections[sectionName] = section
@@ -153,46 +169,53 @@ func (site *Site) GetSections() map[string]*get3w.Section {
 		site.sections = sections
 	}
 
-	return site.sections
+	return site.sections, nil
 }
 
 // ReadSectionContent get section file content
-func (site *Site) ReadSectionContent(file *get3w.File) string {
+func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
 	keyName := site.GetSectionKey(file.Name)
 	str, err := site.Read(keyName)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return str
+
+	return str, nil
 }
 
 // WriteConfig write content to config file
-func (site *Site) WriteConfig(config *get3w.Config) {
-	if config != nil {
-		configKey := site.GetConfigKey()
-		yaml, err := config.String()
-		if err != nil {
-			site.Write(configKey, []byte(yaml))
-		}
+func (site *Site) WriteConfig(config *get3w.Config) error {
+	configKey := site.GetConfigKey()
+	yaml, err := config.String()
+	if err != nil {
+		return err
 	}
+
+	return site.Write(configKey, []byte(yaml))
 }
 
 // WritePage write content to page file
-func (site *Site) WritePage(page *get3w.Page) {
-	if page != nil {
-		pageKey := site.GetKey(page.TemplateURL)
-		yaml, err := page.String()
-		if err != nil {
-			site.Write(pageKey, []byte(yaml))
-		}
+func (site *Site) WritePage(page *get3w.Page) error {
+	pageKey := site.GetKey(page.TemplateURL)
+	yaml, err := page.String()
+	if err != nil {
+		return err
 	}
+	return site.Write(pageKey, []byte(yaml))
 }
 
 // SaveSection write content to section
-func (site *Site) SaveSection(section *get3w.Section) {
-	site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(section.HTML))
-	site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), []byte(section.CSS))
-	site.Write(site.GetSectionKey(section.Name+parser.ExtJS), []byte(section.JS))
+func (site *Site) SaveSection(section *get3w.Section) error {
+	if err := site.Write(site.GetSectionKey(section.Name+parser.ExtHTML), []byte(section.HTML)); err != nil {
+		return err
+	}
+	if err := site.Write(site.GetSectionKey(section.Name+parser.ExtCSS), []byte(section.CSS)); err != nil {
+		return err
+	}
+	if err := site.Write(site.GetSectionKey(section.Name+parser.ExtJS), []byte(section.JS)); err != nil {
+		return err
+	}
+	return nil
 	// 	previewHTML := `<!DOCTYPE html>
 	// <html lang="en">
 	// <head>
@@ -216,10 +239,11 @@ func (site *Site) SaveSection(section *get3w.Section) {
 }
 
 // ChangeAppName change the name of app
-func (site *Site) ChangeAppName(owner, newName string) {
-	if site.Rename != nil && site.Name != newName {
-		site.Rename(owner, newName, true)
+func (site *Site) ChangeAppName(owner, newName string) error {
+	if site.Name != newName {
+		return site.Rename(owner, newName, true)
 	}
+	return nil
 }
 
 // GetPage get page models by pageName
@@ -234,15 +258,22 @@ func (site *Site) GetPage(summary *get3w.PageSummary) *get3w.Page {
 }
 
 // DeletePage delete page file
-func (site *Site) DeletePage(summary *get3w.PageSummary) {
-	site.Delete(site.GetKey(summary.TemplateURL))
+func (site *Site) DeletePage(summary *get3w.PageSummary) error {
+	return site.Delete(site.GetKey(summary.TemplateURL))
 }
 
 // DeleteSection delete section files
-func (site *Site) DeleteSection(sectionName string) {
-	site.Delete(site.GetSectionKey(sectionName + parser.ExtHTML))
-	site.Delete(site.GetSectionKey(sectionName + parser.ExtCSS))
-	site.Delete(site.GetSectionKey(sectionName + parser.ExtJS))
+func (site *Site) DeleteSection(sectionName string) error {
+	if err := site.Delete(site.GetSectionKey(sectionName + parser.ExtHTML)); err != nil {
+		return err
+	}
+	if err := site.Delete(site.GetSectionKey(sectionName + parser.ExtCSS)); err != nil {
+		return err
+	}
+	if err := site.Delete(site.GetSectionKey(sectionName + parser.ExtJS)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ReadFileContent return file content
@@ -256,48 +287,63 @@ func (site *Site) ReadFileContent(key string) string {
 }
 
 // WriteFileContent update file content
-func (site *Site) WriteFileContent(key string, content string) {
+func (site *Site) WriteFileContent(key string, content string) error {
 	key = site.GetKey(key)
-	site.Write(key, []byte(content))
+	return site.Write(key, []byte(content))
 }
 
 // NewFolder create folder
-func (site *Site) NewFolder(key string) {
+func (site *Site) NewFolder(key string) error {
 	key = site.GetKey(key)
 	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
-	site.Write(key, []byte(""))
+	return site.Write(key, []byte(""))
 }
 
 // DeleteFile delete file
-func (site *Site) DeleteFile(key string) {
+func (site *Site) DeleteFile(key string) error {
 	key = site.GetKey(key)
-	site.Delete(key)
+	return site.Delete(key)
 }
 
 // DeleteFolder delete folder
-func (site *Site) DeleteFolder(key string) {
+func (site *Site) DeleteFolder(key string) error {
 	key = site.GetKey(key)
 	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
-	site.Delete(key)
+	return site.Delete(key)
 }
 
 // Build all pages in the app.
-func (site *Site) Build() {
-	config := site.GetConfig()
-	pages := site.GetPages()
-	sections := site.GetSections()
+func (site *Site) Build() error {
+	config, err := site.GetConfig()
+	if err != nil {
+		return err
+	}
 
-	site.buildPages(config, pages, sections)
+	pages, err := site.GetPages()
+	if err != nil {
+		return err
+	}
+
+	sections, err := site.GetSections()
+	if err != nil {
+		return err
+	}
+
+	return site.buildPages(config, pages, sections)
 }
 
-func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) {
+func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
 		parsedContent := parser.ParsePage(config, page, sections)
 		key := site.GetKey(page.PageURL)
-		site.WriteDestination(key, []byte(parsedContent))
+		err := site.WriteDestination(key, []byte(parsedContent))
+		if err != nil {
+			return err
+		}
 
 		if len(page.Children) > 0 {
 			site.buildPages(config, page.Children, sections)
 		}
 	}
+	return nil
 }

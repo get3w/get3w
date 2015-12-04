@@ -32,7 +32,7 @@ type Initializer interface {
 // New instantiates a ready-to-use Cli.
 func New(handlers ...Handler) *Cli {
 	// make the generic Cli object the first cli handler
-	// in order to handle `docker help` appropriately
+	// in order to handle `get3w help` appropriately
 	cli := new(Cli)
 	cli.handlers = append([]Handler{cli}, handlers...)
 	return cli
@@ -99,15 +99,15 @@ func (cli *Cli) noSuchCommand(command string) {
 	if cli.Stderr == nil {
 		cli.Stderr = os.Stderr
 	}
-	fmt.Fprintf(cli.Stderr, "docker: '%s' is not a docker command.\nSee 'docker --help'.\n", command)
+	fmt.Fprintf(cli.Stderr, "get3w: '%s' is not a get3w command.\nSee 'get3w --help'.\n", command)
 	os.Exit(1)
 }
 
-// CmdHelp displays information on a Docker command.
+// CmdHelp displays information on a Get3W command.
 //
 // If more than one command is specified, information is only shown for the first command.
 //
-// Usage: docker help COMMAND or docker COMMAND --help
+// Usage: get3w help COMMAND or get3w COMMAND --help
 func (cli *Cli) CmdHelp(args ...string) error {
 	if len(args) > 1 {
 		command, err := cli.command(args[:2]...)
@@ -140,11 +140,11 @@ func (cli *Cli) CmdHelp(args ...string) error {
 	return nil
 }
 
-// Subcmd is a subcommand of the main "docker" command.
+// Subcmd is a subcommand of the main "get3w" command.
 // A subcommand represents an action that can be performed
-// from the Docker command line client.
+// from the Get3W command line client.
 //
-// To see all available subcommands, run "docker --help".
+// To see all available subcommands, run "get3w --help".
 func Subcmd(name string, synopses []string, description string, exitOnError bool) *flag.FlagSet {
 	var errorHandling flag.ErrorHandling
 	if exitOnError {
@@ -180,7 +180,7 @@ func Subcmd(name string, synopses []string, description string, exitOnError bool
 				synopsis = " " + synopsis
 			}
 
-			fmt.Fprintf(flags.Out(), "\n%sdocker %s%s%s", lead, name, options, synopsis)
+			fmt.Fprintf(flags.Out(), "\n%sget3w %s%s%s", lead, name, options, synopsis)
 		}
 
 		fmt.Fprintf(flags.Out(), "\n\n%s\n", description)

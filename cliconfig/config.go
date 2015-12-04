@@ -16,7 +16,7 @@ const (
 	// ConfigDirName is the config directory name
 	ConfigDirName = ".get3w"
 	// RootConfigFileName is the name of root config file
-	RootConfigFileName = "config.json"
+	RootConfigFileName = "CONFIG.json"
 	// Version is the version of cli
 	Version = "0.0.1"
 )
