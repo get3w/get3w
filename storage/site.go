@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -12,8 +11,8 @@ import (
 
 // system file name
 const (
+	KeyConfig  = ".get3w.yml"
 	KeyReadme  = "README.md"
-	KeyConfig  = "CONFIG.yml"
 	KeySummary = "SUMMARY.md"
 )
 
@@ -21,12 +20,15 @@ const (
 type Site struct {
 	Name              string
 	Path              string
+	GetSourceKey      func(url ...string) string
+	GetDestinationKey func(url ...string) string
 	Read              func(key string) (string, error)
 	Checksum          func(key string) (string, error)
 	Write             func(key string, bs []byte) error
 	WriteDestination  func(key string, bs []byte) error
 	Download          func(key string, downloadURL string) error
 	Rename            func(owner, newName string, deleteAll bool) error
+	// Copy                 func(sourceKey string, destinationKey string) error
 	Delete            func(key string) error
 	DeleteDestination func(key string) error
 	DeleteAll         func(prefix string) error
@@ -40,24 +42,19 @@ type Site struct {
 	sections      map[string]*get3w.Section
 }
 
-// GetKey get file key by relatedURL
-func (site *Site) GetKey(url ...string) string {
-	return strings.Trim(path.Join(url...), "/")
-}
-
 // GetConfigKey get CONFIG.yml file key
 func (site *Site) GetConfigKey() string {
-	return site.GetKey(KeyConfig)
+	return site.GetSourceKey(KeyConfig)
 }
 
 // GetSummaryKey get SUMMARY.md file key
 func (site *Site) GetSummaryKey() string {
-	return site.GetKey(KeySummary)
+	return site.GetSourceKey(KeySummary)
 }
 
 // GetSectionKey get html file key by sectionName
 func (site *Site) GetSectionKey(relatedURL string) string {
-	return site.GetKey("_sections", relatedURL)
+	return site.GetSourceKey("_sections", relatedURL)
 }
 
 // GetConfig get config file content
@@ -196,7 +193,7 @@ func (site *Site) WriteConfig(config *get3w.Config) error {
 
 // WritePage write content to page file
 func (site *Site) WritePage(page *get3w.Page) error {
-	pageKey := site.GetKey(page.TemplateURL)
+	pageKey := site.GetSourceKey(page.TemplateURL)
 	yaml, err := page.String()
 	if err != nil {
 		return err
@@ -250,7 +247,7 @@ func (site *Site) ChangeAppName(owner, newName string) error {
 func (site *Site) GetPage(summary *get3w.PageSummary) *get3w.Page {
 	data := ""
 	if parser.IsExt(summary.TemplateURL) {
-		pageKey := site.GetKey(summary.TemplateURL)
+		pageKey := site.GetSourceKey(summary.TemplateURL)
 		data, _ = site.Read(pageKey)
 	}
 
@@ -259,7 +256,7 @@ func (site *Site) GetPage(summary *get3w.PageSummary) *get3w.Page {
 
 // DeletePage delete page file
 func (site *Site) DeletePage(summary *get3w.PageSummary) error {
-	return site.Delete(site.GetKey(summary.TemplateURL))
+	return site.Delete(site.GetSourceKey(summary.TemplateURL))
 }
 
 // DeleteSection delete section files
@@ -278,56 +275,20 @@ func (site *Site) DeleteSection(sectionName string) error {
 
 // NewFolder create folder
 func (site *Site) NewFolder(key string) error {
-	key = site.GetKey(key)
+	key = site.GetSourceKey(key)
 	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
 	return site.Write(key, []byte(""))
 }
 
 // DeleteFile delete file
 func (site *Site) DeleteFile(key string) error {
-	key = site.GetKey(key)
+	key = site.GetSourceKey(key)
 	return site.Delete(key)
 }
 
 // DeleteFolder delete folder
 func (site *Site) DeleteFolder(key string) error {
-	key = site.GetKey(key)
+	key = site.GetSourceKey(key)
 	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
 	return site.Delete(key)
-}
-
-// Build all pages in the app.
-func (site *Site) Build() error {
-	config, err := site.GetConfig()
-	if err != nil {
-		return err
-	}
-
-	pages, err := site.GetPages()
-	if err != nil {
-		return err
-	}
-
-	sections, err := site.GetSections()
-	if err != nil {
-		return err
-	}
-
-	return site.buildPages(config, pages, sections)
-}
-
-func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) error {
-	for _, page := range pages {
-		parsedContent := parser.ParsePage(config, page, sections)
-		key := site.GetKey(page.PageURL)
-		err := site.WriteDestination(key, []byte(parsedContent))
-		if err != nil {
-			return err
-		}
-
-		if len(page.Children) > 0 {
-			site.buildPages(config, page.Children, sections)
-		}
-	}
-	return nil
 }

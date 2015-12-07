@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -31,13 +30,11 @@ func (cli *Get3WCli) CmdLogin(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	return cli.login(username, password)
+	_, err := cli.login(username, password)
+	return err
 }
 
-func (cli *Get3WCli) login(username, password string) error {
-	log.Println("username:" + username)
-	log.Println("password:" + password)
-
+func (cli *Get3WCli) login(username, password string) (*cliconfig.AuthConfig, error) {
 	// On Windows, force the use of the regular OS stdin stream. Fixes #14336/#14210
 	if runtime.GOOS == "windows" {
 		cli.in = os.Stdin
@@ -93,7 +90,6 @@ func (cli *Get3WCli) login(username, password string) error {
 	}
 	authconfig.Username = username
 	authconfig.Password = password
-	cli.configFile.AuthConfig = authconfig
 
 	client := get3w.NewClient("")
 	input := &get3w.UserLoginInput{
@@ -107,20 +103,21 @@ func (cli *Get3WCli) login(username, password string) error {
 		if err2 := cli.configFile.Save(); err2 != nil {
 			fmt.Fprintf(cli.out, "WARNING: could not save config file: %v\n", err2)
 		}
-		return err
+		return nil, err
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	cli.configFile.AuthConfig.AccessToken = output.AccessToken
+	authconfig.AccessToken = output.AccessToken
+	cli.configFile.AuthConfig = authconfig
 	if err := cli.configFile.Save(); err != nil {
-		return fmt.Errorf("Error saving config file: %v", err)
+		return nil, fmt.Errorf("ERROR: failed to save config file: %v", err)
 	}
 	fmt.Fprintf(cli.out, "INFO: login credentials saved in %s\n", cli.configFile.Filename())
 
 	if resp.Status != "" {
 		fmt.Fprintf(cli.out, "%s\n", resp.Status)
 	}
-	return nil
+	return &authconfig, nil
 }

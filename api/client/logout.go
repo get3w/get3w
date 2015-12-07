@@ -31,7 +31,7 @@ func (cli *Get3WCli) logout() error {
 	fmt.Fprintf(cli.out, "Remove login credentials\n")
 	cli.configFile.AuthConfig = cliconfig.AuthConfig{}
 	if err := cli.configFile.Save(); err != nil {
-		return fmt.Errorf("Failed to save docker config: %v", err)
+		return fmt.Errorf("ERROR: failed to save get3w config: %v", err)
 	}
 
 	return nil

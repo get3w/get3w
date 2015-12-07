@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
@@ -18,7 +19,7 @@ import (
 
 // CmdPush pushs an app or a repository to the registry.
 //
-// Usage: get3w pull [OPTIONS] IMAGENAME[:TAG|@DIGEST]
+// Usage: get3w push [OPTIONS] URL DIR
 func (cli *Get3WCli) CmdPush(args ...string) error {
 	cmd := Cli.Subcmd("push", []string{"", "URL", "URL DIR"}, Cli.Get3WCommands["push"].Description, true)
 	cmd.Require(flag.Max, 2)
@@ -35,6 +36,10 @@ func (cli *Get3WCli) push(url, dir string) error {
 	if err != nil {
 		return err
 	}
+	if !site.IsExist(site.GetConfigKey()) {
+		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
+	}
+
 	config, err := site.GetConfig()
 	if err != nil {
 		return err
@@ -51,32 +56,24 @@ func (cli *Get3WCli) push(url, dir string) error {
 	}
 
 	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
-		return fmt.Errorf("fatal: repository is unset. use: get3w push URL")
+		return fmt.Errorf("ERROR: repository is unset. use: get3w push URL")
 	}
 
-	if cli.configFile.AuthConfig.Username == "" || cli.configFile.AuthConfig.AccessToken == "" {
+	authConfig := &cli.configFile.AuthConfig
+
+	if authConfig.Username == "" || authConfig.AccessToken == "" || authConfig.Username != repo.Owner {
 		fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")
-		if err := cli.CmdLogin(); err != nil {
+		authConfig, err = cli.login("", "")
+		if err != nil {
 			return err
 		}
 	}
 
-	// TODO: error tips
-	if cli.configFile.AuthConfig.Username != repo.Owner {
-		return fmt.Errorf("fatal: config file repository")
+	if authConfig.Username != repo.Owner {
+		return fmt.Errorf("ERROR: Authentication failed for '%s'\n", url)
 	}
 
-	// inputAttempt := &get3w.AppPushInput{}
-	// resp, err := client.Apps.Push(repo.Owner, repo.Name, inputAttempt)
-	// if err != nil && resp.StatusCode == http.StatusUnauthorized {
-	// 	fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")
-	// 	if err = cli.CmdLogin(); err != nil {
-	// 		return err
-	// 	}
-	// } else if err != nil {
-	// 	return err
-	// }
-	client := get3w.NewClient(cli.configFile.AuthConfig.AccessToken)
+	client := get3w.NewClient(authConfig.AccessToken)
 	output, _, err := client.Apps.FilesChecksum(repo.Owner, repo.Name)
 	if err != nil {
 		return err
@@ -111,6 +108,13 @@ func (cli *Get3WCli) push(url, dir string) error {
 		}
 	}
 
+	fmt.Fprintf(cli.out, "Remote repository: %s/%s/%s\n", repo.Host, repo.Owner, repo.Name)
+
+	if len(pathMap) == 0 {
+		fmt.Fprintln(cli.out, "Everything up-to-date")
+		return nil
+	}
+
 	configPath := cliconfig.ConfigDir()
 	gzPath := filepath.Join(configPath, stringutils.UUID()+".tar.gz")
 
@@ -123,6 +127,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 	if err != nil {
 		return err
 	}
+	os.Remove(gzPath)
 
 	blob := base64.StdEncoding.EncodeToString(data)
 
@@ -131,19 +136,29 @@ func (cli *Get3WCli) push(url, dir string) error {
 	}
 
 	for path, val := range pathMap {
-		if val < 0 {
-			input.Removed = append(input.Removed, path)
-		} else if val == 0 {
-			input.Updated = append(input.Updated, path)
-		} else {
+		if val > 0 {
+			fmt.Fprintf(cli.out, "\t+added:%s\n", path)
 			input.Added = append(input.Added, path)
 		}
 	}
-
-	fmt.Println(input.Removed)
-	fmt.Println(input.Updated)
-	fmt.Println(input.Added)
+	for path, val := range pathMap {
+		if val < 0 {
+			fmt.Fprintf(cli.out, "\t-removed:%s\n", path)
+			input.Removed = append(input.Removed, path)
+		}
+	}
+	for path, val := range pathMap {
+		if val == 0 {
+			fmt.Fprintf(cli.out, "\tmodified:%s\n", path)
+			input.Modified = append(input.Modified, path)
+		}
+	}
 
 	_, _, err = client.Apps.FilesPush(repo.Owner, repo.Name, input)
-	return err
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(cli.out, "done.")
+	return nil
 }

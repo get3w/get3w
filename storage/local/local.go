@@ -34,6 +34,38 @@ func NewService(contextDir string) (*Service, error) {
 	}, nil
 }
 
+// getSourcePrefix return app prefix
+func (service *Service) getSourcePrefix(prefix string) string {
+	p := path.Join(service.Path, prefix)
+	p = strings.TrimRight(p, "/") + "/"
+	p, _ = filepath.Abs(p)
+	return p
+}
+
+// getDestinationPrefix return app prefix
+func (service *Service) getDestinationPrefix(prefix string) string {
+	p := path.Join(service.Path, "_wwwroot", prefix)
+	p = strings.TrimRight(p, "/") + "/"
+	p, _ = filepath.Abs(p)
+	return p
+}
+
+// GetSourceKey return app key
+func (service *Service) GetSourceKey(key ...string) string {
+	p := path.Join(service.Path, path.Join(key...))
+	p = strings.TrimRight(p, "/")
+	p, _ = filepath.Abs(p)
+	return p
+}
+
+// GetDestinationKey return app key
+func (service *Service) GetDestinationKey(key ...string) string {
+	p := path.Join(service.Path, "_wwwroot", path.Join(key...))
+	p = strings.TrimRight(p, "/")
+	p, _ = filepath.Abs(p)
+	return p
+}
+
 // GetFiles return all files by appname and prefix
 func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
@@ -102,52 +134,29 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 	return files, nil
 }
 
-// Write string content to specified key resource
+// Write data to source directory, specified by key
 func (service *Service) Write(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	p := service.getSourceKey(key)
-	mkdirByFile(p)
-	return ioutil.WriteFile(p, bs, 0644)
+	mkdirByFile(key)
+	return ioutil.WriteFile(key, bs, 0644)
 }
 
-// WriteDestination string content to specified key resource
+// WriteDestination write data to destination directory, specified by key
 func (service *Service) WriteDestination(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	p := service.getDestinationKey(key)
-	mkdirByFile(p)
+	mkdirByFile(key)
 	fmt.Printf("Page %s created\n", key)
-	return ioutil.WriteFile(p, bs, 0644)
+	return ioutil.WriteFile(key, bs, 0644)
 }
 
-// WriteReader copies from the given reader and writes it to a file with the
-// given filename.
-// func (service *Service) WriteReader(key string, r io.Reader) error {
-// 	if key == "" {
-// 		return fmt.Errorf("key must be a nonempty string")
-// 	}
-//
-// 	p := service.getAppKey(key)
-// 	file, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-// 	if err != nil {
-// 		return fmt.Errorf("unable to create file: %v", err)
-// 	}
-// 	defer file.Close()
-//
-// 	if _, err := io.Copy(file, r); err != nil {
-// 		return fmt.Errorf("unable to write file: %v", err)
-// 	}
-//
-// 	return nil
-// }
-
-// Copy object to destinatioin
-func (service *Service) Copy(sourceKey string, destinationKey string) error {
+// CopyToDestination object to destinatioin
+func (service *Service) CopyToDestination(sourceKey string, destinationKey string) error {
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -155,12 +164,12 @@ func (service *Service) Copy(sourceKey string, destinationKey string) error {
 		return fmt.Errorf("destinationKey must be a nonempty string")
 	}
 
-	bs, err := ioutil.ReadFile(service.getSourceKey(sourceKey))
+	bs, err := ioutil.ReadFile(sourceKey)
 	if err != nil {
 		return err
 	}
 
-	return service.Write(destinationKey, bs)
+	return service.WriteDestination(destinationKey, bs)
 }
 
 // Checksum compute file's MD5 digist
@@ -169,7 +178,7 @@ func (service *Service) Checksum(key string) (string, error) {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
 
-	file, err := os.Open(service.getSourceKey(key))
+	file, err := os.Open(key)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +198,7 @@ func (service *Service) Read(key string) (string, error) {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
 
-	bs, err := ioutil.ReadFile(service.getSourceKey(key))
+	bs, err := ioutil.ReadFile(key)
 
 	if err != nil {
 		return "", err
@@ -224,10 +233,9 @@ func (service *Service) Download(key string, downloadURL string) error {
 		return fmt.Errorf("downloadURL must be a nonempty string")
 	}
 
-	p := service.getSourceKey(key)
-	mkdirByFile(p)
+	mkdirByFile(key)
 
-	out, err := os.Create(p)
+	out, err := os.Create(key)
 	defer out.Close()
 
 	resp, err := http.Get(downloadURL)
@@ -244,7 +252,7 @@ func (service *Service) IsExist(key string) bool {
 		return false
 	}
 
-	_, err := os.Stat(service.getSourceKey(key))
+	_, err := os.Stat(key)
 	return !os.IsNotExist(err)
 }
 
@@ -254,7 +262,7 @@ func (service *Service) Delete(key string) error {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	return os.Remove(service.getSourceKey(key))
+	return os.Remove(key)
 }
 
 // DeleteDestination specified object
@@ -263,7 +271,7 @@ func (service *Service) DeleteDestination(key string) error {
 		return fmt.Errorf("key must be a nonempty string")
 	}
 
-	return os.Remove(service.getDestinationKey(key))
+	return os.Remove(key)
 }
 
 // Deletes delete objects
@@ -273,7 +281,7 @@ func (service *Service) Deletes(keys []string) error {
 	}
 
 	for _, key := range keys {
-		err := os.Remove(service.getSourceKey(key))
+		err := os.Remove(key)
 		if err != nil {
 			return err
 		}

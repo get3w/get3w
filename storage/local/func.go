@@ -3,9 +3,7 @@ package local
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 )
 
 // GetDirPath uses the given context directory and returns the absolute
@@ -64,28 +62,4 @@ func IsDirExist(contextDir string) bool {
 	}
 
 	return true
-}
-
-// getSourcePrefix return app prefix
-func (service *Service) getSourcePrefix(prefix string) string {
-	p := path.Join(service.Path, prefix)
-	p = strings.TrimRight(p, "/") + "/"
-	p, _ = filepath.Abs(p)
-	return p
-}
-
-// getSourceKey return app key
-func (service *Service) getSourceKey(key string) string {
-	p := path.Join(service.Path, key)
-	p = strings.TrimRight(p, "/")
-	p, _ = filepath.Abs(p)
-	return p
-}
-
-// getDestinationKey return app key
-func (service *Service) getDestinationKey(key string) string {
-	p := path.Join(service.Path, "_wwwroot", key)
-	p = strings.TrimRight(p, "/")
-	p, _ = filepath.Abs(p)
-	return p
 }

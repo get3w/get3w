@@ -20,7 +20,7 @@ type Command struct {
 
 var get3wCommands = []Command{
 	{"attach", "Attach to a running container"},
-	{"build", "Build an image from a Get3Wfile"},
+	{"build", "Build an app from a CONFIG.yml"},
 	{"clone", "Clone an app to current directory"},
 	{"cp", "Copy files/folders between a container and the local filesystem"},
 	{"create", "Create a new container"},
@@ -44,7 +44,7 @@ var get3wCommands = []Command{
 	{"port", "List port mappings or a specific mapping for the CONTAINER"},
 	{"ps", "List containers"},
 	{"pull", "Pull an image or a repository from a registry"},
-	{"push", "Push an image or a repository to a registry"},
+	{"push", "Updates remote app using local files"},
 	{"rename", "Rename a container"},
 	{"restart", "Restart a container"},
 	{"rm", "Remove one or more containers"},
@@ -53,7 +53,7 @@ var get3wCommands = []Command{
 	{"save", "Save an image(s) to a tar archive"},
 	{"search", "Search the Get3W Hub for images"},
 	{"start", "Start one or more stopped containers"},
-	{"status", "Show the working app status"},
+	{"status", "Displays paths that have differences between the remote and local app"},
 	{"stop", "Stop a running container"},
 	{"tag", "Tag an image into a repository"},
 	{"top", "Display the running processes of a container"},

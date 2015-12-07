@@ -9,9 +9,9 @@ import (
 
 var s, _ = NewLocalSite("../sample")
 
-func TestGetKey(t *testing.T) {
-	assert.Equal(t, s.GetKey("SUMMARY.md"), "SUMMARY.md")
-	assert.Equal(t, s.GetKey("/SUMMARY.md"), "SUMMARY.md")
+func TestGetSourceKey(t *testing.T) {
+	assert.Equal(t, s.GetSourceKey("SUMMARY.md"), "SUMMARY.md")
+	assert.Equal(t, s.GetSourceKey("/SUMMARY.md"), "SUMMARY.md")
 }
 
 func TestGetConfigKey(t *testing.T) {
@@ -28,19 +28,25 @@ func TestGetSectionKey(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
-	config := s.GetConfig()
+	config, err := s.GetConfig()
+
+	assert.Nil(t, err)
 	assert.NotNil(t, config)
 	assert.Equal(t, config.Title, "title")
 }
 
 func TestGetPages(t *testing.T) {
-	pages := s.GetPages()
+	pages, err := s.GetPages()
+
+	assert.Nil(t, err)
 	assert.NotNil(t, pages)
 	assert.Equal(t, len(pages), 6)
 }
 
 func TestGetSections(t *testing.T) {
-	sections := s.GetSections()
+	sections, err := s.GetSections()
+
+	assert.Nil(t, err)
 	assert.NotNil(t, sections)
 	assert.Equal(t, len(sections), 10)
 }

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"fmt"
+
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/storage"
@@ -27,6 +29,11 @@ func (cli *Get3WCli) build(dir string) error {
 		return err
 	}
 
-	site.Build()
+	err = site.Build()
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(cli.out, "done.")
 	return nil
 }

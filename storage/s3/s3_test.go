@@ -17,16 +17,16 @@ func TestNewService(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestGetAppPrefix(t *testing.T) {
-	assert.Equal(t, service.getAppPrefix(""), "local/local/")
-	assert.Equal(t, service.getAppPrefix("/"), "local/local/")
-	assert.Equal(t, service.getAppPrefix("/test"), "local/local/test/")
-	assert.Equal(t, service.getAppPrefix("test"), "local/local/test/")
+func TestGetSourcePrefix(t *testing.T) {
+	assert.Equal(t, service.GetSourcePrefix(""), "local/local/")
+	assert.Equal(t, service.GetSourcePrefix("/"), "local/local/")
+	assert.Equal(t, service.GetSourcePrefix("/test"), "local/local/test/")
+	assert.Equal(t, service.GetSourcePrefix("test"), "local/local/test/")
 }
 
-func TestGetAppKey(t *testing.T) {
-	assert.Equal(t, service.getAppKey("/test"), "local/local/test")
-	assert.Equal(t, service.getAppKey("test"), "local/local/test")
+func TestGetSourceKey(t *testing.T) {
+	assert.Equal(t, service.GetSourceKey("/test"), "local/local/test")
+	assert.Equal(t, service.GetSourceKey("test"), "local/local/test")
 }
 
 func TestGetAllKeys(t *testing.T) {

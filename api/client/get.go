@@ -46,7 +46,7 @@ func (cli *Get3WCli) get(url, dir string) error {
 	fmt.Printf("Getting repository '%s/%s/%s'...\n", repo.Host, repo.Owner, repo.Name)
 
 	if repo.Host != get3w.DefaultRepositoryHost() {
-		return fmt.Errorf("fatal: Only %s supported\n", get3w.DefaultRepositoryHost())
+		return fmt.Errorf("ERROR: Only %s supported\n", get3w.DefaultRepositoryHost())
 	}
 
 	fmt.Print("Counting objects: ")
