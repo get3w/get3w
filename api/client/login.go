@@ -31,6 +31,10 @@ func (cli *Get3WCli) CmdLogin(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
+	return cli.login(username, password)
+}
+
+func (cli *Get3WCli) login(username, password string) error {
 	log.Println("username:" + username)
 	log.Println("password:" + password)
 

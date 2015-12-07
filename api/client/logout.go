@@ -19,6 +19,10 @@ func (cli *Get3WCli) CmdLogout(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
+	return cli.logout()
+}
+
+func (cli *Get3WCli) logout() error {
 	if cli.configFile.AuthConfig.AccessToken == "" {
 		fmt.Fprintf(cli.out, "Not logged in\n")
 		return nil

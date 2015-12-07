@@ -276,22 +276,6 @@ func (site *Site) DeleteSection(sectionName string) error {
 	return nil
 }
 
-// ReadFileContent return file content
-func (site *Site) ReadFileContent(key string) string {
-	key = site.GetKey(key)
-	str, err := site.Read(key)
-	if err != nil {
-		return ""
-	}
-	return str
-}
-
-// WriteFileContent update file content
-func (site *Site) WriteFileContent(key string, content string) error {
-	key = site.GetKey(key)
-	return site.Write(key, []byte(content))
-}
-
 // NewFolder create folder
 func (site *Site) NewFolder(key string) error {
 	key = site.GetKey(key)

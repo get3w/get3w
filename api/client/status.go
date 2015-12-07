@@ -12,15 +12,17 @@ import (
 //
 // Usage: get3w status
 func (cli *Get3WCli) CmdStatus(args ...string) error {
-	cmd := Cli.Subcmd("status", nil, Cli.Get3WCommands["status"].Description, true)
-	cmd.Require(flag.Exact, 0)
+	cmd := Cli.Subcmd("status", []string{"", "DIR"}, Cli.Get3WCommands["status"].Description, true)
+	cmd.Require(flag.Max, 1)
 	cmd.ParseFlags(args, true)
 
-	return status("")
+	dir := cmd.Arg(0)
+
+	return status(dir)
 }
 
-func status(contextDir string) error {
-	site, err := storage.NewLocalSite(contextDir)
+func status(dir string) error {
+	site, err := storage.NewLocalSite(dir)
 	if err != nil {
 		return err
 	}

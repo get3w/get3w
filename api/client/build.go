@@ -2,6 +2,7 @@ package client
 
 import (
 	Cli "github.com/get3w/get3w/cli"
+	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/storage"
 )
 
@@ -11,14 +12,17 @@ import (
 //
 // Usage: get3w build [OPTIONS] PATH | URL | -
 func (cli *Get3WCli) CmdBuild(args ...string) error {
-	cmd := Cli.Subcmd("build", []string{}, Cli.Get3WCommands["build"].Description, true)
+	cmd := Cli.Subcmd("build", []string{"", "DIR"}, Cli.Get3WCommands["build"].Description, true)
+	cmd.Require(flag.Max, 1)
 	cmd.ParseFlags(args, true)
 
-	return build("")
+	dir := cmd.Arg(0)
+
+	return cli.build(dir)
 }
 
-func build(contextDir string) error {
-	site, err := storage.NewLocalSite(contextDir)
+func (cli *Get3WCli) build(dir string) error {
+	site, err := storage.NewLocalSite(dir)
 	if err != nil {
 		return err
 	}

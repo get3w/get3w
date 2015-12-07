@@ -1,12 +1,12 @@
 package client
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
-	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage"
 )
@@ -15,24 +15,24 @@ import (
 //
 // Usage: get3w get [OPTIONS] REMOTEURL DIR
 func (cli *Get3WCli) CmdGet(args ...string) error {
-	cmd := Cli.Subcmd("get", []string{"REMOTEURL", "REMOTEURL DIR"}, Cli.Get3WCommands["get"].Description, true)
+	cmd := Cli.Subcmd("get", []string{"URL", "URL DIR"}, Cli.Get3WCommands["get"].Description, true)
 	cmd.Require(flag.Min, 1)
 	cmd.ParseFlags(args, true)
 
-	remote := cmd.Arg(0)
+	url := cmd.Arg(0)
 	dir := cmd.Arg(1)
 
-	return get(remote, dir)
+	return cli.get(url, dir)
 }
 
-func get(remote, contextDir string) error {
-	site, err := storage.NewLocalSite(contextDir)
+func (cli *Get3WCli) get(url, dir string) error {
+	site, err := storage.NewLocalSite(dir)
 	if err != nil {
 		return err
 	}
 
 	// Resolve the Repository name to Repository
-	repo, err := repos.ParseRepository(remote)
+	repo, err := repos.ParseRepository(url)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func get(remote, contextDir string) error {
 	// 	return fmt.Errorf("fatal: Not a get3w repository: '%s'", site.Path)
 	// }
 
-	client := get3w.NewClient("")
+	client := get3w.NewClient(cli.configFile.AuthConfig.AccessToken)
 
 	fmt.Printf("Getting repository '%s/%s/%s'...\n", repo.Host, repo.Owner, repo.Name)
 
@@ -73,7 +73,11 @@ func get(remote, contextDir string) error {
 			if err != nil {
 				return err
 			}
-			site.WriteFileContent(path, stringutils.Base64Decode(fileOutput.Content))
+			data, err := base64.StdEncoding.DecodeString(fileOutput.Content)
+			if err != nil {
+				return err
+			}
+			site.Write(path, data)
 			fmt.Println(", done.")
 		}
 	}
@@ -89,5 +93,5 @@ func get(remote, contextDir string) error {
 		return err
 	}
 
-	return build(contextDir)
+	return cli.build(dir)
 }

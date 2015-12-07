@@ -16,6 +16,10 @@ func (cli *Get3WCli) CmdVersion(args ...string) error {
 	cmd.Require(flag.Exact, 0)
 	cmd.ParseFlags(args, true)
 
+	return cli.version()
+}
+
+func (cli *Get3WCli) version() error {
 	fmt.Fprintf(cli.out, "Get3W Version: %s\n", cliconfig.Version)
 	return nil
 }

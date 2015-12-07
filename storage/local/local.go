@@ -75,7 +75,7 @@ func (service *Service) GetAllFiles() ([]*get3w.File, error) {
 	err := filepath.Walk(service.getSourcePrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := strings.TrimRight(name, "/")
+		filePath := strings.Trim(strings.Replace(strings.TrimPrefix(p, service.Path), "\\", "/", -1), "/")
 		size := fileInfo.Size()
 		checksum := ""
 		if isDir {
