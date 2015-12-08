@@ -49,6 +49,26 @@ func Contains(strlist []string, str string) bool {
 	return false
 }
 
+// ContainsIgnoreCase return true if slice contains str, ignore case
+func ContainsIgnoreCase(strlist []string, str string) bool {
+	for _, a := range strlist {
+		if strings.ToLower(a) == strings.ToLower(str) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasPrefixIgnoreCase tests whether the string str begins with prefix, ignore case.
+func HasPrefixIgnoreCase(strlist []string, str string) bool {
+	for _, a := range strlist {
+		if strings.HasPrefix(strings.ToLower(str), strings.ToLower(a)) {
+			return true
+		}
+	}
+	return false
+}
+
 // ToString convert the input to a string.
 func ToString(obj interface{}) string {
 	res := fmt.Sprintf("%v", obj)

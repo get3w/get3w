@@ -34,16 +34,16 @@ func NewService(contextDir string) (*Service, error) {
 	}, nil
 }
 
-// getSourcePrefix return app prefix
-func (service *Service) getSourcePrefix(prefix string) string {
+// GetSourcePrefix return app prefix
+func (service *Service) GetSourcePrefix(prefix string) string {
 	p := path.Join(service.Path, prefix)
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
 }
 
-// getDestinationPrefix return app prefix
-func (service *Service) getDestinationPrefix(prefix string) string {
+// GetDestinationPrefix return app prefix
+func (service *Service) GetDestinationPrefix(prefix string) string {
 	p := path.Join(service.Path, "_wwwroot", prefix)
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
@@ -70,7 +70,7 @@ func (service *Service) GetDestinationKey(key ...string) string {
 func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
-	fileInfos, err := ioutil.ReadDir(service.getSourcePrefix(prefix))
+	fileInfos, err := ioutil.ReadDir(prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +101,10 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 }
 
 // GetAllFiles return all files by appname
-func (service *Service) GetAllFiles() ([]*get3w.File, error) {
+func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
-	err := filepath.Walk(service.getSourcePrefix(""), func(p string, fileInfo os.FileInfo, err error) error {
+	err := filepath.Walk(prefix, func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
 		filePath := strings.Trim(strings.Replace(strings.TrimPrefix(p, service.Path), "\\", "/", -1), "/")
@@ -151,12 +151,11 @@ func (service *Service) WriteDestination(key string, bs []byte) error {
 	}
 
 	mkdirByFile(key)
-	fmt.Printf("Page %s created\n", key)
 	return ioutil.WriteFile(key, bs, 0644)
 }
 
 // CopyToDestination object to destinatioin
-func (service *Service) CopyToDestination(sourceKey string, destinationKey string) error {
+func (service *Service) CopyToDestination(sourceKey, destinationKey string) error {
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -292,5 +291,5 @@ func (service *Service) Deletes(keys []string) error {
 
 // DeleteAll delete objects by prefix
 func (service *Service) DeleteAll(prefix string) error {
-	return os.RemoveAll(service.getSourcePrefix(prefix))
+	return os.RemoveAll(prefix)
 }

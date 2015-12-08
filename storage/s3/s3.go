@@ -48,15 +48,15 @@ func NewService(bucketSource, bucketDestination, owner, name string) (*Service, 
 	}, nil
 }
 
-// getSourcePrefix return app prefix
-func (service *Service) getSourcePrefix(prefix string) string {
+// GetSourcePrefix return app prefix
+func (service *Service) GetSourcePrefix(prefix string) string {
 	p := path.Join(service.prefix, prefix)
 	p = strings.Trim(p, "/") + "/"
 	return p
 }
 
-// getDestinationPrefix return app prefix
-func (service *Service) getDestinationPrefix(prefix string) string {
+// GetDestinationPrefix return app prefix
+func (service *Service) GetDestinationPrefix(prefix string) string {
 	p := path.Join(service.prefix, prefix)
 	p = strings.Trim(p, "/") + "/"
 	return p
@@ -82,7 +82,7 @@ func (service *Service) getAllKeys(prefix string) ([]string, error) {
 
 	params := &s3.ListObjectsInput{
 		Bucket: aws.String(service.bucketSource), // Required
-		Prefix: aws.String(service.getSourcePrefix(prefix)),
+		Prefix: aws.String(prefix),
 	}
 	resp, err := service.instance.ListObjects(params)
 
@@ -102,7 +102,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 
 	params := &s3.ListObjectsInput{
 		Bucket:    aws.String(service.bucketSource), // Required
-		Prefix:    aws.String(service.getSourcePrefix(prefix)),
+		Prefix:    aws.String(prefix),
 		Delimiter: aws.String("/"),
 	}
 	resp, err := service.instance.ListObjects(params)
@@ -148,12 +148,12 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 }
 
 // GetAllFiles return all files by appname and prefix
-func (service *Service) GetAllFiles() ([]*get3w.File, error) {
+func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
 	params := &s3.ListObjectsInput{
 		Bucket: aws.String(service.bucketSource), // Required
-		Prefix: aws.String(service.getSourcePrefix("")),
+		Prefix: aws.String(prefix),
 	}
 	resp, err := service.instance.ListObjects(params)
 
@@ -204,8 +204,8 @@ func (service *Service) Write(key string, bs []byte) error {
 	}
 
 	params := &s3.PutObjectInput{
-		Bucket:      aws.String(service.bucketSource),      // Required
-		Key:         aws.String(service.GetSourceKey(key)), // Required
+		Bucket:      aws.String(service.bucketSource), // Required
+		Key:         aws.String(key),                  // Required
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
 		Body:        bytes.NewReader(bs),
@@ -222,8 +222,8 @@ func (service *Service) WriteDestination(key string, bs []byte) error {
 	}
 
 	params := &s3.PutObjectInput{
-		Bucket:      aws.String(service.bucketDestination),      // Required
-		Key:         aws.String(service.GetDestinationKey(key)), // Required
+		Bucket:      aws.String(service.bucketDestination), // Required
+		Key:         aws.String(key),                       // Required
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
 		Body:        bytes.NewReader(bs),
@@ -233,8 +233,8 @@ func (service *Service) WriteDestination(key string, bs []byte) error {
 	return err
 }
 
-// Copyxxx object to destinatioin
-func (service *Service) Copyxxx(sourceKey string, destinationKey string) error {
+// CopyToDestination object to destinatioin
+func (service *Service) CopyToDestination(sourceKey string, destinationKey string) error {
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -243,9 +243,9 @@ func (service *Service) Copyxxx(sourceKey string, destinationKey string) error {
 	}
 
 	params := &s3.CopyObjectInput{
-		Bucket:     aws.String(service.bucketSource),                                         // Required
-		CopySource: aws.String(service.bucketSource + "/" + service.GetSourceKey(sourceKey)), // Required
-		Key:        aws.String(service.GetSourceKey(destinationKey)),                         // Required
+		Bucket:     aws.String(service.bucketDestination),              // Required
+		CopySource: aws.String(service.bucketSource + "/" + sourceKey), // Required
+		Key:        aws.String(destinationKey),                         // Required
 		ACL:        aws.String(s3.ObjectCannedACLPublicRead),
 	}
 	_, err := service.instance.CopyObject(params)
@@ -290,7 +290,7 @@ func (service *Service) Checksum(key string) (string, error) {
 
 	head, err := service.instance.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(service.bucketSource),
-		Key:    aws.String(service.GetSourceKey(key)),
+		Key:    aws.String(key),
 	})
 	if err != nil {
 		return "", err
@@ -306,8 +306,8 @@ func (service *Service) Read(key string) (string, error) {
 	}
 
 	params := &s3.GetObjectInput{
-		Bucket: aws.String(service.bucketSource),      // Required
-		Key:    aws.String(service.GetSourceKey(key)), // Required
+		Bucket: aws.String(service.bucketSource), // Required
+		Key:    aws.String(key),                  // Required
 	}
 	resp, err := service.instance.GetObject(params)
 
@@ -336,7 +336,7 @@ func (service *Service) Upload(key string, filePath string) error {
 	uploader := s3manager.NewUploader(session.New())
 	_, err = uploader.Upload(&s3manager.UploadInput{
 		Bucket:      aws.String(service.bucketSource),
-		Key:         aws.String(service.GetSourceKey(key)),
+		Key:         aws.String(key),
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
 		Body:        file,
@@ -389,7 +389,7 @@ func (service *Service) IsExist(key string) bool {
 
 	_, err := service.instance.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(service.bucketSource),
-		Key:    aws.String(service.GetSourceKey(key)),
+		Key:    aws.String(key),
 	})
 	if err != nil {
 		return false
@@ -404,8 +404,8 @@ func (service *Service) Delete(key string) error {
 	}
 
 	params := &s3.DeleteObjectInput{
-		Bucket: aws.String(service.bucketSource),      // Required
-		Key:    aws.String(service.GetSourceKey(key)), // Required
+		Bucket: aws.String(service.bucketSource), // Required
+		Key:    aws.String(key),                  // Required
 	}
 	_, err := service.instance.DeleteObject(params)
 	return err
@@ -418,8 +418,8 @@ func (service *Service) DeleteDestination(key string) error {
 	}
 
 	params := &s3.DeleteObjectInput{
-		Bucket: aws.String(service.bucketDestination),      // Required
-		Key:    aws.String(service.GetDestinationKey(key)), // Required
+		Bucket: aws.String(service.bucketDestination), // Required
+		Key:    aws.String(key),                       // Required
 	}
 	_, err := service.instance.DeleteObject(params)
 	return err
@@ -434,7 +434,7 @@ func (service *Service) Deletes(keys []string) error {
 	objects := make([]*s3.ObjectIdentifier, len(keys))
 	for index, key := range keys {
 		objects[index] = &s3.ObjectIdentifier{ // Required
-			Key: aws.String(service.GetSourceKey(key)), // Required
+			Key: aws.String(key), // Required
 		}
 	}
 

@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"strings"
-
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
@@ -25,14 +23,76 @@ func (site *Site) Build() error {
 		return err
 	}
 
-	return site.buildPages(config, pages, sections)
+	site.DeleteDestination(site.GetDestinationPrefix(""))
+
+	err = site.buildCopy(config, pages)
+	if err != nil {
+		return err
+	}
+
+	err = site.buildPages(config, pages, sections)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (site *Site) getExcludeKeys(pages []*get3w.Page) []string {
+	excludeKeys := []string{}
+	for _, page := range pages {
+		excludeKeys = append(excludeKeys, site.GetSourceKey(page.TemplateURL))
+		if len(page.Children) > 0 {
+			childKeys := site.getExcludeKeys(page.Children)
+			for _, childKey := range childKeys {
+				excludeKeys = append(excludeKeys, childKey)
+			}
+		}
+	}
+	return excludeKeys
+}
+
+func (site *Site) buildCopy(config *get3w.Config, pages []*get3w.Page) error {
+	excludeKeys := []string{
+		site.GetSourcePrefix(PrefixSections),
+		site.GetSourcePrefix(PrefixWWWRoot),
+		site.GetSourceKey(KeyConfig),
+		site.GetSourceKey(KeyReadme),
+		site.GetSourceKey(KeySummary),
+		site.GetSourceKey(".gitignore"),
+		site.GetSourceKey("LICENSE"),
+	}
+
+	for _, excludeKey := range site.getExcludeKeys(pages) {
+		excludeKeys = append(excludeKeys, excludeKey)
+	}
+
+	files, err := site.GetAllFiles(site.GetSourcePrefix(""))
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+		sourceKey := site.GetSourceKey(file.Path)
+		if !stringutils.HasPrefixIgnoreCase(excludeKeys, sourceKey) {
+			destinationKey := site.GetDestinationKey(file.Path)
+			err := site.CopyToDestination(sourceKey, destinationKey)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
 		parsedContent := parser.ParsePage(config, page, sections)
-		key := site.GetSourceKey(page.PageURL)
-		err := site.WriteDestination(key, []byte(parsedContent))
+		err := site.WriteDestination(site.GetDestinationKey(page.PageURL), []byte(parsedContent))
 		if err != nil {
 			return err
 		}
@@ -41,33 +101,5 @@ func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections
 			site.buildPages(config, page.Children, sections)
 		}
 	}
-	return nil
-}
-
-func (site *Site) buildCopy(config *get3w.Config, pages []*get3w.Page) error {
-	excludeKeys := []string{
-		"_sections",
-		"_wwwroot",
-		".get3w.yml",
-		".gitignore",
-		"license",
-		"readme.md",
-		"summary.md",
-	}
-
-	for _, page := range pages {
-		key := site.GetSourceKey(strings.ToLower(page.TemplateURL))
-		excludeKeys = append(excludeKeys, key)
-	}
-
-	files, _ := site.GetAllFiles()
-	for _, file := range files {
-		sourceKey := site.GetSourceKey(file.Path)
-		if !stringutils.Contains(excludeKeys, strings.ToLower(sourceKey)) {
-			// destinationKey := ""
-			// site.Copy(sourceKey, destinationKey)
-		}
-	}
-
 	return nil
 }

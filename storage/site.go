@@ -11,30 +11,34 @@ import (
 
 // system file name
 const (
-	KeyConfig  = ".get3w.yml"
-	KeyReadme  = "README.md"
-	KeySummary = "SUMMARY.md"
+	KeyConfig      = ".get3w.yml"
+	KeyReadme      = "README.md"
+	KeySummary     = "SUMMARY.md"
+	PrefixSections = "_sections"
+	PrefixWWWRoot  = "_wwwroot"
 )
 
 // Site contains attributes and operations of the app
 type Site struct {
-	Name              string
-	Path              string
-	GetSourceKey      func(url ...string) string
-	GetDestinationKey func(url ...string) string
-	Read              func(key string) (string, error)
-	Checksum          func(key string) (string, error)
-	Write             func(key string, bs []byte) error
-	WriteDestination  func(key string, bs []byte) error
-	Download          func(key string, downloadURL string) error
-	Rename            func(owner, newName string, deleteAll bool) error
-	// Copy                 func(sourceKey string, destinationKey string) error
-	Delete            func(key string) error
-	DeleteDestination func(key string) error
-	DeleteAll         func(prefix string) error
-	GetFiles          func(prefix string) ([]*get3w.File, error)
-	GetAllFiles       func() ([]*get3w.File, error)
-	IsExist           func(key string) bool
+	Name                 string
+	Path                 string
+	GetSourcePrefix      func(prefix string) string
+	GetDestinationPrefix func(prefix string) string
+	GetSourceKey         func(url ...string) string
+	GetDestinationKey    func(url ...string) string
+	Read                 func(key string) (string, error)
+	Checksum             func(key string) (string, error)
+	Write                func(key string, bs []byte) error
+	WriteDestination     func(key string, bs []byte) error
+	Download             func(key, downloadURL string) error
+	Rename               func(owner, newName string, deleteAll bool) error
+	CopyToDestination    func(sourceKey, destinationKey string) error
+	Delete               func(key string) error
+	DeleteDestination    func(key string) error
+	DeleteAll            func(prefix string) error
+	GetFiles             func(prefix string) ([]*get3w.File, error)
+	GetAllFiles          func(prefix string) ([]*get3w.File, error)
+	IsExist              func(key string) bool
 
 	config        *get3w.Config
 	pageSummaries []*get3w.PageSummary
@@ -274,21 +278,15 @@ func (site *Site) DeleteSection(sectionName string) error {
 }
 
 // NewFolder create folder
-func (site *Site) NewFolder(key string) error {
-	key = site.GetSourceKey(key)
-	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
-	return site.Write(key, []byte(""))
-}
-
-// DeleteFile delete file
-func (site *Site) DeleteFile(key string) error {
-	key = site.GetSourceKey(key)
-	return site.Delete(key)
+func (site *Site) NewFolder(prefix string) error {
+	p := site.GetSourcePrefix(prefix)
+	p = strings.Trim(strings.TrimSpace(p), "/") + "/"
+	return site.Write(p, []byte(""))
 }
 
 // DeleteFolder delete folder
-func (site *Site) DeleteFolder(key string) error {
-	key = site.GetSourceKey(key)
-	key = strings.Trim(strings.TrimSpace(key), "/") + "/"
-	return site.Delete(key)
+func (site *Site) DeleteFolder(prefix string) error {
+	p := site.GetSourcePrefix(prefix)
+	p = strings.Trim(strings.TrimSpace(p), "/") + "/"
+	return site.Delete(p)
 }

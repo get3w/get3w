@@ -63,7 +63,7 @@ func (cli *Get3WCli) status(dir string) error {
 	}
 	files := output.Files
 
-	localFiles, err := site.GetAllFiles()
+	localFiles, err := site.GetAllFiles(site.GetSourcePrefix(""))
 	if err != nil {
 		return err
 	}
