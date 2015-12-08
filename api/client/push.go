@@ -36,7 +36,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 	if err != nil {
 		return err
 	}
-	if !site.IsExist(site.GetConfigKey()) {
+	if !site.IsRepo() {
 		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
 	}
 

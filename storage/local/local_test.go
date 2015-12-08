@@ -17,6 +17,11 @@ func TestNewService(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestGetSourceKey(t *testing.T) {
+	assert.Equal(t, service.GetSourceKey("SUMMARY.md"), "SUMMARY.md")
+	assert.Equal(t, service.GetSourceKey("/SUMMARY.md"), "SUMMARY.md")
+}
+
 func TestGetFiles(t *testing.T) {
 	files, err := service.GetFiles("/")
 	for _, file := range files {

@@ -10,7 +10,7 @@ import (
 
 //var re = regexp.MustCompile(`\[([^\]]+)\]\(([^\s]+)\s+["|']([\s\S]+)["|']\)|\[([^\]]+)\]\(([^\)]+)\)`)
 var (
-	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)`)
+	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)(.*)`)
 	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
 )
 
@@ -31,9 +31,10 @@ func UnmarshalSummary(data string) []*get3w.PageSummary {
 			continue
 		}
 		arrOuter := regexOuter.FindStringSubmatch(line)
-		if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
+		if len(arrOuter) != 4 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
 			continue
 		}
+
 		arrInner := regexInner.FindStringSubmatch(arrOuter[2])
 		if len(arrInner) != 4 || arrInner[0] == "" {
 			continue
@@ -58,6 +59,28 @@ func UnmarshalSummary(data string) []*get3w.PageSummary {
 			Name:        name,
 			TemplateURL: templateURL,
 			PageURL:     pageURL,
+		}
+
+		contents := strings.TrimSpace(strings.Trim(arrOuter[3], "`"))
+		if contents != "" {
+			arrContents := regexInner.FindStringSubmatch(contents)
+			if len(arrContents) == 4 && arrContents[0] != "" {
+				cName, cTemplateURL, cPageURL := arrContents[1], "", ""
+				if arrContents[3] == "" {
+					cTemplateURL, cPageURL = strings.TrimSpace(arrContents[1]), strings.TrimSpace(arrContents[2])
+				} else {
+					cTemplateURL = strings.TrimSpace(arrContents[3])
+				}
+				if cPageURL == "" {
+					cPageURL = getPageURL(cName, cTemplateURL)
+				}
+
+				if cName != "" && cTemplateURL != "" && cPageURL != "" {
+					pageSummary.ContentName = cName
+					pageSummary.ContentTemplateURL = cTemplateURL
+					pageSummary.ContentPageURL = cPageURL
+				}
+			}
 		}
 
 		var parent *get3w.PageSummary
@@ -130,9 +153,21 @@ func getPageSummaryString(level int, pageSummaries []*get3w.PageSummary) string 
 			prefix += "\t"
 		}
 		if summary.PageURL == getPageURL(summary.Name, summary.TemplateURL) {
-			retval += prefix + fmt.Sprintf("* [%s](%s)\n", summary.Name, summary.TemplateURL)
+			retval += prefix + fmt.Sprintf("* [%s](%s)", summary.Name, summary.TemplateURL)
 		} else {
-			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")\n`, summary.Name, summary.TemplateURL, summary.PageURL)
+			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")`, summary.Name, summary.TemplateURL, summary.PageURL)
+		}
+
+		if summary.ContentName != "" && summary.ContentTemplateURL != "" && summary.ContentPageURL != "" {
+			retval += "`"
+			if summary.ContentPageURL == getPageURL(summary.ContentName, summary.ContentTemplateURL) {
+				retval += prefix + fmt.Sprintf("[%s](%s)", summary.ContentName, summary.ContentTemplateURL)
+			} else {
+				retval += prefix + fmt.Sprintf(`[%s](%s "%s")`, summary.ContentName, summary.ContentTemplateURL, summary.ContentPageURL)
+			}
+			retval += "`"
+		} else {
+			retval += `\n`
 		}
 
 		if len(summary.Children) > 0 {

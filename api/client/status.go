@@ -27,7 +27,7 @@ func (cli *Get3WCli) status(dir string) error {
 	if err != nil {
 		return err
 	}
-	if !site.IsExist(site.GetConfigKey()) {
+	if !site.IsRepo() {
 		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
 	}
 
@@ -91,6 +91,7 @@ func (cli *Get3WCli) status(dir string) error {
 		}
 	}
 
+	fmt.Fprintf(cli.out, "Local repository: %s\n", site.Path)
 	fmt.Fprintf(cli.out, "Remote repository: %s/%s/%s\n", repo.Host, repo.Owner, repo.Name)
 	//Your branch is up-to-date with 'origin/master'.
 
@@ -98,6 +99,8 @@ func (cli *Get3WCli) status(dir string) error {
 		fmt.Fprintln(cli.out, "Everything up-to-date")
 		return nil
 	}
+
+	fmt.Fprintln(cli.out, "Diff:")
 
 	for path, val := range pathMap {
 		if val > 0 {

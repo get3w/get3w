@@ -30,6 +30,10 @@ func UnmarshalPage(summary *get3w.PageSummary, data string) *get3w.Page {
 	page.TemplateURL = summary.TemplateURL
 	page.PageURL = summary.PageURL
 
+	page.ContentName = summary.ContentName
+	page.ContentTemplateURL = summary.ContentTemplateURL
+	page.ContentPageURL = summary.ContentPageURL
+
 	return page
 }
 
@@ -114,11 +118,11 @@ func getPageBody(config *get3w.Config, page *get3w.Page, sections map[string]*ge
 }
 
 // ParsePage parse page and returns content
-func ParsePage(config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section) string {
-	parsedContent := ""
+func ParsePage(path string, config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section, contents []map[string]string) string {
+	templateContent := ""
 	ext := GetExt(page.TemplateURL)
 	if ext == ExtHTML {
-		parsedContent = page.TemplateContent
+		templateContent = page.TemplateContent
 	} else {
 		bodyContent := ""
 		if ext == ExtMD {
@@ -126,7 +130,7 @@ func ParsePage(config *get3w.Config, page *get3w.Page, sections map[string]*get3
 		} else {
 			bodyContent = getPageBody(config, page, sections)
 		}
-		parsedContent = fmt.Sprintf(`<!DOCTYPE html>
+		templateContent = fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
 %s</head>
@@ -135,5 +139,5 @@ func ParsePage(config *get3w.Config, page *get3w.Page, sections map[string]*get3
 </html>`, getPageHead(config, page), bodyContent)
 	}
 
-	return parsedContent
+	return parse(path, templateContent, config, page, contents)
 }

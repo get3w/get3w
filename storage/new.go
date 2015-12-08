@@ -28,10 +28,11 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		CopyToDestination:    service.CopyToDestination,
 		Delete:               service.Delete,
 		DeleteDestination:    service.DeleteDestination,
-		DeleteAll:            service.DeleteAll,
 		GetFiles:             service.GetFiles,
 		GetAllFiles:          service.GetAllFiles,
 		IsExist:              service.IsExist,
+		DeleteFolder:         service.DeleteFolder,
+		NewFolder:            service.NewFolder,
 	}, nil
 }
 
@@ -58,9 +59,10 @@ func NewS3Site(bucketSource, bucketDestination, owner, name string) (*Site, erro
 		CopyToDestination:    service.CopyToDestination,
 		Delete:               service.Delete,
 		DeleteDestination:    service.DeleteDestination,
-		DeleteAll:            service.DeleteAll,
 		GetFiles:             service.GetFiles,
 		GetAllFiles:          service.GetAllFiles,
 		IsExist:              service.IsExist,
+		DeleteFolder:         service.DeleteFolder,
+		NewFolder:            service.NewFolder,
 	}, nil
 }

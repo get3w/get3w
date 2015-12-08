@@ -49,15 +49,15 @@ func NewService(bucketSource, bucketDestination, owner, name string) (*Service, 
 }
 
 // GetSourcePrefix return app prefix
-func (service *Service) GetSourcePrefix(prefix string) string {
-	p := path.Join(service.prefix, prefix)
+func (service *Service) GetSourcePrefix(prefix ...string) string {
+	p := path.Join(service.prefix, path.Join(prefix...))
 	p = strings.Trim(p, "/") + "/"
 	return p
 }
 
 // GetDestinationPrefix return app prefix
-func (service *Service) GetDestinationPrefix(prefix string) string {
-	p := path.Join(service.prefix, prefix)
+func (service *Service) GetDestinationPrefix(prefix ...string) string {
+	p := path.Join(service.prefix, path.Join(prefix...))
 	p = strings.Trim(p, "/") + "/"
 	return p
 }
@@ -258,6 +258,10 @@ func (service *Service) Rename(owner, newName string, deleteAll bool) error {
 		return fmt.Errorf("newName must be a nonempty string")
 	}
 
+	if owner == newName {
+		return nil
+	}
+
 	allKeys, err := service.getAllKeys("")
 	if err != nil {
 		return err
@@ -277,7 +281,7 @@ func (service *Service) Rename(owner, newName string, deleteAll bool) error {
 		}
 	}
 	if deleteAll {
-		return service.DeleteAll("")
+		return service.DeleteFolder("")
 	}
 	return nil
 }
@@ -449,8 +453,8 @@ func (service *Service) Deletes(keys []string) error {
 	return err
 }
 
-// DeleteAll delete objects by prefix
-func (service *Service) DeleteAll(prefix string) error {
+// DeleteFolder delete objects by prefix
+func (service *Service) DeleteFolder(prefix string) error {
 	keys, err := service.getAllKeys(prefix)
 	if err != nil {
 		return err
@@ -472,4 +476,9 @@ func (service *Service) DeleteAll(prefix string) error {
 	}
 	_, err = service.instance.DeleteObjects(params)
 	return err
+}
+
+// NewFolder create folder
+func (service *Service) NewFolder(prefix string) error {
+	return service.Write(prefix, []byte(""))
 }

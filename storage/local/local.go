@@ -13,6 +13,7 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
+	"github.com/get3w/get3w/repos"
 )
 
 // Service local service
@@ -35,16 +36,16 @@ func NewService(contextDir string) (*Service, error) {
 }
 
 // GetSourcePrefix return app prefix
-func (service *Service) GetSourcePrefix(prefix string) string {
-	p := path.Join(service.Path, prefix)
+func (service *Service) GetSourcePrefix(prefix ...string) string {
+	p := path.Join(service.Path, path.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
 }
 
 // GetDestinationPrefix return app prefix
-func (service *Service) GetDestinationPrefix(prefix string) string {
-	p := path.Join(service.Path, "_wwwroot", prefix)
+func (service *Service) GetDestinationPrefix(prefix ...string) string {
+	p := path.Join(service.Path, repos.PrefixWWWRoot, path.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -60,7 +61,7 @@ func (service *Service) GetSourceKey(key ...string) string {
 
 // GetDestinationKey return app key
 func (service *Service) GetDestinationKey(key ...string) string {
-	p := path.Join(service.Path, "_wwwroot", path.Join(key...))
+	p := path.Join(service.Path, repos.PrefixWWWRoot, path.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -251,8 +252,11 @@ func (service *Service) IsExist(key string) bool {
 		return false
 	}
 
-	_, err := os.Stat(key)
-	return !os.IsNotExist(err)
+	if _, err := os.Stat(key); err == nil {
+		return true
+	}
+
+	return false
 }
 
 // Delete specified object
@@ -289,7 +293,12 @@ func (service *Service) Deletes(keys []string) error {
 	return nil
 }
 
-// DeleteAll delete objects by prefix
-func (service *Service) DeleteAll(prefix string) error {
+// DeleteFolder delete objects by prefix
+func (service *Service) DeleteFolder(prefix string) error {
 	return os.RemoveAll(prefix)
+}
+
+// NewFolder create folder
+func (service *Service) NewFolder(prefix string) error {
+	return os.Mkdir(prefix, 0700)
 }

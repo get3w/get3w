@@ -6,6 +6,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// template engines
+const (
+	TemplateEngineLiquid = "liquid"
+)
+
 // LoadConfig load CONFIG.yaml string to model
 func LoadConfig(config *get3w.Config, data string) error {
 	if data == "" {

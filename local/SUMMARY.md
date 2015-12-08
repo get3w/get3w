@@ -1,9 +1,9 @@
 # Summary
 
 * [Homepage](index.yml)
-* [WithoutTemplate](menu, noslider, footer "without.html")
-* [HtmlTemplate](template.html "html.html")
-* [MarkdownTemplate](template.md "markdown.html")
+* [WithoutTemplate]([menu, noslider, footer] "without.html")
+* [HtmlTemplate](template.html "template.html")`[articles](articles.html "articles/:name.html")`
+* [MarkdownTemplate](markdown.md "markdown.html")
 * [Slider](slider/index.yml 'slider/index.html')
   * [Left](slider/left.yml "slider/left.html")
   * [Right](slider/right.yml)

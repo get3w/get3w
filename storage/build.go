@@ -4,6 +4,7 @@ import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
+	"github.com/get3w/get3w/repos"
 )
 
 // Build all pages in the app.
@@ -23,7 +24,10 @@ func (site *Site) Build() error {
 		return err
 	}
 
-	site.DeleteDestination(site.GetDestinationPrefix(""))
+	err = site.DeleteFolder(site.GetSourcePrefix(repos.PrefixWWWRoot))
+	if err != nil {
+		return err
+	}
 
 	err = site.buildCopy(config, pages)
 	if err != nil {
@@ -54,13 +58,12 @@ func (site *Site) getExcludeKeys(pages []*get3w.Page) []string {
 
 func (site *Site) buildCopy(config *get3w.Config, pages []*get3w.Page) error {
 	excludeKeys := []string{
-		site.GetSourcePrefix(PrefixSections),
-		site.GetSourcePrefix(PrefixWWWRoot),
-		site.GetSourceKey(KeyConfig),
-		site.GetSourceKey(KeyReadme),
-		site.GetSourceKey(KeySummary),
-		site.GetSourceKey(".gitignore"),
-		site.GetSourceKey("LICENSE"),
+		site.GetSourceKey("_"),
+		site.GetSourceKey(repos.KeyConfig),
+		site.GetSourceKey(repos.KeyReadme),
+		site.GetSourceKey(repos.KeySummary),
+		site.GetSourceKey(repos.KeyGitIgnore),
+		site.GetSourceKey(repos.KeyLicense),
 	}
 
 	for _, excludeKey := range site.getExcludeKeys(pages) {
@@ -91,7 +94,8 @@ func (site *Site) buildCopy(config *get3w.Config, pages []*get3w.Page) error {
 
 func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
-		parsedContent := parser.ParsePage(config, page, sections)
+		contents, _ := site.GetContents(page.ContentName)
+		parsedContent := parser.ParsePage(site.Path, config, page, sections, contents)
 		err := site.WriteDestination(site.GetDestinationKey(page.PageURL), []byte(parsedContent))
 		if err != nil {
 			return err
