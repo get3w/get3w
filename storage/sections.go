@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/get3w/get3w/repos"
 )
@@ -26,7 +25,7 @@ func (site *Site) GetSections() (map[string]*get3w.Section, error) {
 
 		for _, file := range files {
 			ext := filepath.Ext(file.Path)
-			if ext != parser.ExtHTML && ext != parser.ExtCSS && ext != parser.ExtJS {
+			if ext != ExtHTML && ext != ExtCSS && ext != ExtJS {
 				continue
 			}
 			sectionName := strings.Replace(file.Name, ext, "", 1)
@@ -37,12 +36,12 @@ func (site *Site) GetSections() (map[string]*get3w.Section, error) {
 					Name: sectionName,
 				}
 			}
-			if ext == parser.ExtHTML {
+			if ext == ExtHTML {
 				section.HTML, _ = site.ReadSectionContent(file)
 
-			} else if ext == parser.ExtCSS {
+			} else if ext == ExtCSS {
 				section.CSS, _ = site.ReadSectionContent(file)
-			} else if ext == parser.ExtJS {
+			} else if ext == ExtJS {
 				section.JS, _ = site.ReadSectionContent(file)
 			}
 
@@ -68,13 +67,13 @@ func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
 
 // SaveSection write content to section
 func (site *Site) SaveSection(section *get3w.Section) error {
-	if err := site.Write(site.getSectionKey(section.Name+parser.ExtHTML), []byte(section.HTML)); err != nil {
+	if err := site.Write(site.getSectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
 		return err
 	}
-	if err := site.Write(site.getSectionKey(section.Name+parser.ExtCSS), []byte(section.CSS)); err != nil {
+	if err := site.Write(site.getSectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
 		return err
 	}
-	if err := site.Write(site.getSectionKey(section.Name+parser.ExtJS), []byte(section.JS)); err != nil {
+	if err := site.Write(site.getSectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
 		return err
 	}
 	return nil
@@ -102,13 +101,13 @@ func (site *Site) SaveSection(section *get3w.Section) error {
 
 // DeleteSection delete section files
 func (site *Site) DeleteSection(sectionName string) error {
-	if err := site.Delete(site.getSectionKey(sectionName + parser.ExtHTML)); err != nil {
+	if err := site.Delete(site.getSectionKey(sectionName + ExtHTML)); err != nil {
 		return err
 	}
-	if err := site.Delete(site.getSectionKey(sectionName + parser.ExtCSS)); err != nil {
+	if err := site.Delete(site.getSectionKey(sectionName + ExtCSS)); err != nil {
 		return err
 	}
-	if err := site.Delete(site.getSectionKey(sectionName + parser.ExtJS)); err != nil {
+	if err := site.Delete(site.getSectionKey(sectionName + ExtJS)); err != nil {
 		return err
 	}
 	return nil

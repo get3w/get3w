@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import "testing"
 

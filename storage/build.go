@@ -1,8 +1,9 @@
 package storage
 
 import (
+	"strings"
+
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/get3w/get3w/repos"
 )
@@ -95,7 +96,12 @@ func (site *Site) buildCopy(config *get3w.Config, pages []*get3w.Page) error {
 func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
 		contents, _ := site.GetContents(page.ContentName)
-		parsedContent := parser.ParsePage(site.Path, config, page, sections, contents)
+		parsedContent := parsePage(site.Path, config, page, sections, contents)
+		if len(contents) > 0 {
+			for _, content := range contents {
+				site.buildContent(config, page, content)
+			}
+		}
 		err := site.WriteDestination(site.GetDestinationKey(page.PageURL), []byte(parsedContent))
 		if err != nil {
 			return err
@@ -105,5 +111,19 @@ func (site *Site) buildPages(config *get3w.Config, pages []*get3w.Page, sections
 			site.buildPages(config, page.Children, sections)
 		}
 	}
+	return nil
+}
+
+func (site *Site) buildContent(config *get3w.Config, page *get3w.Page, content map[string]string) error {
+	parsedContent := parseContent(site.Path, config, page, content)
+	pageURL := page.ContentPageURL
+	for key, value := range content {
+		pageURL = strings.Replace(pageURL, ":"+key, value, -1)
+	}
+	err := site.WriteDestination(site.GetDestinationKey(pageURL), []byte(parsedContent))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

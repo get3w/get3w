@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import (
 	"path/filepath"
@@ -20,12 +20,12 @@ const (
 	ExtPNG = ".png"
 )
 
-// GetExt returns the lowercase file name extension used by path.
-func GetExt(path string) string {
+// getExt returns the lowercase file name extension used by path.
+func getExt(path string) string {
 	return strings.ToLower(filepath.Ext(path))
 }
 
-// IsExt returns true if path without ext
-func IsExt(path string) bool {
-	return GetExt(path) != ""
+// isExt returns true if path without ext
+func isExt(path string) bool {
+	return getExt(path) != ""
 }

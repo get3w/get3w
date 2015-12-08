@@ -1,28 +1,14 @@
 package storage
 
 import (
+	"bytes"
+	"fmt"
+	"strings"
+
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/parser"
-	"github.com/get3w/get3w/repos"
+	"github.com/russross/blackfriday"
 )
-
-// GetPageSummaries get SUMMARY.md file content
-func (site *Site) GetPageSummaries() ([]*get3w.PageSummary, error) {
-	if site.pageSummaries == nil {
-		summaries := []*get3w.PageSummary{}
-
-		data, err := site.Read(site.GetSourceKey(repos.KeySummary))
-		if err != nil {
-			return nil, err
-		}
-
-		summaries = parser.UnmarshalSummary(data)
-
-		site.pageSummaries = summaries
-	}
-
-	return site.pageSummaries, nil
-}
 
 // GetPages parse SUMMARY.md file and returns pages
 func (site *Site) GetPages() ([]*get3w.Page, error) {
@@ -45,19 +31,6 @@ func (site *Site) GetPages() ([]*get3w.Page, error) {
 	return site.pages, nil
 }
 
-func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
-	page := site.GetPage(summary)
-
-	if len(summary.Children) > 0 {
-		for _, child := range summary.Children {
-			childPage := site.getPageBySummary(child)
-			page.Children = append(page.Children, childPage)
-		}
-	}
-
-	return page
-}
-
 // WritePage write content to page file
 func (site *Site) WritePage(page *get3w.Page) error {
 	pageKey := site.GetSourceKey(page.TemplateURL)
@@ -68,18 +41,111 @@ func (site *Site) WritePage(page *get3w.Page) error {
 	return site.Write(pageKey, []byte(yaml))
 }
 
-// GetPage get page models by pageName
-func (site *Site) GetPage(summary *get3w.PageSummary) *get3w.Page {
-	data := ""
-	if parser.IsExt(summary.TemplateURL) {
-		pageKey := site.GetSourceKey(summary.TemplateURL)
-		data, _ = site.Read(pageKey)
-	}
-
-	return parser.UnmarshalPage(summary, data)
-}
-
 // DeletePage delete page file
 func (site *Site) DeletePage(summary *get3w.PageSummary) error {
 	return site.Delete(site.GetSourceKey(summary.TemplateURL))
+}
+
+func getPageHead(config *get3w.Config, page *get3w.Page) string {
+	var buffer bytes.Buffer
+	resourceURL := "http://cdn.get3w.com"
+
+	title := page.Title
+	if title == "" {
+		title = config.Title
+	}
+	if title == "" {
+		title = page.Name
+	}
+
+	keywords := page.Keywords
+	if keywords == "" {
+		keywords = config.Keywords
+	}
+
+	description := page.Description
+	if description == "" {
+		description = config.Description
+	}
+
+	buffer.WriteString(`<meta charset="utf-8">
+`)
+	buffer.WriteString(`<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+`)
+	buffer.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">
+`)
+	if len(keywords) > 0 {
+		buffer.WriteString(fmt.Sprintf(`<meta name="keywords" content="%s"/>
+`, keywords))
+	}
+	if len(description) > 0 {
+		buffer.WriteString(fmt.Sprintf(`<meta name="description" content="%s"/>
+`, description))
+	}
+	buffer.WriteString(fmt.Sprintf(`<title>%s</title>
+`, title))
+	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
+`, resourceURL))
+	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/animate.css/3.4.0/animate.min.css" rel="stylesheet">
+`, resourceURL))
+	buffer.WriteString(fmt.Sprintf(`<link href="%s/assets/css/csstoolkits/0.0.1/ct.min.css" rel="stylesheet">
+`, resourceURL))
+
+	return buffer.String()
+}
+
+func getPageBody(config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section) string {
+	var buffer bytes.Buffer
+
+	for _, sectionName := range page.Sections {
+		section, ok := sections[sectionName]
+		if !ok {
+			continue
+		}
+
+		if section.CSS != "" {
+			buffer.WriteString(fmt.Sprintf(`<style>
+%s
+</style>
+`, strings.Replace(section.CSS, ".this", "#"+section.ID, -1)))
+		}
+		if section.HTML != "" {
+			buffer.WriteString(fmt.Sprintf(`<section id="%s">
+%s
+</section>
+`, section.ID, section.HTML))
+		}
+		if section.JS != "" {
+			buffer.WriteString(fmt.Sprintf(`<script>
+%s
+</script>
+`, section.JS))
+		}
+	}
+
+	return buffer.String()
+}
+
+func parsePage(path string, config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section, contents []map[string]string) string {
+	templateContent := ""
+	ext := getExt(page.TemplateURL)
+	if ext == ExtHTML {
+		templateContent = page.PageTemplate
+	} else {
+		bodyContent := ""
+		if ext == ExtMD {
+			bodyContent = string(blackfriday.MarkdownCommon([]byte(page.PageTemplate)))
+		} else {
+			bodyContent = getPageBody(config, page, sections)
+		}
+		templateContent = fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+%s</head>
+<body>
+%s</body>
+</html>`, getPageHead(config, page), bodyContent)
+	}
+
+	return parser.ParsePage(path, templateContent, config, page, contents)
 }

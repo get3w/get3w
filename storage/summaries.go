@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import (
 	"fmt"
@@ -6,7 +6,61 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/repos"
+	"gopkg.in/yaml.v2"
 )
+
+// GetPageSummaries get SUMMARY.md file content
+func (site *Site) GetPageSummaries() ([]*get3w.PageSummary, error) {
+	if site.pageSummaries == nil {
+		summaries := []*get3w.PageSummary{}
+
+		data, err := site.Read(site.GetSourceKey(repos.KeySummary))
+		if err != nil {
+			return nil, err
+		}
+
+		summaries = getSummaries(data)
+		site.pageSummaries = summaries
+	}
+
+	return site.pageSummaries, nil
+}
+
+func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
+	page := &get3w.Page{}
+
+	pageTemplate, _ := site.Read(site.GetSourceKey(summary.TemplateURL))
+
+	ext := getExt(summary.TemplateURL)
+	if ext == ExtYML {
+		yaml.Unmarshal([]byte(pageTemplate), page)
+	} else {
+		page.PageTemplate = pageTemplate
+	}
+
+	if page.ContentTemplateURL != "" {
+		contentTemplate, _ := site.Read(site.GetSourceKey(summary.ContentTemplateURL))
+		page.ContentTemplate = contentTemplate
+	}
+
+	page.Name = summary.Name
+	page.TemplateURL = summary.TemplateURL
+	page.PageURL = summary.PageURL
+
+	page.ContentName = summary.ContentName
+	page.ContentTemplateURL = summary.ContentTemplateURL
+	page.ContentPageURL = summary.ContentPageURL
+
+	if len(summary.Children) > 0 {
+		for _, child := range summary.Children {
+			childPage := site.getPageBySummary(child)
+			page.Children = append(page.Children, childPage)
+		}
+	}
+
+	return page
+}
 
 //var re = regexp.MustCompile(`\[([^\]]+)\]\(([^\s]+)\s+["|']([\s\S]+)["|']\)|\[([^\]]+)\]\(([^\)]+)\)`)
 var (
@@ -14,8 +68,7 @@ var (
 	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
 )
 
-// UnmarshalSummary parse string to page summary slice
-func UnmarshalSummary(data string) []*get3w.PageSummary {
+func getSummaries(data string) []*get3w.PageSummary {
 	pageSummaries := []*get3w.PageSummary{}
 
 	if data == "" {
@@ -105,7 +158,7 @@ func UnmarshalSummary(data string) []*get3w.PageSummary {
 
 func getPageURL(name, templateURL string) string {
 	pageURL := name + ExtHTML
-	ext := GetExt(templateURL)
+	ext := getExt(templateURL)
 	if ext == ExtYML {
 		pageURL = strings.Replace(templateURL, ExtYML, ExtHTML, 1)
 	} else if ext == ExtMD {

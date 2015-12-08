@@ -2,9 +2,16 @@ package storage
 
 import (
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/repos"
+	"gopkg.in/yaml.v2"
 )
+
+func loadConfig(config *get3w.Config, data string) error {
+	if data == "" {
+		return nil
+	}
+	return yaml.Unmarshal([]byte(data), config)
+}
 
 // IsRepo test if repository is exists
 func (site *Site) IsRepo() bool {
@@ -20,7 +27,7 @@ func (site *Site) GetConfig() (*get3w.Config, error) {
 			return nil, err
 		}
 
-		err = parser.LoadConfig(config, configData)
+		err = loadConfig(config, configData)
 		if err != nil {
 			return nil, err
 		}
