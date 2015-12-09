@@ -45,7 +45,7 @@ func (service *Service) GetSourcePrefix(prefix ...string) string {
 
 // GetDestinationPrefix return app prefix
 func (service *Service) GetDestinationPrefix(prefix ...string) string {
-	p := path.Join(service.Path, repos.PrefixWWWRoot, path.Join(prefix...))
+	p := path.Join(service.Path, repos.PrefixDestination, path.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -61,7 +61,7 @@ func (service *Service) GetSourceKey(key ...string) string {
 
 // GetDestinationKey return app key
 func (service *Service) GetDestinationKey(key ...string) string {
-	p := path.Join(service.Path, repos.PrefixWWWRoot, path.Join(key...))
+	p := path.Join(service.Path, repos.PrefixDestination, path.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -104,6 +104,9 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 // GetAllFiles return all files by appname
 func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
+	if !service.IsExist(prefix) {
+		return files, nil
+	}
 
 	err := filepath.Walk(prefix, func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
@@ -193,18 +196,17 @@ func (service *Service) Checksum(key string) (string, error) {
 }
 
 // Read return resource content
-func (service *Service) Read(key string) (string, error) {
+func (service *Service) Read(key string) ([]byte, error) {
 	if key == "" {
-		return "", fmt.Errorf("key must be a nonempty string")
+		return nil, fmt.Errorf("key must be a nonempty string")
 	}
 
 	bs, err := ioutil.ReadFile(key)
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(bs), nil
+	return bs, nil
 }
 
 // Upload upload object

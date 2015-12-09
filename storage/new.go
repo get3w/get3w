@@ -1,9 +1,35 @@
 package storage
 
 import (
+	"fmt"
+
+	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/pkg/fmatter"
+	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage/local"
 	"github.com/get3w/get3w/storage/s3"
 )
+
+func (site *Site) initialization() error {
+	if !site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
+		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
+	}
+
+	config := &get3w.Config{}
+
+	data, err := site.Read(site.GetSourceKey(repos.KeyConfig))
+	if err != nil {
+		return err
+	}
+
+	content := fmatter.Read(ExtMD, []byte(data), config)
+	summaries := getSummaries(string(content))
+
+	site.Config = config
+	site.Summaries = summaries
+
+	return nil
+}
 
 // NewLocalSite return local site
 func NewLocalSite(contextDir string) (*Site, error) {
@@ -12,7 +38,7 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		return nil, err
 	}
 
-	return &Site{
+	site := &Site{
 		Name:                 service.Name,
 		Path:                 service.Path,
 		GetSourcePrefix:      service.GetSourcePrefix,
@@ -33,7 +59,14 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		IsExist:              service.IsExist,
 		DeleteFolder:         service.DeleteFolder,
 		NewFolder:            service.NewFolder,
-	}, nil
+	}
+
+	err = site.initialization()
+	if err != nil {
+		return nil, err
+	}
+
+	return site, nil
 }
 
 // NewS3Site returns a new s3 site
@@ -43,7 +76,7 @@ func NewS3Site(bucketSource, bucketDestination, owner, name string) (*Site, erro
 		return nil, err
 	}
 
-	return &Site{
+	site := &Site{
 		Name:                 name,
 		Path:                 owner + "/" + name,
 		GetSourcePrefix:      service.GetSourcePrefix,
@@ -64,5 +97,12 @@ func NewS3Site(bucketSource, bucketDestination, owner, name string) (*Site, erro
 		IsExist:              service.IsExist,
 		DeleteFolder:         service.DeleteFolder,
 		NewFolder:            service.NewFolder,
-	}, nil
+	}
+
+	err = site.initialization()
+	if err != nil {
+		return nil, err
+	}
+
+	return site, nil
 }

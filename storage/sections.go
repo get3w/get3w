@@ -15,12 +15,12 @@ func (site *Site) getSectionKey(relatedURL string) string {
 }
 
 // GetSections get page models by pageName
-func (site *Site) GetSections() (map[string]*get3w.Section, error) {
+func (site *Site) GetSections() map[string]*get3w.Section {
 	if site.sections == nil {
 		sections := make(map[string]*get3w.Section)
 		files, err := site.GetFiles(site.GetSourcePrefix(repos.PrefixSections))
 		if err != nil {
-			return nil, err
+			return nil
 		}
 
 		for _, file := range files {
@@ -51,7 +51,7 @@ func (site *Site) GetSections() (map[string]*get3w.Section, error) {
 		site.sections = sections
 	}
 
-	return site.sections, nil
+	return site.sections
 }
 
 // ReadSectionContent get section file content
@@ -62,7 +62,7 @@ func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
 		return "", err
 	}
 
-	return str, nil
+	return string(str), nil
 }
 
 // SaveSection write content to section

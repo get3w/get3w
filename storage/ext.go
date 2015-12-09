@@ -3,11 +3,11 @@ package storage
 import (
 	"path/filepath"
 	"strings"
+
+	"github.com/russross/blackfriday"
 )
 
 const (
-	// ExtYML page extension .yml
-	ExtYML = ".yml"
 	// ExtHTML page extension .html
 	ExtHTML = ".html"
 	// ExtMD page extension .md
@@ -28,4 +28,16 @@ func getExt(path string) string {
 // isExt returns true if path without ext
 func isExt(path string) bool {
 	return getExt(path) != ""
+}
+
+// removeExt get rid of ext
+func removeExt(path string) string {
+	return strings.TrimSuffix(path, filepath.Ext(path))
+}
+
+func getStringByExt(ext string, val []byte) string {
+	if ext == ExtMD {
+		return string(blackfriday.MarkdownCommon(val))
+	}
+	return string(val)
 }

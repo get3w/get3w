@@ -304,9 +304,9 @@ func (service *Service) Checksum(key string) (string, error) {
 }
 
 // Read return resource content
-func (service *Service) Read(key string) (string, error) {
+func (service *Service) Read(key string) ([]byte, error) {
 	if key == "" {
-		return "", fmt.Errorf("key must be a nonempty string")
+		return nil, fmt.Errorf("key must be a nonempty string")
 	}
 
 	params := &s3.GetObjectInput{
@@ -314,12 +314,11 @@ func (service *Service) Read(key string) (string, error) {
 		Key:    aws.String(key),                  // Required
 	}
 	resp, err := service.instance.GetObject(params)
-
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return stringutils.ReaderToString(resp.Body), nil
+	return stringutils.ReaderToBytes(resp.Body), nil
 }
 
 // Upload upload object

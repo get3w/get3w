@@ -1,3 +1,4 @@
+---
 title: leftslider
 keywords: ""
 description: ""
@@ -6,3 +7,4 @@ sections:
 - menu
 - left
 - footer
+---

@@ -1,7 +1,10 @@
-title: leftslider
+---
+title: rightslider
 keywords: ""
 description: ""
 
 sections:
 - menu
+- rightslider
 - footer
+---

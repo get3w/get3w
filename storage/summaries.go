@@ -6,51 +6,30 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/repos"
-	"gopkg.in/yaml.v2"
+	"github.com/get3w/get3w/pkg/fmatter"
 )
 
-// GetPageSummaries get SUMMARY.md file content
-func (site *Site) GetPageSummaries() ([]*get3w.PageSummary, error) {
-	if site.pageSummaries == nil {
-		summaries := []*get3w.PageSummary{}
-
-		data, err := site.Read(site.GetSourceKey(repos.KeySummary))
-		if err != nil {
-			return nil, err
-		}
-
-		summaries = getSummaries(data)
-		site.pageSummaries = summaries
-	}
-
-	return site.pageSummaries, nil
-}
+var (
+	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)`)
+	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
+)
 
 func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
 	page := &get3w.Page{}
 
-	pageTemplate, _ := site.Read(site.GetSourceKey(summary.TemplateURL))
+	data, _ := site.Read(site.GetSourceKey(summary.Path))
+	ext := getExt(summary.Path)
+	document := fmatter.Read(ext, data, page)
+	page.Document = getStringByExt(ext, document)
 
-	ext := getExt(summary.TemplateURL)
-	if ext == ExtYML {
-		yaml.Unmarshal([]byte(pageTemplate), page)
-	} else {
-		page.PageTemplate = pageTemplate
-	}
-
-	if page.ContentTemplateURL != "" {
-		contentTemplate, _ := site.Read(site.GetSourceKey(summary.ContentTemplateURL))
-		page.ContentTemplate = contentTemplate
-	}
+	page.Template = site.getLayoutTemplate(page.Layout)
+	page.ContentTemplate = site.getLayoutTemplate(page.ContentLayout)
 
 	page.Name = summary.Name
-	page.TemplateURL = summary.TemplateURL
-	page.PageURL = summary.PageURL
-
-	page.ContentName = summary.ContentName
-	page.ContentTemplateURL = summary.ContentTemplateURL
-	page.ContentPageURL = summary.ContentPageURL
+	page.Path = summary.Path
+	if page.URL == "" {
+		page.URL = summary.URL
+	}
 
 	if len(summary.Children) > 0 {
 		for _, child := range summary.Children {
@@ -62,11 +41,33 @@ func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
 	return page
 }
 
-//var re = regexp.MustCompile(`\[([^\]]+)\]\(([^\s]+)\s+["|']([\s\S]+)["|']\)|\[([^\]]+)\]\(([^\)]+)\)`)
-var (
-	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)(.*)`)
-	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
-)
+func getLineElements(line string) (name, path, url string, ok bool) {
+	arrOuter := regexOuter.FindStringSubmatch(line)
+	if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
+		return "", "", "", false
+	}
+
+	arrInner := regexInner.FindStringSubmatch(arrOuter[2])
+	if len(arrInner) != 4 || arrInner[0] == "" {
+		return "", "", "", false
+	}
+
+	name, path, url = arrOuter[1], "", ""
+	if arrInner[3] == "" {
+		path, url = strings.TrimSpace(arrInner[1]), strings.TrimSpace(arrInner[2])
+	} else {
+		path = strings.TrimSpace(arrInner[3])
+	}
+	if url == "" {
+		url = getPageURL(name, path)
+	}
+
+	if name == "" || path == "" || url == "" {
+		return "", "", "", false
+	}
+
+	return name, path, url, true
+}
 
 func getSummaries(data string) []*get3w.PageSummary {
 	pageSummaries := []*get3w.PageSummary{}
@@ -83,57 +84,17 @@ func getSummaries(data string) []*get3w.PageSummary {
 		if !strings.HasPrefix(strings.TrimSpace(line), "*") {
 			continue
 		}
-		arrOuter := regexOuter.FindStringSubmatch(line)
-		if len(arrOuter) != 4 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
-			continue
-		}
 
-		arrInner := regexInner.FindStringSubmatch(arrOuter[2])
-		if len(arrInner) != 4 || arrInner[0] == "" {
-			continue
-		}
-
-		name, templateURL, pageURL := arrOuter[1], "", ""
-		if arrInner[3] == "" {
-			templateURL, pageURL = strings.TrimSpace(arrInner[1]), strings.TrimSpace(arrInner[2])
-		} else {
-			templateURL = strings.TrimSpace(arrInner[3])
-		}
-		if pageURL == "" {
-			pageURL = getPageURL(name, templateURL)
-		}
-
-		if name == "" || templateURL == "" || pageURL == "" {
+		name, path, url, ok := getLineElements(line)
+		if !ok {
 			continue
 		}
 
 		spaceNum := strings.Index(line, "*")
 		pageSummary := &get3w.PageSummary{
-			Name:        name,
-			TemplateURL: templateURL,
-			PageURL:     pageURL,
-		}
-
-		contents := strings.TrimSpace(strings.Trim(arrOuter[3], "`"))
-		if contents != "" {
-			arrContents := regexInner.FindStringSubmatch(contents)
-			if len(arrContents) == 4 && arrContents[0] != "" {
-				cName, cTemplateURL, cPageURL := arrContents[1], "", ""
-				if arrContents[3] == "" {
-					cTemplateURL, cPageURL = strings.TrimSpace(arrContents[1]), strings.TrimSpace(arrContents[2])
-				} else {
-					cTemplateURL = strings.TrimSpace(arrContents[3])
-				}
-				if cPageURL == "" {
-					cPageURL = getPageURL(cName, cTemplateURL)
-				}
-
-				if cName != "" && cTemplateURL != "" && cPageURL != "" {
-					pageSummary.ContentName = cName
-					pageSummary.ContentTemplateURL = cTemplateURL
-					pageSummary.ContentPageURL = cPageURL
-				}
-			}
+			Name: name,
+			Path: path,
+			URL:  url,
 		}
 
 		var parent *get3w.PageSummary
@@ -156,15 +117,13 @@ func getSummaries(data string) []*get3w.PageSummary {
 	return pageSummaries
 }
 
-func getPageURL(name, templateURL string) string {
+func getPageURL(name, path string) string {
 	pageURL := name + ExtHTML
-	ext := getExt(templateURL)
-	if ext == ExtYML {
-		pageURL = strings.Replace(templateURL, ExtYML, ExtHTML, 1)
-	} else if ext == ExtMD {
-		pageURL = strings.Replace(templateURL, ExtMD, ExtHTML, 1)
+	ext := getExt(path)
+	if ext == ExtMD {
+		pageURL = strings.Replace(path, ExtMD, ExtHTML, 1)
 	} else if ext == ExtHTML {
-		pageURL = templateURL
+		pageURL = path
 	}
 	return pageURL
 }
@@ -183,12 +142,9 @@ func getParentPageSummary(spaceNum int, pageSummaries []*get3w.PageSummary) *get
 	return summary
 }
 
-// MarshalSummary parse page summary slice to string
-func MarshalSummary(pageSummaries []*get3w.PageSummary) string {
+// marshalSummary parse page summary slice to string
+func marshalSummary(pageSummaries []*get3w.PageSummary) string {
 	lines := []string{}
-	lines = append(lines, "# Summary")
-	lines = append(lines, "")
-
 	lines = append(lines, getPageSummaryString(0, pageSummaries))
 
 	retval := ""
@@ -205,22 +161,10 @@ func getPageSummaryString(level int, pageSummaries []*get3w.PageSummary) string 
 		for i := 0; i < level; i++ {
 			prefix += "\t"
 		}
-		if summary.PageURL == getPageURL(summary.Name, summary.TemplateURL) {
-			retval += prefix + fmt.Sprintf("* [%s](%s)", summary.Name, summary.TemplateURL)
+		if summary.URL == getPageURL(summary.Name, summary.Path) {
+			retval += prefix + fmt.Sprintf("* [%s](%s)\n", summary.Name, summary.Path)
 		} else {
-			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")`, summary.Name, summary.TemplateURL, summary.PageURL)
-		}
-
-		if summary.ContentName != "" && summary.ContentTemplateURL != "" && summary.ContentPageURL != "" {
-			retval += "`"
-			if summary.ContentPageURL == getPageURL(summary.ContentName, summary.ContentTemplateURL) {
-				retval += prefix + fmt.Sprintf("[%s](%s)", summary.ContentName, summary.ContentTemplateURL)
-			} else {
-				retval += prefix + fmt.Sprintf(`[%s](%s "%s")`, summary.ContentName, summary.ContentTemplateURL, summary.ContentPageURL)
-			}
-			retval += "`"
-		} else {
-			retval += `\n`
+			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")\n`, summary.Name, summary.Path, summary.URL)
 		}
 
 		if len(summary.Children) > 0 {

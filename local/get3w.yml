@@ -1,6 +1,0 @@
-title: title
-repository:
-  host: g3.com:99
-  owner: local
-  name: local
-template_engine: liquid

@@ -61,8 +61,9 @@ func ContainsIgnoreCase(strlist []string, str string) bool {
 
 // HasPrefixIgnoreCase tests whether the string str begins with prefix, ignore case.
 func HasPrefixIgnoreCase(strlist []string, str string) bool {
+	str = strings.ToLower(str)
 	for _, a := range strlist {
-		if strings.HasPrefix(strings.ToLower(str), strings.ToLower(a)) {
+		if strings.HasPrefix(str, strings.ToLower(a)) {
 			return true
 		}
 	}

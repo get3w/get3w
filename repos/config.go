@@ -9,16 +9,16 @@ import (
 
 // system file or folder names
 const (
-	KeyConfig    = "get3w.yml"
+	KeyConfig    = "get3w.md"
 	KeyReadme    = "README.md"
-	KeySummary   = "SUMMARY.md"
 	KeyGitIgnore = ".gitignore"
 	KeyLicense   = "LICENSE"
 
-	PrefixIncludes = "_includes"
-	PrefixContents = "_contents"
-	PrefixSections = "_sections"
-	PrefixWWWRoot  = "_wwwroot"
+	PrefixContents    = "_contents"
+	PrefixIncludes    = "_includes"
+	PrefixLayouts     = "_layouts"
+	PrefixSections    = "_sections"
+	PrefixDestination = "_wwwroot"
 )
 
 var (

@@ -1,10 +1,22 @@
+<!--
+title: Homepage
+keywords: "keywords"
+description: "description"
+
+content_layout: articles.html
+content_url: articles/:name.html
+-->
 <!doctype html>
 <html>
 	<head>
 		{{ site.title }}
-		{{ page.name }}
+		{{ page.pageName }}
+
 		{% include head.html %}
 		{% include head.htmlxx %}
+
+		contents
+			content.content
 	</head>
 	<body itemscope itemtype="http://schema.org/CreativeWork">
 		<div id="banner">

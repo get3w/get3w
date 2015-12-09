@@ -36,14 +36,6 @@ func (cli *Get3WCli) push(url, dir string) error {
 	if err != nil {
 		return err
 	}
-	if !site.IsRepo() {
-		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
-	}
-
-	config, err := site.GetConfig()
-	if err != nil {
-		return err
-	}
 
 	var repo *get3w.Repository
 	if url != "" {
@@ -52,7 +44,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 			return err
 		}
 	} else {
-		repo = config.Repository
+		repo = site.Config.Repository
 	}
 
 	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {

@@ -2,8 +2,8 @@ package storage
 
 import "testing"
 
-func TestParseSUMMARY(t *testing.T) {
-	summaries := UnmarshalSummary(`# Summary
+func TestGetSummaries(t *testing.T) {
+	summaries := getSummaries(`# Summary
 
 * [Homepage](index.yml 'index.html')
 * [No](menu, noslider, footer "no.html")
@@ -19,8 +19,8 @@ func TestParseSUMMARY(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", len(summaries), 4)
 	}
 
-	if summaries[1].TemplateURL != "menu, noslider, footer" {
-		t.Fatalf("Expected %v, got %v", summaries[1].TemplateURL, "menu, noslider, footer")
+	if summaries[1].PageTemplateURL != "menu, noslider, footer" {
+		t.Fatalf("Expected %v, got %v", summaries[1].PageTemplateURL, "menu, noslider, footer")
 	}
 
 	if summaries[1].PageURL != "no.html" {

@@ -10,7 +10,7 @@ type Site struct {
 	GetDestinationPrefix func(prefix ...string) string
 	GetSourceKey         func(url ...string) string
 	GetDestinationKey    func(url ...string) string
-	Read                 func(key string) (string, error)
+	Read                 func(key string) ([]byte, error)
 	Checksum             func(key string) (string, error)
 	Write                func(key string, bs []byte) error
 	WriteDestination     func(key string, bs []byte) error
@@ -25,9 +25,10 @@ type Site struct {
 	DeleteFolder         func(prefix string) error
 	NewFolder            func(prefix string) error
 
-	config        *get3w.Config
-	pageSummaries []*get3w.PageSummary
-	pages         []*get3w.Page
-	sections      map[string]*get3w.Section
-	contents      map[string][]map[string]string
+	Config    *get3w.Config
+	Summaries []*get3w.PageSummary
+
+	pages    []*get3w.Page
+	sections map[string]*get3w.Section
+	contents map[string][]map[string]string
 }

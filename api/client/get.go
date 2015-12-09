@@ -82,13 +82,8 @@ func (cli *Get3WCli) get(url, dir string) error {
 		}
 	}
 
-	config, err := site.GetConfig()
-	if err != nil {
-		return err
-	}
-
-	config.Repository = repo
-	err = site.WriteConfig(config)
+	site.Config.Repository = repo
+	err = site.WriteConfig()
 	if err != nil {
 		return err
 	}
