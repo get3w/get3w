@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -37,7 +36,7 @@ func NewService(contextDir string) (*Service, error) {
 
 // GetSourcePrefix return app prefix
 func (service *Service) GetSourcePrefix(prefix ...string) string {
-	p := path.Join(service.Path, path.Join(prefix...))
+	p := filepath.Join(service.Path, filepath.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -45,7 +44,7 @@ func (service *Service) GetSourcePrefix(prefix ...string) string {
 
 // GetDestinationPrefix return app prefix
 func (service *Service) GetDestinationPrefix(prefix ...string) string {
-	p := path.Join(service.Path, repos.PrefixDestination, path.Join(prefix...))
+	p := filepath.Join(service.Path, repos.PrefixDestination, filepath.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -53,7 +52,7 @@ func (service *Service) GetDestinationPrefix(prefix ...string) string {
 
 // GetSourceKey return app key
 func (service *Service) GetSourceKey(key ...string) string {
-	p := path.Join(service.Path, path.Join(key...))
+	p := filepath.Join(service.Path, filepath.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -61,7 +60,7 @@ func (service *Service) GetSourceKey(key ...string) string {
 
 // GetDestinationKey return app key
 func (service *Service) GetDestinationKey(key ...string) string {
-	p := path.Join(service.Path, repos.PrefixDestination, path.Join(key...))
+	p := filepath.Join(service.Path, repos.PrefixDestination, filepath.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -79,7 +78,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	for _, fileInfo := range fileInfos {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := strings.TrimRight(path.Join(prefix, name), "/")
+		filePath := strings.TrimRight(filepath.Join(prefix, name), "/")
 		size := fileInfo.Size()
 		checksum := ""
 		if isDir {

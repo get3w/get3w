@@ -308,8 +308,6 @@ func startMonitorFs() {
 				err = watcher.Watch(path)
 				if err != nil {
 					log.Fatal(err)
-				} else {
-					log.Println("monitoring dir", path)
 				}
 			}
 			return nil

@@ -60,7 +60,7 @@ var get3wCommands = []Command{
 	{"unpause", "Unpause all processes within a container"},
 	{"version", "Show the Get3W version information"},
 	{"volume", "Manage Get3W volumes"},
-	{"wait", "Block until a container stops, then print its exit code"},
+	{"watch", "Block until a container stops, then print its exit code"},
 }
 
 // Get3WCommands stores all the Get3W command

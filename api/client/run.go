@@ -1,8 +1,6 @@
 package client
 
 import (
-	"fmt"
-
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/watch"
@@ -30,13 +28,13 @@ func (cli *Get3WCli) run(dir string) error {
 		return err
 	}
 
-	err = site.Build()
+	err = site.Build(true)
 	if err != nil {
 		return err
 	}
 
-	watch.Run(8000, site.GetDestinationPrefix(""))
+	destinationPath := site.GetDestinationPrefix("")
+	watch.Run(8000, destinationPath)
 
-	fmt.Fprintln(cli.out, "done.")
 	return nil
 }

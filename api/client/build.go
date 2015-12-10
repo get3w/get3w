@@ -29,7 +29,7 @@ func (cli *Get3WCli) build(dir string) error {
 		return err
 	}
 
-	err = site.Build()
+	err = site.Build(true)
 	if err != nil {
 		return err
 	}

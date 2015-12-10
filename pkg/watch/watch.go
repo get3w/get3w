@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -61,10 +62,8 @@ func Run(port int, root string) {
 	mesg += "; please visit http://127.0.0.1:" + p
 	if reloadCfg.private {
 		int = "localhost" + int
-		log.Printf("listens on 127.0.0.1@" + p + mesg)
-	} else {
-		log.Printf("listens on 0.0.0.0@" + p + mesg)
 	}
+	fmt.Printf("listens on port:" + p + mesg)
 	if err := http.ListenAndServe(int, nil); err != nil {
 		log.Fatal(err)
 	}

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/fatih/structs"
@@ -14,8 +13,6 @@ func ParseDoc(rootPath, template string, config *get3w.Config, doc map[string]st
 	if template == "" {
 		template = doc["content"]
 	}
-
-	fmt.Println(structs.Map(config))
 
 	data := map[string]interface{}{
 		"site": structs.Map(config),

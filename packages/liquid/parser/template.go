@@ -77,7 +77,6 @@ func (t *Template) Render(writer io.Writer, data map[string]interface{}) {
 }
 
 func (t *Template) Execute(writer io.Writer, data map[string]interface{}) core.ExecuteState {
-	fmt.Println(t.Code)
 	for _, code := range t.Code {
 		if state := code.Execute(writer, data); state == core.Break {
 			return core.Normal

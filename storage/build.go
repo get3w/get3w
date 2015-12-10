@@ -8,26 +8,29 @@ import (
 )
 
 // Build all pages in the app.
-func (site *Site) Build() error {
+func (site *Site) Build(copy bool) error {
 	pages := site.GetPages()
 	sections := site.GetSections()
-	destinationPrefix := site.GetSourcePrefix(repos.PrefixDestination)
 
-	// err := site.DeleteFolder(destinationPrefix)
-	// if err != nil {
-	// 	return err
-	// }
-	err := site.NewFolder(destinationPrefix)
-	if err != nil {
-		return err
+	if copy {
+		destinationPrefix := site.GetSourcePrefix(repos.PrefixDestination)
+
+		// err := site.DeleteFolder(destinationPrefix)
+		// if err != nil {
+		// 	return err
+		// }
+		err := site.NewFolder(destinationPrefix)
+		if err != nil {
+			return err
+		}
+
+		err = site.buildCopy(pages)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = site.buildCopy(pages)
-	if err != nil {
-		return err
-	}
-
-	err = site.buildPages(pages, sections)
+	err := site.buildPages(pages, sections)
 	if err != nil {
 		return err
 	}
