@@ -18,8 +18,7 @@ content`)
 
 	frontmatter := &Frontmatter{}
 
-	content, err := Read(ExtMD, data, frontmatter)
-	assert.Nil(t, err)
+	content := Read(data, frontmatter)
 	assert.Equal(t, content, []byte("content"))
 }
 
@@ -31,8 +30,7 @@ content`)
 
 	frontmatter := &Frontmatter{}
 
-	content, err := Read(ExtHTML, data, frontmatter)
-	assert.Nil(t, err)
+	content := Read(data, frontmatter)
 	assert.Equal(t, content, []byte("content"))
 }
 

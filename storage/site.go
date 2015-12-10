@@ -29,6 +29,6 @@ type Site struct {
 	Summaries []*get3w.PageSummary
 
 	pages    []*get3w.Page
+	docs     map[string][]map[string]string
 	sections map[string]*get3w.Section
-	contents map[string][]map[string]string
 }

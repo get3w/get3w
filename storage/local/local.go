@@ -302,5 +302,8 @@ func (service *Service) DeleteFolder(prefix string) error {
 
 // NewFolder create folder
 func (service *Service) NewFolder(prefix string) error {
-	return os.Mkdir(prefix, 0700)
+	if !service.IsExist(prefix) {
+		return os.Mkdir(prefix, 0700)
+	}
+	return nil
 }

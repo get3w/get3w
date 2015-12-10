@@ -22,7 +22,7 @@ func (site *Site) initialization() error {
 		return err
 	}
 
-	content := fmatter.Read(ExtMD, []byte(data), config)
+	content := fmatter.Read([]byte(data), config)
 	summaries := getSummaries(string(content))
 
 	site.Config = config

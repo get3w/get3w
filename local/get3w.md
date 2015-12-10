@@ -4,6 +4,7 @@ repository:
   host: g3.com:99
   owner: local
   name: local
+layout_doc: articles.html
 template_engine: liquid
 ---
 

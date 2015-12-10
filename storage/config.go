@@ -8,7 +8,7 @@ import (
 // WriteConfig write content to config file
 func (site *Site) WriteConfig() error {
 	summaries := marshalSummary(site.Summaries)
-	data, err := fmatter.Write(ExtMD, site.Config, []byte(summaries))
+	data, err := fmatter.Write(site.Config, []byte(summaries))
 	if err != nil {
 		return err
 	}

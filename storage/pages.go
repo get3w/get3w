@@ -24,8 +24,7 @@ func (site *Site) GetPages() []*get3w.Page {
 
 // WritePage write content to page file
 func (site *Site) WritePage(page *get3w.Page) error {
-	ext := getExt(page.Layout)
-	data, err := fmatter.Write(ext, page, []byte(page.Template))
+	data, err := fmatter.Write(page, []byte(page.Content))
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ const (
 	KeyGitIgnore = ".gitignore"
 	KeyLicense   = "LICENSE"
 
-	PrefixContents    = "_contents"
+	PrefixDocs        = "_docs"
 	PrefixIncludes    = "_includes"
 	PrefixLayouts     = "_layouts"
 	PrefixSections    = "_sections"

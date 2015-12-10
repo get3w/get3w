@@ -1,17 +1,40 @@
 package storage
 
-import "github.com/get3w/get3w/repos"
+import (
+	"strings"
 
-// getLayoutKey get html file key by sectionName
-func (site *Site) getLayoutKey(layout string) string {
-	return site.GetSourceKey(repos.PrefixLayouts, layout)
-}
+	"github.com/get3w/get3w/pkg/fmatter"
+	"github.com/get3w/get3w/repos"
+)
 
-func (site *Site) getLayoutTemplate(layout string) string {
+var layouts = make(map[string]string)
+
+func (site *Site) getTemplate(layout, defaultLayout string) string {
+	if layout == "" {
+		layout = defaultLayout
+	}
 	if layout == "" {
 		return ""
 	}
+	ext := getExt(layout)
+	if ext == "" {
+		layout += ".html"
+	}
+	key := site.GetSourceKey(repos.PrefixLayouts, layout)
+	template, ok := layouts[key]
+	if !ok {
+		data, _ := site.Read(key)
+		ext := getExt(layout)
+		matter := make(map[string]string)
+		content := fmatter.Read(data, matter)
+		template = getStringByExt(ext, content)
+		if parentLayout, ok := matter["layout"]; ok {
+			parentTemplate := site.getTemplate(parentLayout, "")
+			template = strings.Replace(parentTemplate, "{{ content }}", template, -1)
+		}
 
-	template, _ := site.Read(site.getLayoutKey(layout))
-	return string(template)
+		layouts[key] = template
+	}
+
+	return template
 }

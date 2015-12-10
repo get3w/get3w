@@ -1,0 +1,19 @@
+---
+layout: default
+---
+
+<div class="posts">
+  {% for doc in docs %}
+  <div class="post">
+    <h1 class="post-title">
+      <a href="{{ doc.url }}">
+        {{ doc.title }}
+      </a>
+    </h1>
+
+    <span class="post-date"></span>
+
+    {{ doc.content }}
+  </div>
+  {% endfor %}
+</div>

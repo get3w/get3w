@@ -1,4 +1,4 @@
-GitBook Documentation
+gox -osarch=darwin/amd64
 =============
 
 This book contains the entire documentation for **GitBook** (gitbook.com and format).

@@ -19,11 +19,8 @@ func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
 
 	data, _ := site.Read(site.GetSourceKey(summary.Path))
 	ext := getExt(summary.Path)
-	document := fmatter.Read(ext, data, page)
-	page.Document = getStringByExt(ext, document)
-
-	page.Template = site.getLayoutTemplate(page.Layout)
-	page.ContentTemplate = site.getLayoutTemplate(page.ContentLayout)
+	content := fmatter.Read(data, page)
+	page.Content = getStringByExt(ext, content)
 
 	page.Name = summary.Name
 	page.Path = summary.Path

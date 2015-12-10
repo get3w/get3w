@@ -2,9 +2,6 @@
 title: Homepage
 keywords: "keywords"
 description: "description"
-
-content_layout: articles.html
-content_url: articles/:name.html
 -->
 <!doctype html>
 <html>
@@ -14,106 +11,14 @@ content_url: articles/:name.html
 
 		{% include head.html %}
 		{% include head.htmlxx %}
-
-		contents
-			content.content
 	</head>
-	<body itemscope itemtype="http://schema.org/CreativeWork">
-		<div id="banner">
-			<div id="head" itemprop="name">The Go Playground</div>
-			<div id="controls">
-				<input type="button" value="Run" id="run">
-				<input type="button" value="Format" id="fmt">
-				<div id="importsBox">
-					<label title="Rewrite imports on Format">
-						<input type="checkbox" id="imports">
-						Imports
-					</label>
-				</div>
-
-				<input type="button" value="Share" id="share">
-				<input type="text" id="shareURL">
-				<label id="embedLabel">
-					<input type="checkbox" id="embed">
-					embed
-				</label>
-
-			</div>
-			<div id="aboutControls">
-				<input type="button" value="About" id="aboutButton">
-			</div>
-		</div>
-		<div id="wrap">
-			<textarea itemprop="description" id="code" name="code" autocorrect="off" autocomplete="off" autocapitalize="off" spellcheck="false">package main
-
-import &#34;fmt&#34;
-
-func main() {
-	fmt.Println(&#34;Hello, playground&#34;)
-}
-</textarea>
-		</div>
-		<div id="output"></div>
-		<img itemprop="image" src="/static/gopher.png" style="display:none">
-		<div id="about">
-<p><b>About the Playground</b></p>
-
-<p>
-The Go Playground is a web service that runs on
-<a href="//golang.org/">golang.org</a>'s servers.
-The service receives a Go program, compiles, links, and
-runs the program inside a sandbox, then returns the output.
-</p>
-
-<p>
-There are limitations to the programs that can be run in the playground:
-</p>
-
-<ul>
-
-<li>
-The playground can use most of the standard library, with some exceptions.
-The only communication a playground program has to the outside world
-is by writing to standard output and standard error.
-</li>
-
-<li>
-In the playground the time begins at 2009-11-10 23:00:00 UTC
-(determining the significance of this date is an exercise for the reader).
-This makes it easier to cache programs by giving them deterministic output.
-</li>
-
-<li>
-There are also limits on execution time and on CPU and memory usage.
-</li>
-
-</ul>
-
-<p>
-The article "<a href="//blog.golang.org/playground" target="_blank">Inside
-the Go Playground</a>" describes how the playground is implemented.
-</p>
-
-<p>
-The playground uses the latest stable release of Go.<br>
-To find the precise version, run <a href="/p/1VcPUlPk_3">this program</a>.
-</p>
-
-<p>
-The playground service is used by more than just the official Go project
-(<a href="//gobyexample.com/">Go by Example</a> is one other instance)
-and we are happy for you to use it on your own site.
-All we ask is that you <a href="mailto:golang-dev@googlegroups.com">contact us first</a>,
-use a unique user agent in your requests (so we can identify you),
-and that your service is of benefit to the Go community.
-</p>
-		</div>
-<script type="text/javascript">
-(function() {
-  var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true;
-  ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js";
-  var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s);
-})();
-</script>
+	<body>
+		{% for doc in docs %}
+		  id: {{ doc.id }}
+			<a href="{{ doc.url }}">title: {{ doc.title }}</a>
+			lastModified: {{ doc.lastModified }}
+			attr: {{ doc.attr }}
+			
+	  {% endfor %}
 	</body>
 </html>
