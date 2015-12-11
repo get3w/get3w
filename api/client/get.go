@@ -73,10 +73,10 @@ func (cli *Get3WCli) get(url, dir string) error {
 
 	for path, remoteChecksum := range output.Files {
 		download := false
-		if !site.IsExist(path) {
+		if !site.IsExist(site.GetSourceKey(path)) {
 			download = true
 		} else {
-			checksum, _ := site.Checksum(path)
+			checksum, _ := site.Checksum(site.GetSourceKey(path))
 			if checksum != remoteChecksum {
 				download = true
 			}
@@ -92,16 +92,16 @@ func (cli *Get3WCli) get(url, dir string) error {
 			if err != nil {
 				return err
 			}
-			site.Write(path, data)
+			site.Write(site.GetSourceKey(path), data)
 			fmt.Println(", done.")
 		}
 	}
 
-	site.Config.Repository = repo
-	err = site.WriteConfig()
-	if err != nil {
-		return err
-	}
+	// site.Config.Repository = repo
+	// err = site.WriteConfig()
+	// if err != nil {
+	// 	return err
+	// }
 
 	return cli.build(dir)
 }

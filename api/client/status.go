@@ -2,10 +2,12 @@ package client
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
+	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage"
 )
 
@@ -64,6 +66,10 @@ func (cli *Get3WCli) status(dir string) error {
 	pathMap := make(map[string]int)
 
 	for _, localFile := range localFiles {
+		fmt.Println(localFile.Path)
+		if strings.HasPrefix(localFile.Path, repos.PrefixDestination) {
+			continue
+		}
 		if localFile.IsDir {
 			continue
 		}
