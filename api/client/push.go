@@ -37,6 +37,8 @@ func (cli *Get3WCli) push(url, dir string) error {
 		return err
 	}
 
+	authConfig := &cli.configFile.AuthConfig
+
 	var repo *get3w.Repository
 	if url != "" {
 		repo, err = repos.ParseRepository(url)
@@ -45,13 +47,19 @@ func (cli *Get3WCli) push(url, dir string) error {
 		}
 	} else {
 		repo = site.Config.Repository
+		if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
+			//fmt.Fprintln(cli.out, "WARNING: repository is unset.")
+			repo = &get3w.Repository{
+				Host:  get3w.DefaultRepositoryHost(),
+				Owner: authConfig.Username,
+				Name:  site.Name,
+			}
+		}
 	}
 
 	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
-		return fmt.Errorf("ERROR: repository is unset. use: get3w push URL")
+		return fmt.Errorf("ERROR: remote repository invalid. use: get3w push URL")
 	}
-
-	authConfig := &cli.configFile.AuthConfig
 
 	if authConfig.Username == "" || authConfig.AccessToken == "" || authConfig.Username != repo.Owner {
 		fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")

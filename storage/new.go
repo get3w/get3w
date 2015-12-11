@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"fmt"
-
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/fmatter"
 	"github.com/get3w/get3w/repos"
@@ -12,10 +10,9 @@ import (
 
 func (site *Site) initialization() error {
 	// if !site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
-	// 	return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
+	// 	fmt.Printf("WARNNING: Not found 'get3w.md' in the path: '%s'\n", site.Path)
+	// 	//return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
 	// }
-
-	fmt.Printf("WARNNING: Not found 'get3w.md' in the path: '%s'\n", site.Path)
 
 	config := &get3w.Config{}
 

@@ -26,28 +26,43 @@ func (cli *Get3WCli) CmdGet(args ...string) error {
 }
 
 func (cli *Get3WCli) get(url, dir string) error {
+	authConfig := &cli.configFile.AuthConfig
+	var repo *get3w.Repository
+	var err error
+
+	if url != "" {
+		repo, err = repos.ParseRepository(url)
+		if err != nil {
+			return err
+		}
+		if dir == "" {
+			dir = repo.Name
+		}
+	}
+
 	site, err := storage.NewLocalSite(dir)
 	if err != nil {
 		return err
 	}
 
-	// Resolve the Repository name to Repository
-	repo, err := repos.ParseRepository(url)
-	if err != nil {
-		return err
+	if repo == nil {
+		repo = site.Config.Repository
+		if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
+			repo = &get3w.Repository{
+				Host:  get3w.DefaultRepositoryHost(),
+				Owner: authConfig.Username,
+				Name:  site.Name,
+			}
+		}
 	}
 
-	// if !site.IsExist(site.GetConfigKey()) {
-	// 	return fmt.Errorf("fatal: Not a get3w repository: '%s'", site.Path)
-	// }
-
 	client := get3w.NewClient(cli.configFile.AuthConfig.AccessToken)
-
-	fmt.Printf("Getting repository '%s/%s/%s'...\n", repo.Host, repo.Owner, repo.Name)
 
 	if repo.Host != get3w.DefaultRepositoryHost() {
 		return fmt.Errorf("ERROR: Only %s supported\n", get3w.DefaultRepositoryHost())
 	}
+
+	fmt.Printf("Getting repository '%s/%s/%s'...\n", repo.Host, repo.Owner, repo.Name)
 
 	fmt.Print("Counting objects: ")
 	output, _, err := client.Apps.FilesChecksum(repo.Owner, repo.Name)

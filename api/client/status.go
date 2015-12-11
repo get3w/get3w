@@ -40,7 +40,7 @@ func (cli *Get3WCli) status(dir string) error {
 
 	repo := site.Config.Repository
 	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
-		fmt.Fprintln(cli.out, "WARNING: repository is unset.")
+		//fmt.Fprintln(cli.out, "WARNING: repository is unset.")
 		repo = &get3w.Repository{
 			Host:  get3w.DefaultRepositoryHost(),
 			Owner: authConfig.Username,
