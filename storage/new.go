@@ -11,18 +11,17 @@ import (
 )
 
 func (site *Site) initialization() error {
-	if !site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
-		return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
-	}
+	// if !site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
+	// 	return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
+	// }
+
+	fmt.Printf("WARNNING: Not found 'get3w.md' in the path: '%s'\n", site.Path)
 
 	config := &get3w.Config{}
 
-	data, err := site.Read(site.GetSourceKey(repos.KeyConfig))
-	if err != nil {
-		return err
-	}
+	data, _ := site.Read(site.GetSourceKey(repos.KeyConfig))
 
-	content := fmatter.Read([]byte(data), config)
+	content := fmatter.Read(data, config)
 	summaries := getSummaries(string(content))
 
 	site.Config = config

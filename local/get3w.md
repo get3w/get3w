@@ -1,18 +1,14 @@
 ---
-title: sample
+title: Lanyon
+description: A Jekyll theme
 repository:
   host: g3.com:99
   owner: local
   name: local
-layout_doc: articles.html
+layout_page: default.html
+layout_doc: post.html
 template_engine: liquid
 ---
 
-* [Homepage](index.md)
-* [HtmlTemplate](template.html "template.html")
-* [MarkdownTemplate](markdown.md "markdown.html")
-* [Slider](slider/index.md 'slider/index.html')
-  * [Left](slider/left.md "slider/left.html")
-  * [Right](slider/right.md)
-    * [Left](slider/left.md "slider/left.html")
-    * [Right](slider/right.md)
+* [Homepage](index.html)
+* [About](about.md "about.html")
