@@ -7,17 +7,13 @@ import (
 	"github.com/russross/blackfriday"
 )
 
+// system file or folder names
 const (
-	// ExtHTML page extension .html
 	ExtHTML = ".html"
-	// ExtMD page extension .md
-	ExtMD = ".md"
-	// ExtCSS page extension .css
-	ExtCSS = ".css"
-	// ExtJS page extension .js
-	ExtJS = ".js"
-	// ExtPNG page extension .png
-	ExtPNG = ".png"
+	ExtMD   = ".md"
+	ExtCSS  = ".css"
+	ExtJS   = ".js"
+	ExtPNG  = ".png"
 )
 
 // getExt returns the lowercase file name extension used by path.

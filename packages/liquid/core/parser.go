@@ -304,7 +304,8 @@ func (p *Parser) ReadFilters() ([]Filter, error) {
 	for name := p.ReadName(); name != ""; name = p.ReadName() {
 		factory, exists := FilterLookup[name]
 		if exists == false {
-			return nil, p.Error(fmt.Sprintf("Unknown filter %q", name))
+			// return nil, p.Error(fmt.Sprintf("Unknown filter %q", name))
+			return nil, nil
 		}
 		var parameters []Value
 		if p.SkipSpaces() == ':' {

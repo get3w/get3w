@@ -12,13 +12,14 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
-	"github.com/get3w/get3w/repos"
 )
 
 // Service local service
 type Service struct {
-	Path string
-	Name string
+	Name            string
+	Path            string
+	SourcePath      string
+	DestinationPath string
 }
 
 // NewService return new service
@@ -29,14 +30,14 @@ func NewService(contextDir string) (*Service, error) {
 	}
 
 	return &Service{
-		Path: dirPath,
 		Name: filepath.Base(dirPath),
+		Path: dirPath,
 	}, nil
 }
 
 // GetSourcePrefix return app prefix
 func (service *Service) GetSourcePrefix(prefix ...string) string {
-	p := filepath.Join(service.Path, filepath.Join(prefix...))
+	p := filepath.Join(service.SourcePath, filepath.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -44,7 +45,7 @@ func (service *Service) GetSourcePrefix(prefix ...string) string {
 
 // GetDestinationPrefix return app prefix
 func (service *Service) GetDestinationPrefix(prefix ...string) string {
-	p := filepath.Join(service.Path, repos.PrefixDestination, filepath.Join(prefix...))
+	p := filepath.Join(service.DestinationPath, filepath.Join(prefix...))
 	p = strings.TrimRight(p, "/") + "/"
 	p, _ = filepath.Abs(p)
 	return p
@@ -52,7 +53,7 @@ func (service *Service) GetDestinationPrefix(prefix ...string) string {
 
 // GetSourceKey return app key
 func (service *Service) GetSourceKey(key ...string) string {
-	p := filepath.Join(service.Path, filepath.Join(key...))
+	p := filepath.Join(service.SourcePath, filepath.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -60,7 +61,7 @@ func (service *Service) GetSourceKey(key ...string) string {
 
 // GetDestinationKey return app key
 func (service *Service) GetDestinationKey(key ...string) string {
-	p := filepath.Join(service.Path, repos.PrefixDestination, filepath.Join(key...))
+	p := filepath.Join(service.DestinationPath, filepath.Join(key...))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -110,7 +111,7 @@ func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	err := filepath.Walk(prefix, func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := strings.Trim(strings.Replace(strings.TrimPrefix(p, service.Path), "\\", "/", -1), "/")
+		filePath := strings.Trim(strings.Replace(strings.TrimPrefix(p, service.SourcePath), "\\", "/", -1), "/")
 		size := fileInfo.Size()
 		checksum := ""
 		if isDir {

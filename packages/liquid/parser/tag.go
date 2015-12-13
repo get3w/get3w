@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/get3w/get3w/packages/liquid/core"
 	"github.com/get3w/get3w/packages/liquid/tags"
 )
@@ -31,6 +29,9 @@ var Tags = map[string]TagFactory{
 	"endfor":     tags.EndForFactory,
 	"break":      tags.BreakFactory,
 	"continue":   tags.ContinueFactory,
+
+	"highlight":    tags.CommentFactory,
+	"endhighlight": tags.EndCommentFactory,
 }
 
 func newTag(p *core.Parser, config *core.Configuration) (core.Tag, error) {
@@ -38,7 +39,8 @@ func newTag(p *core.Parser, config *core.Configuration) (core.Tag, error) {
 	name := p.ReadName()
 	factory, ok := Tags[name]
 	if ok == false {
-		return nil, p.Error(fmt.Sprintf("unknown tag %q", name))
+		return nil, nil
+		//return nil, p.Error(fmt.Sprintf("unknown tag %q", name))
 	}
 	return factory(p, config)
 }

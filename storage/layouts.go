@@ -9,12 +9,13 @@ import (
 
 var layouts = make(map[string]string)
 
-func (site *Site) getTemplate(layout, defaultLayout string) string {
+func (site *Site) getTemplate(pageLayout, defaultLayout string) (template string, layout string) {
+	layout = pageLayout
 	if layout == "" {
 		layout = defaultLayout
 	}
 	if layout == "" {
-		return ""
+		return "", ""
 	}
 	ext := getExt(layout)
 	if ext == "" {
@@ -29,12 +30,12 @@ func (site *Site) getTemplate(layout, defaultLayout string) string {
 		content := fmatter.Read(data, matter)
 		template = getStringByExt(ext, content)
 		if parentLayout, ok := matter["layout"]; ok {
-			parentTemplate := site.getTemplate(parentLayout, "")
+			parentTemplate, _ := site.getTemplate(parentLayout, "")
 			template = strings.Replace(parentTemplate, "{{ content }}", template, -1)
 		}
 
 		layouts[key] = template
 	}
 
-	return template
+	return
 }

@@ -90,7 +90,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 	pathMap := make(map[string]int)
 
 	for _, localFile := range localFiles {
-		if strings.HasPrefix(localFile.Path, repos.PrefixDestination) {
+		if strings.HasPrefix(localFile.Path, site.Config.Destination) {
 			continue
 		}
 		if localFile.IsDir {

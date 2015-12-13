@@ -3,7 +3,6 @@ package storage
 import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/fmatter"
-	"github.com/get3w/get3w/repos"
 )
 
 // GetPages parse SUMMARY.md file and returns pages
@@ -28,7 +27,7 @@ func (site *Site) WritePage(page *get3w.Page) error {
 	if err != nil {
 		return err
 	}
-	return site.Write(site.GetSourceKey(repos.KeyConfig), data)
+	return site.Write(site.GetSourceKey(page.Path), data)
 }
 
 // DeletePage delete page file

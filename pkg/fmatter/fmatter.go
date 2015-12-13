@@ -32,11 +32,10 @@ func Write(frontmatter interface{}, content []byte) ([]byte, error) {
 	return r.Bytes(), nil
 }
 
-// Read detects and parses the front matter data, and returns the
+// ReadRaw detects and parses data, and returns the front matter and the
 // remaining contents. If no front matter is found, the entire
-// file contents are returned. For details on the frontmatter
-// parameter, please see the gopkg.in/yaml.v2 package.
-func Read(data []byte, frontmatter interface{}) []byte {
+// file contents are returned.
+func ReadRaw(data []byte) (front, remaining []byte) {
 	r := bytes.NewBuffer(data)
 
 	// eat away starting whitespace
@@ -46,7 +45,7 @@ func Read(data []byte, frontmatter interface{}) []byte {
 		ch, _, err = r.ReadRune()
 		if err != nil {
 			// file is just whitespace
-			return []byte{}
+			return []byte{}, []byte{}
 		}
 	}
 	r.UnreadRune()
@@ -54,7 +53,7 @@ func Read(data []byte, frontmatter interface{}) []byte {
 	// check if first line is ---
 	line, err := r.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return data
+		return []byte{}, data
 	}
 
 	formatStart := formatStandard
@@ -62,7 +61,7 @@ func Read(data []byte, frontmatter interface{}) []byte {
 
 	if strings.TrimSpace(line) != formatStart {
 		// no front matter, just content
-		return data
+		return []byte{}, data
 	}
 
 	yamlStart := len(data) - r.Len()
@@ -72,7 +71,7 @@ func Read(data []byte, frontmatter interface{}) []byte {
 	for {
 		line, err = r.ReadString('\n')
 		if err != nil {
-			return data
+			return []byte{}, data
 		}
 
 		if strings.TrimSpace(line) == formatEnd {
@@ -82,10 +81,18 @@ func Read(data []byte, frontmatter interface{}) []byte {
 		}
 	}
 
-	err = yaml.Unmarshal(data[yamlStart:yamlEnd], frontmatter)
+	return data[yamlStart:yamlEnd], data[contentStart:]
+}
+
+// Read detects and parses data, and returns the front matter and the
+// remaining contents. If no front matter is found, the entire
+// file contents are returned.
+func Read(data []byte, frontmatter interface{}) []byte {
+	front, remaining := ReadRaw(data)
+	err := yaml.Unmarshal(front, frontmatter)
 	if err != nil {
 		return data
 	}
 
-	return data[contentStart:]
+	return remaining
 }

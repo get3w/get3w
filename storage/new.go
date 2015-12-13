@@ -1,11 +1,19 @@
 package storage
 
 import (
+	"path/filepath"
+	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/fmatter"
 	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage/local"
 	"github.com/get3w/get3w/storage/s3"
+	"github.com/rifflock/lfshook"
+	"gopkg.in/yaml.v2"
 )
 
 func (site *Site) initialization() error {
@@ -14,15 +22,47 @@ func (site *Site) initialization() error {
 	// 	//return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
 	// }
 
-	config := &get3w.Config{}
+	var config, sitemap []byte
 
-	data, _ := site.Read(site.GetSourceKey(repos.KeyConfig))
+	if site.IsExist(site.GetSourceKey(repos.KeyGet3W)) {
+		data, _ := site.Read(site.GetSourceKey(repos.KeyGet3W))
+		config, sitemap = fmatter.ReadRaw(data)
+	}
+	if len(config) == 0 {
+		if site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
+			config, _ = site.Read(site.GetSourceKey(repos.KeyConfig))
+		}
+	}
 
-	content := fmatter.Read(data, config)
-	summaries := getSummaries(string(content))
+	site.Config = &get3w.Config{}
+	if len(config) > 0 {
+		yaml.Unmarshal(config, site.Config)
 
-	site.Config = config
-	site.Summaries = summaries
+		vars := make(map[string]interface{})
+		yaml.Unmarshal(config, vars)
+
+		site.ConfigVars = structs.Map(site.Config)
+		for key, val := range vars {
+			if _, ok := site.ConfigVars[key]; !ok {
+				site.ConfigVars[key] = val
+			}
+		}
+	}
+
+	if site.Config.TemplateEngine == "" {
+		site.Config.TemplateEngine = parser.TemplateEngineLiquid
+	}
+	if site.Config.LayoutPage == "" {
+		site.Config.LayoutPage = "default"
+	}
+	if site.Config.LayoutPost == "" {
+		site.Config.LayoutPost = "post"
+	}
+	if site.Config.Destination == "" {
+		site.Config.Destination = "_site"
+	}
+
+	site.Summaries = getSummaries(string(sitemap))
 
 	return nil
 }
@@ -61,6 +101,30 @@ func NewLocalSite(contextDir string) (*Site, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	service.SourcePath = filepath.Join(service.Path, strings.Trim(site.Config.Source, "."))
+	service.DestinationPath = filepath.Join(service.Path, strings.Trim(site.Config.Destination, "."))
+
+	if len(site.Summaries) == 0 {
+		site.Summaries = site.getSummaries()
+	}
+
+	warnPath := site.GetSourceKey(repos.PrefixLogs, "warn.log")
+	errorPath := site.GetSourceKey(repos.PrefixLogs, "error.log")
+	if !site.IsExist(warnPath) {
+		site.Write(warnPath, []byte{})
+	}
+	if !site.IsExist(errorPath) {
+		site.Write(errorPath, []byte{})
+	}
+
+	site.logger = log.New()
+	site.logger.Formatter = new(log.TextFormatter)
+	site.logger.Level = log.WarnLevel
+	site.logger.Hooks.Add(lfshook.NewHook(lfshook.PathMap{
+		log.WarnLevel:  warnPath,
+		log.ErrorLevel: errorPath,
+	}))
 
 	return site, nil
 }

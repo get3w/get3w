@@ -1,6 +1,10 @@
 package storage
 
-import "github.com/get3w/get3w-sdk-go/get3w"
+import (
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/get3w/get3w-sdk-go/get3w"
+)
 
 // Site contains attributes and operations of the app
 type Site struct {
@@ -29,6 +33,7 @@ type Site struct {
 	Summaries []*get3w.PageSummary
 
 	pages    []*get3w.Page
-	docs     map[string][]map[string]string
+	posts    map[string][]*get3w.Post
 	sections map[string]*get3w.Section
+	logger   *log.Logger
 }

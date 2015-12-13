@@ -31,6 +31,7 @@ func (v *DynamicValue) ResolveWithNil(data map[string]interface{}) interface{} {
 func (v *DynamicValue) Resolve(data map[string]interface{}) interface{} {
 	d := v.resolve(data)
 	if d == nil {
+		//return []byte("")
 		return []byte("{{" + strings.Join(v.Fields, ".") + "}}")
 	}
 	return ResolveFinal(d)

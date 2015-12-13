@@ -4,7 +4,6 @@ import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/stringutils"
-	"github.com/get3w/get3w/repos"
 )
 
 // Build all pages in the app.
@@ -13,7 +12,7 @@ func (site *Site) Build(copy bool) error {
 	sections := site.GetSections()
 
 	if copy {
-		destinationPrefix := site.GetSourcePrefix(repos.PrefixDestination)
+		destinationPrefix := site.GetDestinationPrefix()
 
 		// err := site.DeleteFolder(destinationPrefix)
 		// if err != nil {
@@ -35,7 +34,7 @@ func (site *Site) Build(copy bool) error {
 		return err
 	}
 
-	err = site.buildDocs()
+	err = site.buildPosts()
 	if err != nil {
 		return err
 	}
@@ -62,14 +61,17 @@ func (site *Site) getExcludeKeys(pages []*get3w.Page) []string {
 func (site *Site) buildCopy(pages []*get3w.Page) error {
 	excludeKeys := []string{
 		site.GetSourceKey("_"),
-		site.GetSourceKey(repos.KeyConfig),
-		site.GetSourceKey(repos.KeyReadme),
-		site.GetSourceKey(repos.KeyGitIgnore),
-		site.GetSourceKey(repos.KeyLicense),
 	}
-
+	for _, excludeKey := range site.Config.Exclude {
+		excludeKeys = append(excludeKeys, site.GetSourceKey(excludeKey))
+	}
 	for _, excludeKey := range site.getExcludeKeys(pages) {
 		excludeKeys = append(excludeKeys, excludeKey)
+	}
+
+	includeKeys := []string{}
+	for _, includeKey := range site.Config.Include {
+		includeKeys = append(includeKeys, site.GetSourceKey(includeKey))
 	}
 
 	files, err := site.GetAllFiles(site.GetSourcePrefix(""))
@@ -83,12 +85,16 @@ func (site *Site) buildCopy(pages []*get3w.Page) error {
 		}
 		sourceKey := site.GetSourceKey(file.Path)
 
-		if !stringutils.HasPrefixIgnoreCase(excludeKeys, sourceKey) {
-			destinationKey := site.GetDestinationKey(file.Path)
-			err := site.CopyToDestination(sourceKey, destinationKey)
-			if err != nil {
-				return err
+		if stringutils.HasPrefixIgnoreCase(excludeKeys, sourceKey) {
+			if !stringutils.HasPrefixIgnoreCase(includeKeys, sourceKey) {
+				continue
 			}
+		}
+
+		destinationKey := site.GetDestinationKey(file.Path)
+		err := site.CopyToDestination(sourceKey, destinationKey)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -97,13 +103,19 @@ func (site *Site) buildCopy(pages []*get3w.Page) error {
 
 func (site *Site) buildPages(pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
-		docs, _ := site.GetDocs(page.DocFolder)
-		template := site.getTemplate(page.Layout, site.Config.LayoutPage)
-		parsedContent := parser.ParsePage(site.Path, template, site.Config, page, sections, docs)
-
-		err := site.WriteDestination(site.GetDestinationKey(page.URL), []byte(parsedContent))
+		if page.URL == "index.html" && page.Paginate == 0 {
+			page.Paginate = site.Config.Paginate
+		}
+		posts, _ := site.GetPosts(page.PostFolder)
+		template, layout := site.getTemplate(page.Layout, site.Config.LayoutPage)
+		parsedContent, err := parser.ParsePage(site.Path, template, site.Config, site.ConfigVars, page, sections, posts)
 		if err != nil {
-			return err
+			site.LogError(layout, page.URL, err)
+		}
+
+		err = site.WriteDestination(site.GetDestinationKey(page.URL), []byte(parsedContent))
+		if err != nil {
+			site.LogError(layout, page.URL, err)
 		}
 
 		if len(page.Children) > 0 {
@@ -113,27 +125,20 @@ func (site *Site) buildPages(pages []*get3w.Page, sections map[string]*get3w.Sec
 	return nil
 }
 
-func (site *Site) buildDocs() error {
-	docs, _ := site.GetDocs("")
-	if len(docs) > 0 {
-		for _, doc := range docs {
-			err := site.buildDoc(doc)
-			if err != nil {
-				return err
-			}
+func (site *Site) buildPosts() error {
+	posts, _ := site.GetPosts("")
+	for _, post := range posts {
+		url := post.URL
+		template, layout := site.getTemplate(post.Layout, site.Config.LayoutPost)
+		parsedContent, err := parser.ParsePost(site.Path, template, site.Config, site.ConfigVars, post)
+		if err != nil {
+			site.LogError(layout, url, err)
+		}
+
+		err = site.WriteDestination(site.GetDestinationKey(url), []byte(parsedContent))
+		if err != nil {
+			site.LogError(layout, url, err)
 		}
 	}
-	return nil
-}
-
-func (site *Site) buildDoc(doc map[string]string) error {
-	template := site.getTemplate(doc["layout"], site.Config.LayoutDoc)
-	parsedContent := parser.ParseDoc(site.Path, template, site.Config, doc)
-	url := doc["url"]
-	err := site.WriteDestination(site.GetDestinationKey(url), []byte(parsedContent))
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/fmatter"
+	"github.com/get3w/get3w/repos"
 )
 
 var (
@@ -67,10 +68,10 @@ func getLineElements(line string) (name, path, url string, ok bool) {
 }
 
 func getSummaries(data string) []*get3w.PageSummary {
-	pageSummaries := []*get3w.PageSummary{}
+	summaries := []*get3w.PageSummary{}
 
 	if data == "" {
-		return pageSummaries
+		return summaries
 	}
 
 	lines := strings.Split(data, "\n")
@@ -98,11 +99,11 @@ func getSummaries(data string) []*get3w.PageSummary {
 		if previousSpaceNum == spaceNum {
 			parent = previousParent
 		} else {
-			parent = getParentPageSummary(spaceNum, pageSummaries)
+			parent = getParentPageSummary(spaceNum, summaries)
 		}
 
 		if parent == nil {
-			pageSummaries = append(pageSummaries, pageSummary)
+			summaries = append(summaries, pageSummary)
 		} else {
 			parent.Children = append(parent.Children, pageSummary)
 		}
@@ -111,7 +112,28 @@ func getSummaries(data string) []*get3w.PageSummary {
 		previousParent = parent
 	}
 
-	return pageSummaries
+	return summaries
+}
+
+func (site *Site) getSummaries() []*get3w.PageSummary {
+	summaries := []*get3w.PageSummary{}
+	files, _ := site.GetFiles(site.GetSourcePrefix(""))
+	for _, file := range files {
+		if file.IsDir || file.Name == repos.KeyReadme {
+			continue
+		}
+		ext := getExt(file.Name)
+		if ext == ExtHTML || ext == ExtMD {
+			pageSummary := &get3w.PageSummary{
+				Name: strings.TrimRight(file.Name, ext),
+				Path: file.Name,
+				URL:  file.Name,
+			}
+			summaries = append(summaries, pageSummary)
+		}
+	}
+
+	return summaries
 }
 
 func getPageURL(name, path string) string {
@@ -125,11 +147,11 @@ func getPageURL(name, path string) string {
 	return pageURL
 }
 
-func getParentPageSummary(spaceNum int, pageSummaries []*get3w.PageSummary) *get3w.PageSummary {
-	if spaceNum == 0 || len(pageSummaries) == 0 {
+func getParentPageSummary(spaceNum int, summaries []*get3w.PageSummary) *get3w.PageSummary {
+	if spaceNum == 0 || len(summaries) == 0 {
 		return nil
 	}
-	summary := pageSummaries[len(pageSummaries)-1]
+	summary := summaries[len(summaries)-1]
 	for i := 0; i < spaceNum; i++ {
 		if len(summary.Children) == 0 {
 			break
@@ -140,9 +162,9 @@ func getParentPageSummary(spaceNum int, pageSummaries []*get3w.PageSummary) *get
 }
 
 // marshalSummary parse page summary slice to string
-func marshalSummary(pageSummaries []*get3w.PageSummary) string {
+func marshalSummary(summaries []*get3w.PageSummary) string {
 	lines := []string{}
-	lines = append(lines, getPageSummaryString(0, pageSummaries))
+	lines = append(lines, getPageSummaryString(0, summaries))
 
 	retval := ""
 	for _, line := range lines {
@@ -151,9 +173,9 @@ func marshalSummary(pageSummaries []*get3w.PageSummary) string {
 	return retval + "\n"
 }
 
-func getPageSummaryString(level int, pageSummaries []*get3w.PageSummary) string {
+func getPageSummaryString(level int, summaries []*get3w.PageSummary) string {
 	retval := ""
-	for _, summary := range pageSummaries {
+	for _, summary := range summaries {
 		prefix := ""
 		for i := 0; i < level; i++ {
 			prefix += "\t"

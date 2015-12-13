@@ -2,10 +2,10 @@ package liquid
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/get3w/get3w/packages/liquid/core"
@@ -29,7 +29,6 @@ func New(path string) *Liquid {
 }
 
 func (l *Liquid) includeHandler(name string, writer io.Writer, data map[string]interface{}) {
-	// not sure if this is good enough, but do be mindful of directory traversal attacks
 	name = strings.Trim(name, "{")
 	name = strings.Trim(name, "}")
 	path := filepath.Join(l.Path, repos.PrefixIncludes, strings.Replace(name, "..", "", -1))
@@ -40,14 +39,18 @@ func (l *Liquid) includeHandler(name string, writer io.Writer, data map[string]i
 }
 
 // Parse string
-func (l *Liquid) Parse(templateCotent string, data map[string]interface{}) string {
+func (l *Liquid) Parse(templateCotent string, data map[string]interface{}) (string, error) {
 	t, err := parser.ParseString(templateCotent, l.config)
 	if err != nil {
-		fmt.Println(err)
+		return "", err
 	}
 	b := bytes.NewBuffer(make([]byte, 0))
-
 	t.Render(b, data)
+	return cleanContent(b.String()), nil
+}
 
-	return b.String()
+var reg, _ = regexp.Compile("{{.*}}")
+
+func cleanContent(val string) string {
+	return reg.ReplaceAllString(val, "")
 }

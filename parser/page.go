@@ -10,7 +10,7 @@ import (
 )
 
 // ParsePage the parsedContent
-func ParsePage(rootPath, template string, config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section, docs []map[string]string) string {
+func ParsePage(rootPath, template string, config *get3w.Config, configVars map[string]interface{}, page *get3w.Page, sections map[string]*get3w.Section, posts []*get3w.Post) (string, error) {
 	if template == "" {
 		template = page.Content
 	}
@@ -32,20 +32,33 @@ func ParsePage(rootPath, template string, config *get3w.Config, page *get3w.Page
 	}
 
 	if parsedContent == "" {
-		return ""
+		return "", nil
 	}
 
 	data := map[string]interface{}{
-		"site": structs.Map(config),
-		"page": structs.Map(page),
-		"docs": docs,
+		"site":  configVars,
+		"page":  structs.Map(page),
+		"posts": posts,
 	}
 
 	if strings.ToLower(config.TemplateEngine) == TemplateEngineLiquid {
 		parser := liquid.New(rootPath)
-		data["content"] = parser.Parse(page.Content, data)
-		parsedContent = parser.Parse(parsedContent, data)
+		content, err := parser.Parse(page.Content, data)
+		if err != nil {
+			return "", err
+		}
+		data["content"] = content
+
+		if page.Paginate > 0 {
+			data["paginator"] = &get3w.Paginator{
+				Posts: posts,
+			}
+		}
+		parsedContent, err = parser.Parse(parsedContent, data)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	return parsedContent
+	return parsedContent, nil
 }

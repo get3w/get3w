@@ -63,7 +63,7 @@ func Run(port int, root string) {
 	if reloadCfg.private {
 		int = "localhost" + int
 	}
-	fmt.Printf("listens on port:" + p + mesg)
+	fmt.Printf("listens on port:%s%s\n", p, mesg)
 	if err := http.ListenAndServe(int, nil); err != nil {
 		log.Fatal(err)
 	}
