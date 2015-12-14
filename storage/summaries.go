@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/pkg/fmatter"
 	"github.com/get3w/get3w/repos"
 )
 
@@ -14,30 +13,6 @@ var (
 	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)`)
 	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
 )
-
-func (site *Site) getPageBySummary(summary *get3w.PageSummary) *get3w.Page {
-	page := &get3w.Page{}
-
-	data, _ := site.Read(site.GetSourceKey(summary.Path))
-	ext := getExt(summary.Path)
-	content := fmatter.Read(data, page)
-	page.Content = getStringByExt(ext, content)
-
-	page.Name = summary.Name
-	page.Path = summary.Path
-	if page.URL == "" {
-		page.URL = summary.URL
-	}
-
-	if len(summary.Children) > 0 {
-		for _, child := range summary.Children {
-			childPage := site.getPageBySummary(child)
-			page.Children = append(page.Children, childPage)
-		}
-	}
-
-	return page
-}
 
 func getLineElements(line string) (name, path, url string, ok bool) {
 	arrOuter := regexOuter.FindStringSubmatch(line)

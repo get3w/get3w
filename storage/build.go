@@ -103,19 +103,18 @@ func (site *Site) buildCopy(pages []*get3w.Page) error {
 
 func (site *Site) buildPages(pages []*get3w.Page, sections map[string]*get3w.Section) error {
 	for _, page := range pages {
-		if page.URL == "index.html" && page.Paginate == 0 {
-			page.Paginate = site.Config.Paginate
-		}
-		posts, _ := site.GetPosts(page.PostFolder)
 		template, layout := site.getTemplate(page.Layout, site.Config.LayoutPage)
-		parsedContent, err := parser.ParsePage(site.Path, template, site.Config, site.ConfigVars, page, sections, posts)
-		if err != nil {
-			site.LogError(layout, page.URL, err)
-		}
+		paginators := site.getPagePaginators(page)
+		for _, paginator := range paginators {
+			parsedContent, err := parser.ParsePage(site.Path, template, site.Config, sections, page, paginator)
+			if err != nil {
+				site.LogError(layout, paginator.Path, err)
+			}
 
-		err = site.WriteDestination(site.GetDestinationKey(page.URL), []byte(parsedContent))
-		if err != nil {
-			site.LogError(layout, page.URL, err)
+			err = site.WriteDestination(site.GetDestinationKey(paginator.Path), []byte(parsedContent))
+			if err != nil {
+				site.LogError(layout, paginator.Path, err)
+			}
 		}
 
 		if len(page.Children) > 0 {
@@ -126,11 +125,13 @@ func (site *Site) buildPages(pages []*get3w.Page, sections map[string]*get3w.Sec
 }
 
 func (site *Site) buildPosts() error {
-	posts, _ := site.GetPosts("")
+	posts := site.GetPosts("")
 	for _, post := range posts {
+		site.Config.RelatedPosts = getRelatedPosts(posts, post)
+		site.Config.All["related_posts"] = site.Config.RelatedPosts
 		url := post.URL
 		template, layout := site.getTemplate(post.Layout, site.Config.LayoutPost)
-		parsedContent, err := parser.ParsePost(site.Path, template, site.Config, site.ConfigVars, post)
+		parsedContent, err := parser.ParsePost(site.Path, template, site.Config, post)
 		if err != nil {
 			site.LogError(layout, url, err)
 		}

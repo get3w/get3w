@@ -1,4 +1,5 @@
 gox -osarch=darwin/amd64
+gox -osarch=windows/amd64
 =============
 
 This book contains the entire documentation for **GitBook** (gitbook.com and format).

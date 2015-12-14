@@ -8,15 +8,14 @@ import (
 )
 
 // ParsePost parse post
-func ParsePost(rootPath, template string, config *get3w.Config, configVars map[string]interface{}, post *get3w.Post) (string, error) {
+func ParsePost(rootPath, template string, config *get3w.Config, post *get3w.Post) (string, error) {
 	if template == "" {
 		template = post.Content
 	}
 
 	data := map[string]interface{}{
-		"site": configVars,
-		"page": post,
-		"post": post,
+		"site": config.All,
+		"page": post.All,
 	}
 
 	var parsedContent string

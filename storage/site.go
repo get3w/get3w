@@ -33,7 +33,6 @@ type Site struct {
 	Summaries []*get3w.PageSummary
 
 	pages    []*get3w.Page
-	posts    map[string][]*get3w.Post
 	sections map[string]*get3w.Section
 	logger   *log.Logger
 }

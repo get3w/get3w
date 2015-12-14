@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/dullgiulio/pingo"
 	"github.com/get3w/get3w/api/client"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cliconfig"
@@ -12,7 +14,26 @@ import (
 	"github.com/get3w/get3w/pkg/term"
 )
 
+func test() {
+	// Make a new plugin from the executable we created. Connect to it via TCP
+	p := pingo.NewPlugin("tcp", "E:\\GOPATH\\src\\github.com\\get3w\\get3w\\plugins\\hello-world\\hello-world.exe")
+	// Actually start the plugin
+	p.Start()
+	// Remember to stop the plugin when done using it
+	defer p.Stop()
+
+	var resp string
+
+	// Call a function from the object we created previously
+	if err := p.Call("MyPlugin.SayHello", "Go developer", &resp); err != nil {
+		log.Print(err)
+	} else {
+		log.Print(resp)
+	}
+}
+
 func main() {
+	test()
 	// Set terminal emulation based on platform as required.
 	stdin, stdout, stderr := term.StdStreams()
 

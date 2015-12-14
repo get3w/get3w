@@ -37,23 +37,21 @@ func NewService(contextDir string) (*Service, error) {
 
 // GetSourcePrefix return app prefix
 func (service *Service) GetSourcePrefix(prefix ...string) string {
-	p := filepath.Join(service.SourcePath, filepath.Join(prefix...))
-	p = strings.TrimRight(p, "/") + "/"
-	p, _ = filepath.Abs(p)
+	p := filepath.Join(service.SourcePath, strings.Trim(filepath.Join(prefix...), "/"))
+	p, _ = filepath.Abs(p + "/")
 	return p
 }
 
 // GetDestinationPrefix return app prefix
 func (service *Service) GetDestinationPrefix(prefix ...string) string {
-	p := filepath.Join(service.DestinationPath, filepath.Join(prefix...))
-	p = strings.TrimRight(p, "/") + "/"
-	p, _ = filepath.Abs(p)
+	p := filepath.Join(service.DestinationPath, strings.Trim(filepath.Join(prefix...), "/"))
+	p, _ = filepath.Abs(p + "/")
 	return p
 }
 
 // GetSourceKey return app key
 func (service *Service) GetSourceKey(key ...string) string {
-	p := filepath.Join(service.SourcePath, filepath.Join(key...))
+	p := filepath.Join(service.SourcePath, strings.Trim(filepath.Join(key...), "/"))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
@@ -61,8 +59,7 @@ func (service *Service) GetSourceKey(key ...string) string {
 
 // GetDestinationKey return app key
 func (service *Service) GetDestinationKey(key ...string) string {
-	p := filepath.Join(service.DestinationPath, filepath.Join(key...))
-	p = strings.TrimRight(p, "/")
+	p := filepath.Join(service.DestinationPath, strings.Trim(filepath.Join(key...), "/"))
 	p, _ = filepath.Abs(p)
 	return p
 }
@@ -82,7 +79,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 		filePath := strings.TrimRight(filepath.Join(prefix, name), "/")
 		size := fileInfo.Size()
 		checksum := ""
-		if isDir {
+		if !isDir {
 			checksum, _ = service.Checksum(filePath)
 		}
 
@@ -111,10 +108,11 @@ func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	err := filepath.Walk(prefix, func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := strings.Trim(strings.Replace(strings.TrimPrefix(p, service.SourcePath), "\\", "/", -1), "/")
+		filePath := p[len(service.SourcePath):]
+		filePath = strings.Trim(strings.Replace(filePath, "\\", "/", -1), "/")
 		size := fileInfo.Size()
 		checksum := ""
-		if isDir {
+		if !isDir {
 			checksum, _ = service.Checksum(filePath)
 		}
 

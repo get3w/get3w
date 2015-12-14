@@ -9,8 +9,18 @@ import (
 	"github.com/get3w/get3w/packages/liquid"
 )
 
+const (
+	defaultFormatHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+%s</head>
+<body>
+%s</body>
+</html>`
+)
+
 // ParsePage the parsedContent
-func ParsePage(rootPath, template string, config *get3w.Config, configVars map[string]interface{}, page *get3w.Page, sections map[string]*get3w.Section, posts []*get3w.Post) (string, error) {
+func ParsePage(rootPath, template string, config *get3w.Config, sections map[string]*get3w.Section, page *get3w.Page, paginator *get3w.Paginator) (string, error) {
 	if template == "" {
 		template = page.Content
 	}
@@ -19,13 +29,7 @@ func ParsePage(rootPath, template string, config *get3w.Config, configVars map[s
 	if len(page.Sections) > 0 {
 		sectionsHTML := getSectionsHTML(config, page, sections)
 		if parsedContent == "" {
-			parsedContent += fmt.Sprintf(`<!DOCTYPE html>
-<html lang="en">
-<head>
-%s</head>
-<body>
-%s</body>
-</html>`, getDefaultHead(config, page), sectionsHTML)
+			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(config, page), sectionsHTML)
 		} else {
 			parsedContent += sectionsHTML
 		}
@@ -36,9 +40,9 @@ func ParsePage(rootPath, template string, config *get3w.Config, configVars map[s
 	}
 
 	data := map[string]interface{}{
-		"site":  configVars,
-		"page":  structs.Map(page),
-		"posts": posts,
+		"site":      config.All,
+		"page":      page.All,
+		"paginator": structs.Map(paginator),
 	}
 
 	if strings.ToLower(config.TemplateEngine) == TemplateEngineLiquid {
@@ -49,11 +53,6 @@ func ParsePage(rootPath, template string, config *get3w.Config, configVars map[s
 		}
 		data["content"] = content
 
-		if page.Paginate > 0 {
-			data["paginator"] = &get3w.Paginator{
-				Posts: posts,
-			}
-		}
 		parsedContent, err = parser.Parse(parsedContent, data)
 		if err != nil {
 			return "", err

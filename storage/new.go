@@ -16,12 +16,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func (site *Site) initialization() error {
-	// if !site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
-	// 	fmt.Printf("WARNNING: Not found 'get3w.md' in the path: '%s'\n", site.Path)
-	// 	//return fmt.Errorf("ERROR: Not a get3w repository: '%s'", site.Path)
-	// }
-
+func (site *Site) loadConfig() error {
 	var config, sitemap []byte
 
 	if site.IsExist(site.GetSourceKey(repos.KeyGet3W)) {
@@ -37,16 +32,6 @@ func (site *Site) initialization() error {
 	site.Config = &get3w.Config{}
 	if len(config) > 0 {
 		yaml.Unmarshal(config, site.Config)
-
-		vars := make(map[string]interface{})
-		yaml.Unmarshal(config, vars)
-
-		site.ConfigVars = structs.Map(site.Config)
-		for key, val := range vars {
-			if _, ok := site.ConfigVars[key]; !ok {
-				site.ConfigVars[key] = val
-			}
-		}
 	}
 
 	if site.Config.TemplateEngine == "" {
@@ -60,6 +45,16 @@ func (site *Site) initialization() error {
 	}
 	if site.Config.Destination == "" {
 		site.Config.Destination = "_site"
+	}
+
+	vars := make(map[string]interface{})
+	yaml.Unmarshal(config, vars)
+
+	site.Config.All = structs.Map(site.Config)
+	for key, val := range vars {
+		if _, ok := site.Config.All[key]; !ok {
+			site.Config.All[key] = val
+		}
 	}
 
 	site.Summaries = getSummaries(string(sitemap))
@@ -97,17 +92,13 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		NewFolder:            service.NewFolder,
 	}
 
-	err = site.initialization()
+	err = site.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	service.SourcePath = filepath.Join(service.Path, strings.Trim(site.Config.Source, "."))
 	service.DestinationPath = filepath.Join(service.Path, strings.Trim(site.Config.Destination, "."))
-
-	if len(site.Summaries) == 0 {
-		site.Summaries = site.getSummaries()
-	}
 
 	warnPath := site.GetSourceKey(repos.PrefixLogs, "warn.log")
 	errorPath := site.GetSourceKey(repos.PrefixLogs, "error.log")
@@ -126,7 +117,27 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		log.ErrorLevel: errorPath,
 	}))
 
+	site.initialization()
 	return site, nil
+}
+
+func (site *Site) initialization() {
+	site.Config.Posts = []*get3w.Post{}
+	files, _ := site.GetAllFiles(site.GetSourcePrefix(repos.PrefixPosts))
+	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+		post := site.getPost(file)
+		if post != nil {
+			site.Config.Posts = append(site.Config.Posts, post)
+		}
+	}
+	site.Config.All["posts"] = site.Config.Posts
+
+	if len(site.Summaries) == 0 {
+		site.Summaries = site.getSummaries()
+	}
 }
 
 // NewS3Site returns a new s3 site
@@ -159,10 +170,11 @@ func NewS3Site(bucketSource, bucketDestination, owner, name string) (*Site, erro
 		NewFolder:            service.NewFolder,
 	}
 
-	err = site.initialization()
+	err = site.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	site.initialization()
 	return site, nil
 }
