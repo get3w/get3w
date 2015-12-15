@@ -33,7 +33,7 @@ func (cli *Get3WCli) run(dir string) error {
 		return err
 	}
 
-	destinationPath := site.GetDestinationPrefix("")
+	destinationPath := site.Storage.GetDestinationPrefix("")
 	watch.Run(8000, destinationPath)
 
 	return nil

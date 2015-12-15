@@ -38,8 +38,8 @@ func (cli *Get3WCli) watch(dir string) error {
 		return err
 	}
 
-	sourcePath := site.GetSourcePrefix("")
-	destinationPath := strings.TrimRight(strings.ToLower(site.GetDestinationPrefix("")), string(os.PathSeparator))
+	sourcePath := site.Storage.GetSourcePrefix("")
+	destinationPath := strings.TrimRight(strings.ToLower(site.Storage.GetDestinationPrefix("")), string(os.PathSeparator))
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)

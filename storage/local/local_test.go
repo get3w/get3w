@@ -32,7 +32,7 @@ func TestGetFiles(t *testing.T) {
 }
 
 func TestGetAllFiles(t *testing.T) {
-	files, err := service.GetAllFiles()
+	files, err := service.GetAllFiles(service.SourcePath)
 	for _, file := range files {
 		log.Println(file)
 	}
@@ -54,7 +54,7 @@ func TestWriteBinary(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
-	err := service.Copy("/_test/1.html", "/_test/3.html")
+	err := service.CopyToDestination("/_test/1.html", "/_test/3.html")
 	assert.Nil(t, err)
 }
 

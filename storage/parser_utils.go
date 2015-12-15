@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import (
 	"bytes"
@@ -8,10 +8,10 @@ import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 )
 
-func getSectionsHTML(config *get3w.Config, page *get3w.Page, sections map[string]*get3w.Section) string {
+func getSectionsHTML(config *get3w.Config, channel *get3w.Channel, sections map[string]*get3w.Section) string {
 	var buffer bytes.Buffer
 
-	for _, sectionName := range page.Sections {
+	for _, sectionName := range channel.Sections {
 		section, ok := sections[sectionName]
 		if !ok {
 			continue
@@ -40,24 +40,24 @@ func getSectionsHTML(config *get3w.Config, page *get3w.Page, sections map[string
 	return buffer.String()
 }
 
-func getDefaultHead(config *get3w.Config, page *get3w.Page) string {
+func getDefaultHead(config *get3w.Config, channel *get3w.Channel) string {
 	var buffer bytes.Buffer
 	resourceURL := "http://cdn.get3w.net"
 
-	title := page.Title
+	title := channel.Title
 	if title == "" {
 		title = config.Title
 	}
 	if title == "" {
-		title = page.Name
+		title = channel.Name
 	}
 
-	keywords := page.Keywords
+	keywords := channel.Keywords
 	if keywords == "" {
 		keywords = config.Keywords
 	}
 
-	description := page.Description
+	description := channel.Description
 	if description == "" {
 		description = config.Description
 	}

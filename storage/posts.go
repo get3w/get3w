@@ -8,19 +8,18 @@ import (
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/fmatter"
-	"github.com/get3w/get3w/repos"
 )
 
-// getPostKey get post file key
-func (site *Site) getPostKey(postFolder, fileName string) string {
-	return site.GetSourceKey(repos.PrefixPosts, postFolder, fileName)
+// postKey get post file key
+func (site *Site) postKey(postFolder, fileName string) string {
+	return site.key(PrefixPosts, postFolder, fileName)
 }
 
 // GetPosts get site's posts
 func (site *Site) GetPosts(path string) []*get3w.Post {
 	path = strings.ToLower(path)
 	posts := []*get3w.Post{}
-	for _, post := range site.Config.Posts {
+	for _, post := range site.Current.Posts {
 		if path != "" && !strings.HasPrefix(strings.ToLower(post.Path), path) {
 			continue
 		}
@@ -43,7 +42,7 @@ func getRelatedPosts(posts []*get3w.Post, post *get3w.Post) []*get3w.Post {
 func (site *Site) getPost(file *get3w.File) *get3w.Post {
 	post := &get3w.Post{}
 
-	data, _ := site.Read(site.GetSourceKey(file.Path))
+	data, _ := site.Storage.Read(site.Storage.GetSourceKey(file.Path))
 	if data == nil {
 		return post
 	}
@@ -55,7 +54,7 @@ func (site *Site) getPost(file *get3w.File) *get3w.Post {
 
 	ext := getExt(file.Path)
 	post.Content = getStringByExt(ext, content)
-	path := strings.Trim(file.Path[len(repos.PrefixPosts):], "/")
+	path := strings.Trim(file.Path[len(PrefixPosts):], "/")
 	post.ID = removeExt(path)
 	post.Path = path
 	if post.Title == "" {
@@ -67,10 +66,10 @@ func (site *Site) getPost(file *get3w.File) *get3w.Post {
 	if len(front) > 0 {
 		yaml.Unmarshal(front, vars)
 	}
-	post.All = structs.Map(post)
+	post.AllParameters = structs.Map(post)
 	for key, val := range vars {
-		if _, ok := post.All[key]; !ok {
-			post.All[key] = val
+		if _, ok := post.AllParameters[key]; !ok {
+			post.AllParameters[key] = val
 		}
 	}
 

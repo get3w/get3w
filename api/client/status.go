@@ -56,7 +56,7 @@ func (cli *Get3WCli) status(dir string) error {
 	}
 	files := output.Files
 
-	localFiles, err := site.GetAllFiles(site.GetSourcePrefix(""))
+	localFiles, err := site.Storage.GetAllFiles(site.Storage.GetSourcePrefix(""))
 	if err != nil {
 		return err
 	}
@@ -75,14 +75,14 @@ func (cli *Get3WCli) status(dir string) error {
 		if checksum == "" {
 			pathMap[localFile.Path] = 1
 		} else {
-			localChecksum, _ := site.Checksum(localFile.Path)
+			localChecksum, _ := site.Storage.Checksum(localFile.Path)
 			if checksum != localChecksum {
 				pathMap[localFile.Path] = 0
 			}
 		}
 	}
 	for path := range files {
-		if !site.IsExist(path) {
+		if !site.Storage.IsExist(path) {
 			pathMap[path] = -1
 		}
 	}

@@ -1,3 +1,2 @@
-* [English](en, "default")
-* [French](fr)
-* [Español](es)
+* [English](.)
+* [简体中文](zh)

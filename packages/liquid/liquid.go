@@ -10,7 +10,6 @@ import (
 
 	"github.com/get3w/get3w/packages/liquid/core"
 	"github.com/get3w/get3w/packages/liquid/parser"
-	"github.com/get3w/get3w/repos"
 )
 
 // Liquid contains parameters of value
@@ -31,7 +30,7 @@ func New(path string) *Liquid {
 func (l *Liquid) includeHandler(name string, writer io.Writer, data map[string]interface{}) {
 	name = strings.Trim(name, "{")
 	name = strings.Trim(name, "}")
-	path := filepath.Join(l.Path, repos.PrefixIncludes, strings.Replace(name, "..", "", -1))
+	path := filepath.Join(l.Path, "_includes", strings.Replace(name, "..", "", -1))
 	if _, err := os.Stat(path); err == nil {
 		template, _ := parser.ParseFile(path, nil)
 		template.Render(writer, data)

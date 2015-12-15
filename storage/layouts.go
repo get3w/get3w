@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w/pkg/fmatter"
-	"github.com/get3w/get3w/repos"
 )
 
 var layouts = make(map[string]string)
@@ -21,10 +20,10 @@ func (site *Site) getTemplate(pageLayout, defaultLayout string) (template string
 	if ext == "" {
 		layout += ".html"
 	}
-	key := site.GetSourceKey(repos.PrefixLayouts, layout)
+	key := site.key(PrefixLayouts, layout)
 	template, ok := layouts[key]
 	if !ok {
-		data, _ := site.Read(key)
+		data, _ := site.Storage.Read(key)
 		ext := getExt(layout)
 		matter := make(map[string]string)
 		content := fmatter.Read(data, matter)

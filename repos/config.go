@@ -7,19 +7,6 @@ import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 )
 
-// system file or folder names
-const (
-	KeyGet3W  = "_get3w.md"
-	KeyConfig = "_config.yml"
-	KeyReadme = "README.md"
-
-	PrefixLogs     = "_logs"
-	PrefixPosts    = "_posts"
-	PrefixIncludes = "_includes"
-	PrefixLayouts  = "_layouts"
-	PrefixSections = "_sections"
-)
-
 var (
 	// ErrInvalidRepositoryName is an error returned if the repository name did
 	// not have the correct form

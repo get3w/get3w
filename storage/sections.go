@@ -6,19 +6,18 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/stringutils"
-	"github.com/get3w/get3w/repos"
 )
 
-// getSectionKey get html file key by sectionName
-func (site *Site) getSectionKey(relatedURL string) string {
-	return site.GetSourceKey(repos.PrefixSections, relatedURL)
+// sectionKey get html file key by sectionName
+func (site *Site) sectionKey(relatedURL string) string {
+	return site.key(PrefixSections, relatedURL)
 }
 
 // GetSections get page models by pageName
 func (site *Site) GetSections() map[string]*get3w.Section {
 	if site.sections == nil {
 		sections := make(map[string]*get3w.Section)
-		files, err := site.GetFiles(site.GetSourcePrefix(repos.PrefixSections))
+		files, err := site.Storage.GetFiles(site.prefix(PrefixSections))
 		if err != nil {
 			return nil
 		}
@@ -38,7 +37,6 @@ func (site *Site) GetSections() map[string]*get3w.Section {
 			}
 			if ext == ExtHTML {
 				section.HTML, _ = site.ReadSectionContent(file)
-
 			} else if ext == ExtCSS {
 				section.CSS, _ = site.ReadSectionContent(file)
 			} else if ext == ExtJS {
@@ -56,8 +54,8 @@ func (site *Site) GetSections() map[string]*get3w.Section {
 
 // ReadSectionContent get section file content
 func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
-	keyName := site.getSectionKey(file.Name)
-	str, err := site.Read(keyName)
+	keyName := site.sectionKey(file.Name)
+	str, err := site.Storage.Read(keyName)
 	if err != nil {
 		return "", err
 	}
@@ -67,13 +65,13 @@ func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
 
 // SaveSection write content to section
 func (site *Site) SaveSection(section *get3w.Section) error {
-	if err := site.Write(site.getSectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
+	if err := site.Storage.Write(site.sectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
 		return err
 	}
-	if err := site.Write(site.getSectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
+	if err := site.Storage.Write(site.sectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
 		return err
 	}
-	if err := site.Write(site.getSectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
+	if err := site.Storage.Write(site.sectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
 		return err
 	}
 	return nil
@@ -101,13 +99,13 @@ func (site *Site) SaveSection(section *get3w.Section) error {
 
 // DeleteSection delete section files
 func (site *Site) DeleteSection(sectionName string) error {
-	if err := site.Delete(site.getSectionKey(sectionName + ExtHTML)); err != nil {
+	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtHTML)); err != nil {
 		return err
 	}
-	if err := site.Delete(site.getSectionKey(sectionName + ExtCSS)); err != nil {
+	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtCSS)); err != nil {
 		return err
 	}
-	if err := site.Delete(site.getSectionKey(sectionName + ExtJS)); err != nil {
+	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtJS)); err != nil {
 		return err
 	}
 	return nil

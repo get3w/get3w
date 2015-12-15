@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/repos"
 )
 
 var (
@@ -42,16 +41,16 @@ func getLineElements(line string) (name, path, url string, ok bool) {
 	return name, path, url, true
 }
 
-func getSummaries(data string) []*get3w.PageSummary {
-	summaries := []*get3w.PageSummary{}
+func getLinks(data string) []*get3w.Link {
+	links := []*get3w.Link{}
 
 	if data == "" {
-		return summaries
+		return links
 	}
 
 	lines := strings.Split(data, "\n")
 	var previousSpaceNum int
-	var previousParent *get3w.PageSummary
+	var previousParent *get3w.Link
 
 	for _, line := range lines {
 		if !strings.HasPrefix(strings.TrimSpace(line), "*") {
@@ -64,51 +63,51 @@ func getSummaries(data string) []*get3w.PageSummary {
 		}
 
 		spaceNum := strings.Index(line, "*")
-		pageSummary := &get3w.PageSummary{
+		link := &get3w.Link{
 			Name: name,
 			Path: path,
 			URL:  url,
 		}
 
-		var parent *get3w.PageSummary
+		var parent *get3w.Link
 		if previousSpaceNum == spaceNum {
 			parent = previousParent
 		} else {
-			parent = getParentPageSummary(spaceNum, summaries)
+			parent = getParentLink(spaceNum, links)
 		}
 
 		if parent == nil {
-			summaries = append(summaries, pageSummary)
+			links = append(links, link)
 		} else {
-			parent.Children = append(parent.Children, pageSummary)
+			parent.Children = append(parent.Children, link)
 		}
 
 		previousSpaceNum = spaceNum
 		previousParent = parent
 	}
 
-	return summaries
+	return links
 }
 
-func (site *Site) getSummaries() []*get3w.PageSummary {
-	summaries := []*get3w.PageSummary{}
-	files, _ := site.GetFiles(site.GetSourcePrefix(""))
+func (site *Site) getLinks() []*get3w.Link {
+	links := []*get3w.Link{}
+	files, _ := site.Storage.GetFiles(site.prefix(""))
 	for _, file := range files {
-		if file.IsDir || file.Name == repos.KeyReadme {
+		if file.IsDir || file.Name == KeyReadme {
 			continue
 		}
 		ext := getExt(file.Name)
 		if ext == ExtHTML || ext == ExtMD {
-			pageSummary := &get3w.PageSummary{
+			link := &get3w.Link{
 				Name: strings.TrimRight(file.Name, ext),
 				Path: file.Name,
 				URL:  file.Name,
 			}
-			summaries = append(summaries, pageSummary)
+			links = append(links, link)
 		}
 	}
 
-	return summaries
+	return links
 }
 
 func getPageURL(name, path string) string {
@@ -122,24 +121,24 @@ func getPageURL(name, path string) string {
 	return pageURL
 }
 
-func getParentPageSummary(spaceNum int, summaries []*get3w.PageSummary) *get3w.PageSummary {
-	if spaceNum == 0 || len(summaries) == 0 {
+func getParentLink(spaceNum int, links []*get3w.Link) *get3w.Link {
+	if spaceNum == 0 || len(links) == 0 {
 		return nil
 	}
-	summary := summaries[len(summaries)-1]
+	link := links[len(links)-1]
 	for i := 0; i < spaceNum; i++ {
-		if len(summary.Children) == 0 {
+		if len(link.Children) == 0 {
 			break
 		}
-		summary = summary.Children[len(summary.Children)-1]
+		link = link.Children[len(link.Children)-1]
 	}
-	return summary
+	return link
 }
 
-// marshalSummary parse page summary slice to string
-func marshalSummary(summaries []*get3w.PageSummary) string {
+// marshalLink parse page link slice to string
+func marshalLink(links []*get3w.Link) string {
 	lines := []string{}
-	lines = append(lines, getPageSummaryString(0, summaries))
+	lines = append(lines, getLinkString(0, links))
 
 	retval := ""
 	for _, line := range lines {
@@ -148,21 +147,21 @@ func marshalSummary(summaries []*get3w.PageSummary) string {
 	return retval + "\n"
 }
 
-func getPageSummaryString(level int, summaries []*get3w.PageSummary) string {
+func getLinkString(level int, links []*get3w.Link) string {
 	retval := ""
-	for _, summary := range summaries {
+	for _, link := range links {
 		prefix := ""
 		for i := 0; i < level; i++ {
 			prefix += "\t"
 		}
-		if summary.URL == getPageURL(summary.Name, summary.Path) {
-			retval += prefix + fmt.Sprintf("* [%s](%s)\n", summary.Name, summary.Path)
+		if link.URL == getPageURL(link.Name, link.Path) {
+			retval += prefix + fmt.Sprintf("* [%s](%s)\n", link.Name, link.Path)
 		} else {
-			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")\n`, summary.Name, summary.Path, summary.URL)
+			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")\n`, link.Name, link.Path, link.URL)
 		}
 
-		if len(summary.Children) > 0 {
-			retval += getPageSummaryString(level+1, summary.Children)
+		if len(link.Children) > 0 {
+			retval += getLinkString(level+1, link.Children)
 		}
 	}
 	return retval

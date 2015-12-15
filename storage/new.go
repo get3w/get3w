@@ -5,40 +5,45 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/parser"
 	"github.com/get3w/get3w/pkg/fmatter"
-	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage/local"
 	"github.com/get3w/get3w/storage/s3"
 	"github.com/rifflock/lfshook"
 	"gopkg.in/yaml.v2"
 )
 
-func (site *Site) loadConfig() error {
-	var config, sitemap []byte
+func (site *Site) init() error {
+	var configData, linksData, langsData []byte
 
-	if site.IsExist(site.GetSourceKey(repos.KeyGet3W)) {
-		data, _ := site.Read(site.GetSourceKey(repos.KeyGet3W))
-		config, sitemap = fmatter.ReadRaw(data)
+	if site.Storage.IsExist(site.Storage.GetRootKey(KeyGet3W)) {
+		data, _ := site.Storage.Read(site.Storage.GetRootKey(KeyGet3W))
+		configData, linksData = fmatter.ReadRaw(data)
 	}
-	if len(config) == 0 {
-		if site.IsExist(site.GetSourceKey(repos.KeyConfig)) {
-			config, _ = site.Read(site.GetSourceKey(repos.KeyConfig))
+	if len(configData) == 0 {
+		if site.Storage.IsExist(site.Storage.GetRootKey(KeyConfig)) {
+			configData, _ = site.Storage.Read(site.Storage.GetRootKey(KeyConfig))
 		}
+	}
+	if len(linksData) == 0 {
+		if site.Storage.IsExist(site.Storage.GetRootKey(KeyPages)) {
+			linksData, _ = site.Storage.Read(site.Storage.GetRootKey(KeyPages))
+		}
+	}
+	if site.Storage.IsExist(site.Storage.GetRootKey(KeyLangs)) {
+		langsData, _ = site.Storage.Read(site.Storage.GetRootKey(KeyLangs))
 	}
 
 	site.Config = &get3w.Config{}
-	if len(config) > 0 {
-		yaml.Unmarshal(config, site.Config)
+	if len(configData) > 0 {
+		yaml.Unmarshal(configData, site.Config)
 	}
 
 	if site.Config.TemplateEngine == "" {
-		site.Config.TemplateEngine = parser.TemplateEngineLiquid
+		site.Config.TemplateEngine = TemplateEngineLiquid
 	}
-	if site.Config.LayoutPage == "" {
-		site.Config.LayoutPage = "default"
+	if site.Config.LayoutChannel == "" {
+		site.Config.LayoutChannel = "default"
 	}
 	if site.Config.LayoutPost == "" {
 		site.Config.LayoutPost = "post"
@@ -47,19 +52,42 @@ func (site *Site) loadConfig() error {
 		site.Config.Destination = "_site"
 	}
 
-	vars := make(map[string]interface{})
-	yaml.Unmarshal(config, vars)
+	site.Links = getLinks(string(linksData))
+	site.Langs = getLangs(string(langsData))
 
-	site.Config.All = structs.Map(site.Config)
-	for key, val := range vars {
-		if _, ok := site.Config.All[key]; !ok {
-			site.Config.All[key] = val
+	return nil
+}
+
+func (site *Site) load() {
+	allParameters := make(map[string]interface{})
+	configPath := site.key(KeyConfig)
+	if site.Storage.IsExist(configPath) {
+		configData, _ := site.Storage.Read(configPath)
+		yaml.Unmarshal(configData, allParameters)
+	}
+	site.Current.AllParameters = allParameters
+
+	linksPath := site.key(KeyPages)
+	if site.Storage.IsExist(linksPath) {
+		linksData, _ := site.Storage.Read(linksPath)
+		site.Current.Links = getLinks(string(linksData))
+	}
+
+	site.Current.Posts = []*get3w.Post{}
+	files, _ := site.Storage.GetAllFiles(site.prefix(PrefixPosts))
+	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+		post := site.getPost(file)
+		if post != nil {
+			site.Current.Posts = append(site.Current.Posts, post)
 		}
 	}
 
-	site.Summaries = getSummaries(string(sitemap))
-
-	return nil
+	if len(site.Current.Links) == 0 {
+		site.Current.Links = site.getLinks()
+	}
 }
 
 // NewLocalSite return local site
@@ -70,43 +98,26 @@ func NewLocalSite(contextDir string) (*Site, error) {
 	}
 
 	site := &Site{
-		Name:                 service.Name,
-		Path:                 service.Path,
-		GetSourcePrefix:      service.GetSourcePrefix,
-		GetDestinationPrefix: service.GetDestinationPrefix,
-		GetSourceKey:         service.GetSourceKey,
-		GetDestinationKey:    service.GetDestinationKey,
-		Read:                 service.Read,
-		Checksum:             service.Checksum,
-		Write:                service.Write,
-		WriteDestination:     service.WriteDestination,
-		Download:             service.Download,
-		Rename:               nil,
-		CopyToDestination:    service.CopyToDestination,
-		Delete:               service.Delete,
-		DeleteDestination:    service.DeleteDestination,
-		GetFiles:             service.GetFiles,
-		GetAllFiles:          service.GetAllFiles,
-		IsExist:              service.IsExist,
-		DeleteFolder:         service.DeleteFolder,
-		NewFolder:            service.NewFolder,
+		Name: service.Name,
+		Path: service.RootPath,
 	}
+	site.Storage = service
 
-	err = site.loadConfig()
+	err = site.init()
 	if err != nil {
 		return nil, err
 	}
 
-	service.SourcePath = filepath.Join(service.Path, strings.Trim(site.Config.Source, "."))
-	service.DestinationPath = filepath.Join(service.Path, strings.Trim(site.Config.Destination, "."))
+	service.SourcePath = filepath.Join(service.RootPath, strings.Trim(site.Config.Source, "."))
+	service.DestinationPath = filepath.Join(service.RootPath, strings.Trim(site.Config.Destination, "."))
 
-	warnPath := site.GetSourceKey(repos.PrefixLogs, "warn.log")
-	errorPath := site.GetSourceKey(repos.PrefixLogs, "error.log")
-	if !site.IsExist(warnPath) {
-		site.Write(warnPath, []byte{})
+	warnPath := site.Storage.GetSourceKey(PrefixLogs, "warn.log")
+	errorPath := site.Storage.GetSourceKey(PrefixLogs, "error.log")
+	if !site.Storage.IsExist(warnPath) {
+		site.Storage.Write(warnPath, []byte{})
 	}
-	if !site.IsExist(errorPath) {
-		site.Write(errorPath, []byte{})
+	if !site.Storage.IsExist(errorPath) {
+		site.Storage.Write(errorPath, []byte{})
 	}
 
 	site.logger = log.New()
@@ -117,27 +128,11 @@ func NewLocalSite(contextDir string) (*Site, error) {
 		log.ErrorLevel: errorPath,
 	}))
 
-	site.initialization()
+	for _, lang := range site.Langs {
+		site.Current = lang
+		site.load()
+	}
 	return site, nil
-}
-
-func (site *Site) initialization() {
-	site.Config.Posts = []*get3w.Post{}
-	files, _ := site.GetAllFiles(site.GetSourcePrefix(repos.PrefixPosts))
-	for _, file := range files {
-		if file.IsDir {
-			continue
-		}
-		post := site.getPost(file)
-		if post != nil {
-			site.Config.Posts = append(site.Config.Posts, post)
-		}
-	}
-	site.Config.All["posts"] = site.Config.Posts
-
-	if len(site.Summaries) == 0 {
-		site.Summaries = site.getSummaries()
-	}
 }
 
 // NewS3Site returns a new s3 site
@@ -148,33 +143,20 @@ func NewS3Site(bucketSource, bucketDestination, owner, name string) (*Site, erro
 	}
 
 	site := &Site{
-		Name:                 name,
-		Path:                 owner + "/" + name,
-		GetSourcePrefix:      service.GetSourcePrefix,
-		GetDestinationPrefix: service.GetDestinationPrefix,
-		GetSourceKey:         service.GetSourceKey,
-		GetDestinationKey:    service.GetDestinationKey,
-		Read:                 service.Read,
-		Checksum:             service.Checksum,
-		Write:                service.Write,
-		WriteDestination:     service.WriteDestination,
-		Download:             service.Download,
-		Rename:               service.Rename,
-		CopyToDestination:    service.CopyToDestination,
-		Delete:               service.Delete,
-		DeleteDestination:    service.DeleteDestination,
-		GetFiles:             service.GetFiles,
-		GetAllFiles:          service.GetAllFiles,
-		IsExist:              service.IsExist,
-		DeleteFolder:         service.DeleteFolder,
-		NewFolder:            service.NewFolder,
+		Name: name,
+		Path: owner + "/" + name,
 	}
 
-	err = site.loadConfig()
+	site.Storage = service
+
+	err = site.init()
 	if err != nil {
 		return nil, err
 	}
 
-	site.initialization()
+	for _, lang := range site.Langs {
+		site.Current = lang
+		site.load()
+	}
 	return site, nil
 }

@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import (
 	"fmt"
@@ -19,17 +19,17 @@ const (
 </html>`
 )
 
-// ParsePage the parsedContent
-func ParsePage(rootPath, template string, config *get3w.Config, sections map[string]*get3w.Section, page *get3w.Page, paginator *get3w.Paginator) (string, error) {
+// ParseChannel the parsedContent
+func (site *Site) ParseChannel(template string, channel *get3w.Channel, paginator *get3w.Paginator) (string, error) {
 	if template == "" {
-		template = page.Content
+		template = channel.Content
 	}
 
 	parsedContent := template
-	if len(page.Sections) > 0 {
-		sectionsHTML := getSectionsHTML(config, page, sections)
+	if len(channel.Sections) > 0 {
+		sectionsHTML := getSectionsHTML(site.Config, channel, site.GetSections())
 		if parsedContent == "" {
-			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(config, page), sectionsHTML)
+			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(site.Config, channel), sectionsHTML)
 		} else {
 			parsedContent += sectionsHTML
 		}
@@ -40,14 +40,14 @@ func ParsePage(rootPath, template string, config *get3w.Config, sections map[str
 	}
 
 	data := map[string]interface{}{
-		"site":      config.All,
-		"page":      page.All,
+		"site":      site.Current.AllParameters,
+		"page":      channel.AllParameters,
 		"paginator": structs.Map(paginator),
 	}
 
-	if strings.ToLower(config.TemplateEngine) == TemplateEngineLiquid {
-		parser := liquid.New(rootPath)
-		content, err := parser.Parse(page.Content, data)
+	if strings.ToLower(site.Config.TemplateEngine) == TemplateEngineLiquid {
+		parser := liquid.New(site.Path)
+		content, err := parser.Parse(channel.Content, data)
 		if err != nil {
 			return "", err
 		}

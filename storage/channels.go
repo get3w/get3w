@@ -10,47 +10,47 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// GetPages parse SUMMARY.md file and returns pages
-func (site *Site) GetPages() []*get3w.Page {
-	if site.pages == nil {
-		pages := []*get3w.Page{}
+// GetChannels parse _pages.md file and returns channels
+func (site *Site) GetChannels() []*get3w.Channel {
+	if site.channels == nil {
+		channels := []*get3w.Channel{}
 
-		for _, summary := range site.Summaries {
-			page := site.getPage(summary)
-			pages = append(pages, page)
+		for _, link := range site.Links {
+			page := site.getChannel(link)
+			channels = append(channels, page)
 		}
 
-		site.pages = pages
+		site.channels = channels
 	}
 
-	return site.pages
+	return site.channels
 }
 
-func (site *Site) getPage(summary *get3w.PageSummary) *get3w.Page {
-	page := &get3w.Page{}
+func (site *Site) getChannel(link *get3w.Link) *get3w.Channel {
+	channel := &get3w.Channel{}
 
-	data, _ := site.Read(site.GetSourceKey(summary.Path))
+	data, _ := site.Storage.Read(site.key(link.Path))
 
 	front, content := fmatter.ReadRaw(data)
 	if len(front) > 0 {
-		yaml.Unmarshal(front, page)
+		yaml.Unmarshal(front, channel)
 	}
 
-	ext := getExt(summary.Path)
-	page.Content = getStringByExt(ext, content)
+	ext := getExt(link.Path)
+	channel.Content = getStringByExt(ext, content)
 
-	page.Name = summary.Name
-	page.Path = summary.Path
-	if page.URL == "" {
-		page.URL = summary.URL
+	channel.Name = link.Name
+	channel.Path = link.Path
+	if channel.URL == "" {
+		channel.URL = link.URL
 	}
-	page.Posts = site.GetPosts(page.PostPath)
-	fmt.Println(page.Posts)
+	channel.Posts = site.GetPosts(channel.PostPath)
+	fmt.Println(channel.Posts)
 
-	if len(summary.Children) > 0 {
-		for _, child := range summary.Children {
-			childPage := site.getPage(child)
-			page.Children = append(page.Children, childPage)
+	if len(link.Children) > 0 {
+		for _, child := range link.Children {
+			childChannel := site.getChannel(child)
+			channel.Children = append(channel.Children, childChannel)
 		}
 	}
 
@@ -58,14 +58,14 @@ func (site *Site) getPage(summary *get3w.PageSummary) *get3w.Page {
 	if len(front) > 0 {
 		yaml.Unmarshal(front, vars)
 	}
-	page.All = structs.Map(page)
+	channel.AllParameters = structs.Map(channel)
 	for key, val := range vars {
-		if _, ok := page.All[key]; !ok {
-			page.All[key] = val
+		if _, ok := channel.AllParameters[key]; !ok {
+			channel.AllParameters[key] = val
 		}
 	}
 
-	return page
+	return channel
 }
 
 func getPaginatorPath(page int, url string) string {
@@ -75,7 +75,7 @@ func getPaginatorPath(page int, url string) string {
 	return fmt.Sprintf("%s%d%s", removeExt(url), page, getExt(url))
 }
 
-func (site *Site) getPagePaginators(page *get3w.Page) []*get3w.Paginator {
+func (site *Site) getChannelPaginators(page *get3w.Channel) []*get3w.Paginator {
 	paginators := []*get3w.Paginator{}
 	perPage := page.Paginate
 	totalPosts := len(page.Posts)
@@ -122,16 +122,16 @@ func (site *Site) getPagePaginators(page *get3w.Page) []*get3w.Paginator {
 	return paginators
 }
 
-// WritePage write content to page file
-func (site *Site) WritePage(page *get3w.Page) error {
-	data, err := fmatter.Write(page, []byte(page.Content))
+// WriteChannel write content to page file
+func (site *Site) WriteChannel(channel *get3w.Channel) error {
+	data, err := fmatter.Write(channel, []byte(channel.Content))
 	if err != nil {
 		return err
 	}
-	return site.Write(site.GetSourceKey(page.Path), data)
+	return site.Storage.Write(site.key(channel.Path), data)
 }
 
-// DeletePage delete page file
-func (site *Site) DeletePage(summary *get3w.PageSummary) error {
-	return site.Delete(site.GetSourceKey(summary.Path))
+// DeleteChannel delete page file
+func (site *Site) DeleteChannel(link *get3w.Link) error {
+	return site.Storage.Delete(site.key(link.Path))
 }

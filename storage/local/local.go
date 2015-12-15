@@ -17,55 +17,70 @@ import (
 // Service local service
 type Service struct {
 	Name            string
-	Path            string
+	RootPath        string
 	SourcePath      string
 	DestinationPath string
 }
 
 // NewService return new service
-func NewService(contextDir string) (*Service, error) {
+func NewService(contextDir string) (Service, error) {
 	dirPath, err := GetDirPath(contextDir)
 	if err != nil {
-		return nil, err
+		return Service{}, err
 	}
 
-	return &Service{
-		Name: filepath.Base(dirPath),
-		Path: dirPath,
+	return Service{
+		Name:     filepath.Base(dirPath),
+		RootPath: dirPath,
 	}, nil
 }
 
+// GetRootPrefix return app prefix
+func (service Service) GetRootPrefix(prefix ...string) string {
+	p := filepath.Join(service.RootPath, strings.Trim(filepath.Join(prefix...), "/"))
+	p, _ = filepath.Abs(p + "/")
+	return p
+}
+
+// GetRootKey return app key
+func (service Service) GetRootKey(key ...string) string {
+	p := filepath.Join(service.RootPath, strings.Trim(filepath.Join(key...), "/"))
+	p = strings.TrimRight(p, "/")
+	p, _ = filepath.Abs(p)
+	return p
+}
+
 // GetSourcePrefix return app prefix
-func (service *Service) GetSourcePrefix(prefix ...string) string {
+func (service Service) GetSourcePrefix(prefix ...string) string {
 	p := filepath.Join(service.SourcePath, strings.Trim(filepath.Join(prefix...), "/"))
 	p, _ = filepath.Abs(p + "/")
 	return p
 }
 
-// GetDestinationPrefix return app prefix
-func (service *Service) GetDestinationPrefix(prefix ...string) string {
-	p := filepath.Join(service.DestinationPath, strings.Trim(filepath.Join(prefix...), "/"))
-	p, _ = filepath.Abs(p + "/")
-	return p
-}
-
 // GetSourceKey return app key
-func (service *Service) GetSourceKey(key ...string) string {
+func (service Service) GetSourceKey(key ...string) string {
 	p := filepath.Join(service.SourcePath, strings.Trim(filepath.Join(key...), "/"))
 	p = strings.TrimRight(p, "/")
 	p, _ = filepath.Abs(p)
 	return p
 }
 
+// GetDestinationPrefix return app prefix
+func (service Service) GetDestinationPrefix(prefix ...string) string {
+	p := filepath.Join(service.DestinationPath, strings.Trim(filepath.Join(prefix...), "/"))
+	p, _ = filepath.Abs(p + "/")
+	return p
+}
+
 // GetDestinationKey return app key
-func (service *Service) GetDestinationKey(key ...string) string {
+func (service Service) GetDestinationKey(key ...string) string {
 	p := filepath.Join(service.DestinationPath, strings.Trim(filepath.Join(key...), "/"))
 	p, _ = filepath.Abs(p)
 	return p
 }
 
 // GetFiles return all files by appname and prefix
-func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
+func (service Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
 
 	fileInfos, err := ioutil.ReadDir(prefix)
@@ -76,17 +91,17 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	for _, fileInfo := range fileInfos {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := strings.TrimRight(filepath.Join(prefix, name), "/")
+		path := prefix + "/" + name
 		size := fileInfo.Size()
 		checksum := ""
 		if !isDir {
-			checksum, _ = service.Checksum(filePath)
+			checksum, _ = service.Checksum(path)
 		}
 
 		lastModified := fileInfo.ModTime()
 		file := &get3w.File{
 			IsDir:        isDir,
-			Path:         filePath,
+			Path:         path,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
@@ -99,7 +114,7 @@ func (service *Service) GetFiles(prefix string) ([]*get3w.File, error) {
 }
 
 // GetAllFiles return all files by appname
-func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
+func (service Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	files := []*get3w.File{}
 	if !service.IsExist(prefix) {
 		return files, nil
@@ -108,18 +123,19 @@ func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 	err := filepath.Walk(prefix, func(p string, fileInfo os.FileInfo, err error) error {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		filePath := p[len(service.SourcePath):]
-		filePath = strings.Trim(strings.Replace(filePath, "\\", "/", -1), "/")
+		path := p[len(service.SourcePath):]
+		path = filepath.ToSlash(path)
+		path = strings.Trim(strings.Replace(path, "//", "/", -1), "/")
 		size := fileInfo.Size()
 		checksum := ""
 		if !isDir {
-			checksum, _ = service.Checksum(filePath)
+			checksum, _ = service.Checksum(path)
 		}
 
 		lastModified := fileInfo.ModTime()
 		file := &get3w.File{
 			IsDir:        isDir,
-			Path:         filePath,
+			Path:         path,
 			Name:         name,
 			Size:         size,
 			Checksum:     checksum,
@@ -137,7 +153,7 @@ func (service *Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 }
 
 // Write data to source directory, specified by key
-func (service *Service) Write(key string, bs []byte) error {
+func (service Service) Write(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -147,7 +163,7 @@ func (service *Service) Write(key string, bs []byte) error {
 }
 
 // WriteDestination write data to destination directory, specified by key
-func (service *Service) WriteDestination(key string, bs []byte) error {
+func (service Service) WriteDestination(key string, bs []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -157,7 +173,7 @@ func (service *Service) WriteDestination(key string, bs []byte) error {
 }
 
 // CopyToDestination object to destinatioin
-func (service *Service) CopyToDestination(sourceKey, destinationKey string) error {
+func (service Service) CopyToDestination(sourceKey, destinationKey string) error {
 	if sourceKey == "" {
 		return fmt.Errorf("sourceKey must be a nonempty string")
 	}
@@ -174,7 +190,7 @@ func (service *Service) CopyToDestination(sourceKey, destinationKey string) erro
 }
 
 // Checksum compute file's MD5 digist
-func (service *Service) Checksum(key string) (string, error) {
+func (service Service) Checksum(key string) (string, error) {
 	if key == "" {
 		return "", fmt.Errorf("key must be a nonempty string")
 	}
@@ -194,7 +210,7 @@ func (service *Service) Checksum(key string) (string, error) {
 }
 
 // Read return resource content
-func (service *Service) Read(key string) ([]byte, error) {
+func (service Service) Read(key string) ([]byte, error) {
 	if key == "" {
 		return nil, fmt.Errorf("key must be a nonempty string")
 	}
@@ -208,7 +224,7 @@ func (service *Service) Read(key string) ([]byte, error) {
 }
 
 // Upload upload object
-func (service *Service) Upload(key string, path string) error {
+func (service Service) Upload(key string, path string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -225,7 +241,7 @@ func (service *Service) Upload(key string, path string) error {
 }
 
 // Download file by appname and key
-func (service *Service) Download(key string, downloadURL string) error {
+func (service Service) Download(key string, downloadURL string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -247,7 +263,7 @@ func (service *Service) Download(key string, downloadURL string) error {
 }
 
 // IsExist return true if specified key exists
-func (service *Service) IsExist(key string) bool {
+func (service Service) IsExist(key string) bool {
 	if key == "" {
 		return false
 	}
@@ -260,7 +276,7 @@ func (service *Service) IsExist(key string) bool {
 }
 
 // Delete specified object
-func (service *Service) Delete(key string) error {
+func (service Service) Delete(key string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -269,7 +285,7 @@ func (service *Service) Delete(key string) error {
 }
 
 // DeleteDestination specified object
-func (service *Service) DeleteDestination(key string) error {
+func (service Service) DeleteDestination(key string) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -278,7 +294,7 @@ func (service *Service) DeleteDestination(key string) error {
 }
 
 // Deletes delete objects
-func (service *Service) Deletes(keys []string) error {
+func (service Service) Deletes(keys []string) error {
 	if len(keys) == 0 {
 		return fmt.Errorf("keys must be a nonempty string array")
 	}
@@ -294,14 +310,20 @@ func (service *Service) Deletes(keys []string) error {
 }
 
 // DeleteFolder delete objects by prefix
-func (service *Service) DeleteFolder(prefix string) error {
+func (service Service) DeleteFolder(prefix string) error {
 	return os.RemoveAll(prefix)
 }
 
 // NewFolder create folder
-func (service *Service) NewFolder(prefix string) error {
+func (service Service) NewFolder(prefix string) error {
 	if !service.IsExist(prefix) {
 		return os.Mkdir(prefix, 0700)
 	}
+	return nil
+}
+
+// Rename the root folder
+// TODO: implement rename method
+func (service Service) Rename(owner, newName string, deleteAll bool) error {
 	return nil
 }

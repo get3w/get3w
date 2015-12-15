@@ -1,4 +1,4 @@
-package parser
+package storage
 
 import (
 	"strings"
@@ -8,19 +8,19 @@ import (
 )
 
 // ParsePost parse post
-func ParsePost(rootPath, template string, config *get3w.Config, post *get3w.Post) (string, error) {
+func (site *Site) ParsePost(template string, post *get3w.Post) (string, error) {
 	if template == "" {
 		template = post.Content
 	}
 
 	data := map[string]interface{}{
-		"site": config.All,
-		"page": post.All,
+		"site": site.Current.AllParameters,
+		"page": post.AllParameters,
 	}
 
 	var parsedContent string
-	if strings.ToLower(config.TemplateEngine) == TemplateEngineLiquid {
-		parser := liquid.New(rootPath)
+	if strings.ToLower(site.Config.TemplateEngine) == TemplateEngineLiquid {
+		parser := liquid.New(site.Path)
 		content, err := parser.Parse(post.Content, data)
 		if err != nil {
 			return "", err
