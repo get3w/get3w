@@ -8,19 +8,21 @@ import (
 )
 
 // ParsePost parse post
-func (site *Site) ParsePost(template string, post *get3w.Post) (string, error) {
+func (parser *Parser) ParsePost(template string, post *get3w.Post) (string, error) {
 	if template == "" {
 		template = post.Content
 	}
 
+	parser.Current.AllParameters["related_posts"] = getRelatedPosts(parser.Current.Posts, post)
+
 	data := map[string]interface{}{
-		"site": site.Current.AllParameters,
+		"site": parser.Current.AllParameters,
 		"page": post.AllParameters,
 	}
 
 	var parsedContent string
-	if strings.ToLower(site.Config.TemplateEngine) == TemplateEngineLiquid {
-		parser := liquid.New(site.Path)
+	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
+		parser := liquid.New(parser.Path)
 		content, err := parser.Parse(post.Content, data)
 		if err != nil {
 			return "", err

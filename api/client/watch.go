@@ -28,18 +28,18 @@ func (cli *Get3WCli) CmdWatch(args ...string) error {
 }
 
 func (cli *Get3WCli) watch(dir string) error {
-	site, err := storage.NewLocalSite(dir)
+	parser, err := storage.NewLocalParser(dir)
 	if err != nil {
 		return err
 	}
 
-	err = site.Build(true)
+	err = parser.Build(true)
 	if err != nil {
 		return err
 	}
 
-	sourcePath := site.Storage.GetSourcePrefix("")
-	destinationPath := strings.TrimRight(strings.ToLower(site.Storage.GetDestinationPrefix("")), string(os.PathSeparator))
+	sourcePath := parser.Storage.GetSourcePrefix("")
+	destinationPath := strings.TrimRight(strings.ToLower(parser.Storage.GetDestinationPrefix("")), string(os.PathSeparator))
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -58,12 +58,12 @@ func (cli *Get3WCli) watch(dir string) error {
 					if d.Seconds() > 1 {
 						log.Println("build done.")
 
-						site, err := storage.NewLocalSite(dir)
+						parser, err := storage.NewLocalParser(dir)
 						if err != nil {
 							log.Println("error:", err)
 						}
 
-						err = site.Build(false)
+						err = parser.Build(false)
 						if err != nil {
 							log.Println("error:", err)
 						}

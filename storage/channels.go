@@ -10,26 +10,22 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// GetChannels parse _pages.md file and returns channels
-func (site *Site) GetChannels() []*get3w.Channel {
-	if site.channels == nil {
-		channels := []*get3w.Channel{}
+// loadSiteChannels returns site's channels
+func (parser *Parser) loadSiteChannels() {
+	channels := []*get3w.Channel{}
 
-		for _, link := range site.Links {
-			page := site.getChannel(link)
-			channels = append(channels, page)
-		}
-
-		site.channels = channels
+	for _, link := range parser.Current.Links {
+		page := parser.getChannel(link)
+		channels = append(channels, page)
 	}
 
-	return site.channels
+	parser.Current.Channels = channels
 }
 
-func (site *Site) getChannel(link *get3w.Link) *get3w.Channel {
+func (parser *Parser) getChannel(link *get3w.Link) *get3w.Channel {
 	channel := &get3w.Channel{}
 
-	data, _ := site.Storage.Read(site.key(link.Path))
+	data, _ := parser.Storage.Read(parser.key(link.Path))
 
 	front, content := fmatter.ReadRaw(data)
 	if len(front) > 0 {
@@ -44,12 +40,11 @@ func (site *Site) getChannel(link *get3w.Link) *get3w.Channel {
 	if channel.URL == "" {
 		channel.URL = link.URL
 	}
-	channel.Posts = site.GetPosts(channel.PostPath)
-	fmt.Println(channel.Posts)
+	channel.Posts = parser.GetPosts(channel.PostPath)
 
 	if len(link.Children) > 0 {
 		for _, child := range link.Children {
-			childChannel := site.getChannel(child)
+			childChannel := parser.getChannel(child)
 			channel.Children = append(channel.Children, childChannel)
 		}
 	}
@@ -75,7 +70,7 @@ func getPaginatorPath(page int, url string) string {
 	return fmt.Sprintf("%s%d%s", removeExt(url), page, getExt(url))
 }
 
-func (site *Site) getChannelPaginators(page *get3w.Channel) []*get3w.Paginator {
+func (parser *Parser) getChannelPaginators(page *get3w.Channel) []*get3w.Paginator {
 	paginators := []*get3w.Paginator{}
 	perPage := page.Paginate
 	totalPosts := len(page.Posts)
@@ -123,15 +118,15 @@ func (site *Site) getChannelPaginators(page *get3w.Channel) []*get3w.Paginator {
 }
 
 // WriteChannel write content to page file
-func (site *Site) WriteChannel(channel *get3w.Channel) error {
+func (parser *Parser) WriteChannel(channel *get3w.Channel) error {
 	data, err := fmatter.Write(channel, []byte(channel.Content))
 	if err != nil {
 		return err
 	}
-	return site.Storage.Write(site.key(channel.Path), data)
+	return parser.Storage.Write(parser.key(channel.Path), data)
 }
 
 // DeleteChannel delete page file
-func (site *Site) DeleteChannel(link *get3w.Link) error {
-	return site.Storage.Delete(site.key(link.Path))
+func (parser *Parser) DeleteChannel(link *get3w.Link) error {
+	return parser.Storage.Delete(parser.key(link.Path))
 }

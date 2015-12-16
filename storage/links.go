@@ -13,42 +13,40 @@ var (
 	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
 )
 
-func getLineElements(line string) (name, path, url string, ok bool) {
-	arrOuter := regexOuter.FindStringSubmatch(line)
-	if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
-		return "", "", "", false
-	}
+func (parser *Parser) loadSiteLinks(loadDefault bool) {
+	var links []*get3w.Link
 
-	arrInner := regexInner.FindStringSubmatch(arrOuter[2])
-	if len(arrInner) != 4 || arrInner[0] == "" {
-		return "", "", "", false
-	}
-
-	name, path, url = arrOuter[1], "", ""
-	if arrInner[3] == "" {
-		path, url = strings.TrimSpace(arrInner[1]), strings.TrimSpace(arrInner[2])
+	path := parser.key(KeyLinks)
+	if parser.Storage.IsExist(path) {
+		data, _ := parser.Storage.Read(path)
+		links = parser.loadSiteLinksByString(data)
 	} else {
-		path = strings.TrimSpace(arrInner[3])
-	}
-	if url == "" {
-		url = getPageURL(name, path)
+		files, _ := parser.Storage.GetFiles(parser.prefix(""))
+		links = parser.loadSiteLinksByFiles(files)
+
+		if loadDefault {
+			for _, defaultLink := range parser.Default.Links {
+				isExist := false
+				for _, link := range links {
+					if link.Path == defaultLink.Path {
+						isExist = true
+						break
+					}
+				}
+				if !isExist {
+					links = append(links, defaultLink)
+				}
+			}
+		}
 	}
 
-	if name == "" || path == "" || url == "" {
-		return "", "", "", false
-	}
-
-	return name, path, url, true
+	parser.Current.Links = links
 }
 
-func getLinks(data string) []*get3w.Link {
+func (parser *Parser) loadSiteLinksByString(data []byte) []*get3w.Link {
 	links := []*get3w.Link{}
 
-	if data == "" {
-		return links
-	}
-
-	lines := strings.Split(data, "\n")
+	lines := strings.Split(string(data), "\n")
 	var previousSpaceNum int
 	var previousParent *get3w.Link
 
@@ -89,9 +87,9 @@ func getLinks(data string) []*get3w.Link {
 	return links
 }
 
-func (site *Site) getLinks() []*get3w.Link {
+func (parser *Parser) loadSiteLinksByFiles(files []*get3w.File) []*get3w.Link {
 	links := []*get3w.Link{}
-	files, _ := site.Storage.GetFiles(site.prefix(""))
+
 	for _, file := range files {
 		if file.IsDir || file.Name == KeyReadme {
 			continue
@@ -108,6 +106,34 @@ func (site *Site) getLinks() []*get3w.Link {
 	}
 
 	return links
+}
+
+func getLineElements(line string) (name, path, url string, ok bool) {
+	arrOuter := regexOuter.FindStringSubmatch(line)
+	if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
+		return "", "", "", false
+	}
+
+	arrInner := regexInner.FindStringSubmatch(arrOuter[2])
+	if len(arrInner) != 4 || arrInner[0] == "" {
+		return "", "", "", false
+	}
+
+	name, path, url = arrOuter[1], "", ""
+	if arrInner[3] == "" {
+		path, url = strings.TrimSpace(arrInner[1]), strings.TrimSpace(arrInner[2])
+	} else {
+		path = strings.TrimSpace(arrInner[3])
+	}
+	if url == "" {
+		url = getPageURL(name, path)
+	}
+
+	if name == "" || path == "" || url == "" {
+		return "", "", "", false
+	}
+
+	return name, path, url, true
 }
 
 func getPageURL(name, path string) string {

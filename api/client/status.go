@@ -24,7 +24,7 @@ func (cli *Get3WCli) CmdStatus(args ...string) error {
 }
 
 func (cli *Get3WCli) status(dir string) error {
-	site, err := storage.NewLocalSite(dir)
+	parser, err := storage.NewLocalParser(dir)
 	if err != nil {
 		return err
 	}
@@ -39,13 +39,13 @@ func (cli *Get3WCli) status(dir string) error {
 		}
 	}
 
-	repo := site.Config.Repository
+	repo := parser.Config.Repository
 	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
 		//fmt.Fprintln(cli.out, "WARNING: repository is unset.")
 		repo = &get3w.Repository{
 			Host:  get3w.DefaultRepositoryHost(),
 			Owner: authConfig.Username,
-			Name:  site.Name,
+			Name:  parser.Name,
 		}
 	}
 
@@ -56,7 +56,7 @@ func (cli *Get3WCli) status(dir string) error {
 	}
 	files := output.Files
 
-	localFiles, err := site.Storage.GetAllFiles(site.Storage.GetSourcePrefix(""))
+	localFiles, err := parser.Storage.GetAllFiles(parser.Storage.GetSourcePrefix(""))
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (cli *Get3WCli) status(dir string) error {
 	pathMap := make(map[string]int)
 
 	for _, localFile := range localFiles {
-		if strings.HasPrefix(localFile.Path, site.Config.Destination) {
+		if strings.HasPrefix(localFile.Path, parser.Config.Destination) {
 			continue
 		}
 		if localFile.IsDir {
@@ -75,19 +75,19 @@ func (cli *Get3WCli) status(dir string) error {
 		if checksum == "" {
 			pathMap[localFile.Path] = 1
 		} else {
-			localChecksum, _ := site.Storage.Checksum(localFile.Path)
+			localChecksum, _ := parser.Storage.Checksum(localFile.Path)
 			if checksum != localChecksum {
 				pathMap[localFile.Path] = 0
 			}
 		}
 	}
 	for path := range files {
-		if !site.Storage.IsExist(path) {
+		if !parser.Storage.IsExist(path) {
 			pathMap[path] = -1
 		}
 	}
 
-	fmt.Fprintf(cli.out, "Local repository: %s\n", site.Path)
+	fmt.Fprintf(cli.out, "Local repository: %s\n", parser.Path)
 	fmt.Fprintf(cli.out, "Remote repository: %s/%s/%s\n", repo.Host, repo.Owner, repo.Name)
 	//Your branch is up-to-date with 'origin/master'.
 

@@ -1,9 +1,15 @@
 package storage
 
-import "testing"
+import (
+	"testing"
 
-func TestGetLinks(t *testing.T) {
-	links := getLinks(`# Links
+	"github.com/stretchr/testify/assert"
+)
+
+var localParser, _ = NewLocalParser("../local")
+
+func TestLoadSiteLinksByString(t *testing.T) {
+	localParser.loadSiteLinksByString([]byte(`# Links
 
 * [Homepage](index.yml 'index.html')
 * [No](menu, noslider, footer "no.html")
@@ -13,21 +19,10 @@ func TestGetLinks(t *testing.T) {
         * [Left](slider/left.yml "slider/left.html")
         * [Right](slider/right.yml)
 * [Slider](slider/index.yml "slider/index.html")
-  `)
+  `))
 
-	if len(links) != 4 {
-		t.Fatalf("Expected %v, got %v", len(links), 4)
-	}
-
-	if links[1].Path != "menu, noslider, footer" {
-		t.Fatalf("Expected %v, got %v", links[1].Path, "menu, noslider, footer")
-	}
-
-	if links[1].URL != "no.html" {
-		t.Fatalf("Expected %v, got %v", links[1].URL, "no.html")
-	}
-
-	if len(links[2].Children) != 2 {
-		t.Fatalf("Expected %v, got %v", len(links[2].Children), 2)
-	}
+	assert.Equal(t, 4, len(localParser.Current.Links))
+	assert.Equal(t, "menu, noslider, footer", localParser.Current.Links[1].Path)
+	assert.Equal(t, "no.html", localParser.Current.Links[1].URL)
+	assert.Equal(t, 2, len(localParser.Current.Links[2].Children))
 }

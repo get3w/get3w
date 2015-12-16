@@ -8,54 +8,59 @@ import (
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
-// sectionKey get html file key by sectionName
-func (site *Site) sectionKey(relatedURL string) string {
-	return site.key(PrefixSections, relatedURL)
-}
-
-// GetSections get page models by pageName
-func (site *Site) GetSections() map[string]*get3w.Section {
-	if site.sections == nil {
-		sections := make(map[string]*get3w.Section)
-		files, err := site.Storage.GetFiles(site.prefix(PrefixSections))
-		if err != nil {
-			return nil
-		}
-
-		for _, file := range files {
-			ext := filepath.Ext(file.Path)
-			if ext != ExtHTML && ext != ExtCSS && ext != ExtJS {
-				continue
-			}
-			sectionName := strings.Replace(file.Name, ext, "", 1)
-			section := sections[sectionName]
-			if section == nil {
-				section = &get3w.Section{
-					ID:   stringutils.Base64ForURLEncode(sectionName),
-					Name: sectionName,
-				}
-			}
-			if ext == ExtHTML {
-				section.HTML, _ = site.ReadSectionContent(file)
-			} else if ext == ExtCSS {
-				section.CSS, _ = site.ReadSectionContent(file)
-			} else if ext == ExtJS {
-				section.JS, _ = site.ReadSectionContent(file)
-			}
-
-			sections[sectionName] = section
-		}
-
-		site.sections = sections
+// loadSiteSections get site's sections
+func (parser *Parser) loadSiteSections(loadDefault bool) {
+	sections := make(map[string]*get3w.Section)
+	files, err := parser.Storage.GetFiles(parser.prefix(PrefixSections))
+	if err != nil {
+		parser.Current.Sections = sections
+		return
 	}
 
-	return site.sections
+	for _, file := range files {
+		ext := filepath.Ext(file.Path)
+		if ext != ExtHTML && ext != ExtCSS && ext != ExtJS {
+			continue
+		}
+		sectionName := strings.Replace(file.Name, ext, "", 1)
+		section := sections[sectionName]
+		if section == nil {
+			section = &get3w.Section{
+				ID:   stringutils.Base64ForURLEncode(sectionName),
+				Name: sectionName,
+			}
+		}
+		if ext == ExtHTML {
+			section.HTML, _ = parser.ReadSectionContent(file)
+		} else if ext == ExtCSS {
+			section.CSS, _ = parser.ReadSectionContent(file)
+		} else if ext == ExtJS {
+			section.JS, _ = parser.ReadSectionContent(file)
+		}
+
+		sections[sectionName] = section
+	}
+
+	if loadDefault {
+		for key, section := range parser.Default.Sections {
+			if _, ok := sections[key]; !ok {
+				sections[key] = section
+			}
+		}
+	}
+
+	parser.Current.Sections = sections
+}
+
+// sectionKey get html file key by sectionName
+func (parser *Parser) sectionKey(relatedURL string) string {
+	return parser.key(PrefixSections, relatedURL)
 }
 
 // ReadSectionContent get section file content
-func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
-	keyName := site.sectionKey(file.Name)
-	str, err := site.Storage.Read(keyName)
+func (parser *Parser) ReadSectionContent(file *get3w.File) (string, error) {
+	keyName := parser.sectionKey(file.Name)
+	str, err := parser.Storage.Read(keyName)
 	if err != nil {
 		return "", err
 	}
@@ -64,14 +69,14 @@ func (site *Site) ReadSectionContent(file *get3w.File) (string, error) {
 }
 
 // SaveSection write content to section
-func (site *Site) SaveSection(section *get3w.Section) error {
-	if err := site.Storage.Write(site.sectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
+func (parser *Parser) SaveSection(section *get3w.Section) error {
+	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
 		return err
 	}
-	if err := site.Storage.Write(site.sectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
+	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
 		return err
 	}
-	if err := site.Storage.Write(site.sectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
+	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
 		return err
 	}
 	return nil
@@ -94,18 +99,18 @@ func (site *Site) SaveSection(section *get3w.Section) error {
 	// <script src="` + section.Name + `.js"></script>
 	// </body>
 	// </html>`
-	// 	site.WritePreview(site.getSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
+	// 	parser.WritePreview(parser.getSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
 }
 
 // DeleteSection delete section files
-func (site *Site) DeleteSection(sectionName string) error {
-	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtHTML)); err != nil {
+func (parser *Parser) DeleteSection(sectionName string) error {
+	if err := parser.Storage.Delete(parser.sectionKey(sectionName + ExtHTML)); err != nil {
 		return err
 	}
-	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtCSS)); err != nil {
+	if err := parser.Storage.Delete(parser.sectionKey(sectionName + ExtCSS)); err != nil {
 		return err
 	}
-	if err := site.Storage.Delete(site.sectionKey(sectionName + ExtJS)); err != nil {
+	if err := parser.Storage.Delete(parser.sectionKey(sectionName + ExtJS)); err != nil {
 		return err
 	}
 	return nil

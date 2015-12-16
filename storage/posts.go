@@ -10,16 +10,32 @@ import (
 	"github.com/get3w/get3w/pkg/fmatter"
 )
 
+func (parser *Parser) loadSitePosts() {
+	posts := []*get3w.Post{}
+	files, _ := parser.Storage.GetAllFiles(parser.prefix(PrefixPosts))
+	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+		post := parser.getPost(file)
+		if post != nil {
+			posts = append(posts, post)
+		}
+	}
+
+	parser.Current.Posts = posts
+}
+
 // postKey get post file key
-func (site *Site) postKey(postFolder, fileName string) string {
-	return site.key(PrefixPosts, postFolder, fileName)
+func (parser *Parser) postKey(postFolder, fileName string) string {
+	return parser.key(PrefixPosts, postFolder, fileName)
 }
 
 // GetPosts get site's posts
-func (site *Site) GetPosts(path string) []*get3w.Post {
+func (parser *Parser) GetPosts(path string) []*get3w.Post {
 	path = strings.ToLower(path)
 	posts := []*get3w.Post{}
-	for _, post := range site.Current.Posts {
+	for _, post := range parser.Current.Posts {
 		if path != "" && !strings.HasPrefix(strings.ToLower(post.Path), path) {
 			continue
 		}
@@ -39,10 +55,10 @@ func getRelatedPosts(posts []*get3w.Post, post *get3w.Post) []*get3w.Post {
 	return relatedPosts
 }
 
-func (site *Site) getPost(file *get3w.File) *get3w.Post {
+func (parser *Parser) getPost(file *get3w.File) *get3w.Post {
 	post := &get3w.Post{}
 
-	data, _ := site.Storage.Read(site.Storage.GetSourceKey(file.Path))
+	data, _ := parser.Storage.Read(parser.Storage.GetSourceKey(file.Path))
 	if data == nil {
 		return post
 	}
@@ -54,9 +70,8 @@ func (site *Site) getPost(file *get3w.File) *get3w.Post {
 
 	ext := getExt(file.Path)
 	post.Content = getStringByExt(ext, content)
-	path := strings.Trim(file.Path[len(PrefixPosts):], "/")
-	post.ID = removeExt(path)
-	post.Path = path
+	post.ID = removeExt(file.Name)
+	post.Path = file.Path
 	if post.Title == "" {
 		post.Title = post.ID
 	}

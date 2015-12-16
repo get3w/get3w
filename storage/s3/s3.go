@@ -25,8 +25,8 @@ type Service struct {
 	instance          *s3.S3
 }
 
-// NewService return new service
-func NewService(bucketSource, bucketDestination, owner, name string) (Service, error) {
+// New return new service
+func New(bucketSource, bucketDestination, owner, name string) (Service, error) {
 	if bucketSource == "" {
 		return Service{}, fmt.Errorf("bucketSource must be a nonempty string")
 	}

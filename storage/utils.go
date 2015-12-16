@@ -49,10 +49,18 @@ func isUnderscorePrefix(path string) bool {
 	return false
 }
 
-func (site *Site) prefix(prefix ...string) string {
-	return site.Storage.GetSourcePrefix(site.Current.Path, path.Join(prefix...))
+func (parser *Parser) prefix(prefix ...string) string {
+	return parser.Storage.GetSourcePrefix(parser.Current.Path, path.Join(prefix...))
 }
 
-func (site *Site) key(key ...string) string {
-	return site.Storage.GetSourceKey(site.Current.Path, path.Join(key...))
+func (parser *Parser) key(key ...string) string {
+	return parser.Storage.GetSourceKey(parser.Current.Path, path.Join(key...))
+}
+
+func (parser *Parser) destinationPrefix(prefix ...string) string {
+	return parser.Storage.GetDestinationPrefix(parser.Current.Path, path.Join(prefix...))
+}
+
+func (parser *Parser) destinationKey(key ...string) string {
+	return parser.Storage.GetDestinationKey(parser.Current.Path, path.Join(key...))
 }

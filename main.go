@@ -33,7 +33,7 @@ func test() {
 }
 
 func main() {
-	test()
+	//test()
 	// Set terminal emulation based on platform as required.
 	stdin, stdout, stderr := term.StdStreams()
 

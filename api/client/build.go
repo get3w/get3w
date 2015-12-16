@@ -24,12 +24,12 @@ func (cli *Get3WCli) CmdBuild(args ...string) error {
 }
 
 func (cli *Get3WCli) build(dir string) error {
-	site, err := storage.NewLocalSite(dir)
+	parser, err := storage.NewLocalParser(dir)
 	if err != nil {
 		return err
 	}
 
-	err = site.Build(true)
+	err = parser.Build(true)
 	if err != nil {
 		return err
 	}

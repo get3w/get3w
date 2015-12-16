@@ -6,51 +6,63 @@ import (
 )
 
 // Build all channels in the app.
-func (site *Site) Build(copy bool) error {
-	if copy {
-		destinationPrefix := site.Storage.GetDestinationPrefix("")
-
-		// err := site.DeleteFolder(destinationPrefix)
-		// if err != nil {
-		// 	return err
-		// }
-		err := site.Storage.NewFolder(destinationPrefix)
-		if err != nil {
-			return err
-		}
+func (parser *Parser) Build(copy bool) error {
+	destinationPrefix := parser.Storage.GetDestinationPrefix("")
+	err := parser.Storage.NewFolder(destinationPrefix)
+	if err != nil {
+		return err
 	}
 
-	for _, lang := range site.Langs {
-		site.Current = lang
-		if copy {
-			err := site.buildCopy()
-			if err != nil {
-				return err
+	if copy {
+		excludeKeys := []string{}
+		for _, excludeKey := range parser.Config.Exclude {
+			excludeKeys = append(excludeKeys, parser.Storage.GetSourceKey(excludeKey))
+		}
+
+		includeKeys := []string{}
+		for _, includeKey := range parser.Config.Include {
+			includeKeys = append(includeKeys, parser.Storage.GetSourceKey(includeKey))
+		}
+
+		for _, site := range parser.Sites {
+			parser.Current = site
+			for _, excludeKey := range parser.getExcludeKeys(parser.Current.Channels) {
+				excludeKeys = append(excludeKeys, excludeKey)
 			}
 		}
-
-		err := site.buildChannels(lang.Channels, lang.Sections)
-		if err != nil {
-			return err
-		}
-
-		err = site.buildPosts()
+		err := parser.buildCopy(excludeKeys, includeKeys)
 		if err != nil {
 			return err
 		}
 	}
+
+	for _, site := range parser.Sites {
+		parser.Current = site
+
+		err := parser.buildChannels(site.Channels)
+		if err != nil {
+			return err
+		}
+
+		err = parser.buildPosts()
+		if err != nil {
+			return err
+		}
+	}
+
+	parser.Current = parser.Default
 
 	return nil
 }
 
-func (site *Site) getExcludeKeys(channels []*get3w.Channel) []string {
+func (parser *Parser) getExcludeKeys(channels []*get3w.Channel) []string {
 	excludeKeys := []string{}
 	for _, channel := range channels {
 		if channel.Path != "" {
-			excludeKeys = append(excludeKeys, site.key(channel.Path))
+			excludeKeys = append(excludeKeys, parser.key(channel.Path))
 		}
 		if len(channel.Children) > 0 {
-			childKeys := site.getExcludeKeys(channel.Children)
+			childKeys := parser.getExcludeKeys(channel.Children)
 			for _, childKey := range childKeys {
 				excludeKeys = append(excludeKeys, childKey)
 			}
@@ -59,21 +71,8 @@ func (site *Site) getExcludeKeys(channels []*get3w.Channel) []string {
 	return excludeKeys
 }
 
-func (site *Site) buildCopy() error {
-	excludeKeys := []string{}
-	for _, excludeKey := range site.Config.Exclude {
-		excludeKeys = append(excludeKeys, site.key(excludeKey))
-	}
-	for _, excludeKey := range site.getExcludeKeys(site.Current.Channels) {
-		excludeKeys = append(excludeKeys, excludeKey)
-	}
-
-	includeKeys := []string{}
-	for _, includeKey := range site.Config.Include {
-		includeKeys = append(includeKeys, site.key(includeKey))
-	}
-
-	files, err := site.Storage.GetAllFiles(site.prefix(""))
+func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
+	files, err := parser.Storage.GetAllFiles(parser.Storage.GetSourcePrefix(""))
 	if err != nil {
 		return err
 	}
@@ -82,7 +81,8 @@ func (site *Site) buildCopy() error {
 		if file.IsDir || isUnderscorePrefix(file.Path) {
 			continue
 		}
-		sourceKey := site.Storage.GetSourceKey(file.Path)
+		sourceKey := parser.Storage.GetSourceKey(file.Path)
+		destinationKey := parser.Storage.GetDestinationKey(file.Path)
 
 		if stringutils.HasPrefixIgnoreCase(excludeKeys, sourceKey) {
 			if !stringutils.HasPrefixIgnoreCase(includeKeys, sourceKey) {
@@ -90,8 +90,7 @@ func (site *Site) buildCopy() error {
 			}
 		}
 
-		destinationKey := site.Storage.GetDestinationKey(file.Path)
-		err := site.Storage.CopyToDestination(sourceKey, destinationKey)
+		err := parser.Storage.CopyToDestination(sourceKey, destinationKey)
 		if err != nil {
 			return err
 		}
@@ -100,44 +99,41 @@ func (site *Site) buildCopy() error {
 	return nil
 }
 
-func (site *Site) buildChannels(channels []*get3w.Channel, sections map[string]*get3w.Section) error {
+func (parser *Parser) buildChannels(channels []*get3w.Channel) error {
 	for _, channel := range channels {
-		template, layout := site.getTemplate(channel.Layout, site.Config.LayoutChannel)
-		paginators := site.getChannelPaginators(channel)
+		template, layout := parser.getTemplate(channel.Layout, parser.Config.LayoutChannel)
+		paginators := parser.getChannelPaginators(channel)
 		for _, paginator := range paginators {
-			parsedContent, err := site.ParseChannel(template, channel, paginator)
+			parsedContent, err := parser.ParseChannel(template, channel, paginator)
 			if err != nil {
-				site.LogError(layout, paginator.Path, err)
+				parser.LogError(layout, paginator.Path, err)
 			}
 
-			err = site.Storage.WriteDestination(site.Storage.GetDestinationKey(paginator.Path), []byte(parsedContent))
+			err = parser.Storage.WriteDestination(parser.destinationKey(paginator.Path), []byte(parsedContent))
 			if err != nil {
-				site.LogError(layout, paginator.Path, err)
+				parser.LogError(layout, paginator.Path, err)
 			}
 		}
 
 		if len(channel.Children) > 0 {
-			site.buildChannels(channel.Children, sections)
+			parser.buildChannels(channel.Children)
 		}
 	}
 	return nil
 }
 
-func (site *Site) buildPosts() error {
-	posts := site.GetPosts("")
+func (parser *Parser) buildPosts() error {
+	posts := parser.Current.Posts
 	for _, post := range posts {
-		site.Current.RelatedPosts = getRelatedPosts(posts, post)
-		site.Current.AllParameters["related_posts"] = site.Current.RelatedPosts
-		url := post.URL
-		template, layout := site.getTemplate(post.Layout, site.Config.LayoutPost)
-		parsedContent, err := site.ParsePost(template, post)
+		template, layout := parser.getTemplate(post.Layout, parser.Config.LayoutPost)
+		parsedContent, err := parser.ParsePost(template, post)
 		if err != nil {
-			site.LogError(layout, url, err)
+			parser.LogError(layout, post.URL, err)
 		}
 
-		err = site.Storage.WriteDestination(site.Storage.GetDestinationKey(site.Current.Path, url), []byte(parsedContent))
+		err = parser.Storage.WriteDestination(parser.destinationKey(post.URL), []byte(parsedContent))
 		if err != nil {
-			site.LogError(layout, url, err)
+			parser.LogError(layout, post.URL, err)
 		}
 	}
 	return nil

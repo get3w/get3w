@@ -23,17 +23,17 @@ func (cli *Get3WCli) CmdRun(args ...string) error {
 }
 
 func (cli *Get3WCli) run(dir string) error {
-	site, err := storage.NewLocalSite(dir)
+	parser, err := storage.NewLocalParser(dir)
 	if err != nil {
 		return err
 	}
 
-	err = site.Build(true)
+	err = parser.Build(true)
 	if err != nil {
 		return err
 	}
 
-	destinationPath := site.Storage.GetDestinationPrefix("")
+	destinationPath := parser.Storage.GetDestinationPrefix("")
 	watch.Run(8000, destinationPath)
 
 	return nil

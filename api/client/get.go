@@ -40,18 +40,18 @@ func (cli *Get3WCli) get(url, dir string) error {
 		}
 	}
 
-	site, err := storage.NewLocalSite(dir)
+	parser, err := storage.NewLocalParser(dir)
 	if err != nil {
 		return err
 	}
 
 	if repo == nil {
-		repo = site.Config.Repository
+		repo = parser.Config.Repository
 		if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
 			repo = &get3w.Repository{
 				Host:  get3w.DefaultRepositoryHost(),
 				Owner: authConfig.Username,
-				Name:  site.Name,
+				Name:  parser.Name,
 			}
 		}
 	}
@@ -73,10 +73,10 @@ func (cli *Get3WCli) get(url, dir string) error {
 
 	for path, remoteChecksum := range output.Files {
 		download := false
-		if !site.Storage.IsExist(site.Storage.GetSourceKey(path)) {
+		if !parser.Storage.IsExist(parser.Storage.GetSourceKey(path)) {
 			download = true
 		} else {
-			checksum, _ := site.Storage.Checksum(site.Storage.GetSourceKey(path))
+			checksum, _ := parser.Storage.Checksum(parser.Storage.GetSourceKey(path))
 			if checksum != remoteChecksum {
 				download = true
 			}
@@ -92,13 +92,13 @@ func (cli *Get3WCli) get(url, dir string) error {
 			if err != nil {
 				return err
 			}
-			site.Storage.Write(site.Storage.GetSourceKey(path), data)
+			parser.Storage.Write(parser.Storage.GetSourceKey(path), data)
 			fmt.Println(", done.")
 		}
 	}
 
-	// site.Config.Repository = repo
-	// err = site.WriteConfig()
+	// parser.Config.Repository = repo
+	// err = parser.WriteConfig()
 	// if err != nil {
 	// 	return err
 	// }

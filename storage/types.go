@@ -1,17 +1,21 @@
 package storage
 
 import (
+	"path/filepath"
+
 	log "github.com/Sirupsen/logrus"
+	"github.com/rifflock/lfshook"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/storage/local"
+	"github.com/get3w/get3w/storage/s3"
 )
 
 // system const
 const (
-	KeyGet3W  = "_get3w.md"
 	KeyConfig = "_config.yml"
-	KeyPages  = "_pages.md"
-	KeyLangs  = "_langs.md"
+	KeyLinks  = "_links.md"
+	KeySites  = "_sites.md"
 	KeyReadme = "README.md"
 
 	PrefixLogs     = "_logs"
@@ -47,18 +51,91 @@ type Storage interface {
 	NewFolder(prefix string) error
 }
 
-// Site contains attributes and operations of the app
-type Site struct {
+// Parser contains attributes and operations of the app
+type Parser struct {
 	Name    string
 	Path    string
 	Storage Storage
 	Config  *get3w.Config
-	Links   []*get3w.Link
-	Current *get3w.Lang
-	Langs   []*get3w.Lang
+	Sites   []*get3w.Site
 
-	sections map[string]*get3w.Section
+	Default *get3w.Site
+	Current *get3w.Site
 
-	channels []*get3w.Channel
-	logger   *log.Logger
+	logger *log.Logger
+}
+
+// NewLocalParser return local site
+func NewLocalParser(contextDir string) (*Parser, error) {
+	s, err := local.New(contextDir)
+	if err != nil {
+		return nil, err
+	}
+
+	config, sites, defaultSite := loadConfigAndSites(s)
+	s.SourcePath = filepath.Join(s.RootPath, config.Source)
+	s.DestinationPath = filepath.Join(s.RootPath, config.Destination)
+
+	warnPath := s.GetSourceKey(PrefixLogs, "warn.log")
+	errorPath := s.GetSourceKey(PrefixLogs, "error.log")
+	if !s.IsExist(warnPath) {
+		s.Write(warnPath, []byte{})
+	}
+	if !s.IsExist(errorPath) {
+		s.Write(errorPath, []byte{})
+	}
+
+	logger := log.New()
+	logger.Formatter = new(log.TextFormatter)
+	logger.Level = log.WarnLevel
+	logger.Hooks.Add(lfshook.NewHook(lfshook.PathMap{
+		log.WarnLevel:  warnPath,
+		log.ErrorLevel: errorPath,
+	}))
+
+	parser := &Parser{
+		Name:    s.Name,
+		Path:    s.RootPath,
+		Config:  config,
+		Sites:   sites,
+		Default: defaultSite,
+		Current: defaultSite,
+		logger:  logger,
+	}
+	parser.Storage = s
+
+	for _, site := range parser.Sites {
+		parser.Current = site
+		loadDefault := parser.Current != parser.Default
+		parser.loadSiteResources(loadDefault)
+	}
+	return parser, nil
+}
+
+// NewS3Parser returns a new s3 site
+func NewS3Parser(bucketSource, bucketDestination, owner, name string) (*Parser, error) {
+	s, err := s3.New(bucketSource, bucketDestination, owner, name)
+	if err != nil {
+		return nil, err
+	}
+
+	config, sites, defaultSite := loadConfigAndSites(s)
+
+	parser := &Parser{
+		Name:    name,
+		Path:    owner + "/" + name,
+		Config:  config,
+		Sites:   sites,
+		Default: defaultSite,
+		Current: defaultSite,
+	}
+	parser.Storage = s
+
+	for _, site := range parser.Sites {
+		parser.Current = site
+		loadDefault := parser.Current != parser.Default
+		parser.loadSiteResources(loadDefault)
+	}
+
+	return parser, nil
 }

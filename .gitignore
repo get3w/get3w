@@ -2,7 +2,7 @@
 _obj
 _test
 _logs
-_site
+_public
 
 *.exe
 *.test

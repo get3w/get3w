@@ -8,7 +8,7 @@ import (
 
 var layouts = make(map[string]string)
 
-func (site *Site) getTemplate(pageLayout, defaultLayout string) (template string, layout string) {
+func (parser *Parser) getTemplate(pageLayout, defaultLayout string) (template string, layout string) {
 	layout = pageLayout
 	if layout == "" {
 		layout = defaultLayout
@@ -20,16 +20,16 @@ func (site *Site) getTemplate(pageLayout, defaultLayout string) (template string
 	if ext == "" {
 		layout += ".html"
 	}
-	key := site.key(PrefixLayouts, layout)
+	key := parser.key(PrefixLayouts, layout)
 	template, ok := layouts[key]
 	if !ok {
-		data, _ := site.Storage.Read(key)
+		data, _ := parser.Storage.Read(key)
 		ext := getExt(layout)
 		matter := make(map[string]string)
 		content := fmatter.Read(data, matter)
 		template = getStringByExt(ext, content)
 		if parentLayout, ok := matter["layout"]; ok {
-			parentTemplate, _ := site.getTemplate(parentLayout, "")
+			parentTemplate, _ := parser.getTemplate(parentLayout, "")
 			template = strings.Replace(parentTemplate, "{{ content }}", template, -1)
 		}
 

@@ -22,8 +22,8 @@ type Service struct {
 	DestinationPath string
 }
 
-// NewService return new service
-func NewService(contextDir string) (Service, error) {
+// New return new service
+func New(contextDir string) (Service, error) {
 	dirPath, err := GetDirPath(contextDir)
 	if err != nil {
 		return Service{}, err
