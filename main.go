@@ -7,6 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dullgiulio/pingo"
+	"github.com/get3w/get3w-sdk-go/packages"
 	"github.com/get3w/get3w/api/client"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cliconfig"
@@ -14,9 +15,9 @@ import (
 	"github.com/get3w/get3w/pkg/term"
 )
 
-func test() {
+func testHelloWorld() {
 	// Make a new plugin from the executable we created. Connect to it via TCP
-	p := pingo.NewPlugin("tcp", "E:\\GOPATH\\src\\github.com\\get3w\\get3w\\plugins\\hello-world\\hello-world.exe")
+	p := pingo.NewPlugin("tcp", "C:\\gopath\\src\\github.com\\get3w\\get3w\\plugins\\hello-world\\hello-world.exe")
 	// Actually start the plugin
 	p.Start()
 	// Remember to stop the plugin when done using it
@@ -32,8 +33,23 @@ func test() {
 	}
 }
 
+func testHighlight() {
+	p := pingo.NewPlugin("tcp", "C:\\gopath\\src\\github.com\\get3w\\get3w\\plugins\\highlight\\highlight.exe")
+	p.Start()
+	defer p.Stop()
+	options := map[string]string{
+		"xx": "yy",
+	}
+	var resp packages.Extendable
+	if err := p.Call("MyPlugin.Load", options, &resp); err != nil {
+		log.Print(err)
+	} else {
+		log.Print(resp)
+	}
+}
+
 func main() {
-	//test()
+	testHighlight()
 	// Set terminal emulation based on platform as required.
 	stdin, stdout, stderr := term.StdStreams()
 

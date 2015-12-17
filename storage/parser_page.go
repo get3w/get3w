@@ -6,7 +6,7 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/packages/liquid"
+	"github.com/get3w/get3w/engines/liquid"
 )
 
 const (

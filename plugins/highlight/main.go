@@ -1,22 +1,31 @@
 // Always create a new binary
 package main
 
-import "github.com/dullgiulio/pingo"
+import (
+	"fmt"
 
-// MyPlugin Create an object to be exported
+	"github.com/dullgiulio/pingo"
+	"github.com/get3w/get3w-sdk-go/packages"
+)
+
 type MyPlugin struct{}
 
-// SayHello Exported method, with a RPC signature
-func (p *MyPlugin) SayHello(name string, msg *string) error {
-	*msg = "Hello, " + name
+func (plugin *MyPlugin) Load(options map[string]string, extendable *packages.Extendable) error {
+	fmt.Println(options)
+	extendable = &packages.Extendable{
+		Hook: &packages.Hook{
+			Name: "hook",
+		},
+	}
+	fmt.Println("highlight package")
 	return nil
 }
 
 func main() {
 	plugin := &MyPlugin{}
-
 	// Register the objects to be exported
 	pingo.Register(plugin)
 	// Run the main events handler
 	pingo.Run()
+	//packages.Register(plugin)
 }
