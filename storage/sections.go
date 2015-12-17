@@ -8,12 +8,13 @@ import (
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
-// loadSiteSections get site's sections
-func (parser *Parser) loadSiteSections(loadDefault bool) {
-	sections := make(map[string]*get3w.Section)
+// LoadSiteSections load sections for current site
+func (parser *Parser) LoadSiteSections(loadDefault bool) {
+	parser.Current.Sections = []*get3w.Section{}
+
+	sectionMap := make(map[string]*get3w.Section)
 	files, err := parser.Storage.GetFiles(parser.prefix(PrefixSections))
 	if err != nil {
-		parser.Current.Sections = sections
 		return
 	}
 
@@ -23,7 +24,7 @@ func (parser *Parser) loadSiteSections(loadDefault bool) {
 			continue
 		}
 		sectionName := strings.Replace(file.Name, ext, "", 1)
-		section := sections[sectionName]
+		section := sectionMap[sectionName]
 		if section == nil {
 			section = &get3w.Section{
 				ID:   stringutils.Base64ForURLEncode(sectionName),
@@ -38,18 +39,20 @@ func (parser *Parser) loadSiteSections(loadDefault bool) {
 			section.JS, _ = parser.ReadSectionContent(file)
 		}
 
-		sections[sectionName] = section
+		sectionMap[sectionName] = section
 	}
 
 	if loadDefault {
-		for key, section := range parser.Default.Sections {
-			if _, ok := sections[key]; !ok {
-				sections[key] = section
+		for _, section := range parser.Default.Sections {
+			if _, ok := sectionMap[section.Name]; !ok {
+				sectionMap[section.Name] = section
 			}
 		}
 	}
 
-	parser.Current.Sections = sections
+	for _, section := range sectionMap {
+		parser.Current.Sections = append(parser.Current.Sections, section)
+	}
 }
 
 // sectionKey get html file key by sectionName
@@ -112,6 +115,15 @@ func (parser *Parser) DeleteSection(sectionName string) error {
 	}
 	if err := parser.Storage.Delete(parser.sectionKey(sectionName + ExtJS)); err != nil {
 		return err
+	}
+	return nil
+}
+
+func getSection(sectionName string, sections []*get3w.Section) *get3w.Section {
+	for _, section := range sections {
+		if section.Name == sectionName {
+			return section
+		}
 	}
 	return nil
 }

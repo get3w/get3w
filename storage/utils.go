@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/russross/blackfriday"
 )
 
@@ -63,4 +64,24 @@ func (parser *Parser) destinationPrefix(prefix ...string) string {
 
 func (parser *Parser) destinationKey(key ...string) string {
 	return parser.Storage.GetDestinationKey(parser.Current.Path, path.Join(key...))
+}
+
+// LogWarn write content to log file
+func (parser *Parser) LogWarn(templateURL, pageURL, warning string) {
+	if parser.logger != nil {
+		parser.logger.WithFields(log.Fields{
+			"templateURL": templateURL,
+			"pageURL":     pageURL,
+		}).Warn(warning)
+	}
+}
+
+// LogError write content to log file
+func (parser *Parser) LogError(templateURL, pageURL string, err error) {
+	if parser.logger != nil {
+		parser.logger.WithFields(log.Fields{
+			"templateURL": templateURL,
+			"pageURL":     pageURL,
+		}).Error(err.Error())
+	}
 }

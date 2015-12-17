@@ -2,193 +2,131 @@ package storage
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
+	"math"
 
+	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/pkg/fmatter"
+	"gopkg.in/yaml.v2"
 )
 
-var (
-	regexOuter = regexp.MustCompile(`\[([^\]]+)\]\(([^\)]+)\)`)
-	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
-)
+// LoadSiteLinks load links for current site
+func (parser *Parser) LoadSiteLinks() {
+	links := []*get3w.Link{}
 
-func (parser *Parser) loadSiteLinks(loadDefault bool) {
-	var links []*get3w.Link
-
-	path := parser.key(KeyLinks)
-	if parser.Storage.IsExist(path) {
-		data, _ := parser.Storage.Read(path)
-		links = parser.loadSiteLinksByString(data)
-	} else {
-		files, _ := parser.Storage.GetFiles(parser.prefix(""))
-		links = parser.loadSiteLinksByFiles(files)
-
-		if loadDefault {
-			for _, defaultLink := range parser.Default.Links {
-				isExist := false
-				for _, link := range links {
-					if link.Path == defaultLink.Path {
-						isExist = true
-						break
-					}
-				}
-				if !isExist {
-					links = append(links, defaultLink)
-				}
-			}
-		}
+	for _, summary := range parser.Current.LinkSummaries {
+		page := parser.getLink(summary)
+		links = append(links, page)
 	}
 
 	parser.Current.Links = links
 }
 
-func (parser *Parser) loadSiteLinksByString(data []byte) []*get3w.Link {
-	links := []*get3w.Link{}
+func (parser *Parser) getLink(summary *get3w.LinkSummary) *get3w.Link {
+	link := &get3w.Link{}
 
-	lines := strings.Split(string(data), "\n")
-	var previousSpaceNum int
-	var previousParent *get3w.Link
+	data, _ := parser.Storage.Read(parser.key(summary.Path))
 
-	for _, line := range lines {
-		if !strings.HasPrefix(strings.TrimSpace(line), "*") {
-			continue
-		}
-
-		name, path, url, ok := getLineElements(line)
-		if !ok {
-			continue
-		}
-
-		spaceNum := strings.Index(line, "*")
-		link := &get3w.Link{
-			Name: name,
-			Path: path,
-			URL:  url,
-		}
-
-		var parent *get3w.Link
-		if previousSpaceNum == spaceNum {
-			parent = previousParent
-		} else {
-			parent = getParentLink(spaceNum, links)
-		}
-
-		if parent == nil {
-			links = append(links, link)
-		} else {
-			parent.Children = append(parent.Children, link)
-		}
-
-		previousSpaceNum = spaceNum
-		previousParent = parent
+	front, content := fmatter.ReadRaw(data)
+	if len(front) > 0 {
+		yaml.Unmarshal(front, link)
 	}
 
-	return links
-}
+	ext := getExt(summary.Path)
+	link.Content = getStringByExt(ext, content)
 
-func (parser *Parser) loadSiteLinksByFiles(files []*get3w.File) []*get3w.Link {
-	links := []*get3w.Link{}
+	link.Name = summary.Name
+	link.Path = summary.Path
+	if link.URL == "" {
+		link.URL = summary.URL
+	}
+	link.Posts = parser.GetPosts(link.PostPath)
 
-	for _, file := range files {
-		if file.IsDir || file.Name == KeyReadme {
-			continue
-		}
-		ext := getExt(file.Name)
-		if ext == ExtHTML || ext == ExtMD {
-			link := &get3w.Link{
-				Name: strings.TrimRight(file.Name, ext),
-				Path: file.Name,
-				URL:  file.Name,
-			}
-			links = append(links, link)
+	if len(summary.Children) > 0 {
+		for _, child := range summary.Children {
+			childLink := parser.getLink(child)
+			link.Children = append(link.Children, childLink)
 		}
 	}
 
-	return links
-}
-
-func getLineElements(line string) (name, path, url string, ok bool) {
-	arrOuter := regexOuter.FindStringSubmatch(line)
-	if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
-		return "", "", "", false
+	vars := make(map[string]interface{})
+	if len(front) > 0 {
+		yaml.Unmarshal(front, vars)
 	}
-
-	arrInner := regexInner.FindStringSubmatch(arrOuter[2])
-	if len(arrInner) != 4 || arrInner[0] == "" {
-		return "", "", "", false
-	}
-
-	name, path, url = arrOuter[1], "", ""
-	if arrInner[3] == "" {
-		path, url = strings.TrimSpace(arrInner[1]), strings.TrimSpace(arrInner[2])
-	} else {
-		path = strings.TrimSpace(arrInner[3])
-	}
-	if url == "" {
-		url = getPageURL(name, path)
-	}
-
-	if name == "" || path == "" || url == "" {
-		return "", "", "", false
-	}
-
-	return name, path, url, true
-}
-
-func getPageURL(name, path string) string {
-	pageURL := name + ExtHTML
-	ext := getExt(path)
-	if ext == ExtMD {
-		pageURL = strings.Replace(path, ExtMD, ExtHTML, 1)
-	} else if ext == ExtHTML {
-		pageURL = path
-	}
-	return pageURL
-}
-
-func getParentLink(spaceNum int, links []*get3w.Link) *get3w.Link {
-	if spaceNum == 0 || len(links) == 0 {
-		return nil
-	}
-	link := links[len(links)-1]
-	for i := 0; i < spaceNum; i++ {
-		if len(link.Children) == 0 {
-			break
+	link.AllParameters = structs.Map(link)
+	for key, val := range vars {
+		if _, ok := link.AllParameters[key]; !ok {
+			link.AllParameters[key] = val
 		}
-		link = link.Children[len(link.Children)-1]
 	}
+
 	return link
 }
 
-// marshalLink parse page link slice to string
-func marshalLink(links []*get3w.Link) string {
-	lines := []string{}
-	lines = append(lines, getLinkString(0, links))
-
-	retval := ""
-	for _, line := range lines {
-		retval += line + "\n"
+func getPaginatorPath(page int, url string) string {
+	if page == 1 {
+		return url
 	}
-	return retval + "\n"
+	return fmt.Sprintf("%s%d%s", removeExt(url), page, getExt(url))
 }
 
-func getLinkString(level int, links []*get3w.Link) string {
-	retval := ""
-	for _, link := range links {
-		prefix := ""
-		for i := 0; i < level; i++ {
-			prefix += "\t"
+func (parser *Parser) getLinkPaginators(page *get3w.Link) []*get3w.Paginator {
+	paginators := []*get3w.Paginator{}
+	perPage := page.Paginate
+	totalPosts := len(page.Posts)
+	if perPage <= 0 || perPage >= totalPosts {
+		paginator := &get3w.Paginator{
+			Page:             1,
+			PerPage:          perPage,
+			Posts:            page.Posts,
+			TotalPosts:       totalPosts,
+			TotalPages:       1,
+			PreviousPage:     0,
+			PreviousPagePath: "",
+			NextPage:         0,
+			NextPagePath:     "",
+			Path:             page.URL,
 		}
-		if link.URL == getPageURL(link.Name, link.Path) {
-			retval += prefix + fmt.Sprintf("* [%s](%s)\n", link.Name, link.Path)
-		} else {
-			retval += prefix + fmt.Sprintf(`* [%s](%s "%s")\n`, link.Name, link.Path, link.URL)
-		}
-
-		if len(link.Children) > 0 {
-			retval += getLinkString(level+1, link.Children)
+		paginators = append(paginators, paginator)
+	} else {
+		totalPages := int(math.Ceil(float64(totalPosts) / float64(perPage)))
+		for i := 1; i <= totalPages; i++ {
+			previousPage := i - 1
+			if previousPage < 0 {
+				previousPage = 0
+			}
+			nextPage := i + 1
+			if nextPage > totalPages {
+				nextPage = 0
+			}
+			paginator := &get3w.Paginator{
+				Page:             i,
+				PerPage:          perPage,
+				Posts:            page.Posts[perPage*(i-1) : perPage*i],
+				TotalPosts:       totalPosts,
+				TotalPages:       totalPages,
+				PreviousPage:     previousPage,
+				PreviousPagePath: getPaginatorPath(previousPage, page.URL),
+				NextPage:         nextPage,
+				NextPagePath:     getPaginatorPath(nextPage, page.URL),
+				Path:             getPaginatorPath(i, page.URL),
+			}
+			paginators = append(paginators, paginator)
 		}
 	}
-	return retval
+	return paginators
+}
+
+// WriteLink write content to page file
+func (parser *Parser) WriteLink(link *get3w.Link) error {
+	data, err := fmatter.Write(link, []byte(link.Content))
+	if err != nil {
+		return err
+	}
+	return parser.Storage.Write(parser.key(link.Path), data)
+}
+
+// DeleteLink delete page file
+func (parser *Parser) DeleteLink(summary *get3w.LinkSummary) error {
+	return parser.Storage.Delete(parser.key(summary.Path))
 }

@@ -6,10 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var localParser, _ = NewLocalParser("../local")
-
-func TestLoadSiteLinksByString(t *testing.T) {
-	localParser.loadSiteLinksByString([]byte(`# Links
+func TestGetSiteLinksByString(t *testing.T) {
+	links := getSiteLinksByString([]byte(`# Links
 
 * [Homepage](index.yml 'index.html')
 * [No](menu, noslider, footer "no.html")
@@ -21,8 +19,8 @@ func TestLoadSiteLinksByString(t *testing.T) {
 * [Slider](slider/index.yml "slider/index.html")
   `))
 
-	assert.Equal(t, 4, len(localParser.Current.Links))
-	assert.Equal(t, "menu, noslider, footer", localParser.Current.Links[1].Path)
-	assert.Equal(t, "no.html", localParser.Current.Links[1].URL)
-	assert.Equal(t, 2, len(localParser.Current.Links[2].Children))
+	assert.Equal(t, 4, len(links))
+	assert.Equal(t, "menu, noslider, footer", links[1].Path)
+	assert.Equal(t, "no.html", links[1].URL)
+	assert.Equal(t, 2, len(links[2].Children))
 }

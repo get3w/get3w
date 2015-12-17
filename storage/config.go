@@ -1,7 +1,6 @@
 package storage
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"gopkg.in/yaml.v2"
@@ -37,8 +36,8 @@ func loadConfig(s Storage) *get3w.Config {
 	if config.TemplateEngine == "" {
 		config.TemplateEngine = TemplateEngineLiquid
 	}
-	if config.LayoutChannel == "" {
-		config.LayoutChannel = "default"
+	if config.LayoutLink == "" {
+		config.LayoutLink = "default"
 	}
 	if config.LayoutPost == "" {
 		config.LayoutPost = "post"
@@ -50,12 +49,13 @@ func loadConfig(s Storage) *get3w.Config {
 	return config
 }
 
-func (parser *Parser) loadSiteParameters(loadDefault bool) {
+// LoadSiteParameters load parameters for current site
+func (parser *Parser) LoadSiteParameters(loadDefault bool) {
 	allParameters := make(map[string]interface{})
 	path := parser.key(KeyConfig)
 	if parser.Storage.IsExist(path) {
-		configData, _ := parser.Storage.Read(path)
-		yaml.Unmarshal(configData, allParameters)
+		data, _ := parser.Storage.Read(path)
+		yaml.Unmarshal(data, allParameters)
 	} else {
 		if loadDefault {
 			for key, val := range parser.Default.AllParameters {
@@ -67,24 +67,4 @@ func (parser *Parser) loadSiteParameters(loadDefault bool) {
 	}
 
 	parser.Current.AllParameters = allParameters
-}
-
-// LogWarn write content to log file
-func (parser *Parser) LogWarn(templateURL, pageURL, warning string) {
-	if parser.logger != nil {
-		parser.logger.WithFields(log.Fields{
-			"templateURL": templateURL,
-			"pageURL":     pageURL,
-		}).Warn(warning)
-	}
-}
-
-// LogError write content to log file
-func (parser *Parser) LogError(templateURL, pageURL string, err error) {
-	if parser.logger != nil {
-		parser.logger.WithFields(log.Fields{
-			"templateURL": templateURL,
-			"pageURL":     pageURL,
-		}).Error(err.Error())
-	}
 }

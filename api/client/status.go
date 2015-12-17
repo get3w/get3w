@@ -37,6 +37,8 @@ func (cli *Get3WCli) status(dir string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		fmt.Fprintf(cli.out, "\nYour Username:%s\n", authConfig.Username)
 	}
 
 	repo := parser.Config.Repository

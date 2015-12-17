@@ -19,17 +19,17 @@ const (
 </html>`
 )
 
-// ParseChannel the parsedContent
-func (parser *Parser) ParseChannel(template string, channel *get3w.Channel, paginator *get3w.Paginator) (string, error) {
+// ParseLink the parsedContent
+func (parser *Parser) ParseLink(template string, link *get3w.Link, paginator *get3w.Paginator) (string, error) {
 	if template == "" {
-		template = channel.Content
+		template = link.Content
 	}
 
 	parsedContent := template
-	if len(channel.Sections) > 0 {
-		sectionsHTML := getSectionsHTML(parser.Config, channel, parser.Current.Sections)
+	if len(link.Sections) > 0 {
+		sectionsHTML := getSectionsHTML(parser.Config, link, parser.Current.Sections)
 		if parsedContent == "" {
-			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, channel), sectionsHTML)
+			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, link), sectionsHTML)
 		} else {
 			parsedContent += sectionsHTML
 		}
@@ -41,13 +41,13 @@ func (parser *Parser) ParseChannel(template string, channel *get3w.Channel, pagi
 
 	data := map[string]interface{}{
 		"site":      parser.Current.AllParameters,
-		"page":      channel.AllParameters,
+		"page":      link.AllParameters,
 		"paginator": structs.Map(paginator),
 	}
 
 	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
 		parser := liquid.New(parser.Path)
-		content, err := parser.Parse(channel.Content, data)
+		content, err := parser.Parse(link.Content, data)
 		if err != nil {
 			return "", err
 		}

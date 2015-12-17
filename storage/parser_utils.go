@@ -8,12 +8,12 @@ import (
 	"github.com/get3w/get3w-sdk-go/get3w"
 )
 
-func getSectionsHTML(config *get3w.Config, channel *get3w.Channel, sections map[string]*get3w.Section) string {
+func getSectionsHTML(config *get3w.Config, link *get3w.Link, sections []*get3w.Section) string {
 	var buffer bytes.Buffer
 
-	for _, sectionName := range channel.Sections {
-		section, ok := sections[sectionName]
-		if !ok {
+	for _, sectionName := range link.Sections {
+		section := getSection(sectionName, sections)
+		if section == nil {
 			continue
 		}
 
@@ -40,24 +40,24 @@ func getSectionsHTML(config *get3w.Config, channel *get3w.Channel, sections map[
 	return buffer.String()
 }
 
-func getDefaultHead(config *get3w.Config, channel *get3w.Channel) string {
+func getDefaultHead(config *get3w.Config, link *get3w.Link) string {
 	var buffer bytes.Buffer
 	resourceURL := "http://cdn.get3w.net"
 
-	title := channel.Title
+	title := link.Title
 	if title == "" {
 		title = config.Title
 	}
 	if title == "" {
-		title = channel.Name
+		title = link.Name
 	}
 
-	keywords := channel.Keywords
+	keywords := link.Keywords
 	if keywords == "" {
 		keywords = config.Keywords
 	}
 
-	description := channel.Description
+	description := link.Description
 	if description == "" {
 		description = config.Description
 	}

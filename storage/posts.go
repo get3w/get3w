@@ -10,7 +10,8 @@ import (
 	"github.com/get3w/get3w/pkg/fmatter"
 )
 
-func (parser *Parser) loadSitePosts() {
+// LoadSitePosts load posts for current site
+func (parser *Parser) LoadSitePosts() {
 	posts := []*get3w.Post{}
 	files, _ := parser.Storage.GetAllFiles(parser.prefix(PrefixPosts))
 	for _, file := range files {

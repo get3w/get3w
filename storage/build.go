@@ -7,6 +7,8 @@ import (
 
 // Build all channels in the app.
 func (parser *Parser) Build(copy bool) error {
+	parser.LoadSitesResources()
+
 	destinationPrefix := parser.Storage.GetDestinationPrefix("")
 	err := parser.Storage.NewFolder(destinationPrefix)
 	if err != nil {
@@ -26,7 +28,7 @@ func (parser *Parser) Build(copy bool) error {
 
 		for _, site := range parser.Sites {
 			parser.Current = site
-			for _, excludeKey := range parser.getExcludeKeys(parser.Current.Channels) {
+			for _, excludeKey := range parser.getExcludeKeys(parser.Current.Links) {
 				excludeKeys = append(excludeKeys, excludeKey)
 			}
 		}
@@ -39,7 +41,7 @@ func (parser *Parser) Build(copy bool) error {
 	for _, site := range parser.Sites {
 		parser.Current = site
 
-		err := parser.buildChannels(site.Channels)
+		err := parser.buildLinks(site.Links)
 		if err != nil {
 			return err
 		}
@@ -55,7 +57,7 @@ func (parser *Parser) Build(copy bool) error {
 	return nil
 }
 
-func (parser *Parser) getExcludeKeys(channels []*get3w.Channel) []string {
+func (parser *Parser) getExcludeKeys(channels []*get3w.Link) []string {
 	excludeKeys := []string{}
 	for _, channel := range channels {
 		if channel.Path != "" {
@@ -99,12 +101,12 @@ func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
 	return nil
 }
 
-func (parser *Parser) buildChannels(channels []*get3w.Channel) error {
+func (parser *Parser) buildLinks(channels []*get3w.Link) error {
 	for _, channel := range channels {
-		template, layout := parser.getTemplate(channel.Layout, parser.Config.LayoutChannel)
-		paginators := parser.getChannelPaginators(channel)
+		template, layout := parser.getTemplate(channel.Layout, parser.Config.LayoutLink)
+		paginators := parser.getLinkPaginators(channel)
 		for _, paginator := range paginators {
-			parsedContent, err := parser.ParseChannel(template, channel, paginator)
+			parsedContent, err := parser.ParseLink(template, channel, paginator)
 			if err != nil {
 				parser.LogError(layout, paginator.Path, err)
 			}
@@ -116,7 +118,7 @@ func (parser *Parser) buildChannels(channels []*get3w.Channel) error {
 		}
 
 		if len(channel.Children) > 0 {
-			parser.buildChannels(channel.Children)
+			parser.buildLinks(channel.Children)
 		}
 	}
 	return nil

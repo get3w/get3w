@@ -33,12 +33,11 @@ func loadSites(s Storage) ([]*get3w.Site, *get3w.Site) {
 
 	var defaultSite *get3w.Site
 	if len(sites) == 0 {
-		defaultSite := &get3w.Site{
+		sites = append(sites, &get3w.Site{
 			Name: "default",
 			Path: "",
 			URL:  "",
-		}
-		sites = append(sites, defaultSite)
+		})
 	} else {
 		for _, site := range sites {
 			if site.Path == "" {
@@ -46,12 +45,22 @@ func loadSites(s Storage) ([]*get3w.Site, *get3w.Site) {
 				break
 			}
 		}
-		if defaultSite == nil {
-			defaultSite = sites[0]
-		}
+	}
+
+	if defaultSite == nil {
+		defaultSite = sites[0]
 	}
 
 	return sites, defaultSite
+}
+
+// EachSite trigger callback in each site
+func (parser *Parser) EachSite(callback func()) {
+	for _, site := range parser.Sites {
+		parser.Current = site
+		callback()
+	}
+	parser.Current = parser.Default
 }
 
 func getSite(line string) *get3w.Site {
@@ -77,8 +86,6 @@ func getSite(line string) *get3w.Site {
 	if url == "" {
 		url = getSiteURL(p)
 	}
-
-	fmt.Printf("%s %s %s\n", name, p, url)
 
 	if name == "" {
 		return nil

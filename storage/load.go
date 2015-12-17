@@ -8,10 +8,14 @@ func loadConfigAndSites(s Storage) (config *get3w.Config, sites []*get3w.Site, d
 	return
 }
 
-func (parser *Parser) loadSiteResources(loadDefault bool) {
-	parser.loadSiteParameters(loadDefault)
-	parser.loadSitePosts()
-	parser.loadSiteLinks(loadDefault)
-	parser.loadSiteChannels()
-	parser.loadSiteSections(loadDefault)
+// LoadSitesResources load resources for each site
+func (parser *Parser) LoadSitesResources() {
+	parser.EachSite(func() {
+		loadDefault := parser.Current != parser.Default
+		parser.LoadSiteParameters(loadDefault)
+		parser.LoadSitePosts()
+		parser.LoadSiteLinkSummaries()
+		parser.LoadSiteLinks()
+		parser.LoadSiteSections(loadDefault)
+	})
 }

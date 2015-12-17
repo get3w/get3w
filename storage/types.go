@@ -104,11 +104,6 @@ func NewLocalParser(contextDir string) (*Parser, error) {
 	}
 	parser.Storage = s
 
-	for _, site := range parser.Sites {
-		parser.Current = site
-		loadDefault := parser.Current != parser.Default
-		parser.loadSiteResources(loadDefault)
-	}
 	return parser, nil
 }
 
@@ -130,12 +125,6 @@ func NewS3Parser(bucketSource, bucketDestination, owner, name string) (*Parser, 
 		Current: defaultSite,
 	}
 	parser.Storage = s
-
-	for _, site := range parser.Sites {
-		parser.Current = site
-		loadDefault := parser.Current != parser.Default
-		parser.loadSiteResources(loadDefault)
-	}
 
 	return parser, nil
 }
