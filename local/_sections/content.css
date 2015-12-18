@@ -1,0 +1,238 @@
+body {
+  background: #fff;
+  color: #4a4a4a;
+  font-family: "Open Sans", sans-serif;
+  font-size: 13pt;
+  font-weight: 300;
+  line-height: 1.75em;
+}
+.this *,
+.this *:before,
+.this *:after {
+  box-sizing: border-box;
+}
+.this p {
+  margin: 0 0 2em 0;
+}
+.this h2 {
+  color: #2a2a2a;
+  font-weight: 600;
+  letter-spacing: 0.125em;
+  line-height: 1em;
+  margin: 0 0 1em 0;
+  text-transform: uppercase;
+}
+.this h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+.this h2 {
+  font-size: 1.5em;
+  line-height: 1.75em;
+}
+.this header.major {
+  position: relative;
+}
+.this header.major:after {
+  background: #eee;
+  content: '';
+  display: inline-block;
+  height: 3px;
+  margin: 0 0 2em 0;
+  width: 6em;
+}
+.this header.major.alt {
+  text-align: center;
+  margin-bottom: 2em;
+}
+.this header p {
+  letter-spacing: 0.125em;
+  margin: 0 0 1.5em 0;
+  position: relative;
+  text-transform: uppercase;
+}
+.this header h2 + p {
+  font-size: 1em;
+  margin-top: -0.85em;
+  line-height: 1.75em;
+}
+.this .image {
+  border: 0;
+  display: inline-block;
+  position: relative;
+}
+.this .image:before {
+  background: url("http://cdn.get3w.net/assets/img/021overlay.png");
+  content: '';
+  display: block;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+.this .image img {
+  display: block;
+}
+.this .image.fit {
+  display: block;
+  margin: 0 0 3em 0;
+  width: 100%;
+}
+.this .image.fit img {
+  display: block;
+  width: 100%;
+}
+.this .wrapper {
+  padding: 6em 0 4em 0;
+}
+.this .wrapper.style1 {
+  background: #5ecb96;
+  color: #d6f2e4;
+}
+.this .wrapper.style1 h2,
+.this .wrapper.style1 h3,
+.this .wrapper.style1 strong {
+  color: #ffffff;
+}
+.this .wrapper.style1 header.major:after {
+  background: rgba(255, 255, 255, 0.25);
+}
+.this #one {
+  padding-bottom: 0;
+}
+.this #one p {
+  font-size: 1.25em;
+  line-height: 1.75em;
+  margin: -0.5em 0 0 0;
+}
+.this #one .inner {
+  display: inline-block;
+  margin-top: -6em;
+  padding-right: 6em;
+  vertical-align: middle;
+  width: 50%;
+}
+.this #one .device {
+  border: solid 40px #fff;
+  border-bottom: 0;
+  border-radius: 20px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  display: inline-block;
+  margin-bottom: 0;
+  position: relative;
+  vertical-align: middle;
+  width: 50%;
+}
+.this #one .device:after {
+  background: #eee;
+  border-radius: 100%;
+  content: '';
+  height: 10px;
+  left: 50%;
+  margin: -23px 0 0 -5px;
+  position: absolute;
+  top: 0;
+  width: 10px;
+}
+@media screen and (max-width: 1680px) {
+  body {
+    font-size: 11pt;
+  }
+}
+@media screen and (max-width: 1280px) {
+  body {
+    font-size: 11pt;
+  }
+  .this .wrapper {
+    padding: 4em 0 2em 0;
+  }
+  .this #one .inner {
+    margin-top: -4em;
+    padding-right: 4em;
+  }
+  .this #one .inner .device {
+    border-width: 35px;
+  }
+  .this #one .inner .device:after {
+    margin-top: -22px;
+  }
+}
+@media screen and (max-width: 980px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this h2 {
+    font-size: 1.25em;
+    line-height: 1.75em;
+  }
+  .this header h2 + p {
+    font-size: 0.9em;
+  }
+  .this #one p {
+    font-size: 1em;
+  }
+  .this #one .inner {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    padding: 0;
+    text-align: center;
+    width: 35em;
+  }
+  .this #one .device {
+    display: block;
+    margin: 4em auto 0 auto;
+    max-width: 100%;
+    width: 30em;
+  }
+}
+@media screen and (max-width: 736px) {
+  body {
+    font-size: 12pt;
+  }
+  .this .wrapper {
+    padding: 2.5em 1.25em 0.5em 1.25em;
+  }
+  .this #one .device {
+    border-width: 20px;
+    margin-top: 2em;
+    max-width: 100%;
+    width: 25em;
+  }
+  .this #one .device:after {
+    height: 8px;
+    margin: -13px 0 0 -4px;
+    width: 8px;
+  }
+}
+@media screen and (max-width: 480px) {
+  html,
+  body {
+    min-width: 320px;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this h2 br,
+  .this h3 br {
+    display: none;
+  }
+  .this h2 {
+    font-size: 1.15em;
+    line-height: 1.75em;
+  }
+  .this #one .device {
+    border-width: 15px;
+  }
+  .this #one .device:after {
+    height: 5px;
+    margin: -10px 0 0 -2.5px;
+    width: 5px;
+  }
+}

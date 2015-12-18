@@ -1,0 +1,222 @@
+body {
+  background: #fff;
+  color: #4a4a4a;
+  font-family: "Open Sans", sans-serif;
+  font-size: 13pt;
+  font-weight: 300;
+  line-height: 1.75em;
+}
+.this *,
+.this *:before,
+.this *:after {
+  box-sizing: border-box;
+}
+.this p {
+  margin: 0 0 2em 0;
+}
+.this h1,
+.this h2,
+.this h3 {
+  color: #2a2a2a;
+  font-weight: 600;
+  letter-spacing: 0.125em;
+  line-height: 1em;
+  margin: 0 0 1em 0;
+  text-transform: uppercase;
+}
+.this h1 a,
+.this h2 a,
+.this h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.this h2 {
+  font-size: 1.5em;
+  line-height: 1.75em;
+}
+.this h3 {
+  font-size: 1.25em;
+  line-height: 1.5em;
+}
+.this header p {
+  letter-spacing: 0.125em;
+  margin: 0 0 1.5em 0;
+  position: relative;
+  text-transform: uppercase;
+}
+.this header h2 + p {
+  font-size: 1em;
+  margin-top: -0.85em;
+  line-height: 1.75em;
+}
+.this header h3 + p {
+  font-size: 0.9em;
+  margin-top: -0.75em;
+  line-height: 1.75em;
+}
+.this .image {
+  border: 0;
+  display: inline-block;
+  position: relative;
+}
+.this .image:before {
+  background: url("http://cdn.get3w.net/assets/img/021overlay.png");
+  content: '';
+  display: block;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+.this .image img {
+  display: block;
+}
+.this .image.fit {
+  display: block;
+  margin: 0 0 3em 0;
+  width: 100%;
+}
+.this .image.fit img {
+  display: block;
+  width: 100%;
+}
+.this .image-feature {
+  position: relative;
+  text-align: center;
+  margin: 0 0.5em 2em 0.5em;
+}
+.this .image-feature > a {
+  display: block;
+}
+.this .image-feature header {
+  background: #fff;
+  left: 0;
+  padding: 1.5em 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 1;
+}
+.this .image-feature header:before {
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+  background: #fff;
+  bottom: -0.5em;
+  content: '';
+  display: block;
+  height: 1em;
+  left: 50%;
+  margin-left: -0.5em;
+  position: absolute;
+  width: 1em;
+}
+.this .image-feature header h3 {
+  font-size: 1em;
+  margin: 0;
+}
+.this .image-feature .image {
+  margin: 0;
+}
+.this .image-feature p {
+  margin: 0;
+}
+.this .image-feature footer {
+  background: #1d2726;
+  background: rgba(29, 39, 38, 0.9);
+  bottom: 0;
+  color: #fff;
+  left: 0;
+  padding: 1.5em;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+.this .image-feature footer .button.alt {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+  color: #fff !important;
+}
+.this .wrapper {
+  padding: 6em 0 4em 0;
+}
+.this .wrapper.style3 {
+  background: #f4f4f4;
+}
+@media screen and (max-width: 1680px) {
+  body {
+    font-size: 11pt;
+  }
+}
+@media screen and (max-width: 1280px) {
+  body {
+    font-size: 11pt;
+  }
+  .this .wrapper {
+    padding: 4em 0 2em 0;
+  }
+}
+@media screen and (max-width: 980px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this h2 {
+    font-size: 1.25em;
+    line-height: 1.75em;
+  }
+  .this h3 {
+    font-size: 1.1em;
+    line-height: 1.5em;
+  }
+  .this header h2 + p {
+    font-size: 0.9em;
+  }
+  .this header h3 + p {
+    font-size: 0.8em;
+  }
+  .this .image-feature .image {
+    max-height: 30em;
+    overflow: hidden;
+  }
+}
+@media screen and (max-width: 736px) {
+  body {
+    font-size: 12pt;
+  }
+  .this .image-feature {
+    margin: 0 auto 2em auto;
+    max-width: 100%;
+    width: 25em;
+  }
+  .this .image-feature .image {
+    max-height: none;
+  }
+  .this .wrapper {
+    padding: 2.5em 1.25em 0.5em 1.25em;
+  }
+}
+@media screen and (max-width: 480px) {
+  html,
+  body {
+    min-width: 320px;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this h2 br,
+  .this h3 br {
+    display: none;
+  }
+  .this h2 {
+    font-size: 1.15em;
+    line-height: 1.75em;
+  }
+  .this h3 {
+    font-size: 1em;
+    line-height: 1.5em;
+  }
+}

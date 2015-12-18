@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
@@ -90,10 +89,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 	pathMap := make(map[string]int)
 
 	for _, localFile := range localFiles {
-		if strings.HasPrefix(localFile.Path, parser.Config.Destination) {
-			continue
-		}
-		if localFile.IsDir {
+		if localFile.IsDir || parser.IsLocalFile(localFile) {
 			continue
 		}
 		checksum := files[localFile.Path]

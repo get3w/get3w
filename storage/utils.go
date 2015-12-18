@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/russross/blackfriday"
 )
 
@@ -17,6 +19,16 @@ const (
 	ExtJS   = ".js"
 	ExtPNG  = ".png"
 )
+
+var (
+	localOnlyPrefixes []string
+)
+
+func init() {
+	localOnlyPrefixes = []string{
+		PrefixLogs,
+	}
+}
 
 // getExt returns the lowercase file name extension used by path.
 func getExt(path string) string {
@@ -46,6 +58,17 @@ func isUnderscorePrefix(path string) bool {
 		if strings.HasPrefix(p, "_") {
 			return true
 		}
+	}
+	return false
+}
+
+// IsLocalFile returns true if the file is local only
+func (parser *Parser) IsLocalFile(file *get3w.File) bool {
+	if strings.HasPrefix(file.Path, parser.Config.Destination) {
+		return true
+	}
+	if stringutils.HasPrefixIgnoreCase(localOnlyPrefixes, file.Path) {
+		return true
 	}
 	return false
 }
