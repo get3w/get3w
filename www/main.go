@@ -40,8 +40,8 @@ func testHighlight() {
 	options := map[string]string{
 		"xx": "yy",
 	}
-	var resp packages.Extendable
-	if err := p.Call("MyPlugin.Load", options, &resp); err != nil {
+	var resp packages.Plugin
+	if err := p.Call("Highlight.Load", options, &resp); err != nil {
 		log.Print(err)
 	} else {
 		log.Print(resp)

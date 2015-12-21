@@ -4,15 +4,16 @@ package main
 import (
 	"fmt"
 
-	"github.com/dullgiulio/pingo"
 	"github.com/get3w/get3w-sdk-go/packages"
 )
 
-type MyPlugin struct{}
+// Highlight package
+type Highlight struct{}
 
-func (plugin *MyPlugin) Load(options map[string]string, extendable *packages.Extendable) error {
+// Load plugin parameters
+func (highlight Highlight) Load(options map[string]string, plugin *packages.Plugin) error {
 	fmt.Println(options)
-	extendable = &packages.Extendable{
+	plugin = &packages.Plugin{
 		Hook: &packages.Hook{
 			Name: "hook",
 		},
@@ -22,10 +23,6 @@ func (plugin *MyPlugin) Load(options map[string]string, extendable *packages.Ext
 }
 
 func main() {
-	plugin := &MyPlugin{}
-	// Register the objects to be exported
-	pingo.Register(plugin)
-	// Run the main events handler
-	pingo.Run()
-	//packages.Register(plugin)
+	highlight := &Highlight{}
+	packages.Register(highlight)
 }
