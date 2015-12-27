@@ -54,7 +54,7 @@ func main() {
 	// Status start
 	e.Get("/status", status.Get)
 
-	e.Static("/*", "E:\\get3w-js\\public\\get3w\\")
+	e.Static("/*", "C:\\get3w-js\\public\\get3w\\")
 
 	e.Run(port)
 }
