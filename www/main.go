@@ -10,14 +10,14 @@ import (
 	"github.com/get3w/get3w-sdk-go/packages"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cli/client"
-	"github.com/get3w/get3w/cliconfig"
+	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/term"
 )
 
 func testHelloWorld() {
 	// Make a new plugin from the executable we created. Connect to it via TCP
-	p := pingo.NewPlugin("tcp", "C:\\gopath\\src\\github.com\\get3w\\get3w\\plugins\\hello-world\\hello-world.exe")
+	p := pingo.NewPlugin("tcp", "E:\\gopath\\src\\github.com\\get3w\\get3w\\packages\\hello-world\\hello-world.exe")
 	// Actually start the plugin
 	p.Start()
 	// Remember to stop the plugin when done using it
@@ -34,7 +34,7 @@ func testHelloWorld() {
 }
 
 func testHighlight() {
-	p := pingo.NewPlugin("tcp", "C:\\gopath\\src\\github.com\\get3w\\get3w\\plugins\\highlight\\highlight.exe")
+	p := pingo.NewPlugin("tcp", "E:\\gopath\\src\\github.com\\get3w\\get3w\\packages\\highlight\\highlight.exe")
 	p.Start()
 	defer p.Stop()
 	options := map[string]string{
@@ -107,5 +107,5 @@ func main() {
 }
 
 func showVersion() {
-	fmt.Printf("get3w version %s\n", cliconfig.Version)
+	fmt.Printf("get3w version %s\n", config.Version)
 }

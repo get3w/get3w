@@ -1,19 +1,17 @@
 package files
 
 import (
-	"encoding/base64"
 	"net/http"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/storage"
+	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
-// Get file content
-func Get(c *echo.Context) error {
+// List return files
+func List(c *echo.Context) error {
 	owner := c.Param("owner")
 	name := c.Param("name")
 	path := c.P(2)
@@ -28,24 +26,15 @@ func Get(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	if app.Private && !api.IsSelf(c, app.Owner) {
-		return api.ErrorNotFound(c, nil)
-	}
-
 	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 
-	data, err := parser.Storage.Read(parser.Storage.GetSourceKey(path))
+	files, err := parser.Storage.GetFiles(parser.Storage.GetRootPrefix(path))
 	if err != nil {
-		return api.ErrorNotFound(c, nil)
+		return api.ErrorInternal(c, err)
 	}
 
-	content := base64.StdEncoding.EncodeToString(data)
-
-	output := &get3w.FileGetOutput{
-		Content: content,
-	}
-	return c.JSON(http.StatusOK, output)
+	return c.JSON(http.StatusOK, files)
 }

@@ -1,4 +1,4 @@
-package cliconfig
+package config
 
 import (
 	"io/ioutil"

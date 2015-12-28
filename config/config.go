@@ -1,4 +1,4 @@
-package cliconfig
+package config
 
 import (
 	"encoding/base64"
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/homedir"
 )
 
@@ -49,23 +50,18 @@ type AuthConfig struct {
 	AccessToken string `json:"access_token"`
 }
 
-// AppConfig constains app information
-type AppConfig struct {
-	LastModified string `json:"last_modified,omitempty"`
-}
-
 // ConfigFile ~/.get3w/config.json file info
 type ConfigFile struct {
-	AuthConfig AuthConfig            `json:"auth_config"`
-	AppConfigs map[string]*AppConfig `json:"app_configs,omitempty"`
-	filename   string                // Note: not serialized - for internal use only
+	AuthConfig AuthConfig   `json:"auth_config"`
+	Apps       []*get3w.App `json:"apps,omitempty"`
+	filename   string       // Note: not serialized - for internal use only
 }
 
 // NewConfigFile initilizes an empty configuration file for the given filename 'fn'
 func NewConfigFile(fn string) *ConfigFile {
 	return &ConfigFile{
-		AppConfigs: make(map[string]*AppConfig),
-		filename:   fn,
+		Apps:     []*get3w.App{},
+		filename: fn,
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/cliconfig"
+	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -34,7 +34,7 @@ func (cli *Get3WCli) CmdLogin(args ...string) error {
 	return err
 }
 
-func (cli *Get3WCli) login(username, password string) (*cliconfig.AuthConfig, error) {
+func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error) {
 	// On Windows, force the use of the regular OS stdin stream. Fixes #14336/#14210
 	if runtime.GOOS == "windows" {
 		cli.in = os.Stdin
@@ -99,7 +99,7 @@ func (cli *Get3WCli) login(username, password string) (*cliconfig.AuthConfig, er
 	output, resp, err := client.Users.Login(input)
 
 	if resp.StatusCode == 401 {
-		cli.configFile.AuthConfig = cliconfig.AuthConfig{}
+		cli.configFile.AuthConfig = config.AuthConfig{}
 		if err2 := cli.configFile.Save(); err2 != nil {
 			fmt.Fprintf(cli.out, "WARNING: could not save config file: %v\n", err2)
 		}

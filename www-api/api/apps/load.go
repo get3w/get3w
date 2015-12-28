@@ -6,10 +6,10 @@ import (
 
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
+	"github.com/get3w/get3w/www-api/api"
 
 	"github.com/labstack/echo"
 )
@@ -46,7 +46,7 @@ func Load(c *echo.Context) error {
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	if app == nil || !api.IsSelf(c, app.Owner) {
+	if app == nil {
 		return api.ErrorNotFound(c, nil)
 	}
 

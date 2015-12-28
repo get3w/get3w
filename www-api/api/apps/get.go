@@ -3,8 +3,8 @@ package apps
 import (
 	"net/http"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
+	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
@@ -21,7 +21,7 @@ func Get(c *echo.Context) error {
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	if app == nil || !api.IsSelf(c, app.Owner) {
+	if app == nil {
 		return api.ErrorNotFound(c, nil)
 	}
 

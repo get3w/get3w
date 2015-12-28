@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/cliconfig"
+	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -29,7 +29,7 @@ func (cli *Get3WCli) logout() error {
 	}
 
 	fmt.Fprintf(cli.out, "Remove login credentials\n")
-	cli.configFile.AuthConfig = cliconfig.AuthConfig{}
+	cli.configFile.AuthConfig = config.AuthConfig{}
 	if err := cli.configFile.Save(); err != nil {
 		return fmt.Errorf("ERROR: failed to save get3w config: %v", err)
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/cliconfig"
+	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -27,7 +27,7 @@ var (
 
 func init() {
 	if dockerCertPath == "" {
-		dockerCertPath = cliconfig.ConfigDir()
+		dockerCertPath = config.ConfigDir()
 	}
 
 	commonFlags.PostParse = postParseCommon

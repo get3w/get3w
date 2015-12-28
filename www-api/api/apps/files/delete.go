@@ -1,45 +1,35 @@
-package folders
+package files
 
 import (
 	"net/http"
 	"time"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-
+	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
-// Create create folder
-func Create(c *echo.Context) error {
+// Delete file
+func Delete(c *echo.Context) error {
 	owner := c.Param("owner")
 	name := c.Param("name")
+	path := c.P(2)
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
 	appDAO := dao.NewAppDAO()
-
-	input := &get3w.FolderCreateInput{}
-	err := api.LoadRequestInput(c, input)
-	if err != nil {
-		return api.ErrorBadRequest(c, err)
-	}
-	if input.Path == "" {
-		return api.ErrorBadRequest(c, nil)
-	}
-
 	app, err := appDAO.GetApp(owner, name)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	if app == nil || !api.IsSelf(c, app.Owner) {
-		return api.ErrorNotFound(c, nil)
+	if app == nil {
+		return api.Error(c, http.StatusNotFound, nil)
 	}
 
 	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
@@ -47,14 +37,15 @@ func Create(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	parser.Storage.NewFolder(parser.Storage.GetSourcePrefix(input.Path))
+	parser.Storage.Delete(parser.Storage.GetSourceKey(path))
+
 	lastModified := timeutils.ToString(time.Now())
 	err = appDAO.UpdateUpdatedAt(app.Owner, app.Name, lastModified)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 
-	output := &get3w.FolderCreateOutput{
+	output := &get3w.FileDeleteOutput{
 		LastModified: lastModified,
 	}
 	return c.JSON(http.StatusOK, output)

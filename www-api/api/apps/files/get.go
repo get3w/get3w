@@ -1,31 +1,30 @@
 package files
 
 import (
+	"encoding/base64"
 	"net/http"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/storage"
-
+	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
-// Checksum get path and checksum map of all files, dedicated to cli
-func Checksum(c *echo.Context) error {
+// Get file content
+func Get(c *echo.Context) error {
 	owner := c.Param("owner")
 	name := c.Param("name")
+	path := c.P(2)
 
-	app, err := dao.NewAppDAO().GetApp(owner, name)
+	appDAO := dao.NewAppDAO()
+
+	app, err := appDAO.GetApp(owner, name)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 	if app == nil {
-		return api.ErrorNotFound(c, nil)
-	}
-
-	if app.Private && !api.IsSelf(c, app.Owner) {
 		return api.ErrorNotFound(c, nil)
 	}
 
@@ -34,18 +33,15 @@ func Checksum(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	files, err := parser.Storage.GetAllFiles(parser.Storage.GetSourcePrefix(""))
+	data, err := parser.Storage.Read(parser.Storage.GetSourceKey(path))
 	if err != nil {
-		return api.ErrorInternal(c, err)
+		return api.ErrorNotFound(c, nil)
 	}
 
-	output := &get3w.FilesChecksumOutput{
-		Files: make(map[string]string),
-	}
+	content := base64.StdEncoding.EncodeToString(data)
 
-	for _, file := range files {
-		output.Files[file.Path] = file.Checksum
+	output := &get3w.FileGetOutput{
+		Content: content,
 	}
-
 	return c.JSON(http.StatusOK, output)
 }

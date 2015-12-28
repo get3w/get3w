@@ -39,8 +39,7 @@ const (
         "http://*.get3w.net": "*",
         "http://g3.com:99": "*",
         "http://*.g3.com:99": "*",
-				"file://": "*",
-        "file://": "*"
+				"http://127.0.0.1:49393": "*"
     });
 </script>`
 

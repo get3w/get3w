@@ -5,21 +5,21 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
 	"github.com/get3w/get3w-sdk-go/get3w"
-	"github.com/get3w/get3w/pkg/ioutils"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
+	"github.com/get3w/get3w/www-api/api"
 
 	"github.com/labstack/echo"
 )
 
-// Push file content
-func Push(c *echo.Context) error {
+// Edit file content
+func Edit(c *echo.Context) error {
 	owner := c.Param("owner")
 	name := c.Param("name")
+	path := c.P(2)
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
@@ -27,7 +27,7 @@ func Push(c *echo.Context) error {
 
 	appDAO := dao.NewAppDAO()
 
-	input := &get3w.FilesPushInput{}
+	input := &get3w.FileEditInput{}
 	err := api.LoadRequestInput(c, input)
 	if err != nil {
 		return api.ErrorBadRequest(c, err)
@@ -37,7 +37,7 @@ func Push(c *echo.Context) error {
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	if app == nil || !api.IsSelf(c, app.Owner) {
+	if app == nil {
 		return api.ErrorNotFound(c, nil)
 	}
 
@@ -46,24 +46,9 @@ func Push(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	bs, err := base64.StdEncoding.DecodeString(input.Blob)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	pathBytesMap, err := ioutils.UnPack(bs)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-
-	for _, addedPath := range input.Added {
-		parser.Storage.Write(parser.Storage.GetSourceKey(addedPath), pathBytesMap[addedPath])
-	}
-	for _, modifiedPath := range input.Modified {
-		parser.Storage.Write(parser.Storage.GetSourceKey(modifiedPath), pathBytesMap[modifiedPath])
-	}
-	for _, removedPath := range input.Removed {
-		parser.Storage.Delete(parser.Storage.GetSourceKey(removedPath))
-	}
+	var dst []byte
+	base64.StdEncoding.Encode(dst, []byte(input.Content))
+	parser.Storage.Write(path, dst)
 
 	lastModified := timeutils.ToString(time.Now())
 	err = appDAO.UpdateUpdatedAt(app.Owner, app.Name, lastModified)

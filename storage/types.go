@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
@@ -70,6 +71,11 @@ func NewLocalParser(contextDir string) (*Parser, error) {
 	s, err := local.New(contextDir)
 	if err != nil {
 		return nil, err
+	}
+
+	path := s.GetRootKey(KeyConfig)
+	if !s.IsExist(path) {
+		return nil, fmt.Errorf("ERROR: not a valid repository: %s", s.GetRootPrefix(""))
 	}
 
 	config, sites, defaultSite := loadConfigAndSites(s)

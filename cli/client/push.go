@@ -9,7 +9,7 @@ import (
 
 	"github.com/get3w/get3w-sdk-go/get3w"
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/cliconfig"
+	"github.com/get3w/get3w/config"
 	"github.com/get3w/get3w/pkg/ioutils"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/stringutils"
@@ -115,7 +115,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 		return nil
 	}
 
-	configPath := cliconfig.ConfigDir()
+	configPath := config.ConfigDir()
 	gzPath := filepath.Join(configPath, stringutils.UUID()+".tar.gz")
 
 	err = ioutils.Pack(gzPath, parser.Path, pathMap)

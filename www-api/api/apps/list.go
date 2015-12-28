@@ -3,8 +3,8 @@ package apps
 import (
 	"net/http"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
-	"github.com/bairongsoft/get3w-utils/dao"
+	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
@@ -14,10 +14,10 @@ func List(c *echo.Context) error {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	apps, err := dao.NewAppDAO().GetApps(api.Owner(c))
+	configFile, err := config.Load(config.ConfigDir())
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 
-	return c.JSON(http.StatusOK, apps)
+	return c.JSON(http.StatusOK, configFile.Apps)
 }

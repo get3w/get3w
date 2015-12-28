@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/get3w/get3w-sdk-go/get3w"
@@ -28,6 +29,20 @@ func StaticXDomain(c *echo.Context) error {
 	return nil
 }
 
+// IsAnonymous return true if no authentication information in the header
+func IsAnonymous(c *echo.Context) bool {
+	accessToken := c.Get("AccessToken").(string)
+	fmt.Println(accessToken)
+	if accessToken == "" {
+		return true
+	}
+	configFile = GetConfigFile()
+	if configFile.AuthConfig.AccessToken != accessToken {
+		return true
+	}
+	return false
+}
+
 // StoreHeaders get header values and set to context
 func StoreHeaders() echo.HandlerFunc {
 	return func(c *echo.Context) error {
@@ -47,6 +62,7 @@ func StoreHeaders() echo.HandlerFunc {
 		c.Set("version", version)
 
 		auth := request.Header.Get("Authorization")
+		log.Println(auth)
 		l := len(Bearer)
 		accessToken := ""
 
@@ -67,6 +83,16 @@ func StoreHeaders() echo.HandlerFunc {
 func LoadRequestInput(c *echo.Context, v interface{}) error {
 	decoder := json.NewDecoder(c.Request().Body)
 	return decoder.Decode(&v)
+}
+
+// Owner get owner by authentication
+func Owner(c *echo.Context) string {
+	configFile := GetConfigFile()
+	accessToken := c.Get("AccessToken").(string)
+	if configFile.AuthConfig.AccessToken == accessToken {
+		return configFile.AuthConfig.Username
+	}
+	return ""
 }
 
 // Version return accept version from reuqest header

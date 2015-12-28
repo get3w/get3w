@@ -1,25 +1,23 @@
-package files
+package folders
 
 import (
-	"encoding/base64"
 	"net/http"
 	"time"
 
-	"github.com/get3w/get3w/g3-api/pkg/api"
 	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/bairongsoft/get3w-utils/utils"
 	"github.com/get3w/get3w-sdk-go/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
+	"github.com/get3w/get3w/www-api/api"
 
 	"github.com/labstack/echo"
 )
 
-// Edit file content
-func Edit(c *echo.Context) error {
+// Create create folder
+func Create(c *echo.Context) error {
 	owner := c.Param("owner")
 	name := c.Param("name")
-	path := c.P(2)
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
@@ -27,17 +25,20 @@ func Edit(c *echo.Context) error {
 
 	appDAO := dao.NewAppDAO()
 
-	input := &get3w.FileEditInput{}
+	input := &get3w.FolderCreateInput{}
 	err := api.LoadRequestInput(c, input)
 	if err != nil {
 		return api.ErrorBadRequest(c, err)
+	}
+	if input.Path == "" {
+		return api.ErrorBadRequest(c, nil)
 	}
 
 	app, err := appDAO.GetApp(owner, name)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	if app == nil || !api.IsSelf(c, app.Owner) {
+	if app == nil {
 		return api.ErrorNotFound(c, nil)
 	}
 
@@ -46,17 +47,14 @@ func Edit(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	var dst []byte
-	base64.StdEncoding.Encode(dst, []byte(input.Content))
-	parser.Storage.Write(path, dst)
-
+	parser.Storage.NewFolder(parser.Storage.GetSourcePrefix(input.Path))
 	lastModified := timeutils.ToString(time.Now())
 	err = appDAO.UpdateUpdatedAt(app.Owner, app.Name, lastModified)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 
-	output := &get3w.FileEditOutput{
+	output := &get3w.FolderCreateOutput{
 		LastModified: lastModified,
 	}
 	return c.JSON(http.StatusOK, output)
