@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/get3w/get3w/pkg/timeutils"
 )

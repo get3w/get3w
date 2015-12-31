@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 )
 
 func getSectionsHTML(config *get3w.Config, link *get3w.Link, sections []*get3w.Section) string {

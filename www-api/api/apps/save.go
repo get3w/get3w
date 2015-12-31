@@ -4,26 +4,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
 	"github.com/get3w/get3w/www-api/api"
 
 	"github.com/labstack/echo"
+	"github.com/mitchellh/mapstructure"
 )
 
 // Save app
 func Save(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
-
-	appDAO := dao.NewAppDAO()
 
 	input := &get3w.AppSaveInput{}
 	err := api.LoadRequestInput(c, input)
@@ -31,7 +30,7 @@ func Save(c *echo.Context) error {
 		return api.ErrorBadRequest(c, err)
 	}
 
-	app, err := appDAO.GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
@@ -39,49 +38,55 @@ func Save(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
+	parser, err := storage.NewLocalParser(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
 
-	for _, link := range input.Links {
-		parser.WriteLink(link)
-	}
+	for _, payload := range input.Payloads {
+		switch payload.Type {
+		case get3w.PayloadTypeConfig:
+			if payload.Status == get3w.PayloadStatusModified || payload.Status == get3w.PayloadStatusAdded {
+				var config get3w.Config
+				err := mapstructure.Decode(payload.Data, &config)
+				if err == nil {
+					if app.Description == "" && config.Description != "" {
+						app.Description = config.Description
+					}
 
-	for _, section := range input.Sections {
-		parser.SaveSection(section)
-	}
+					parser.Config = &config
+					parser.WriteConfig()
+				}
+			}
 
-	if input.Config != nil {
-		//config := parser.GetConfig()
+		case get3w.PayloadTypeLink:
+			if payload.Status == get3w.PayloadStatusModified || payload.Status == get3w.PayloadStatusAdded {
+				var link get3w.Link
+				err := mapstructure.Decode(payload.Data, &link)
+				if err == nil {
+					parser.WriteLink(&link)
+				}
+			}
 
-		// for _, pageName := range config.Pages {
-		// 	if !stringutils.Contains(input.Config.Pages, pageName) {
-		// 		parser.DeletePage(pageName)
-		// 	}
-		// }
-		//
-		// for _, sectionName := range config.Sections {
-		// 	if !stringutils.Contains(input.Config.Sections, sectionName) {
-		// 		parser.DeleteSection(sectionName)
-		// 	}
-		// }
+		case get3w.PayloadTypeSection:
+			if payload.Status == get3w.PayloadStatusModified || payload.Status == get3w.PayloadStatusAdded {
+				var section get3w.Section
+				err := mapstructure.Decode(payload.Data, &section)
+				if err == nil {
+					parser.SaveSection(&section)
+				}
+			} else if payload.Status == get3w.PayloadStatusRemoved {
+				var section get3w.Section
+				err := mapstructure.Decode(payload.Data, &section)
+				if err == nil {
+					parser.DeleteSection(section.Name)
+				}
+			}
 
-		if app.Description == "" && input.Config.Description != "" {
-			app.Description = input.Config.Description
 		}
-
-		parser.Config = input.Config
-		parser.WriteConfig()
-	}
-
-	updatedAt := timeutils.ToString(time.Now())
-	err = appDAO.UpdateUpdatedAt(app.Owner, app.Name, updatedAt)
-	if err != nil {
-		return api.ErrorInternal(c, err)
 	}
 
 	return c.JSON(http.StatusOK, &get3w.AppSaveOutput{
-		LastModified: updatedAt,
+		LastModified: timeutils.ToString(time.Now()),
 	})
 }

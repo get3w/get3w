@@ -7,7 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
+	"github.com/get3w/get3w/config"
 	"github.com/labstack/echo"
 )
 
@@ -27,6 +28,21 @@ func StaticXDomain(c *echo.Context) error {
 	c.Response().WriteHeader(http.StatusOK)
 	c.Response().Write(buf.Bytes())
 	return nil
+}
+
+// GetApp returns app by path
+func GetApp(path string) (*get3w.App, error) {
+	configFile, err := config.Load(config.ConfigDir())
+	if err != nil {
+		return nil, err
+	}
+	var app *get3w.App
+	for _, localApp := range configFile.Apps {
+		if localApp.Path == path {
+			app = localApp
+		}
+	}
+	return app, nil
 }
 
 // IsAnonymous return true if no authentication information in the header

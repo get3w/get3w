@@ -3,8 +3,6 @@ package files
 import (
 	"net/http"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
 	"github.com/get3w/get3w/storage"
 	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
@@ -12,13 +10,14 @@ import (
 
 // List return files
 func List(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
-	path := c.P(2)
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
-	appDAO := dao.NewAppDAO()
+	path := c.P(1)
 
-	app, err := appDAO.GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
@@ -26,7 +25,7 @@ func List(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
+	parser, err := storage.NewLocalParser(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}

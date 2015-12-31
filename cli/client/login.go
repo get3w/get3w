@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"

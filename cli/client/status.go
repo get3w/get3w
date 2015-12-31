@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/storage"

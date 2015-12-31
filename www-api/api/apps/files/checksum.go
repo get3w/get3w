@@ -3,9 +3,7 @@ package files
 import (
 	"net/http"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/storage"
 	"github.com/get3w/get3w/www-api/api"
 
@@ -14,10 +12,12 @@ import (
 
 // Checksum get path and checksum map of all files, dedicated to cli
 func Checksum(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
-	app, err := dao.NewAppDAO().GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
@@ -25,7 +25,7 @@ func Checksum(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
+	parser, err := storage.NewLocalParser(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}

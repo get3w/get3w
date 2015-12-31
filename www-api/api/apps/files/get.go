@@ -4,9 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/storage"
 	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
@@ -14,13 +12,14 @@ import (
 
 // Get file content
 func Get(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
-	path := c.P(2)
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
-	appDAO := dao.NewAppDAO()
+	path := c.P(1)
 
-	app, err := appDAO.GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
@@ -28,7 +27,7 @@ func Get(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
+	parser, err := storage.NewLocalParser(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}

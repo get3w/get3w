@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 )
 
 var (

@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/get3w/get3w-sdk-go/packages"
+	"github.com/get3w/get3w/packages"
 )
 
 // Highlight package

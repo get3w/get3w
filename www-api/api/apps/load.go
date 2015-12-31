@@ -4,9 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
 	"github.com/get3w/get3w/www-api/api"
@@ -16,14 +14,14 @@ import (
 
 // Load app
 func Load(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
-
-	appDAO := dao.NewAppDAO()
 
 	input := &get3w.AppLoadInput{}
 	err := api.LoadRequestInput(c, input)
@@ -31,18 +29,13 @@ func Load(c *echo.Context) error {
 		return api.ErrorBadRequest(c, err)
 	}
 
-	if input.LastModified != "" {
-		updatedAt, err := appDAO.GetUpdatedAt(owner, name)
-		if err != nil {
-			return api.ErrorInternal(c, err)
-		}
-
-		if input.LastModified == updatedAt {
-			return c.String(http.StatusNotModified, "")
-		}
+	parser, err := storage.NewLocalParser(appPath)
+	if err != nil {
+		return api.ErrorBadRequest(c, err)
 	}
+	parser.LoadSitesResources()
 
-	app, err := appDAO.GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
@@ -50,19 +43,8 @@ func Load(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	parser.LoadSitesResources()
-
-	if app.UpdatedAt == "" {
-		app.UpdatedAt = timeutils.ToString(time.Now())
-		appDAO.UpdateUpdatedAt(app.Owner, app.Name, app.UpdatedAt)
-	}
-
 	output := &get3w.AppLoadOutput{
-		LastModified: app.UpdatedAt,
+		LastModified: timeutils.ToString(time.Now()),
 		App:          app,
 		Config:       parser.Config,
 		Sites:        parser.Sites,

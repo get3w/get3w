@@ -3,21 +3,22 @@ package apps
 import (
 	"net/http"
 
-	"github.com/bairongsoft/get3w-utils/dao"
 	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
 // Get app
 func Get(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	app, err := dao.NewAppDAO().GetApp(owner, name)
+	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}

@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 )
 
 func loadSites(s Storage) ([]*get3w.Site, *get3w.Site) {

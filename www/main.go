@@ -7,7 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dullgiulio/pingo"
-	"github.com/get3w/get3w-sdk-go/packages"
+	"github.com/get3w/get3w/packages"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cli/client"
 	"github.com/get3w/get3w/config"

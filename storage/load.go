@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/get3w/get3w-sdk-go/get3w"
+import "github.com/get3w/get3w"
 
 func loadConfigAndSites(s Storage) (config *get3w.Config, sites []*get3w.Site, defaultSite *get3w.Site) {
 	config = loadConfig(s)

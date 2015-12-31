@@ -83,9 +83,9 @@ func NewGet3WCli(in io.ReadCloser, out, err io.Writer, clientFlags *cli.ClientFl
 			cli.outFd, cli.isTerminalOut = term.GetFdInfo(cli.out)
 		}
 
-		configFile, e := config.Load(config.ConfigDir())
-		if e != nil {
-			fmt.Fprintf(cli.err, "WARNING: Error loading config file:%v\n", e)
+		configFile, err := config.Load(config.ConfigDir())
+		if err != nil {
+			fmt.Fprintf(cli.err, "WARNING: Error loading config file:%v\n", err)
 		}
 		cli.configFile = configFile
 

@@ -2,40 +2,46 @@ package apps
 
 import (
 	"net/http"
+	"os"
 
-	"github.com/bairongsoft/get3w-utils/dao"
-	"github.com/bairongsoft/get3w-utils/utils"
-	"github.com/get3w/get3w/storage"
+	"github.com/get3w/get3w"
+	"github.com/get3w/get3w/config"
 	"github.com/get3w/get3w/www-api/api"
 	"github.com/labstack/echo"
 )
 
 // Delete app
 func Delete(c *echo.Context) error {
-	owner := c.Param("owner")
-	name := c.Param("name")
+	appPath := c.Param("app_path")
+	if appPath == "" {
+		return api.ErrorNotFound(c, nil)
+	}
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	appDAO := dao.NewAppDAO()
-
-	app, err := appDAO.GetApp(owner, name)
-	if err != nil {
-		return api.ErrorInternal(c, err)
+	configFile, err := config.Load(config.ConfigDir())
+	var appToDelete *get3w.App
+	index := -1
+	for i, app := range configFile.Apps {
+		if app.Path == appPath {
+			appToDelete = app
+			index = i
+			break
+		}
 	}
-	if app == nil {
+	if appToDelete == nil {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewS3Parser(utils.BucketAppSource, utils.BucketAppDestination, app.Owner, app.Name)
+	err = os.RemoveAll(appPath)
 	if err != nil {
-		return api.ErrorInternal(c, err)
+		return api.ErrorBadRequest(c, err)
 	}
 
-	parser.Storage.DeleteFolder(parser.Storage.GetSourcePrefix(""))
-	appDAO.Delete(app.Owner, app.Name)
+	configFile.Apps = append(configFile.Apps[:index], configFile.Apps[index+1:]...)
+	configFile.Save()
 
-	return c.JSON(http.StatusOK, app)
+	return c.JSON(http.StatusOK, appToDelete)
 }

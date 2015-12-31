@@ -7,7 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/rifflock/lfshook"
 
-	"github.com/get3w/get3w-sdk-go/get3w"
+	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/storage/local"
 	"github.com/get3w/get3w/storage/s3"
 )
@@ -75,7 +75,7 @@ func NewLocalParser(contextDir string) (*Parser, error) {
 
 	path := s.GetRootKey(KeyConfig)
 	if !s.IsExist(path) {
-		return nil, fmt.Errorf("ERROR: not a valid repository: %s", s.GetRootPrefix(""))
+		return nil, fmt.Errorf("Not a Site Repository: %s", s.GetRootPrefix(""))
 	}
 
 	config, sites, defaultSite := loadConfigAndSites(s)
