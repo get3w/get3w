@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/get3w/get3w/www-api/api"
 	"github.com/get3w/get3w/www-api/api/apps"
 	"github.com/get3w/get3w/www-api/api/apps/files"
@@ -57,7 +59,7 @@ func main() {
 	// Status start
 	e.Get("/api/status", status.Get)
 
-	e.Static("/*", "E:\\get3w-js\\public\\get3w\\")
+	e.Static("/*", os.Getenv("ROOT")+"get3w-js\\public\\get3w\\")
 
 	e.Run(port)
 }
