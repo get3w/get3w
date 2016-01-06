@@ -14,7 +14,6 @@ func List(c *echo.Context) error {
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
-
 	path := c.P(1)
 
 	app, err := api.GetApp(appPath)

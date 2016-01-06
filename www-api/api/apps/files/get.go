@@ -16,7 +16,6 @@ func Get(c *echo.Context) error {
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
-
 	path := c.P(1)
 
 	app, err := api.GetApp(appPath)
@@ -37,10 +36,8 @@ func Get(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	content := base64.StdEncoding.EncodeToString(data)
-
 	output := &get3w.FileGetOutput{
-		Content: content,
+		Content: base64.StdEncoding.EncodeToString(data),
 	}
 	return c.JSON(http.StatusOK, output)
 }

@@ -17,7 +17,6 @@ func Delete(c *echo.Context) error {
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
-
 	path := c.P(1)
 
 	if api.IsAnonymous(c) {

@@ -208,7 +208,7 @@ func (service Service) GetAllFiles(prefix string) ([]*get3w.File, error) {
 }
 
 // Write write string content to specified key resource
-func (service Service) Write(key string, bs []byte) error {
+func (service Service) Write(key string, data []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -218,7 +218,7 @@ func (service Service) Write(key string, bs []byte) error {
 		Key:         aws.String(key),                  // Required
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-		Body:        bytes.NewReader(bs),
+		Body:        bytes.NewReader(data),
 	}
 
 	_, err := service.instance.PutObject(params)
@@ -226,7 +226,7 @@ func (service Service) Write(key string, bs []byte) error {
 }
 
 // WriteDestination write string content to specified key resource
-func (service Service) WriteDestination(key string, bs []byte) error {
+func (service Service) WriteDestination(key string, data []byte) error {
 	if key == "" {
 		return fmt.Errorf("key must be a nonempty string")
 	}
@@ -236,7 +236,7 @@ func (service Service) WriteDestination(key string, bs []byte) error {
 		Key:         aws.String(key),                       // Required
 		ACL:         aws.String(s3.ObjectCannedACLPublicRead),
 		ContentType: aws.String(mime.TypeByExtension(path.Ext(key))),
-		Body:        bytes.NewReader(bs),
+		Body:        bytes.NewReader(data),
 	}
 
 	_, err := service.instance.PutObject(params)

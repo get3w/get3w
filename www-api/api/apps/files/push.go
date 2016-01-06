@@ -44,11 +44,11 @@ func Push(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	bs, err := base64.StdEncoding.DecodeString(input.Blob)
+	data, err := base64.StdEncoding.DecodeString(input.Blob)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}
-	pathBytesMap, err := ioutils.UnPack(bs)
+	pathBytesMap, err := ioutils.UnPack(data)
 	if err != nil {
 		return api.ErrorInternal(c, err)
 	}

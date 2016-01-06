@@ -19,7 +19,6 @@ func Edit(c *echo.Context) error {
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
-
 	path := c.P(1)
 
 	if api.IsAnonymous(c) {
@@ -45,9 +44,14 @@ func Edit(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	var dst []byte
-	base64.StdEncoding.Encode(dst, []byte(input.Content))
-	parser.Storage.Write(path, dst)
+	data, err := base64.StdEncoding.DecodeString(input.Content)
+	if err != nil {
+		return api.ErrorInternal(c, err)
+	}
+	err = parser.Storage.Write(parser.Storage.GetSourceKey(path), data)
+	if err != nil {
+		return api.ErrorInternal(c, err)
+	}
 
 	output := &get3w.FileEditOutput{
 		LastModified: timeutils.ToString(time.Now()),
