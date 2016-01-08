@@ -34,12 +34,13 @@ func main() {
 
 	// Apps Files start
 	e.Post("/api/apps/:app_path/files/actions/checksum", files.Checksum)
-	e.Post("/api/apps/:app_path/files/actions/push", files.Push)
 	e.Delete("/api/apps/:app_path/files/*", files.Delete)
 	e.Put("/api/apps/:app_path/files/*", files.Edit)
 	e.Get("/api/apps/:app_path/*", files.Get)
 	e.Get("/api/apps/:app_path/files", files.List)
 	e.Get("/api/apps/:app_path/files/*", files.List)
+	e.Post("/api/apps/:app_path/files/actions/push", files.Push)
+	e.Post("/api/apps/:app_path/files/actions/upload", files.Upload)
 
 	// Apps Folders start
 	e.Post("/api/apps/:app_path/folders", folders.Create)
@@ -52,6 +53,7 @@ func main() {
 	e.Get("/api/apps/:app_path", apps.Get)
 	e.Get("/api/apps", apps.List)
 	e.Post("/api/apps/:app_path/actions/load", apps.Load)
+	e.Post("/api/apps/:app_path/actions/open", apps.Open)
 	e.Post("/api/apps/:app_path/actions/publish", apps.Publish)
 	e.Post("/api/apps/:app_path/actions/save", apps.Save)
 	// e.Post("/api/apps/:app_path/actions/star", apps.Star)

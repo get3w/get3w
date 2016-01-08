@@ -87,11 +87,13 @@ func (service Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	rootPath := service.GetRootPrefix("")
+	rel, _ := filepath.Rel(rootPath, prefix)
 
 	for _, fileInfo := range fileInfos {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		path := prefix + "/" + name
+		path := rel + "/" + name
 		size := fileInfo.Size()
 		checksum := ""
 		if !isDir {
