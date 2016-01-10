@@ -88,6 +88,7 @@ type Config struct {
 	IncludesDir string `yaml:"includes_dir,omitempty" json:"includes_dir" structs:"includes_dir"`
 	SectionsDir string `yaml:"sections_dir,omitempty" json:"sections_dir" structs:"sections_dir"`
 	ImagesDir   string `yaml:"images_dir,omitempty" json:"images_dir" structs:"images_dir"`
+	UploadsDir  string `yaml:"uploads_dir,omitempty" json:"uploads_dir" structs:"uploads_dir"`
 	// Handling Reading
 	Include []string `yaml:"include,omitempty" json:"include" structs:"include"`
 	Exclude []string `yaml:"exclude,omitempty" json:"exclude" structs:"exclude"`

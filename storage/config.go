@@ -45,6 +45,9 @@ func loadConfig(s Storage) *get3w.Config {
 	if config.Destination == "" {
 		config.Destination = "_public"
 	}
+	if config.UploadsDir == "" {
+		config.UploadsDir = "assets/images"
+	}
 
 	return config
 }
