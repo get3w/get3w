@@ -108,6 +108,9 @@ func Load(configDir string) (*ConfigFile, error) {
 		}
 		defer file.Close()
 		err = configFile.LoadFromReader(file)
+		for _, app := range configFile.Apps {
+			app.From = get3w.FromLocal
+		}
 		return &configFile, err
 	} else if !os.IsNotExist(err) {
 		// if file is there but we can't stat it for any reason other

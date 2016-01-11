@@ -34,6 +34,7 @@ type App struct {
 	ID          string `json:"id"`
 	Owner       string `json:"owner"`
 	Name        string `json:"name"`
+	From        string `json:"from"`
 	Path        string `json:"path"`
 	Private     bool   `json:"private"`
 	CreatedAt   string `json:"created_at"`

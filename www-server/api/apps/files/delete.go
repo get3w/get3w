@@ -2,19 +2,26 @@ package files
 
 import (
 	"net/http"
+	"time"
 
+	"github.com/get3w/get3w"
+	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
 	"github.com/labstack/echo"
 )
 
-// List return files
-func List(c *echo.Context) error {
+// Delete file
+func Delete(c *echo.Context) error {
 	appPath := c.Param("app_path")
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
 	path := c.P(1)
+
+	if api.IsAnonymous(c) {
+		return api.ErrorUnauthorized(c, nil)
+	}
 
 	app, err := api.GetApp(appPath)
 	if err != nil {
@@ -29,10 +36,10 @@ func List(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	files, err := parser.Storage.GetFiles(parser.Storage.GetRootPrefix(path))
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+	parser.Storage.Delete(parser.Storage.GetSourceKey(path))
 
-	return c.JSON(http.StatusOK, files)
+	output := &get3w.FileDeleteOutput{
+		LastModified: timeutils.ToString(time.Now()),
+	}
+	return c.JSON(http.StatusOK, output)
 }

@@ -35,6 +35,12 @@ const (
 	AccessTokenScopesAll = "all"
 )
 
+// From
+const (
+	FromLocal = "local"
+	FromCloud = "cloud"
+)
+
 // Payload status and type
 const (
 	PayloadStatusAdded    = "added"

@@ -2,25 +2,19 @@ package files
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/get3w/get3w"
-	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
+
 	"github.com/labstack/echo"
 )
 
-// Delete file
-func Delete(c *echo.Context) error {
+// Checksum get path and checksum map of all files, dedicated to cli
+func Checksum(c *echo.Context) error {
 	appPath := c.Param("app_path")
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
-	}
-	path := c.P(1)
-
-	if api.IsAnonymous(c) {
-		return api.ErrorUnauthorized(c, nil)
 	}
 
 	app, err := api.GetApp(appPath)
@@ -36,10 +30,18 @@ func Delete(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	parser.Storage.Delete(parser.Storage.GetSourceKey(path))
-
-	output := &get3w.FileDeleteOutput{
-		LastModified: timeutils.ToString(time.Now()),
+	files, err := parser.Storage.GetAllFiles(parser.Storage.GetSourcePrefix(""))
+	if err != nil {
+		return api.ErrorInternal(c, err)
 	}
+
+	output := &get3w.FilesChecksumOutput{
+		Files: make(map[string]string),
+	}
+
+	for _, file := range files {
+		output.Files[file.Path] = file.Checksum
+	}
+
 	return c.JSON(http.StatusOK, output)
 }

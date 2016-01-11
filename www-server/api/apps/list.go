@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/get3w/get3w/config"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
 	"github.com/labstack/echo"
 )
 

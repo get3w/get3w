@@ -7,12 +7,13 @@ import (
 	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
+
 	"github.com/labstack/echo"
 )
 
-// Delete folder
-func Delete(c *echo.Context) error {
+// Create create folder
+func Create(c *echo.Context) error {
 	appPath := c.Param("app_path")
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
@@ -22,7 +23,7 @@ func Delete(c *echo.Context) error {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	input := &get3w.FolderDeleteInput{}
+	input := &get3w.FolderCreateInput{}
 	err := api.LoadRequestInput(c, input)
 	if err != nil {
 		return api.ErrorBadRequest(c, err)
@@ -44,9 +45,9 @@ func Delete(c *echo.Context) error {
 		return api.ErrorInternal(c, err)
 	}
 
-	parser.Storage.DeleteFolder(parser.Storage.GetSourcePrefix(input.Path))
+	parser.Storage.NewFolder(parser.Storage.GetSourcePrefix(input.Path))
 
-	output := &get3w.FolderDeleteOutput{
+	output := &get3w.FolderCreateOutput{
 		LastModified: timeutils.ToString(time.Now()),
 	}
 	return c.JSON(http.StatusOK, output)

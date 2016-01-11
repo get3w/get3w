@@ -3,11 +3,14 @@ package main
 import (
 	"os"
 
-	"github.com/get3w/get3w/www-api/api"
-	"github.com/get3w/get3w/www-api/api/apps"
-	"github.com/get3w/get3w/www-api/api/apps/files"
-	"github.com/get3w/get3w/www-api/api/apps/folders"
-	"github.com/get3w/get3w/www-api/api/status"
+	"github.com/bairongsoft/get3w-api/api"
+	"github.com/get3w/get3w/www-server/api/apps"
+	"github.com/get3w/get3w/www-server/api/apps/files"
+	"github.com/get3w/get3w/www-server/api/apps/folders"
+	"github.com/get3w/get3w/www-server/api/status"
+	"github.com/get3w/get3w/www-server/destination"
+	"github.com/get3w/get3w/www-server/root"
+	"github.com/get3w/get3w/www-server/source"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/labstack/echo"
@@ -61,6 +64,22 @@ func main() {
 	// Status start
 	e.Get("/api/status", status.Get)
 
+	// Root start
+	e.Get("/_root/:app_name/*", root.Get)
+	e.Get("/_root/:app_name/", root.Get)
+	e.Get("/_root/:app_name", root.Get)
+
+	// Source start
+	e.Get("/_source/:app_name/*", source.Get)
+	e.Get("/_source/:app_name/", source.Get)
+	e.Get("/_source/:app_name", source.Get)
+
+	// Destination start
+	e.Get("/_public/:app_name/*", destination.Get)
+	e.Get("/_public/:app_name/", destination.Get)
+	e.Get("/_public/:app_name", destination.Get)
+
+	// Get3W start
 	e.Static("/*", os.Getenv("ROOT")+"get3w-js\\public\\get3w\\")
 
 	e.Run(port)

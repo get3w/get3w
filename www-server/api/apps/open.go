@@ -8,7 +8,7 @@ import (
 	"github.com/get3w/get3w/config"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
 
 	"github.com/labstack/echo"
 )

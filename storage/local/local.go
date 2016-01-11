@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -89,11 +90,12 @@ func (service Service) GetFiles(prefix string) ([]*get3w.File, error) {
 	}
 	rootPath := service.GetRootPrefix("")
 	rel, _ := filepath.Rel(rootPath, prefix)
+	rel = strings.Replace(rel, (string)(os.PathSeparator), "/", -1)
 
 	for _, fileInfo := range fileInfos {
 		isDir := fileInfo.IsDir()
 		name := fileInfo.Name()
-		path := rel + "/" + name
+		path := path.Join(rel, name)
 		size := fileInfo.Size()
 		checksum := ""
 		if !isDir {

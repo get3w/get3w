@@ -1,35 +1,39 @@
-package files
+package apps
 
 import (
-	"encoding/base64"
 	"net/http"
 	"time"
 
 	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/storage"
-	"github.com/get3w/get3w/www-api/api"
+	"github.com/get3w/get3w/www-server/api"
 
 	"github.com/labstack/echo"
 )
 
-// Edit file content
-func Edit(c *echo.Context) error {
+// Load app
+func Load(c *echo.Context) error {
 	appPath := c.Param("app_path")
 	if appPath == "" {
 		return api.ErrorNotFound(c, nil)
 	}
-	path := c.P(1)
 
 	if api.IsAnonymous(c) {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	input := &get3w.FileEditInput{}
+	input := &get3w.AppLoadInput{}
 	err := api.LoadRequestInput(c, input)
 	if err != nil {
 		return api.ErrorBadRequest(c, err)
 	}
+
+	parser, err := storage.NewLocalParser(appPath)
+	if err != nil {
+		return api.ErrorBadRequest(c, err)
+	}
+	parser.LoadSitesResources()
 
 	app, err := api.GetApp(appPath)
 	if err != nil {
@@ -39,22 +43,11 @@ func Edit(c *echo.Context) error {
 		return api.ErrorNotFound(c, nil)
 	}
 
-	parser, err := storage.NewLocalParser(appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-
-	data, err := base64.StdEncoding.DecodeString(input.Content)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	err = parser.Storage.Write(parser.Storage.GetSourceKey(path), data)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-
-	output := &get3w.FileEditOutput{
+	output := &get3w.AppLoadOutput{
 		LastModified: timeutils.ToString(time.Now()),
+		App:          app,
+		Config:       parser.Config,
+		Sites:        parser.Sites,
 	}
 	return c.JSON(http.StatusOK, output)
 }
