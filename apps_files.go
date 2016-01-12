@@ -58,8 +58,8 @@ type FileGetOutput struct {
 }
 
 // GetFile get file content
-func (s *AppsService) GetFile(appPath, path string) (*FileGetOutput, *Response, error) {
-	u := fmt.Sprintf("/apps/%s/%s", appPath, path)
+func (s *AppsService) GetFile(owner, name, path string) (*FileGetOutput, *Response, error) {
+	u := fmt.Sprintf("/apps/%s/%s/%s", owner, name, path)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
@@ -75,10 +75,10 @@ func (s *AppsService) GetFile(appPath, path string) (*FileGetOutput, *Response, 
 }
 
 // ListFiles lists app files and folders.
-func (s *AppsService) ListFiles(appPath, path string) ([]File, *Response, error) {
-	u := fmt.Sprintf("/apps/%s/files/%s", appPath, path)
+func (s *AppsService) ListFiles(owner, name, path string) ([]File, *Response, error) {
+	u := fmt.Sprintf("/apps/%s/%s/files/%s", owner, name, path)
 	if path == "" || path == "/" || path == "." || path == "./" {
-		u = fmt.Sprintf("/apps/%s/files", appPath)
+		u = fmt.Sprintf("/apps/%s/%s/files", owner, name)
 	}
 
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -101,8 +101,8 @@ type FilesChecksumOutput struct {
 }
 
 // FilesChecksum get path and checksum map of all files
-func (s *AppsService) FilesChecksum(appPath string) (*FilesChecksumOutput, *Response, error) {
-	u := "apps/" + appPath + "/files/actions/checksum"
+func (s *AppsService) FilesChecksum(owner, name string) (*FilesChecksumOutput, *Response, error) {
+	u := "apps/" + owner + "/" + name + "/files/actions/checksum"
 	req, err := s.client.NewRequest("POST", u, nil)
 	if err != nil {
 		return nil, nil, err
@@ -133,8 +133,8 @@ type FilesPushOutput struct {
 }
 
 // FilesPush app files and folders.
-func (s *AppsService) FilesPush(appPath string, input *FilesPushInput) (*FilesPushOutput, *Response, error) {
-	u := "apps/" + appPath + "/files/actions/push"
+func (s *AppsService) FilesPush(owner, name string, input *FilesPushInput) (*FilesPushOutput, *Response, error) {
+	u := "apps/" + owner + "/" + name + "/files/actions/push"
 	req, err := s.client.NewRequest("POST", u, input)
 	if err != nil {
 		return nil, nil, err
