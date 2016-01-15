@@ -219,3 +219,25 @@ func (s *AppsService) Star(appPath string, input *AppStarInput) (*AppStarOutput,
 
 	return output, resp, err
 }
+
+// AppSyncOutput specifies response of the AppsService.Sync method.
+type AppSyncOutput struct {
+	Log string `json:"log,omitempty"`
+}
+
+// Sync app data
+func (s *AppsService) Sync(appPath string) (*AppSyncOutput, *Response, error) {
+	u := "apps/" + appPath + "/actions/sync"
+	req, err := s.client.NewRequest("POST", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	output := &AppSyncOutput{}
+	resp, err := s.client.Do(req, output)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return output, resp, err
+}

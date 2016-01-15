@@ -7,10 +7,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dullgiulio/pingo"
-	"github.com/get3w/get3w/packages"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cli/client"
 	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/packages"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/term"
 )
@@ -49,7 +49,6 @@ func testHighlight() {
 }
 
 func main() {
-	testHighlight()
 	// Set terminal emulation based on platform as required.
 	stdin, stdout, stderr := term.StdStreams()
 
