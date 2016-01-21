@@ -73,15 +73,39 @@ func (parser *Parser) ReadSectionContent(file *get3w.File) (string, error) {
 
 // SaveSection write content to section
 func (parser *Parser) SaveSection(section *get3w.Section) error {
-	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtHTML), []byte(section.HTML)); err != nil {
-		return err
+	htmlKey := parser.sectionKey(section.Name + ExtHTML)
+	if section.HTML != "" {
+		if err := parser.Storage.Write(htmlKey, []byte(section.HTML)); err != nil {
+			return err
+		}
+	} else {
+		if err := parser.Storage.Delete(htmlKey); err != nil {
+			return err
+		}
 	}
-	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtCSS), []byte(section.CSS)); err != nil {
-		return err
+
+	cssKey := parser.sectionKey(section.Name + ExtCSS)
+	if section.CSS != "" {
+		if err := parser.Storage.Write(cssKey, []byte(section.CSS)); err != nil {
+			return err
+		}
+	} else {
+		if err := parser.Storage.Delete(cssKey); err != nil {
+			return err
+		}
 	}
-	if err := parser.Storage.Write(parser.sectionKey(section.Name+ExtJS), []byte(section.JS)); err != nil {
-		return err
+
+	jsKey := parser.sectionKey(section.Name + ExtJS)
+	if section.JS != "" {
+		if err := parser.Storage.Write(jsKey, []byte(section.JS)); err != nil {
+			return err
+		}
+	} else {
+		if err := parser.Storage.Delete(jsKey); err != nil {
+			return err
+		}
 	}
+
 	return nil
 	// 	previewHTML := `<!DOCTYPE html>
 	// <html lang="en">

@@ -10,7 +10,7 @@ import (
 
 	"github.com/get3w/get3w"
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/home"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -34,7 +34,7 @@ func (cli *Get3WCli) CmdLogin(args ...string) error {
 	return err
 }
 
-func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error) {
+func (cli *Get3WCli) login(username, password string) (*home.AuthConfig, error) {
 	// On Windows, force the use of the regular OS stdin stream. Fixes #14336/#14210
 	if runtime.GOOS == "windows" {
 		cli.in = os.Stdin
@@ -58,25 +58,25 @@ func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error
 		return string(line)
 	}
 
-	authconfig := cli.configFile.AuthConfig
+	authConfig := cli.config.AuthConfig
 
 	if username == "" {
-		promptDefault("Username", authconfig.Username)
+		promptDefault("Username", authConfig.Username)
 		username = readInput(cli.in, cli.out)
 		username = strings.TrimSpace(username)
 		if username == "" {
-			username = authconfig.Username
+			username = authConfig.Username
 		}
 	}
 
 	// Assume that a different username means they may not want to use
 	// the password or email from the config file, so prompt them
-	if username != authconfig.Username {
+	if username != authConfig.Username {
 		if password == "" {
-			promptDefault("Password", authconfig.Password)
+			promptDefault("Password", authConfig.Password)
 			password = readInput(cli.in, cli.out)
 			if password == "" {
-				password = authconfig.Password
+				password = authConfig.Password
 			}
 		}
 	} else {
@@ -85,11 +85,11 @@ func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error
 		// then to change/override them.  And if not specified, just
 		// use what's in the config file
 		if password == "" {
-			password = authconfig.Password
+			password = authConfig.Password
 		}
 	}
-	authconfig.Username = username
-	authconfig.Password = password
+	authConfig.Username = username
+	authConfig.Password = password
 
 	client := get3w.NewClient("")
 	input := &get3w.UserLoginInput{
@@ -99,8 +99,8 @@ func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error
 	output, resp, err := client.Users.Login(input)
 
 	if resp.StatusCode == 401 {
-		cli.configFile.AuthConfig = config.AuthConfig{}
-		if err2 := cli.configFile.Save(); err2 != nil {
+		cli.config.AuthConfig = home.AuthConfig{}
+		if err2 := cli.config.Save(); err2 != nil {
 			fmt.Fprintf(cli.out, "WARNING: could not save config file: %v\n", err2)
 		}
 		return nil, err
@@ -109,15 +109,15 @@ func (cli *Get3WCli) login(username, password string) (*config.AuthConfig, error
 		return nil, err
 	}
 
-	authconfig.AccessToken = output.AccessToken
-	cli.configFile.AuthConfig = authconfig
-	if err := cli.configFile.Save(); err != nil {
+	authConfig.AccessToken = output.AccessToken
+	cli.config.AuthConfig = authConfig
+	if err := cli.config.Save(); err != nil {
 		return nil, fmt.Errorf("ERROR: failed to save config file: %v", err)
 	}
-	fmt.Fprintf(cli.out, "INFO: login credentials saved in %s\n", cli.configFile.Filename())
+	fmt.Fprintf(cli.out, "INFO: login credentials saved in %s\n", home.Path(home.RootConfigName))
 
 	if resp.Status != "" {
 		fmt.Fprintf(cli.out, "%s\n", resp.Status)
 	}
-	return &authconfig, nil
+	return &authConfig, nil
 }

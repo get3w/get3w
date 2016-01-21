@@ -9,10 +9,11 @@ import (
 	"github.com/dullgiulio/pingo"
 	"github.com/get3w/get3w/cli"
 	"github.com/get3w/get3w/cli/client"
-	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/home"
 	"github.com/get3w/get3w/packages"
 	flag "github.com/get3w/get3w/pkg/mflag"
 	"github.com/get3w/get3w/pkg/term"
+	"github.com/get3w/get3w/server"
 )
 
 func testHelloWorld() {
@@ -87,6 +88,11 @@ func main() {
 		return
 	}
 
+	if *flServer {
+		server.Run()
+		return
+	}
+
 	// TODO: remove once `-d` is retired
 
 	clientCli := client.NewGet3WCli(stdin, stdout, stderr, clientFlags)
@@ -106,5 +112,5 @@ func main() {
 }
 
 func showVersion() {
-	fmt.Printf("get3w version %s\n", config.Version)
+	fmt.Printf("get3w version %s\n", home.Version)
 }

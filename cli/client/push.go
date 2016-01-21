@@ -12,25 +12,24 @@ import (
 //
 // Usage: get3w push [OPTIONS] URL DIR
 func (cli *Get3WCli) CmdPush(args ...string) error {
-	cmd := Cli.Subcmd("push", []string{"", "URL", "URL DIR"}, Cli.Get3WCommands["push"].Description, true)
+	cmd := Cli.Subcmd("push", []string{"", "DIR"}, Cli.Get3WCommands["push"].Description, true)
 	cmd.Require(flag.Max, 2)
 	cmd.ParseFlags(args, true)
 
-	url := cmd.Arg(0)
-	dir := cmd.Arg(1)
+	dir := cmd.Arg(0)
 
-	return cli.push(url, dir)
+	return cli.push(dir)
 }
 
-func (cli *Get3WCli) push(url, dir string) error {
-	parser, err := storage.NewLocalParser(dir)
+func (cli *Get3WCli) push(dir string) error {
+	parser, err := storage.NewLocalParser(cli.config.AuthConfig.Username, dir)
 	if err != nil {
 		return err
 	}
 
-	authConfig := &cli.configFile.AuthConfig
+	authConfig := &cli.config.AuthConfig
 
-	shouldLogin, err := parser.Sync(url, authConfig, cli.out)
+	shouldLogin, err := parser.Push(authConfig, cli.out)
 	if shouldLogin {
 		fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "push")
 		authConfig, err = cli.login("", "")
@@ -38,7 +37,7 @@ func (cli *Get3WCli) push(url, dir string) error {
 			return err
 		}
 
-		_, err = parser.Sync(url, authConfig, cli.out)
+		_, err = parser.Push(authConfig, cli.out)
 		if err != nil {
 			return err
 		}

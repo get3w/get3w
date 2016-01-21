@@ -24,7 +24,7 @@ func (cli *Get3WCli) CmdBuild(args ...string) error {
 }
 
 func (cli *Get3WCli) build(dir string) error {
-	parser, err := storage.NewLocalParser(dir)
+	parser, err := storage.NewLocalParser(cli.config.AuthConfig.Username, dir)
 	if err != nil {
 		return err
 	}

@@ -28,7 +28,7 @@ func (cli *Get3WCli) CmdWatch(args ...string) error {
 }
 
 func (cli *Get3WCli) watch(dir string) error {
-	parser, err := storage.NewLocalParser(dir)
+	parser, err := storage.NewLocalParser(cli.config.AuthConfig.Username, dir)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (cli *Get3WCli) watch(dir string) error {
 					if d.Seconds() > 1 {
 						log.Println("build done.")
 
-						parser, err := storage.NewLocalParser(dir)
+						parser, err := storage.NewLocalParser(cli.config.AuthConfig.Username, dir)
 						if err != nil {
 							log.Println("error:", err)
 						}

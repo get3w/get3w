@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	Cli "github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/home"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -20,6 +20,6 @@ func (cli *Get3WCli) CmdVersion(args ...string) error {
 }
 
 func (cli *Get3WCli) version() error {
-	fmt.Fprintf(cli.out, "Get3W Version: %s\n", config.Version)
+	fmt.Fprintf(cli.out, "Get3W Version: %s\n", home.Version)
 	return nil
 }

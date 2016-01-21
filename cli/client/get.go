@@ -2,12 +2,13 @@ package client
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/get3w/get3w"
 	Cli "github.com/get3w/get3w/cli"
 	flag "github.com/get3w/get3w/pkg/mflag"
-	"github.com/get3w/get3w/repos"
 	"github.com/get3w/get3w/storage"
 )
 
@@ -25,47 +26,56 @@ func (cli *Get3WCli) CmdGet(args ...string) error {
 	return cli.get(url, dir)
 }
 
+// splitURL breaks a url into an index name and remote name
+func splitURL(url string) (string, string, string, error) {
+	nameParts := strings.SplitN(strings.Trim(url, "/"), "/", 3)
+	if len(nameParts) < 2 {
+		return "", "", "", errors.New("Fatal: Invalid repository name (ex: \"get3w.com/myname/myrepo\")")
+	}
+	if len(nameParts) == 2 {
+		return get3w.DefaultRepositoryHost(), nameParts[0], nameParts[1], nil
+	}
+
+	return nameParts[0], nameParts[1], nameParts[2], nil
+}
+
 func (cli *Get3WCli) get(url, dir string) error {
-	authConfig := &cli.configFile.AuthConfig
-	var repo *get3w.Repository
+	authConfig := &cli.config.AuthConfig
+	var host, owner, name string
 	var err error
 
 	if url != "" {
-		repo, err = repos.ParseRepository(url)
+		host, owner, name, err = splitURL(url)
 		if err != nil {
 			return err
 		}
+
 		if dir == "" {
-			dir = repo.Name
+			dir = name
 		}
 	}
 
-	parser, err := storage.NewLocalParser(dir)
+	parser, err := storage.NewLocalParser(authConfig.Username, dir)
 	if err != nil {
 		return err
 	}
 
-	if repo == nil {
-		repo = parser.Config.Repository
-		if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
-			repo = &get3w.Repository{
-				Host:  get3w.DefaultRepositoryHost(),
-				Owner: authConfig.Username,
-				Name:  parser.Name,
-			}
-		}
+	if url == "" {
+		host = get3w.DefaultRepositoryHost()
+		owner = authConfig.Username
+		name = parser.Name
 	}
 
-	client := get3w.NewClient(cli.configFile.AuthConfig.AccessToken)
+	client := get3w.NewClient(cli.config.AuthConfig.AccessToken)
 
-	if repo.Host != get3w.DefaultRepositoryHost() {
+	if host != get3w.DefaultRepositoryHost() {
 		return fmt.Errorf("ERROR: Only %s supported\n", get3w.DefaultRepositoryHost())
 	}
 
-	fmt.Printf("Getting repository '%s/%s/%s'...\n", repo.Host, repo.Owner, repo.Name)
+	fmt.Printf("Getting repository '%s/%s/%s'...\n", host, owner, name)
 
 	fmt.Print("Counting objects: ")
-	output, _, err := client.Apps.FilesChecksum(repo.Owner, repo.Name)
+	output, _, err := client.Apps.FilesChecksum(owner, name)
 	if err != nil {
 		return err
 	}
@@ -84,7 +94,7 @@ func (cli *Get3WCli) get(url, dir string) error {
 
 		if download {
 			fmt.Printf("Receiving object: %s", path)
-			fileOutput, _, err := client.Apps.GetFile(repo.Owner, repo.Name, path)
+			fileOutput, _, err := client.Apps.GetFile(owner, name, path)
 			if err != nil {
 				return err
 			}

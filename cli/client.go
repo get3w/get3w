@@ -7,6 +7,4 @@ type ClientFlags struct {
 	FlagSet   *flag.FlagSet
 	Common    *CommonFlags
 	PostParse func()
-
-	ConfigDir string
 }

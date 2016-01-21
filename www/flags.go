@@ -10,6 +10,7 @@ import (
 var (
 	flHelp    = flag.Bool([]string{"h", "-help"}, false, "Print usage")
 	flVersion = flag.Bool([]string{"v", "-version"}, false, "Print version information and quit")
+	flServer  = flag.Bool([]string{"s", "-server"}, false, "Run www server")
 )
 
 type byName []cli.Command

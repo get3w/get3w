@@ -6,6 +6,36 @@ type AppsService struct {
 	client *Client
 }
 
+// AppAddInput specifies fields to the AppsService.Add method.
+type AppAddInput struct {
+	DirPath string `json:"dir_path"`
+	Origin  string `json:"origin"`
+	Check   bool   `json:"check"`
+}
+
+// AppAddOutput specifies response of the AppsService.Add method.
+type AppAddOutput struct {
+	Config bool `json:"config"`
+	App    *App `json:"app"`
+}
+
+// Add a new app, local only.
+func (s *AppsService) Add(input *AppAddInput) (*AppAddOutput, *Response, error) {
+	u := "apps"
+	req, err := s.client.NewRequest("POST", u, input)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var output = &AppAddOutput{}
+	resp, err := s.client.Do(req, output)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return output, resp, err
+}
+
 // AppCreateInput specifies fields to the AppsService.Create method.
 type AppCreateInput struct {
 	Name        string `json:"name,omitempty"`
@@ -32,10 +62,15 @@ func (s *AppsService) Create(input *AppCreateInput) (*App, *Response, error) {
 	return app, resp, err
 }
 
+// AppDeleteInput specifies fields to the AppsService.Delete method.
+type AppDeleteInput struct {
+	KeepFiles bool `json:"keep_files,omitempty"`
+}
+
 // Delete app
-func (s *AppsService) Delete(appPath string) (*App, *Response, error) {
+func (s *AppsService) Delete(appPath string, input *AppDeleteInput) (*App, *Response, error) {
 	u := "apps/" + appPath
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest("DELETE", u, input)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -92,23 +127,6 @@ func (s *AppsService) List() (*[]App, *Response, error) {
 	}
 
 	var apps = &[]App{}
-	resp, err := s.client.Do(req, apps)
-	if err != nil {
-		return nil, resp, err
-	}
-
-	return apps, resp, err
-}
-
-// Open a new app
-func (s *AppsService) Open(appPath string) ([]*App, *Response, error) {
-	u := "apps/" + appPath + "/actions/open"
-	req, err := s.client.NewRequest("POST", u, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var apps = []*App{}
 	resp, err := s.client.Do(req, apps)
 	if err != nil {
 		return nil, resp, err
@@ -225,7 +243,7 @@ type AppSyncOutput struct {
 	Log string `json:"log,omitempty"`
 }
 
-// Sync app data
+// Sync app data, local only
 func (s *AppsService) Sync(appPath string) (*AppSyncOutput, *Response, error) {
 	u := "apps/" + appPath + "/actions/sync"
 	req, err := s.client.NewRequest("POST", u, nil)

@@ -74,6 +74,7 @@ type Client struct {
 
 	// Services used for talking to different parts of the Get3W API.
 	Apps   *AppsService
+	User   *UserService
 	Users  *UsersService
 	Search *SearchService
 }
@@ -140,6 +141,7 @@ func NewClient(accessToken string) *Client {
 
 	c := &Client{client: http.DefaultClient, accessToken: accessToken, BaseURL: baseURL, UserAgent: userAgent, UploadURL: uploadURL}
 	c.Apps = &AppsService{client: c}
+	c.User = &UserService{client: c}
 	c.Users = &UsersService{client: c}
 	c.Search = &SearchService{client: c}
 

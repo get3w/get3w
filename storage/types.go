@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
@@ -54,6 +53,7 @@ type Storage interface {
 
 // Parser contains attributes and operations of the app
 type Parser struct {
+	Owner   string
 	Name    string
 	Path    string
 	Storage Storage
@@ -67,15 +67,10 @@ type Parser struct {
 }
 
 // NewLocalParser return local site
-func NewLocalParser(contextDir string) (*Parser, error) {
+func NewLocalParser(owner, contextDir string) (*Parser, error) {
 	s, err := local.New(contextDir)
 	if err != nil {
 		return nil, err
-	}
-
-	path := s.GetRootKey(KeyConfig)
-	if !s.IsExist(path) {
-		return nil, fmt.Errorf("Not a Site Repository: %s", s.GetRootPrefix(""))
 	}
 
 	config, sites, defaultSite := loadConfigAndSites(s)
@@ -100,6 +95,7 @@ func NewLocalParser(contextDir string) (*Parser, error) {
 	}))
 
 	parser := &Parser{
+		Owner:   owner,
 		Name:    s.Name,
 		Path:    s.RootPath,
 		Config:  config,
@@ -123,6 +119,7 @@ func NewS3Parser(bucketSource, bucketDestination, owner, name string) (*Parser, 
 	config, sites, defaultSite := loadConfigAndSites(s)
 
 	parser := &Parser{
+		Owner:   owner,
 		Name:    name,
 		Path:    owner + "/" + name,
 		Config:  config,

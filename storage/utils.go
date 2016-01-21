@@ -52,10 +52,10 @@ func getStringByExt(ext string, val []byte) string {
 	return string(val)
 }
 
-func isUnderscorePrefix(path string) bool {
+func isUnderscoreOrDotPrefix(path string) bool {
 	paths := strings.Split(path, "/")
 	for _, p := range paths {
-		if strings.HasPrefix(p, "_") {
+		if strings.HasPrefix(p, "_") || strings.HasPrefix(p, ".") {
 			return true
 		}
 	}

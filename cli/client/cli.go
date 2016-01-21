@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/config"
+	"github.com/get3w/get3w/home"
 	"github.com/get3w/get3w/pkg/term"
 )
 
@@ -17,8 +17,8 @@ type Get3WCli struct {
 	// initializing closure
 	init func() error
 
-	// configFile has the client configuration file
-	configFile *config.ConfigFile
+	// config has the client configuration file
+	config *home.Config
 	// in holds the input stream and closer (io.ReadCloser) for the client.
 	in io.ReadCloser
 	// out holds the output stream (io.Writer) for the client.
@@ -83,11 +83,11 @@ func NewGet3WCli(in io.ReadCloser, out, err io.Writer, clientFlags *cli.ClientFl
 			cli.outFd, cli.isTerminalOut = term.GetFdInfo(cli.out)
 		}
 
-		configFile, err := config.Load(config.ConfigDir())
+		config, err := home.LoadConfig()
 		if err != nil {
 			fmt.Fprintf(cli.err, "WARNING: Error loading config file:%v\n", err)
 		}
-		cli.configFile = configFile
+		cli.config = config
 
 		return nil
 	}

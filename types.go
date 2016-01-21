@@ -73,14 +73,13 @@ type Site struct {
 
 // Config contains the information of the app config
 type Config struct {
-	Title          string      `yaml:"title,omitempty" json:"title" structs:"title"`
-	Keywords       string      `yaml:"keywords,omitempty" json:"keywords" structs:"keywords"`
-	Description    string      `yaml:"description,omitempty" json:"description" structs:"description"`
-	FaviconURL     string      `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
-	TemplateEngine string      `yaml:"template_engine,omitempty" json:"template_engine" structs:"template_engine"`
-	LayoutLink     string      `yaml:"layout_channel,omitempty" json:"layout_channel" structs:"layout_channel"`
-	LayoutPost     string      `yaml:"layout_post,omitempty" json:"layout_post" structs:"layout_post"`
-	Repository     *Repository `yaml:"repository,omitempty" json:"repository" structs:"repository"`
+	Title          string `yaml:"title,omitempty" json:"title" structs:"title"`
+	Keywords       string `yaml:"keywords,omitempty" json:"keywords" structs:"keywords"`
+	Description    string `yaml:"description,omitempty" json:"description" structs:"description"`
+	FaviconURL     string `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
+	TemplateEngine string `yaml:"template_engine,omitempty" json:"template_engine" structs:"template_engine"`
+	LayoutLink     string `yaml:"layout_channel,omitempty" json:"layout_channel" structs:"layout_channel"`
+	LayoutPost     string `yaml:"layout_post,omitempty" json:"layout_post" structs:"layout_post"`
 	// Where things are
 	Source      string `yaml:"source,omitempty" json:"source" structs:"source"`
 	Destination string `yaml:"destination,omitempty" json:"destination" structs:"destination"`
@@ -93,13 +92,6 @@ type Config struct {
 	// Handling Reading
 	Include []string `yaml:"include,omitempty" json:"include" structs:"include"`
 	Exclude []string `yaml:"exclude,omitempty" json:"exclude" structs:"exclude"`
-}
-
-// Repository describes a repository
-type Repository struct {
-	Host  string `yaml:"host,omitempty" json:"host"`
-	Owner string `yaml:"owner,omitempty" json:"owner"`
-	Name  string `yaml:"name,omitempty" json:"name"`
 }
 
 // LinkSummary contains link information

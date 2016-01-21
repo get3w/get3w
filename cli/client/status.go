@@ -23,12 +23,12 @@ func (cli *Get3WCli) CmdStatus(args ...string) error {
 }
 
 func (cli *Get3WCli) status(dir string) error {
-	parser, err := storage.NewLocalParser(dir)
+	authConfig := &cli.config.AuthConfig
+
+	parser, err := storage.NewLocalParser(authConfig.Username, dir)
 	if err != nil {
 		return err
 	}
-
-	authConfig := &cli.configFile.AuthConfig
 
 	if authConfig.Username == "" || authConfig.AccessToken == "" {
 		fmt.Fprintf(cli.out, "\nPlease login prior to %s:\n", "status")
@@ -40,18 +40,12 @@ func (cli *Get3WCli) status(dir string) error {
 		fmt.Fprintf(cli.out, "\nYour Username:%s\n", authConfig.Username)
 	}
 
-	repo := parser.Config.Repository
-	if repo == nil || repo.Host == "" || repo.Owner == "" || repo.Name == "" {
-		//fmt.Fprintln(cli.out, "WARNING: repository is unset.")
-		repo = &get3w.Repository{
-			Host:  get3w.DefaultRepositoryHost(),
-			Owner: authConfig.Username,
-			Name:  parser.Name,
-		}
-	}
+	host := get3w.DefaultRepositoryHost()
+	owner := authConfig.Username
+	name := parser.Name
 
 	client := get3w.NewClient(authConfig.AccessToken)
-	output, _, err := client.Apps.FilesChecksum(repo.Owner, repo.Name)
+	output, _, err := client.Apps.FilesChecksum(owner, name)
 	if err != nil {
 		return err
 	}
@@ -86,7 +80,7 @@ func (cli *Get3WCli) status(dir string) error {
 	}
 
 	fmt.Fprintf(cli.out, "Local repository: %s\n", parser.Path)
-	fmt.Fprintf(cli.out, "Remote repository: %s/%s/%s\n", repo.Host, repo.Owner, repo.Name)
+	fmt.Fprintf(cli.out, "Remote repository: %s/%s/%s\n", host, owner, name)
 	//Your branch is up-to-date with 'origin/master'.
 
 	if len(pathMap) == 0 {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/get3w/get3w/cli"
-	"github.com/get3w/get3w/config"
 	flag "github.com/get3w/get3w/pkg/mflag"
 )
 
@@ -20,16 +19,9 @@ const (
 var (
 	daemonFlags *flag.FlagSet
 	commonFlags = &cli.CommonFlags{FlagSet: new(flag.FlagSet)}
-
-	dockerCertPath  = os.Getenv("DOCKER_CERT_PATH")
-	dockerTLSVerify = os.Getenv("DOCKER_TLS_VERIFY") != ""
 )
 
 func init() {
-	if dockerCertPath == "" {
-		dockerCertPath = config.ConfigDir()
-	}
-
 	commonFlags.PostParse = postParseCommon
 
 	cmd := commonFlags.FlagSet

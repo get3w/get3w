@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/fatih/structs"
@@ -20,29 +19,33 @@ const (
 )
 
 // ParseLink the parsedContent
-func (parser *Parser) ParseLink(template string, link *get3w.Link, paginator *get3w.Paginator) (string, error) {
-	if template == "" {
-		template = link.Content
+func (parser *Parser) ParseLink(layoutContent string, link *get3w.Link, paginator *get3w.Paginator) (string, error) {
+	if layoutContent == "" {
+		layoutContent = link.Content
 	}
 
-	parsedContent := template
-	if len(link.Sections) > 0 {
-		sectionsHTML := getSectionsHTML(parser.Config, link, parser.Current.Sections)
-		if parsedContent == "" {
-			parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, link), sectionsHTML)
-		} else {
-			parsedContent += sectionsHTML
-		}
-	}
-
+	parsedContent := layoutContent
 	if parsedContent == "" {
 		return "", nil
 	}
 
+	dataSite := parser.Current.AllParameters
+	dataPage := link.AllParameters
+	dataPaginator := structs.Map(paginator)
+
+	if len(link.Sections) > 0 {
+		dataPage["sections"] = getSectionsHTML(parser.Config, link, parser.Current.Sections)
+		// if parsedContent == "" {
+		// 	parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, link), sectionsHTML)
+		// } else {
+		// 	parsedContent += sectionsHTML
+		// }
+	}
+
 	data := map[string]interface{}{
-		"site":      parser.Current.AllParameters,
-		"page":      link.AllParameters,
-		"paginator": structs.Map(paginator),
+		"site":      dataSite,
+		"page":      dataPage,
+		"paginator": dataPaginator,
 	}
 
 	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {

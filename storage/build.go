@@ -80,7 +80,7 @@ func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
 	}
 
 	for _, file := range files {
-		if file.IsDir || isUnderscorePrefix(file.Path) {
+		if file.IsDir || isUnderscoreOrDotPrefix(file.Path) {
 			continue
 		}
 		sourceKey := parser.Storage.GetSourceKey(file.Path)
