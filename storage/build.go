@@ -5,7 +5,7 @@ import (
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
-// Build all channels in the app.
+// Build all pages in the app.
 func (parser *Parser) Build(copy bool) error {
 	parser.LoadSitesResources()
 
@@ -28,7 +28,7 @@ func (parser *Parser) Build(copy bool) error {
 
 		for _, site := range parser.Sites {
 			parser.Current = site
-			for _, excludeKey := range parser.getExcludeKeys(parser.Current.Links) {
+			for _, excludeKey := range parser.getExcludeKeys(parser.Current.Pages) {
 				excludeKeys = append(excludeKeys, excludeKey)
 			}
 		}
@@ -41,7 +41,7 @@ func (parser *Parser) Build(copy bool) error {
 	for _, site := range parser.Sites {
 		parser.Current = site
 
-		err := parser.buildLinks(site.Links)
+		err := parser.buildPages(site.Pages)
 		if err != nil {
 			return err
 		}
@@ -57,14 +57,14 @@ func (parser *Parser) Build(copy bool) error {
 	return nil
 }
 
-func (parser *Parser) getExcludeKeys(channels []*get3w.Link) []string {
+func (parser *Parser) getExcludeKeys(pages []*get3w.Page) []string {
 	excludeKeys := []string{}
-	for _, channel := range channels {
-		if channel.Path != "" {
-			excludeKeys = append(excludeKeys, parser.key(channel.Path))
+	for _, page := range pages {
+		if page.Path != "" {
+			excludeKeys = append(excludeKeys, parser.key(page.Path))
 		}
-		if len(channel.Children) > 0 {
-			childKeys := parser.getExcludeKeys(channel.Children)
+		if len(page.Children) > 0 {
+			childKeys := parser.getExcludeKeys(page.Children)
 			for _, childKey := range childKeys {
 				excludeKeys = append(excludeKeys, childKey)
 			}
@@ -101,12 +101,12 @@ func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
 	return nil
 }
 
-func (parser *Parser) buildLinks(channels []*get3w.Link) error {
-	for _, channel := range channels {
-		template, layout := parser.getTemplate(channel.Layout, parser.Config.LayoutLink)
-		paginators := parser.getLinkPaginators(channel)
+func (parser *Parser) buildPages(pages []*get3w.Page) error {
+	for _, page := range pages {
+		template, layout := parser.getTemplate(page.Layout, parser.Config.LayoutPage)
+		paginators := parser.getPagePaginators(page)
 		for _, paginator := range paginators {
-			parsedContent, err := parser.ParseLink(template, channel, paginator)
+			parsedContent, err := parser.ParsePage(template, page, paginator)
 			if err != nil {
 				parser.LogError(layout, paginator.Path, err)
 			}
@@ -117,8 +117,8 @@ func (parser *Parser) buildLinks(channels []*get3w.Link) error {
 			}
 		}
 
-		if len(channel.Children) > 0 {
-			parser.buildLinks(channel.Children)
+		if len(page.Children) > 0 {
+			parser.buildPages(page.Children)
 		}
 	}
 	return nil

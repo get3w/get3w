@@ -14,8 +14,8 @@ func (parser *Parser) LoadSitesResources() {
 		loadDefault := parser.Current != parser.Default
 		parser.LoadSiteParameters(loadDefault)
 		parser.LoadSitePosts()
-		parser.LoadSiteLinkSummaries()
-		parser.LoadSiteLinks()
+		parser.LoadSitePageSummaries()
+		parser.LoadSitePages()
 		parser.LoadSiteSections(loadDefault)
 	})
 }

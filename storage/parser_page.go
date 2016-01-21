@@ -18,10 +18,10 @@ const (
 </html>`
 )
 
-// ParseLink the parsedContent
-func (parser *Parser) ParseLink(layoutContent string, link *get3w.Link, paginator *get3w.Paginator) (string, error) {
+// ParsePage the parsedContent
+func (parser *Parser) ParsePage(layoutContent string, page *get3w.Page, paginator *get3w.Paginator) (string, error) {
 	if layoutContent == "" {
-		layoutContent = link.Content
+		layoutContent = page.Content
 	}
 
 	parsedContent := layoutContent
@@ -30,13 +30,13 @@ func (parser *Parser) ParseLink(layoutContent string, link *get3w.Link, paginato
 	}
 
 	dataSite := parser.Current.AllParameters
-	dataPage := link.AllParameters
+	dataPage := page.AllParameters
 	dataPaginator := structs.Map(paginator)
 
-	if len(link.Sections) > 0 {
-		dataPage["sections"] = getSectionsHTML(parser.Config, link, parser.Current.Sections)
+	if len(page.Sections) > 0 {
+		dataPage["sections"] = getSectionsHTML(parser.Config, page, parser.Current.Sections)
 		// if parsedContent == "" {
-		// 	parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, link), sectionsHTML)
+		// 	parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, page), sectionsHTML)
 		// } else {
 		// 	parsedContent += sectionsHTML
 		// }
@@ -50,7 +50,7 @@ func (parser *Parser) ParseLink(layoutContent string, link *get3w.Link, paginato
 
 	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
 		parser := liquid.New(parser.Path)
-		content, err := parser.Parse(link.Content, data)
+		content, err := parser.Parse(page.Content, data)
 		if err != nil {
 			return "", err
 		}

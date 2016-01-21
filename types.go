@@ -64,8 +64,8 @@ type Site struct {
 	URL  string `yaml:"-" json:"url" structs:"url"`
 
 	Posts         []*Post        `yaml:"-" json:"posts" structs:"posts"`
-	LinkSummaries []*LinkSummary `yaml:"-" json:"link_summaries" structs:"link_summaries"`
-	Links         []*Link        `yaml:"-" json:"links" structs:"links"`
+	PageSummaries []*PageSummary `yaml:"-" json:"page_summaries" structs:"page_summaries"`
+	Pages         []*Page        `yaml:"-" json:"pages" structs:"pages"`
 	Sections      []*Section     `yaml:"-" json:"sections" structs:"sections"`
 
 	AllParameters map[string]interface{} `yaml:"-" json:"-" structs:"-"`
@@ -78,7 +78,7 @@ type Config struct {
 	Description    string `yaml:"description,omitempty" json:"description" structs:"description"`
 	FaviconURL     string `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
 	TemplateEngine string `yaml:"template_engine,omitempty" json:"template_engine" structs:"template_engine"`
-	LayoutLink     string `yaml:"layout_channel,omitempty" json:"layout_channel" structs:"layout_channel"`
+	LayoutPage     string `yaml:"layout_page,omitempty" json:"layout_page" structs:"layout_page"`
 	LayoutPost     string `yaml:"layout_post,omitempty" json:"layout_post" structs:"layout_post"`
 	// Where things are
 	Source      string `yaml:"source,omitempty" json:"source" structs:"source"`
@@ -94,17 +94,17 @@ type Config struct {
 	Exclude []string `yaml:"exclude,omitempty" json:"exclude" structs:"exclude"`
 }
 
-// LinkSummary contains link information
-type LinkSummary struct {
+// PageSummary contains page information
+type PageSummary struct {
 	Name string `yaml:"-" json:"name"`
 	Path string `yaml:"-" json:"path"`
 	URL  string `yaml:"-" json:"url"`
 
-	Children []*LinkSummary `yaml:"-" json:"children"`
+	Children []*PageSummary `yaml:"-" json:"children"`
 }
 
-// Link contains the information of the app page
-type Link struct {
+// Page contains the information of the app page
+type Page struct {
 	Title       string   `yaml:"title,omitempty" json:"title" structs:"title"`
 	Keywords    string   `yaml:"keywords,omitempty" json:"keywords" structs:"keywords"`
 	Description string   `yaml:"description,omitempty" json:"description" structs:"description"`
@@ -118,7 +118,7 @@ type Link struct {
 	Name     string  `yaml:"-" json:"name" structs:"name"`
 	Path     string  `yaml:"-" json:"path" structs:"path"`
 	Content  string  `yaml:"-" json:"content" structs:"content"`
-	Children []*Link `yaml:"-" json:"children" structs:"children"`
+	Children []*Page `yaml:"-" json:"children" structs:"children"`
 
 	Posts         []*Post                `yaml:"-" json:"-" structs:"posts"`
 	AllParameters map[string]interface{} `yaml:"-" json:"-" structs:"-"`

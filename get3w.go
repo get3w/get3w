@@ -49,7 +49,7 @@ const (
 
 	PayloadTypeConfig  = "config"
 	PayloadTypeSite    = "site"
-	PayloadTypeLink    = "link"
+	PayloadTypePage    = "page"
 	PayloadTypeSection = "section"
 	PayloadTypeFile    = "file"
 )

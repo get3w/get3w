@@ -13,28 +13,28 @@ var (
 	regexInner = regexp.MustCompile(`([^'"]+)\s+['"]([^'"]+)['"]|([^'"]+)`)
 )
 
-// LoadSiteLinkSummaries load summary summaries for current site
-func (parser *Parser) LoadSiteLinkSummaries() {
-	var summaries []*get3w.LinkSummary
+// LoadSitePageSummaries load summary summaries for current site
+func (parser *Parser) LoadSitePageSummaries() {
+	var summaries []*get3w.PageSummary
 
-	path := parser.key(KeyLinks)
+	path := parser.key(KeyPages)
 	if parser.Storage.IsExist(path) {
 		data, _ := parser.Storage.Read(path)
-		summaries = getSiteLinkSummariesByString(data)
+		summaries = getSitePageSummariesByString(data)
 	} else {
 		files, _ := parser.Storage.GetFiles(parser.prefix(""))
-		summaries = getSiteLinkSummariesByFiles(files)
+		summaries = getSitePageSummariesByFiles(files)
 	}
 
-	parser.Current.LinkSummaries = summaries
+	parser.Current.PageSummaries = summaries
 }
 
-func getSiteLinkSummariesByString(data []byte) []*get3w.LinkSummary {
-	summaries := []*get3w.LinkSummary{}
+func getSitePageSummariesByString(data []byte) []*get3w.PageSummary {
+	summaries := []*get3w.PageSummary{}
 
 	lines := strings.Split(string(data), "\n")
 	var previousSpaceNum int
-	var previousParent *get3w.LinkSummary
+	var previousParent *get3w.PageSummary
 
 	for _, line := range lines {
 		if !strings.HasPrefix(strings.TrimSpace(line), "*") {
@@ -47,13 +47,13 @@ func getSiteLinkSummariesByString(data []byte) []*get3w.LinkSummary {
 		}
 
 		spaceNum := strings.Index(line, "*")
-		summary := &get3w.LinkSummary{
+		summary := &get3w.PageSummary{
 			Name: name,
 			Path: path,
 			URL:  url,
 		}
 
-		var parent *get3w.LinkSummary
+		var parent *get3w.PageSummary
 		if previousSpaceNum == spaceNum {
 			parent = previousParent
 		} else {
@@ -73,8 +73,8 @@ func getSiteLinkSummariesByString(data []byte) []*get3w.LinkSummary {
 	return summaries
 }
 
-func getSiteLinkSummariesByFiles(files []*get3w.File) []*get3w.LinkSummary {
-	summaries := []*get3w.LinkSummary{}
+func getSitePageSummariesByFiles(files []*get3w.File) []*get3w.PageSummary {
+	summaries := []*get3w.PageSummary{}
 
 	for _, file := range files {
 		if file.IsDir || file.Name == KeyReadme {
@@ -82,7 +82,7 @@ func getSiteLinkSummariesByFiles(files []*get3w.File) []*get3w.LinkSummary {
 		}
 		ext := getExt(file.Name)
 		if ext == ExtHTML || ext == ExtMD {
-			summary := &get3w.LinkSummary{
+			summary := &get3w.PageSummary{
 				Name: strings.TrimRight(file.Name, ext),
 				Path: file.Name,
 				URL:  file.Name,
@@ -133,7 +133,7 @@ func getPageURL(name, path string) string {
 	return pageURL
 }
 
-func getParentSummary(spaceNum int, summaries []*get3w.LinkSummary) *get3w.LinkSummary {
+func getParentSummary(spaceNum int, summaries []*get3w.PageSummary) *get3w.PageSummary {
 	if spaceNum == 0 || len(summaries) == 0 {
 		return nil
 	}
@@ -147,8 +147,8 @@ func getParentSummary(spaceNum int, summaries []*get3w.LinkSummary) *get3w.LinkS
 	return summary
 }
 
-// marshalLink parse page summary slice to string
-func marshalLinkSummaries(summaries []*get3w.LinkSummary) string {
+// marshalPage parse page summary slice to string
+func marshalPageSummaries(summaries []*get3w.PageSummary) string {
 	lines := []string{}
 	lines = append(lines, getSummaryString(0, summaries))
 
@@ -159,7 +159,7 @@ func marshalLinkSummaries(summaries []*get3w.LinkSummary) string {
 	return retval + "\n"
 }
 
-func getSummaryString(level int, summaries []*get3w.LinkSummary) string {
+func getSummaryString(level int, summaries []*get3w.PageSummary) string {
 	retval := ""
 	for _, summary := range summaries {
 		prefix := ""

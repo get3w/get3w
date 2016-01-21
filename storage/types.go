@@ -14,7 +14,7 @@ import (
 // system const
 const (
 	KeyConfig = "_config.yml"
-	KeyLinks  = "_links.md"
+	KeyPages  = "_pages.md"
 	KeySites  = "_sites.md"
 	KeyReadme = "README.md"
 

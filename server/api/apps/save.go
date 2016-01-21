@@ -59,12 +59,12 @@ func Save(c *echo.Context) error {
 				}
 			}
 
-		case get3w.PayloadTypeLink:
+		case get3w.PayloadTypePage:
 			if payload.Status == get3w.PayloadStatusModified || payload.Status == get3w.PayloadStatusAdded {
-				var link get3w.Link
-				err := mapstructure.Decode(payload.Data, &link)
+				var page get3w.Page
+				err := mapstructure.Decode(payload.Data, &page)
 				if err == nil {
-					parser.WriteLink(&link)
+					parser.WritePage(&page)
 				}
 			}
 

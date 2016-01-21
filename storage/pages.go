@@ -10,42 +10,42 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// LoadSiteLinks load links for current site
-func (parser *Parser) LoadSiteLinks() {
-	links := []*get3w.Link{}
+// LoadSitePages load pages for current site
+func (parser *Parser) LoadSitePages() {
+	pages := []*get3w.Page{}
 
-	for _, summary := range parser.Current.LinkSummaries {
-		page := parser.getLink(summary)
-		links = append(links, page)
+	for _, summary := range parser.Current.PageSummaries {
+		page := parser.getPage(summary)
+		pages = append(pages, page)
 	}
 
-	parser.Current.Links = links
+	parser.Current.Pages = pages
 }
 
-func (parser *Parser) getLink(summary *get3w.LinkSummary) *get3w.Link {
-	link := &get3w.Link{}
+func (parser *Parser) getPage(summary *get3w.PageSummary) *get3w.Page {
+	page := &get3w.Page{}
 
 	data, _ := parser.Storage.Read(parser.key(summary.Path))
 
 	front, content := fmatter.ReadRaw(data)
 	if len(front) > 0 {
-		yaml.Unmarshal(front, link)
+		yaml.Unmarshal(front, page)
 	}
 
 	ext := getExt(summary.Path)
-	link.Content = getStringByExt(ext, content)
+	page.Content = getStringByExt(ext, content)
 
-	link.Name = summary.Name
-	link.Path = summary.Path
-	if link.URL == "" {
-		link.URL = summary.URL
+	page.Name = summary.Name
+	page.Path = summary.Path
+	if page.URL == "" {
+		page.URL = summary.URL
 	}
-	link.Posts = parser.GetPosts(link.PostPath)
+	page.Posts = parser.GetPosts(page.PostPath)
 
 	if len(summary.Children) > 0 {
 		for _, child := range summary.Children {
-			childLink := parser.getLink(child)
-			link.Children = append(link.Children, childLink)
+			childPage := parser.getPage(child)
+			page.Children = append(page.Children, childPage)
 		}
 	}
 
@@ -53,14 +53,14 @@ func (parser *Parser) getLink(summary *get3w.LinkSummary) *get3w.Link {
 	if len(front) > 0 {
 		yaml.Unmarshal(front, vars)
 	}
-	link.AllParameters = structs.Map(link)
+	page.AllParameters = structs.Map(page)
 	for key, val := range vars {
-		if _, ok := link.AllParameters[key]; !ok {
-			link.AllParameters[key] = val
+		if _, ok := page.AllParameters[key]; !ok {
+			page.AllParameters[key] = val
 		}
 	}
 
-	return link
+	return page
 }
 
 func getPaginatorPath(page int, url string) string {
@@ -70,7 +70,7 @@ func getPaginatorPath(page int, url string) string {
 	return fmt.Sprintf("%s%d%s", removeExt(url), page, getExt(url))
 }
 
-func (parser *Parser) getLinkPaginators(page *get3w.Link) []*get3w.Paginator {
+func (parser *Parser) getPagePaginators(page *get3w.Page) []*get3w.Paginator {
 	paginators := []*get3w.Paginator{}
 	perPage := page.Paginate
 	totalPosts := len(page.Posts)
@@ -117,16 +117,16 @@ func (parser *Parser) getLinkPaginators(page *get3w.Link) []*get3w.Paginator {
 	return paginators
 }
 
-// WriteLink write content to page file
-func (parser *Parser) WriteLink(link *get3w.Link) error {
-	data, err := fmatter.Write(link, []byte(link.Content))
+// WritePage write content to page file
+func (parser *Parser) WritePage(page *get3w.Page) error {
+	data, err := fmatter.Write(page, []byte(page.Content))
 	if err != nil {
 		return err
 	}
-	return parser.Storage.Write(parser.key(link.Path), data)
+	return parser.Storage.Write(parser.key(page.Path), data)
 }
 
-// DeleteLink delete page file
-func (parser *Parser) DeleteLink(summary *get3w.LinkSummary) error {
+// DeletePage delete page file
+func (parser *Parser) DeletePage(summary *get3w.PageSummary) error {
 	return parser.Storage.Delete(parser.key(summary.Path))
 }
