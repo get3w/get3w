@@ -63,10 +63,10 @@ type Site struct {
 	Path string `yaml:"-" json:"path" structs:"path"`
 	URL  string `yaml:"-" json:"url" structs:"url"`
 
-	Posts         []*Post        `yaml:"-" json:"posts" structs:"posts"`
-	PageSummaries []*PageSummary `yaml:"-" json:"page_summaries" structs:"page_summaries"`
-	Pages         []*Page        `yaml:"-" json:"pages" structs:"pages"`
-	Sections      []*Section     `yaml:"-" json:"sections" structs:"sections"`
+	Posts         []*Post             `yaml:"-" json:"posts" structs:"posts"`
+	PageSummaries []*PageSummary      `yaml:"-" json:"page_summaries" structs:"page_summaries"`
+	Pages         []*Page             `yaml:"-" json:"pages" structs:"pages"`
+	Sections      map[string]*Section `yaml:"-" json:"sections" structs:"sections"`
 
 	AllParameters map[string]interface{} `yaml:"-" json:"-" structs:"-"`
 }
@@ -126,8 +126,7 @@ type Page struct {
 
 // Section contains the information of the app section
 type Section struct {
-	ID   string `yaml:"id,omitempty" json:"id"`
-	Name string `yaml:"name,omitempty" json:"name"`
+	Path string `yaml:"path,omitempty" json:"path"`
 	HTML string `yaml:"html,omitempty" json:"html"`
 	CSS  string `yaml:"css,omitempty" json:"css"`
 	JS   string `yaml:"js,omitempty" json:"js"`

@@ -29,12 +29,6 @@ func Load(c *echo.Context) error {
 		return api.ErrorBadRequest(c, err)
 	}
 
-	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
-	if err != nil {
-		return api.ErrorBadRequest(c, err)
-	}
-	parser.LoadSitesResources()
-
 	app, err := api.GetApp(appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)
@@ -42,6 +36,12 @@ func Load(c *echo.Context) error {
 	if app == nil {
 		return api.ErrorNotFound(c, nil)
 	}
+
+	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
+	if err != nil {
+		return api.ErrorBadRequest(c, err)
+	}
+	parser.LoadSitesResources()
 
 	output := &get3w.AppLoadOutput{
 		LastModified: timeutils.ToString(time.Now()),

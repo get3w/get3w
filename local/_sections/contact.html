@@ -1,35 +1,407 @@
-<div class="this">
-    <!-- Four -->
-    <section id="four" class="wrapper style4 special">
-        <div class="ct-container ct-center">
-            <header class="major">
-                <h2>Sedarcu cursus erat blandit sit<br>
-                            egestas viverra</h2>
-            </header>
-            <form method="post" action="#">
-                <div class="ct-row">
-                    <div class="ct-md-6 ct-mb">
-                        <input type="text" name="name" id="name" placeholder="Name">
-                    </div>
-                    <div class="ct-md-6 ct-mb">
-                        <input type="email" name="email" id="email" placeholder="Email">
-                    </div>
+<section id="four" class="wrapper style4 special">
+    <div class="ct-container ct-center">
+        <header class="major">
+            <h2>Sedarcu cursus erat blandit sit<br>
+                        egestas viverra</h2>
+        </header>
+        <form method="post" action="#">
+            <div class="ct-row">
+                <div class="ct-md-6 ct-mb">
+                    <input type="text" name="name" id="name" placeholder="Name">
                 </div>
-                <div class="ct-row">
-                    <div class="ct-md-12 ct-mb">
-                        <textarea name="message" id="message" placeholder="Message" rows="8"></textarea>
-                    </div>
+                <div class="ct-md-6 ct-mb">
+                    <input type="email" name="email" id="email" placeholder="Email">
                 </div>
-                <div class="ct-row">
-                    <div class="ct-md-12">
-                        <ul class="actions">
-                            <li>
-                                <input type="submit" value="Send Message">
-                            </li>
-                        </ul>
-                    </div>
+            </div>
+            <div class="ct-row">
+                <div class="ct-md-12 ct-mb">
+                    <textarea name="message" id="message" placeholder="Message" rows="8"></textarea>
                 </div>
-            </form>
-        </div>
-    </section>
-</div>
+            </div>
+            <div class="ct-row">
+                <div class="ct-md-12">
+                    <ul class="actions">
+                        <li>
+                            <input type="submit" value="Send Message">
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+<style>
+body {
+  background: #fff;
+  color: #4a4a4a;
+  font-family: "Open Sans", sans-serif;
+  font-size: 13pt;
+  font-weight: 300;
+  line-height: 1.75em;
+}
+.this {
+  background: #f4f4f4;
+}
+.this *,
+.this *:before,
+.this *:after {
+  box-sizing: border-box;
+}
+.this input,
+.this select,
+.this textarea {
+  color: #4a4a4a;
+  font-family: "Open Sans", sans-serif;
+  font-size: 13pt;
+  font-weight: 300;
+  line-height: 1.75em;
+}
+.this a {
+  color: #5ecb96;
+  text-decoration: underline;
+}
+.this a:hover {
+  text-decoration: none;
+}
+.this p {
+  margin: 0 0 2em 0;
+}
+.this h2 {
+  color: #2a2a2a;
+  font-weight: 600;
+  letter-spacing: 0.125em;
+  line-height: 1em;
+  margin: 0 0 1em 0;
+  text-transform: uppercase;
+}
+.this h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+.this h2 {
+  font-size: 1.5em;
+  line-height: 1.75em;
+}
+.this header.major {
+  position: relative;
+}
+.this header.major:after {
+  background: #eee;
+  content: '';
+  display: inline-block;
+  height: 3px;
+  margin: 0 0 2em 0;
+  width: 6em;
+}
+.this header.major.alt {
+  text-align: center;
+  margin-bottom: 2em;
+}
+.this form {
+  margin: 0 0 2em 0;
+}
+.this label {
+  color: #2a2a2a;
+  display: block;
+  font-size: 0.9em;
+  font-weight: 600;
+  margin: 0 0 1em 0;
+}
+.this input[type="text"],
+.this input[type="password"],
+.this input[type="email"],
+.this select,
+.this textarea {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  -ms-appearance: none;
+  appearance: none;
+  border: none;
+  border: solid 2px #eee;
+  border-radius: 0;
+  color: inherit;
+  display: block;
+  outline: 0;
+  padding: 0 1em;
+  text-decoration: none;
+  width: 100%;
+}
+.this input[type="text"]:invalid,
+.this input[type="password"]:invalid,
+.this input[type="email"]:invalid,
+.this select:invalid,
+.this textarea:invalid {
+  box-shadow: none;
+}
+.this input[type="text"]:focus,
+.this input[type="password"]:focus,
+.this input[type="email"]:focus,
+.this select:focus,
+.this textarea:focus {
+  border-color: #5ecb96;
+}
+.this .select-wrapper {
+  text-decoration: none;
+  display: block;
+  position: relative;
+}
+.this .select-wrapper:before {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-family: FontAwesome;
+  font-style: normal;
+  font-weight: normal;
+  text-transform: none !important;
+}
+.this .select-wrapper:before {
+  content: '\f078';
+  color: #eee;
+  display: block;
+  height: 3.5em;
+  line-height: 3.5em;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  text-align: center;
+  top: 0;
+  width: 3.5em;
+}
+.this .select-wrapper select::-ms-expand {
+  display: none;
+}
+.this input[type="text"],
+.this input[type="password"],
+.this input[type="email"],
+.this select {
+  height: 3.5em;
+}
+.this textarea {
+  padding: 0.75em 1em;
+}
+.this ::-webkit-input-placeholder {
+  color: #bbb !important;
+  opacity: 1.0;
+}
+.this :-moz-placeholder {
+  color: #bbb !important;
+  opacity: 1.0;
+}
+.this ::-moz-placeholder {
+  color: #bbb !important;
+  opacity: 1.0;
+}
+.this :-ms-input-placeholder {
+  color: #bbb !important;
+  opacity: 1.0;
+}
+.this .formerize-placeholder {
+  color: #bbb !important;
+  opacity: 1.0;
+}
+.this ul {
+  list-style: disc;
+  margin: 0 0 2em 0;
+  padding-left: 1em;
+}
+.this ul li {
+  padding-left: 0.5em;
+}
+.this ul.icons {
+  cursor: default;
+  list-style: none;
+  padding-left: 0;
+}
+.this ul.icons li {
+  display: inline-block;
+  padding: 0 1em 0 0;
+}
+.this ul.icons li:last-child {
+  padding-right: 0;
+}
+.this ul.icons li .icon:before {
+  font-size: 1.5em;
+}
+.this ul.actions {
+  cursor: default;
+  list-style: none;
+  padding-left: 0;
+}
+.this ul.actions li {
+  display: inline-block;
+  padding: 0 1em 0 0;
+  vertical-align: middle;
+}
+.this ul.actions li:last-child {
+  padding-right: 0;
+}
+.this input[type="submit"],
+.this input[type="reset"],
+.this input[type="button"],
+.this .button {
+  appearance: none;
+  -webkit-transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+          transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  background-color: #1d2726;
+  border-radius: 0;
+  border: 0;
+  color: #ffffff !important;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 0.9em;
+  font-weight: 600;
+  height: 4em;
+  letter-spacing: 0.125em;
+  line-height: 4em;
+  overflow: hidden;
+  padding: 0 2.75em;
+  text-align: center;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.this input[type="submit"]:hover,
+.this input[type="reset"]:hover,
+.this input[type="button"]:hover,
+.this .button:hover {
+  background-color: #283634;
+}
+.this input[type="submit"]:active,
+.this input[type="reset"]:active,
+.this input[type="button"]:active,
+.this .button:active {
+  background-color: #121818;
+}
+.this input[type="submit"].disabled,
+.this input[type="submit"]:disabled,
+.this input[type="reset"].disabled,
+.this input[type="reset"]:disabled,
+.this input[type="button"].disabled,
+.this input[type="button"]:disabled,
+.this .button.disabled,
+.this .button:disabled {
+  background-color: #4a4a4a !important;
+  box-shadow: inset 0 -0.15em 0 0 rgba(0, 0, 0, 0.15);
+  color: #fff !important;
+  cursor: default;
+  opacity: 0.25;
+}
+.this .wrapper {
+  padding: 6em 0 4em 0;
+}
+.wrapper.style4 {
+  background: #fafafa;
+}
+@media screen and (max-width: 1680px) {
+  body {
+    font-size: 11pt;
+  }
+  .this input,
+  .this select,
+  .this textarea {
+    font-size: 11pt;
+  }
+}
+@media screen and (max-width: 1280px) {
+  body {
+    font-size: 11pt;
+  }
+  .this input,
+  .this select,
+  .this textarea {
+    font-size: 11pt;
+  }
+  .this .wrapper {
+    padding: 4em 0 2em 0;
+  }
+  .this #main {
+    padding: 2em 0;
+  }
+}
+@media screen and (max-width: 980px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this input,
+  .this select,
+  .this textarea {
+    font-size: 12pt;
+  }
+  .this h2 {
+    font-size: 1.25em;
+    line-height: 1.75em;
+  }
+  .this h3 {
+    font-size: 1.1em;
+    line-height: 1.5em;
+  }
+  .this h4 {
+    font-size: 1em;
+    line-height: 1.5em;
+  }
+}
+@media screen and (max-width: 736px) {
+  body {
+    font-size: 12pt;
+  }
+  .this input,
+  .this select,
+  .this textarea {
+    font-size: 12pt;
+  }
+  .this .wrapper {
+    padding: 2.5em 1.25em 0.5em 1.25em;
+  }
+}
+@media screen and (max-width: 480px) {
+  html,
+  body {
+    min-width: 320px;
+  }
+  body {
+    font-size: 12pt;
+  }
+  .this input,
+  .this select,
+  .this textarea {
+    font-size: 12pt;
+  }
+  .this h2 br,
+  .this h3 br {
+    display: none;
+  }
+  .this h2 {
+    font-size: 1.15em;
+    line-height: 1.75em;
+  }
+  .this ul.actions {
+    margin: 0 0 2em 0;
+  }
+  .this ul.actions li {
+    display: block;
+    padding: 1em 0 0 0;
+    text-align: center;
+    width: 100%;
+  }
+  .this ul.actions li:first-child {
+    padding-top: 0;
+  }
+  .this ul.actions li > * {
+    margin: 0 !important;
+    width: 100%;
+  }
+  .this ul.actions li > *.icon:before {
+    margin-left: -2em;
+  }
+  .this input[type="submit"],
+  .this input[type="reset"],
+  .this input[type="button"],
+  .this .button {
+    padding: 0;
+  }
+}
+</style>

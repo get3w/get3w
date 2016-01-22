@@ -53,13 +53,14 @@ func loadConfig(s Storage) *get3w.Config {
 }
 
 // LoadSiteParameters load parameters for current site
-func (parser *Parser) LoadSiteParameters(loadDefault bool) {
+func (parser *Parser) LoadSiteParameters() {
 	allParameters := make(map[string]interface{})
 	path := parser.key(KeyConfig)
 	if parser.Storage.IsExist(path) {
 		data, _ := parser.Storage.Read(path)
 		yaml.Unmarshal(data, allParameters)
 	} else {
+		loadDefault := parser.Current != parser.Default
 		if loadDefault {
 			for key, val := range parser.Default.AllParameters {
 				if _, ok := allParameters[key]; !ok {

@@ -34,7 +34,7 @@ func (parser *Parser) ParsePage(layoutContent string, page *get3w.Page, paginato
 	dataPaginator := structs.Map(paginator)
 
 	if len(page.Sections) > 0 {
-		dataPage["sections"] = getSectionsHTML(parser.Config, page, parser.Current.Sections)
+		dataPage["sections"] = parser.getSectionsHTML(parser.Config, page)
 		// if parsedContent == "" {
 		// 	parsedContent += fmt.Sprintf(defaultFormatHTML, getDefaultHead(parser.Config, page), sectionsHTML)
 		// } else {

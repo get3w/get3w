@@ -79,7 +79,7 @@ func Save(c *echo.Context) error {
 				var section get3w.Section
 				err := mapstructure.Decode(payload.Data, &section)
 				if err == nil {
-					parser.DeleteSection(section.Name)
+					parser.DeleteSection(section.Path)
 				}
 			}
 
