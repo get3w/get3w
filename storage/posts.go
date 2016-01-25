@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w"
+	"github.com/get3w/get3w/engines/liquid"
 	"github.com/get3w/get3w/pkg/fmatter"
 )
 
@@ -90,4 +91,36 @@ func (parser *Parser) getPost(file *get3w.File) *get3w.Post {
 	}
 
 	return post
+}
+
+// parsePost parse post
+func (parser *Parser) parsePost(template string, post *get3w.Post) (string, error) {
+	if template == "" {
+		template = post.Content
+	}
+
+	parser.Current.AllParameters["related_posts"] = getRelatedPosts(parser.Current.Posts, post)
+
+	data := map[string]interface{}{
+		"site": parser.Current.AllParameters,
+		"page": post.AllParameters,
+	}
+
+	var parsedContent string
+	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
+		parser := liquid.New(parser.Path)
+		content, err := parser.Parse(post.Content, data)
+		if err != nil {
+			return "", err
+		}
+		data["content"] = content
+		parsedContent, err = parser.Parse(template, data)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		parsedContent = template
+	}
+
+	return parsedContent, nil
 }
