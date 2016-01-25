@@ -16,5 +16,6 @@ func (parser *Parser) LoadSitesResources() {
 		parser.LoadSitePageSummaries()
 		parser.LoadSitePages()
 		parser.LoadSiteSections(parser.Current.Pages)
+		parser.LoadSiteLayouts()
 	})
 }

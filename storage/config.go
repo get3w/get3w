@@ -36,11 +36,8 @@ func loadConfig(s Storage) *get3w.Config {
 	if config.TemplateEngine == "" {
 		config.TemplateEngine = TemplateEngineLiquid
 	}
-	if config.LayoutPage == "" {
-		config.LayoutPage = "default"
-	}
-	if config.LayoutPost == "" {
-		config.LayoutPost = "post"
+	if config.Layout == "" {
+		config.Layout = "default.html"
 	}
 	if config.Destination == "" {
 		config.Destination = "_public"

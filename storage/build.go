@@ -103,17 +103,17 @@ func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
 
 func (parser *Parser) buildPages(pages []*get3w.Page) error {
 	for _, page := range pages {
-		layoutContent, layout := parser.getLayoutContent(page.Layout, parser.Config.LayoutPage)
+		layout := parser.getLayout(page.Layout)
 		paginators := parser.getPagePaginators(page)
 		for _, paginator := range paginators {
-			parsedContent, err := parser.parsePage(layoutContent, page, paginator)
+			parsedContent, err := parser.parsePage(layout.FinalContent, page, paginator)
 			if err != nil {
-				parser.LogError(layout, paginator.Path, err)
+				parser.LogError(layout.Path, paginator.Path, err)
 			}
 
 			err = parser.Storage.WriteDestination(parser.destinationKey(paginator.Path), []byte(parsedContent))
 			if err != nil {
-				parser.LogError(layout, paginator.Path, err)
+				parser.LogError(layout.Path, paginator.Path, err)
 			}
 		}
 
@@ -127,15 +127,15 @@ func (parser *Parser) buildPages(pages []*get3w.Page) error {
 func (parser *Parser) buildPosts() error {
 	posts := parser.Current.Posts
 	for _, post := range posts {
-		layoutContent, layout := parser.getLayoutContent(post.Layout, parser.Config.LayoutPost)
-		parsedContent, err := parser.parsePost(layoutContent, post)
+		layout := parser.getLayout(post.Layout)
+		parsedContent, err := parser.parsePost(layout.FinalContent, post)
 		if err != nil {
-			parser.LogError(layout, post.URL, err)
+			parser.LogError(layout.Path, post.URL, err)
 		}
 
 		err = parser.Storage.WriteDestination(parser.destinationKey(post.URL), []byte(parsedContent))
 		if err != nil {
-			parser.LogError(layout, post.URL, err)
+			parser.LogError(layout.Path, post.URL, err)
 		}
 	}
 	return nil

@@ -67,6 +67,7 @@ type Site struct {
 	PageSummaries []*PageSummary      `yaml:"-" json:"page_summaries" structs:"page_summaries"`
 	Pages         []*Page             `yaml:"-" json:"pages" structs:"pages"`
 	Sections      map[string]*Section `yaml:"-" json:"sections" structs:"sections"`
+	Layouts       map[string]*Layout  `yaml:"-" json:"layouts" structs:"layouts"`
 
 	AllParameters map[string]interface{} `yaml:"-" json:"-" structs:"-"`
 }
@@ -78,8 +79,7 @@ type Config struct {
 	Description    string `yaml:"description,omitempty" json:"description" structs:"description"`
 	FaviconURL     string `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
 	TemplateEngine string `yaml:"template_engine,omitempty" json:"template_engine" structs:"template_engine"`
-	LayoutPage     string `yaml:"layout_page,omitempty" json:"layout_page" structs:"layout_page"`
-	LayoutPost     string `yaml:"layout_post,omitempty" json:"layout_post" structs:"layout_post"`
+	Layout         string `yaml:"layout,omitempty" json:"layout" structs:"layout"`
 	// Where things are
 	Source      string `yaml:"source,omitempty" json:"source" structs:"source"`
 	Destination string `yaml:"destination,omitempty" json:"destination" structs:"destination"`
@@ -126,9 +126,10 @@ type Page struct {
 
 // Layout contains the information of the app layout
 type Layout struct {
-	Path    string `yaml:"path,omitempty" json:"path"`
-	Layout  string `yaml:"layout,omitempty" json:"layout"`
-	Content string `yaml:"content,omitempty" json:"content"`
+	Path         string `yaml:"path,omitempty" json:"path"`
+	Layout       string `yaml:"layout,omitempty" json:"layout"`
+	Content      string `yaml:"content,omitempty" json:"content"`
+	FinalContent string `yaml:"final_content,omitempty" json:"final_content"`
 }
 
 // Section contains the information of the app section
