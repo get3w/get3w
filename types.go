@@ -124,6 +124,13 @@ type Page struct {
 	AllParameters map[string]interface{} `yaml:"-" json:"-" structs:"-"`
 }
 
+// Layout contains the information of the app layout
+type Layout struct {
+	Path    string `yaml:"path,omitempty" json:"path"`
+	Layout  string `yaml:"layout,omitempty" json:"layout"`
+	Content string `yaml:"content,omitempty" json:"content"`
+}
+
 // Section contains the information of the app section
 type Section struct {
 	Path string `yaml:"path,omitempty" json:"path"`

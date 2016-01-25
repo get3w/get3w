@@ -103,10 +103,10 @@ func (parser *Parser) buildCopy(excludeKeys, includeKeys []string) error {
 
 func (parser *Parser) buildPages(pages []*get3w.Page) error {
 	for _, page := range pages {
-		template, layout := parser.getTemplate(page.Layout, parser.Config.LayoutPage)
+		layoutContent, layout := parser.getLayoutContent(page.Layout, parser.Config.LayoutPage)
 		paginators := parser.getPagePaginators(page)
 		for _, paginator := range paginators {
-			parsedContent, err := parser.parsePage(template, page, paginator)
+			parsedContent, err := parser.parsePage(layoutContent, page, paginator)
 			if err != nil {
 				parser.LogError(layout, paginator.Path, err)
 			}
@@ -127,8 +127,8 @@ func (parser *Parser) buildPages(pages []*get3w.Page) error {
 func (parser *Parser) buildPosts() error {
 	posts := parser.Current.Posts
 	for _, post := range posts {
-		template, layout := parser.getTemplate(post.Layout, parser.Config.LayoutPost)
-		parsedContent, err := parser.parsePost(template, post)
+		layoutContent, layout := parser.getLayoutContent(post.Layout, parser.Config.LayoutPost)
+		parsedContent, err := parser.parsePost(layoutContent, post)
 		if err != nil {
 			parser.LogError(layout, post.URL, err)
 		}
