@@ -60,6 +60,9 @@ func (parser *Parser) getPage(summary *get3w.PageSummary) *get3w.Page {
 		if _, ok := page.AllParameters[key]; !ok {
 			page.AllParameters[key] = val
 		}
+		if key == "layout" {
+			page.Layout = val.(string)
+		}
 	}
 
 	return page
@@ -134,9 +137,11 @@ func (parser *Parser) DeletePage(summary *get3w.PageSummary) error {
 }
 
 // ParsePage the parsedContent
-func (parser *Parser) parsePage(layoutContent string, page *get3w.Page, paginator *get3w.Paginator) (string, error) {
-	if layoutContent == "" {
-		layoutContent = page.Content
+func (parser *Parser) parsePage(page *get3w.Page, paginator *get3w.Paginator) (string, error) {
+	layout := parser.getLayout(page.Layout)
+	layoutContent := page.Content
+	if layout != nil {
+		layoutContent = layout.FinalContent
 	}
 
 	parsedContent := layoutContent

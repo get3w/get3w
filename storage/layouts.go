@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"path"
 	"strings"
 
 	"github.com/get3w/get3w"
@@ -23,6 +24,9 @@ func (parser *Parser) getLayout(layoutPath string) *get3w.Layout {
 	if layoutPath == "" {
 		layoutPath = parser.Config.Layout
 	}
+	if layoutPath == "" {
+		return nil
+	}
 	ext := getExt(layoutPath)
 	if ext == "" {
 		layoutPath += ".html"
@@ -35,57 +39,40 @@ func (parser *Parser) getLayout(layoutPath string) *get3w.Layout {
 		return layout
 	}
 
-	if !parser.Storage.IsExist(parser.Storage.GetSourceKey(layoutPath)) {
+	layoutKey := parser.Storage.GetSourceKey(path.Join(PrefixLayouts, layoutPath))
+	if !parser.Storage.IsExist(layoutKey) {
 		layoutPath = parser.Config.Layout
 	}
 
+	if layoutPath == "" {
+		return nil
+	}
+	data, err := parser.Storage.Read(layoutKey)
+	if err != nil || data == nil {
+		return nil
+	}
+
+	matter := make(map[string]string)
+	content := fmatter.Read(data, matter)
+
 	layout = &get3w.Layout{}
-	data, _ := parser.Storage.Read(parser.Storage.GetSourceKey(layoutPath))
-	if data == nil {
-		if layoutPath == parser.Config.Layout {
-			layout.Path = parser.Config.Layout
-			layout.Layout = ""
-			layout.Content = `<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="utf-8">
-				<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-				<meta name="viewport" content="width=device-width, initial-scale=1">
-				<meta name="keywords" content="{{page.keywords}}"/>
-				<meta name="description" content="{{page.description}}"/>
-				<title>{{page.title}}</title>
-				<link href="http://cdn.get3w.net/packages/csstoolkits/dist/ct.min.css" rel="stylesheet">
-				<link href="http://cdn.get3w.net/packages/fontawesome/css/font-awesome.min.css" rel="stylesheet">
-				<link href="http://cdn.get3w.net/packages/animate.css/animate.min.css" rel="stylesheet">
-			</head>
-			<body>
-				{{page.sections}}
-			</body>
-			</html>`
-			layout.FinalContent = layout.Content
+	layout.Path = layoutPath
+	layout.Content = getStringByExt(ext, content)
+
+	if parentLayoutPath, ok := matter["layout"]; ok && parentLayoutPath != "" {
+		if getExt(parentLayoutPath) == "" {
+			parentLayoutPath += ".html"
 		}
-	} else {
-		matter := make(map[string]string)
-		content := fmatter.Read(data, matter)
-
-		layout.Path = layoutPath
-		layout.Content = getStringByExt(ext, content)
-
-		if parentLayoutPath, ok := matter["layout"]; ok && parentLayoutPath != "" {
-			if getExt(parentLayoutPath) == "" {
-				parentLayoutPath += ".html"
-			}
-			if parentLayoutPath != layoutPath {
-				layout.Layout = parentLayoutPath
-			}
+		if parentLayoutPath != layoutPath {
+			layout.Layout = parentLayoutPath
 		}
-		layout.FinalContent = layout.Content
+	}
+	layout.FinalContent = layout.Content
 
-		if layout.Layout != "" {
-			parentLayout := parser.getLayout(layout.Layout)
-			if parentLayout != nil && parentLayout.FinalContent != "" {
-				layout.FinalContent = strings.Replace(parentLayout.FinalContent, "{{ content }}", layout.Content, -1)
-			}
+	if layout.Layout != "" {
+		parentLayout := parser.getLayout(layout.Layout)
+		if parentLayout != nil && parentLayout.FinalContent != "" {
+			layout.FinalContent = strings.Replace(parentLayout.FinalContent, "{{ content }}", layout.Content, -1)
 		}
 	}
 

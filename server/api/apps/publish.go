@@ -19,14 +19,6 @@ func Publish(c *echo.Context) error {
 		return api.ErrorUnauthorized(c, nil)
 	}
 
-	app, err := api.GetApp(appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	if app == nil {
-		return api.ErrorNotFound(c, nil)
-	}
-
 	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
 	if err != nil {
 		return api.ErrorInternal(c, err)

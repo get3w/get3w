@@ -22,7 +22,7 @@ func loadSites(s Storage) ([]*get3w.Site, *get3w.Site) {
 				continue
 			}
 
-			site := getSite(line)
+			site := parseSite(line)
 			if site == nil {
 				continue
 			}
@@ -63,7 +63,7 @@ func (parser *Parser) EachSite(callback func()) {
 	parser.Current = parser.Default
 }
 
-func getSite(line string) *get3w.Site {
+func parseSite(line string) *get3w.Site {
 	arrOuter := regexOuter.FindStringSubmatch(line)
 	if len(arrOuter) != 3 || arrOuter[0] == "" || arrOuter[1] == "" || arrOuter[2] == "" {
 		return nil

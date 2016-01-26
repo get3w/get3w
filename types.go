@@ -179,6 +179,7 @@ type Paginator struct {
 
 // SavePayload contains data for save method
 type SavePayload struct {
+	Path   string                 `json:"path"`
 	Type   string                 `json:"type"`
 	Status string                 `json:"status"`
 	Data   map[string]interface{} `json:"data"`

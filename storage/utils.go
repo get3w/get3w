@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"bytes"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/net/html"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/get3w/get3w"
@@ -62,6 +65,15 @@ func isUnderscoreOrDotPrefix(path string) bool {
 	return false
 }
 
+func renderNode(node *html.Node) (string, error) {
+	var buf bytes.Buffer
+	err := html.Render(&buf, node)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 // IsLocalFile returns true if the file is local only
 func (parser *Parser) IsLocalFile(file *get3w.File) bool {
 	if strings.HasPrefix(file.Path, parser.Config.Destination) {
@@ -100,11 +112,10 @@ func (parser *Parser) LogWarn(templateURL, pageURL, warning string) {
 }
 
 // LogError write content to log file
-func (parser *Parser) LogError(templateURL, pageURL string, err error) {
+func (parser *Parser) LogError(pageURL string, err error) {
 	if parser.logger != nil {
 		parser.logger.WithFields(log.Fields{
-			"templateURL": templateURL,
-			"pageURL":     pageURL,
+			"pageURL": pageURL,
 		}).Error(err.Error())
 	}
 }

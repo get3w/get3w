@@ -41,7 +41,7 @@ func Load(c *echo.Context) error {
 	if err != nil {
 		return api.ErrorBadRequest(c, err)
 	}
-	parser.LoadSitesResources()
+	parser.APILoad()
 
 	output := &get3w.AppLoadOutput{
 		LastModified: timeutils.ToString(time.Now()),

@@ -193,3 +193,16 @@ func ReaderToString(stream io.Reader) string {
 	buf.ReadFrom(stream)
 	return buf.String()
 }
+
+// FindFirstParenStrings returns slice of first paren
+func FindFirstParenStrings(r *regexp.Regexp, s string) []string {
+	captures := []string{}
+	match := r.FindAllStringSubmatch(s, -1)
+	if match == nil {
+		return captures
+	}
+	for i := 0; i < len(match); i++ {
+		captures = append(captures, match[i][1])
+	}
+	return captures
+}

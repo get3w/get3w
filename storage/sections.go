@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -31,15 +32,15 @@ func (parser *Parser) LoadSiteSections(pages []*get3w.Page) {
 					sel := doc.Find("body").Children()
 					for i, node := range sel.Nodes {
 						if node.Type == html.ElementNode {
-							seq++
-							single := sel.Eq(i)
-							attrID, exists := single.Attr("id")
-							if !exists {
-								attrID = fmt.Sprintf("%d", seq)
-							}
-							if val, err := single.Html(); err == nil {
+							if html, err := renderNode(node); err == nil {
+								seq++
+								single := sel.Eq(i)
+								attrID, exists := single.Attr("id")
+								if !exists {
+									attrID = fmt.Sprintf("%d", seq)
+								}
 								sectionPath := page.Path + "#" + attrID
-								parser.loadSectionWithContent(sectionPath, val)
+								parser.loadSectionWithContent(sectionPath, html)
 								page.Sections = append(page.Sections, sectionPath)
 							}
 						}
@@ -55,53 +56,66 @@ func (parser *Parser) LoadSiteSections(pages []*get3w.Page) {
 	}
 }
 
-// SaveSection write content to section
-func (parser *Parser) SaveSection(section *get3w.Section) error {
-	sectionKey := parser.key(section.Path)
-	sectionContent := ""
-	if section.HTML != "" {
-		sectionContent += fmt.Sprintf(`%s`, section.HTML) + "\n"
+// saveSection write content to section
+func (parser *Parser) saveSection(section *get3w.Section) error {
+	key := parser.key(section.Path)
+	hash := ""
+	if strings.Contains(section.Path, "#") {
+		arr := strings.SplitN(section.Path, "#", 2)
+		key = parser.key(arr[0])
+		hash = arr[1]
 	}
+
+	sectionContent := ""
 	if section.CSS != "" {
 		sectionContent += fmt.Sprintf(`<style>%s</style>`, section.CSS) + "\n"
+	}
+	if section.HTML != "" {
+		sectionContent += fmt.Sprintf(`%s`, section.HTML) + "\n"
 	}
 	if section.JS != "" {
 		sectionContent += fmt.Sprintf(`<script>%s</script>`, section.JS) + "\n"
 	}
-	if err := parser.Storage.Write(sectionKey, []byte(sectionContent)); err != nil {
-		return err
+
+	if hash == "" {
+		if err := parser.Storage.Write(key, []byte(sectionContent)); err != nil {
+			return err
+		}
+	} else {
+		data, err := parser.Storage.Read(key)
+		if err != nil {
+			return err
+		}
+
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(data)))
+		if err != nil {
+			return err
+		}
+		doc.Find("#" + hash).ReplaceWithHtml(sectionContent)
+		html, err := doc.Html()
+		if err != nil {
+			return err
+		}
+		if err := parser.Storage.Write(key, []byte(html)); err != nil {
+			return err
+		}
 	}
 
 	return nil
-	// 	previewHTML := `<!DOCTYPE html>
-	// <html lang="en">
-	// <head>
-	//     <meta charset="utf-8">
-	//     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-	//     <meta name="viewport" content="width=device-width, initial-scale=1">
-	//     <title>` + section.Name + `</title>
-	//     <link href="http://cdn.get3w.com/assets/css/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
-	//     <link href="http://cdn.get3w.com/assets/css/animate.css/3.4.0/animate.min.css" rel="stylesheet">
-	//     <link href="http://cdn.get3w.com/assets/css/csstoolkits/0.0.1/ct.min.css" rel="stylesheet">
-	//     <link href="` + section.Name + `.css" rel="stylesheet">
-	// </head>
-	// <body>
-	// <section class="this">
-	//     ` + section.HTML + `
-	// </section>
-	// <script src="` + section.Name + `.js"></script>
-	// </body>
-	// </html>`
-	// 	parser.WritePreview(parser.getSectionKey(section.Name+parser.ExtHTML), []byte(previewHTML))
 }
 
-// DeleteSection delete section files
-func (parser *Parser) DeleteSection(sectionPath string) error {
+// deleteSection delete section files
+func (parser *Parser) deleteSection(sectionPath string) error {
 	if err := parser.Storage.Delete(parser.key(sectionPath)); err != nil {
 		return err
 	}
 	return nil
 }
+
+var (
+	scriptExp = regexp.MustCompile(`<script[\s\S]*?>([\s\S]*?)</script>`)
+	styleExp  = regexp.MustCompile(`<style[\s\S]*?>([\s\S]*?)</style>`)
+)
 
 func getSection(sectionPath, sectionContent string) *get3w.Section {
 	if sectionPath == "" || sectionContent == "" {
@@ -112,25 +126,15 @@ func getSection(sectionPath, sectionContent string) *get3w.Section {
 	css := ""
 	js := ""
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sectionContent))
-	if err == nil {
-		doc.Find("style").Each(func(i int, s *goquery.Selection) {
-			if val, err := s.Html(); err == nil {
-				css += val
-			}
-			s.Remove()
-		})
-		doc.Find("script").Each(func(i int, s *goquery.Selection) {
-			if val, err := s.Html(); err == nil {
-				js += val
-			}
-			s.Remove()
-		})
-		if css != "" || js != "" {
-			if val, err := doc.Find("body").Html(); err == nil {
-				html = val
-			}
-		}
+	captures := stringutils.FindFirstParenStrings(styleExp, sectionContent)
+	if len(captures) > 0 {
+		css = strings.Join(captures, "\n")
+		html = styleExp.ReplaceAllString(html, "")
+	}
+	captures = stringutils.FindFirstParenStrings(scriptExp, sectionContent)
+	if len(captures) > 0 {
+		js = strings.Join(captures, "\n")
+		html = scriptExp.ReplaceAllString(html, "")
 	}
 
 	if html == "" && css == "" && js == "" {
@@ -175,9 +179,16 @@ func (parser *Parser) loadSectionWithoutContent(sectionPath string) (*get3w.Sect
 		if err != nil {
 			return nil, err
 		}
-		html, err := doc.Find("#" + hash).Html()
-		if err == nil {
-			sectionContent = `<div id="` + hash + `">` + html + `</div>`
+		nodes := doc.Find("#" + hash).Nodes
+		if len(nodes) > 0 {
+			for _, node := range nodes {
+				if node.Type == html.ElementNode {
+					if html, err := renderNode(node); err == nil {
+						sectionContent = html
+						break
+					}
+				}
+			}
 		}
 	}
 

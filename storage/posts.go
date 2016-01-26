@@ -94,9 +94,11 @@ func (parser *Parser) getPost(file *get3w.File) *get3w.Post {
 }
 
 // parsePost parse post
-func (parser *Parser) parsePost(template string, post *get3w.Post) (string, error) {
-	if template == "" {
-		template = post.Content
+func (parser *Parser) parsePost(post *get3w.Post) (string, error) {
+	layoutContent := post.Content
+	layout := parser.getLayout(post.Layout)
+	if layout != nil {
+		layoutContent = layout.FinalContent
 	}
 
 	parser.Current.AllParameters["related_posts"] = getRelatedPosts(parser.Current.Posts, post)
@@ -114,12 +116,12 @@ func (parser *Parser) parsePost(template string, post *get3w.Post) (string, erro
 			return "", err
 		}
 		data["content"] = content
-		parsedContent, err = parser.Parse(template, data)
+		parsedContent, err = parser.Parse(layoutContent, data)
 		if err != nil {
 			return "", err
 		}
 	} else {
-		parsedContent = template
+		parsedContent = layoutContent
 	}
 
 	return parsedContent, nil
