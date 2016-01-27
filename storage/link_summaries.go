@@ -17,9 +17,8 @@ var (
 func (parser *Parser) LoadSitePageSummaries() {
 	var summaries []*get3w.PageSummary
 
-	path := parser.key(KeyPages)
-	if parser.Storage.IsExist(path) {
-		data, _ := parser.Storage.Read(path)
+	if parser.Storage.IsExist(parser.key(KeyPages)) {
+		data, _ := parser.readAll(KeyPages)
 		summaries = getSitePageSummariesByString(data)
 	} else {
 		files, _ := parser.Storage.GetFiles(parser.prefix(""))

@@ -23,8 +23,6 @@ const (
 	PrefixIncludes = "_includes"
 	PrefixLayouts  = "_layouts"
 	PrefixSections = "_sections"
-
-	TemplateEngineLiquid = "liquid"
 )
 
 // Storage contains methods of storage operations
@@ -63,7 +61,8 @@ type Parser struct {
 	Default *get3w.Site
 	Current *get3w.Site
 
-	logger *log.Logger
+	cacheFiles map[string][]byte
+	logger     *log.Logger
 }
 
 // NewLocalParser return local site
@@ -86,6 +85,8 @@ func NewLocalParser(owner, contextDir string) (*Parser, error) {
 		s.Write(errorPath, []byte{})
 	}
 
+	cacheFiles := make(map[string][]byte)
+
 	logger := log.New()
 	logger.Formatter = new(log.TextFormatter)
 	logger.Level = log.WarnLevel
@@ -95,14 +96,15 @@ func NewLocalParser(owner, contextDir string) (*Parser, error) {
 	}))
 
 	parser := &Parser{
-		Owner:   owner,
-		Name:    s.Name,
-		Path:    s.RootPath,
-		Config:  config,
-		Sites:   sites,
-		Default: defaultSite,
-		Current: defaultSite,
-		logger:  logger,
+		Owner:      owner,
+		Name:       s.Name,
+		Path:       s.RootPath,
+		Config:     config,
+		Sites:      sites,
+		Default:    defaultSite,
+		Current:    defaultSite,
+		cacheFiles: cacheFiles,
+		logger:     logger,
 	}
 	parser.Storage = s
 
@@ -117,15 +119,17 @@ func NewS3Parser(bucketSource, bucketDestination, owner, name string) (*Parser, 
 	}
 
 	config, sites, defaultSite := loadConfigAndSites(s)
+	cacheFiles := make(map[string][]byte)
 
 	parser := &Parser{
-		Owner:   owner,
-		Name:    name,
-		Path:    owner + "/" + name,
-		Config:  config,
-		Sites:   sites,
-		Default: defaultSite,
-		Current: defaultSite,
+		Owner:      owner,
+		Name:       name,
+		Path:       owner + "/" + name,
+		Config:     config,
+		Sites:      sites,
+		Default:    defaultSite,
+		Current:    defaultSite,
+		cacheFiles: cacheFiles,
 	}
 	parser.Storage = s
 

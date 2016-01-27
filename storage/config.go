@@ -33,9 +33,6 @@ func loadConfig(s Storage) *get3w.Config {
 		yaml.Unmarshal(data, config)
 	}
 
-	if config.TemplateEngine == "" {
-		config.TemplateEngine = TemplateEngineLiquid
-	}
 	if config.Layout == "" {
 		config.Layout = "default.html"
 	}

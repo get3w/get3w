@@ -1,11 +1,9 @@
 package storage
 
 import (
-	"path"
 	"strings"
 
 	"github.com/get3w/get3w"
-	"github.com/get3w/get3w/pkg/fmatter"
 )
 
 // LoadSiteLayouts load layouts for current site
@@ -39,21 +37,19 @@ func (parser *Parser) getLayout(layoutPath string) *get3w.Layout {
 		return layout
 	}
 
-	layoutKey := parser.Storage.GetSourceKey(path.Join(PrefixLayouts, layoutPath))
-	if !parser.Storage.IsExist(layoutKey) {
+	if !parser.Storage.IsExist(parser.key(PrefixLayouts, layoutPath)) {
 		layoutPath = parser.Config.Layout
 	}
 
 	if layoutPath == "" {
 		return nil
 	}
-	data, err := parser.Storage.Read(layoutKey)
-	if err != nil || data == nil {
-		return nil
-	}
 
 	matter := make(map[string]string)
-	content := fmatter.Read(data, matter)
+	_, content := parser.read(matter, PrefixLayouts, layoutPath)
+	if content == nil {
+		return nil
+	}
 
 	layout = &get3w.Layout{}
 	layout.Path = layoutPath

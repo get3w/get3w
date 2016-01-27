@@ -6,10 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"golang.org/x/net/html"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/get3w/get3w"
+	"github.com/get3w/get3w/pkg/fmatter"
 	"github.com/get3w/get3w/pkg/stringutils"
 	"github.com/russross/blackfriday"
 )
@@ -83,6 +86,34 @@ func (parser *Parser) IsLocalFile(file *get3w.File) bool {
 		return true
 	}
 	return false
+}
+
+func (parser *Parser) readAll(key ...string) ([]byte, error) {
+	filePath := parser.key(key...)
+	if data, ok := parser.cacheFiles[filePath]; ok {
+		return data, nil
+	}
+	data, err := parser.Storage.Read(filePath)
+	if err != nil {
+		return nil, err
+	}
+	parser.cacheFiles[filePath] = data
+	return data, nil
+}
+
+func (parser *Parser) read(frontmatter interface{}, key ...string) ([]byte, []byte) {
+	data, _ := parser.readAll(key...)
+	front, remaining := fmatter.ReadRaw(data)
+	if len(front) > 0 {
+		yaml.Unmarshal(front, frontmatter)
+	}
+	return front, remaining
+}
+
+func (parser *Parser) readRemaining(key ...string) []byte {
+	data, _ := parser.readAll(key...)
+	_, remaining := fmatter.ReadRaw(data)
+	return remaining
 }
 
 func (parser *Parser) prefix(prefix ...string) string {

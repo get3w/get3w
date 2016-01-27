@@ -74,12 +74,11 @@ type Site struct {
 
 // Config contains the information of the app config
 type Config struct {
-	Title          string `yaml:"title,omitempty" json:"title" structs:"title"`
-	Keywords       string `yaml:"keywords,omitempty" json:"keywords" structs:"keywords"`
-	Description    string `yaml:"description,omitempty" json:"description" structs:"description"`
-	FaviconURL     string `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
-	TemplateEngine string `yaml:"template_engine,omitempty" json:"template_engine" structs:"template_engine"`
-	Layout         string `yaml:"layout,omitempty" json:"layout" structs:"layout"`
+	Title       string `yaml:"title,omitempty" json:"title" structs:"title"`
+	Keywords    string `yaml:"keywords,omitempty" json:"keywords" structs:"keywords"`
+	Description string `yaml:"description,omitempty" json:"description" structs:"description"`
+	FaviconURL  string `yaml:"favicon_url,omitempty" json:"favicon_url" structs:"favicon_url"`
+	Layout      string `yaml:"layout,omitempty" json:"layout" structs:"layout"`
 	// Where things are
 	Source      string `yaml:"source,omitempty" json:"source" structs:"source"`
 	Destination string `yaml:"destination,omitempty" json:"destination" structs:"destination"`

@@ -36,6 +36,9 @@ func Write(frontmatter interface{}, content []byte) ([]byte, error) {
 // remaining contents. If no front matter is found, the entire
 // file contents are returned.
 func ReadRaw(data []byte) (front, remaining []byte) {
+	if data == nil {
+		return nil, nil
+	}
 	r := bytes.NewBuffer(data)
 
 	// eat away starting whitespace
@@ -89,10 +92,8 @@ func ReadRaw(data []byte) (front, remaining []byte) {
 // file contents are returned.
 func Read(data []byte, frontmatter interface{}) []byte {
 	front, remaining := ReadRaw(data)
-	err := yaml.Unmarshal(front, frontmatter)
-	if err != nil {
-		return data
+	if len(front) > 0 {
+		yaml.Unmarshal(front, frontmatter)
 	}
-
 	return remaining
 }

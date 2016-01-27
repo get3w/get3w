@@ -8,7 +8,6 @@ import (
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/engines/liquid"
-	"github.com/get3w/get3w/pkg/fmatter"
 )
 
 // LoadSitePosts load posts for current site
@@ -60,15 +59,7 @@ func getRelatedPosts(posts []*get3w.Post, post *get3w.Post) []*get3w.Post {
 func (parser *Parser) getPost(file *get3w.File) *get3w.Post {
 	post := &get3w.Post{}
 
-	data, _ := parser.Storage.Read(parser.Storage.GetSourceKey(file.Path))
-	if data == nil {
-		return post
-	}
-
-	front, content := fmatter.ReadRaw(data)
-	if len(front) > 0 {
-		yaml.Unmarshal(front, post)
-	}
+	front, content := parser.read(post, file.Path)
 
 	ext := getExt(file.Path)
 	post.Content = getStringByExt(ext, content)
@@ -108,20 +99,15 @@ func (parser *Parser) parsePost(post *get3w.Post) (string, error) {
 		"page": post.AllParameters,
 	}
 
-	var parsedContent string
-	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
-		parser := liquid.New(parser.Path)
-		content, err := parser.Parse(post.Content, data)
-		if err != nil {
-			return "", err
-		}
-		data["content"] = content
-		parsedContent, err = parser.Parse(layoutContent, data)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		parsedContent = layoutContent
+	liquidParser := liquid.New(parser.Path)
+	content, err := liquidParser.Parse(post.Content, data)
+	if err != nil {
+		return "", err
+	}
+	data["content"] = content
+	parsedContent, err := liquidParser.Parse(layoutContent, data)
+	if err != nil {
+		return "", err
 	}
 
 	return parsedContent, nil

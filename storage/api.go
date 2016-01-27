@@ -63,7 +63,8 @@ func (parser *Parser) APILoad() {
 		parser.LoadSitePosts()
 		parser.LoadSitePageSummaries()
 		parser.LoadSitePages()
-		parser.LoadSiteSections(parser.Current.Pages)
+		parser.LoadSiteSectionsFromDir()
+		parser.LoadSiteSectionsFromPages(parser.Current.Pages)
 		parser.LoadSiteLayouts()
 	})
 }

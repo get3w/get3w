@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -13,46 +14,58 @@ import (
 	"github.com/get3w/get3w/pkg/stringutils"
 )
 
-// LoadSiteSections load pages for current site
-func (parser *Parser) LoadSiteSections(pages []*get3w.Page) {
-	if len(pages) > 0 {
-		for _, page := range pages {
-			if len(page.Sections) == 0 && page.Content != "" {
-				page.Sections = []string{}
+// LoadSiteSectionsFromDir load sections for _sections directory
+func (parser *Parser) LoadSiteSectionsFromDir() {
+	files, _ := parser.Storage.GetAllFiles(parser.prefix(PrefixSections))
+	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+		parser.loadSectionWithoutContent(file.Path)
+	}
+}
 
-				pageContent := page.Content
-				if !strings.Contains(page.Content, "</body>") {
-					pageContent = "<body>" + page.Content + "</body>"
-				}
-				doc, err := goquery.NewDocumentFromReader(strings.NewReader(pageContent))
-				if err != nil {
-					page.Sections = append(page.Sections, page.Path)
-				} else {
-					seq := 0
-					sel := doc.Find("body").Children()
-					for i, node := range sel.Nodes {
-						if node.Type == html.ElementNode {
-							if html, err := renderNode(node); err == nil {
-								seq++
-								single := sel.Eq(i)
-								attrID, exists := single.Attr("id")
-								if !exists {
-									attrID = fmt.Sprintf("%d", seq)
-								}
-								sectionPath := page.Path + "#" + attrID
-								parser.loadSectionWithContent(sectionPath, html)
-								page.Sections = append(page.Sections, sectionPath)
+// LoadSiteSectionsFromPages load sections for pages
+func (parser *Parser) LoadSiteSectionsFromPages(pages []*get3w.Page) {
+	for _, page := range pages {
+		if page.Content != "" {
+			sections := []string{}
+
+			pageContent := page.Content
+			if !strings.Contains(page.Content, "</body>") {
+				pageContent = "<body>" + page.Content + "</body>"
+			}
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(pageContent))
+			if err != nil {
+				sections = append(sections, page.Path)
+			} else {
+				seq := 0
+				sel := doc.Find("body").Children()
+				for i, node := range sel.Nodes {
+					if isSectionNode(node) {
+						if html, err := renderNode(node); err == nil {
+							seq++
+							single := sel.Eq(i)
+							attrID, exists := single.Attr("id")
+							if !exists {
+								attrID = fmt.Sprintf("%d", seq)
 							}
+							sectionPath := page.Path + "#" + attrID
+							parser.loadSectionWithContent(sectionPath, html)
+							sections = append(sections, sectionPath)
 						}
 					}
 				}
 			}
-
-			for _, sectionPath := range page.Sections {
-				parser.loadSectionWithoutContent(sectionPath)
+			if len(page.Sections) == 0 {
+				page.Sections = sections
 			}
-			parser.LoadSiteSections(page.Children)
 		}
+
+		for _, sectionPath := range page.Sections {
+			parser.loadSectionWithoutContent(sectionPath)
+		}
+		parser.LoadSiteSectionsFromPages(page.Children)
 	}
 }
 
@@ -82,11 +95,7 @@ func (parser *Parser) saveSection(section *get3w.Section) error {
 			return err
 		}
 	} else {
-		data, err := parser.Storage.Read(key)
-		if err != nil {
-			return err
-		}
-
+		data := parser.readRemaining(key)
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(data)))
 		if err != nil {
 			return err
@@ -149,6 +158,40 @@ func getSection(sectionPath, sectionContent string) *get3w.Section {
 	}
 }
 
+var notSectionTagName []string
+
+func init() {
+	notSectionTagName = []string{
+		"noscript",
+		"script",
+		"iframe",
+		"strong",
+		"style",
+		"title",
+		"span",
+		"link",
+		"meta",
+		"html",
+		"body",
+		"head",
+		"br",
+		"em",
+		"a",
+		"b",
+		"i",
+	}
+}
+
+func isSectionNode(node *html.Node) bool {
+	if node.Type != html.ElementNode {
+		return false
+	}
+	if stringutils.Contains(notSectionTagName, strings.ToLower(node.Data)) {
+		return false
+	}
+	return true
+}
+
 func (parser *Parser) loadSectionWithoutContent(sectionPath string) (*get3w.Section, error) {
 	if parser.Current.Sections == nil {
 		parser.Current.Sections = make(map[string]*get3w.Section)
@@ -166,26 +209,44 @@ func (parser *Parser) loadSectionWithoutContent(sectionPath string) (*get3w.Sect
 		hash = arr[1]
 	}
 
-	data, err := parser.Storage.Read(parser.key(key))
-	if err != nil {
-		return nil, err
-	}
+	data := parser.readRemaining(key)
 
 	sectionContent := ""
 	if hash == "" {
 		sectionContent = string(data)
 	} else {
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
+		content := string(data)
+		if !strings.Contains(content, "</body>") {
+			content = "<body>" + content + "</body>"
+		}
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 		if err != nil {
 			return nil, err
 		}
-		nodes := doc.Find("#" + hash).Nodes
-		if len(nodes) > 0 {
-			for _, node := range nodes {
-				if node.Type == html.ElementNode {
-					if html, err := renderNode(node); err == nil {
-						sectionContent = html
+
+		if i, err := strconv.Atoi(hash); err == nil {
+			seq := 0
+			sel := doc.Find("body").Children()
+			for _, node := range sel.Nodes {
+				if isSectionNode(node) {
+					seq++
+					if seq == i {
+						if html, err := renderNode(node); err == nil {
+							sectionContent = html
+						}
 						break
+					}
+				}
+			}
+		} else {
+			nodes := doc.Find("#" + hash).Nodes
+			if len(nodes) > 0 {
+				for _, node := range nodes {
+					if isSectionNode(node) {
+						if html, err := renderNode(node); err == nil {
+							sectionContent = html
+							break
+						}
 					}
 				}
 			}
@@ -242,7 +303,6 @@ func (parser *Parser) parseSections(config *get3w.Config, page *get3w.Page) stri
 
 		buffer.WriteString(css + html + js)
 		buffer.WriteString("\n</section>\n")
-
 	}
 
 	return buffer.String()

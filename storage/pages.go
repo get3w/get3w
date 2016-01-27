@@ -3,12 +3,14 @@ package storage
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 
 	"github.com/fatih/structs"
 	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/engines/liquid"
 	"github.com/get3w/get3w/pkg/fmatter"
+	"github.com/get3w/get3w/pkg/stringutils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,12 +29,7 @@ func (parser *Parser) LoadSitePages() {
 func (parser *Parser) getPage(summary *get3w.PageSummary) *get3w.Page {
 	page := &get3w.Page{}
 
-	data, _ := parser.Storage.Read(parser.key(summary.Path))
-
-	front, content := fmatter.ReadRaw(data)
-	if len(front) > 0 {
-		yaml.Unmarshal(front, page)
-	}
+	front, content := parser.read(page, summary.Path)
 
 	ext := getExt(summary.Path)
 	page.Content = getStringByExt(ext, content)
@@ -136,26 +133,46 @@ func (parser *Parser) DeletePage(summary *get3w.PageSummary) error {
 	return parser.Storage.Delete(parser.key(summary.Path))
 }
 
+var bodyExp = regexp.MustCompile(`<body[\s\S]*?>([\s\S]*?)</body>`)
+
 // ParsePage the parsedContent
 func (parser *Parser) parsePage(page *get3w.Page, paginator *get3w.Paginator) (string, error) {
 	layout := parser.getLayout(page.Layout)
-	layoutContent := page.Content
+	layoutContent := ""
 	if layout != nil {
 		layoutContent = layout.FinalContent
+	} else {
+		if len(page.Sections) > 0 {
+			bodyContent := stringutils.FindFirstParenStrings(bodyExp, page.Content)
+			if len(bodyContent) > 0 {
+				layoutContent = strings.Replace(page.Content, bodyContent[0], "{{page.sections}}", 1)
+			} else {
+				layoutContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viert" content="width=device-width, initial-scale=1">
+  <title>{{page.title}}</title>
+</head>
+<body>
+{{page.sections}}
+</body>
+</html>`
+			}
+		} else {
+			layoutContent = page.Content
+		}
 	}
-
-	parsedContent := layoutContent
-	if parsedContent == "" {
+	if layoutContent == "" {
 		return "", nil
 	}
 
 	dataSite := parser.Current.AllParameters
 	dataPage := page.AllParameters
+	dataPage["sections"] = parser.parseSections(parser.Config, page)
 	dataPaginator := structs.Map(paginator)
-
-	if len(page.Sections) > 0 {
-		dataPage["sections"] = parser.parseSections(parser.Config, page)
-	}
 
 	data := map[string]interface{}{
 		"site":      dataSite,
@@ -163,18 +180,16 @@ func (parser *Parser) parsePage(page *get3w.Page, paginator *get3w.Paginator) (s
 		"paginator": dataPaginator,
 	}
 
-	if strings.ToLower(parser.Config.TemplateEngine) == TemplateEngineLiquid {
-		parser := liquid.New(parser.Path)
-		content, err := parser.Parse(page.Content, data)
-		if err != nil {
-			return "", err
-		}
-		data["content"] = content
+	liquidParser := liquid.New(parser.Path)
+	content, err := liquidParser.Parse(page.Content, data)
+	if err != nil {
+		return "", err
+	}
+	data["content"] = content
 
-		parsedContent, err = parser.Parse(parsedContent, data)
-		if err != nil {
-			return "", err
-		}
+	parsedContent, err := liquidParser.Parse(layoutContent, data)
+	if err != nil {
+		return "", err
 	}
 
 	return parsedContent, nil
