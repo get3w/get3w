@@ -73,6 +73,7 @@ func getSitePageSummariesByString(data []byte) []*get3w.PageSummary {
 }
 
 func getSitePageSummariesByFiles(files []*get3w.File) []*get3w.PageSummary {
+	var index *get3w.PageSummary
 	summaries := []*get3w.PageSummary{}
 
 	for _, file := range files {
@@ -80,14 +81,23 @@ func getSitePageSummariesByFiles(files []*get3w.File) []*get3w.PageSummary {
 			continue
 		}
 		ext := getExt(file.Name)
+		name := strings.TrimRight(file.Name, ext)
 		if ext == ExtHTML || ext == ExtMD {
 			summary := &get3w.PageSummary{
-				Name: strings.TrimRight(file.Name, ext),
+				Name: name,
 				Path: file.Name,
 				URL:  file.Name,
 			}
-			summaries = append(summaries, summary)
+			if name == "index" {
+				index = summary
+			} else {
+				summaries = append(summaries, summary)
+			}
 		}
+	}
+
+	if index != nil {
+		summaries = append([]*get3w.PageSummary{index}, summaries...)
 	}
 
 	return summaries
