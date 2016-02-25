@@ -1,10 +1,6 @@
 package server
 
 import (
-	"os"
-	"strings"
-
-	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/server/api"
 	"github.com/get3w/get3w/server/api/apps"
 	"github.com/get3w/get3w/server/api/apps/files"
@@ -76,14 +72,8 @@ func Run() {
 	e.Get("/s/:app_name", root.Get)
 
 	// Static start
-	var environment = strings.ToLower(os.Getenv("ENVIRONMENT"))
-	if environment == get3w.EnvironmentLocal {
-		e.Static("/signup", "./signup")
-		e.Static("/", ".")
-	} else {
-		e.Static("/signup", "resources/app/signup")
-		e.Static("/", "resources/app")
-	}
+	e.Static("/signup", "resources/app/signup")
+	e.Static("/", "resources/app")
 
 	e.Run(port)
 }
