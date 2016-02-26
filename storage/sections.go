@@ -43,8 +43,8 @@ func (parser *Parser) LoadSiteSectionsFromPages(pages []*get3w.Page) {
 				sel := doc.Find("body").Children()
 				for i, node := range sel.Nodes {
 					if isSectionNode(node) {
+						seq++
 						if html, err := renderNode(node); err == nil {
-							seq++
 							single := sel.Eq(i)
 							attrID, exists := single.Attr("id")
 							if !exists {
@@ -71,11 +71,11 @@ func (parser *Parser) LoadSiteSectionsFromPages(pages []*get3w.Page) {
 
 // saveSection write content to section
 func (parser *Parser) saveSection(section *get3w.Section) error {
-	key := parser.key(section.Path)
+	key := section.Path
 	hash := ""
 	if strings.Contains(section.Path, "#") {
 		arr := strings.SplitN(section.Path, "#", 2)
-		key = parser.key(arr[0])
+		key = arr[0]
 		hash = arr[1]
 	}
 
@@ -91,7 +91,7 @@ func (parser *Parser) saveSection(section *get3w.Section) error {
 	}
 
 	if hash == "" {
-		if err := parser.Storage.Write(key, []byte(sectionContent)); err != nil {
+		if err := parser.Storage.Write(parser.key(key), []byte(sectionContent)); err != nil {
 			return err
 		}
 	} else {
@@ -100,12 +100,29 @@ func (parser *Parser) saveSection(section *get3w.Section) error {
 		if err != nil {
 			return err
 		}
-		doc.Find("#" + hash).ReplaceWithHtml(sectionContent)
+		index, err := stringutils.ToInt(hash)
+		if err != nil {
+			doc.Find("#" + hash).ReplaceWithHtml(sectionContent)
+		} else {
+			var seq int64
+			sel := doc.Find("body").Children()
+			for i, node := range sel.Nodes {
+				if isSectionNode(node) {
+					seq++
+					if index == seq {
+						single := sel.Eq(i)
+						single.Html()
+						single.ReplaceWithHtml(sectionContent)
+					}
+				}
+			}
+		}
+
 		html, err := doc.Html()
 		if err != nil {
 			return err
 		}
-		if err := parser.Storage.Write(key, []byte(html)); err != nil {
+		if err := parser.Storage.Write(parser.key(key), []byte(html)); err != nil {
 			return err
 		}
 	}
