@@ -45,7 +45,8 @@ type App struct {
 	URL         string `json:"url"`
 	Description string `json:"description"`
 	Tags        string `json:"tags"`
-	ThumbURL    string `json:"thumb_url"`
+	ThumbSmall  string `json:"thumb_small"`
+	ThumbLarge  string `json:"thumb_large"`
 }
 
 // File represents a file or folder.
