@@ -17,7 +17,19 @@ import (
 
 // IsUsername return true if str is username
 func IsUsername(str string) bool {
-	r, _ := regexp.Compile(`^[A-Za-z0-9.\\-_]+$`)
+	if len(str) < 3 {
+		return false
+	}
+	if str == "www" || str == "assets" {
+		return false
+	}
+	r, _ := regexp.Compile(`^[A-Za-z0-9-]+$`)
+	return r.MatchString(str)
+}
+
+// IsAppname returns true if name valid
+func IsAppname(str string) bool {
+	r, _ := regexp.Compile(`^[A-Za-z0-9.\-_]+$`)
 	return r.MatchString(str)
 }
 

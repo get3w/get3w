@@ -42,7 +42,7 @@ type App struct {
 	StarCount   int64  `json:"star_count"`
 	CloneCount  int64  `json:"clone_count"`
 	Origin      string `json:"origin"`
-	URL         string `json:"url"`
+	Host        string `json:"host"`
 	Description string `json:"description"`
 	Tags        string `json:"tags"`
 	ThumbSmall  string `json:"thumb_small"`
