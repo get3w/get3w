@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"strings"
 
 	"github.com/fatih/structs"
@@ -132,8 +131,6 @@ func (parser *Parser) WritePage(page *get3w.Page) error {
 func (parser *Parser) DeletePage(summary *get3w.PageSummary) error {
 	return parser.Storage.Delete(parser.key(summary.Path))
 }
-
-var bodyExp = regexp.MustCompile(`<body[\s\S]*?>([\s\S]*?)</body>`)
 
 // ParsePage the parsedContent
 func (parser *Parser) parsePage(page *get3w.Page, paginator *get3w.Paginator) (string, error) {

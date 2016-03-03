@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -28,6 +29,7 @@ const (
 
 var (
 	localOnlyPrefixes []string
+	bodyExp           = regexp.MustCompile(`<body[\s\S]*?>([\s\S]*?)</body>`)
 )
 
 func init() {
@@ -154,7 +156,16 @@ func (parser *Parser) LogError(pageURL string, err error) {
 // AddPoweredBy add powered by branding
 func AddPoweredBy(parsedContent string) string {
 	if !strings.Contains(parsedContent, "Powered by Get3W") {
-		parsedContent += `<a target="_blank" href="https://www.get3w.com/?utm_source=poweredby" style="border: none;text-align: center;width: 120px;height: 40px;z-index: 9393939393;position: fixed;left: 50%;margin-left: -60px;bottom: 0;color: #000;background-color: #fff;font-size: 12px;line-height: 40px;font-weight: 500;cursor: pointer;border-radius: 2px 2px 0 0;box-shadow: 0 5px 10px 0 rgba(0,0,0,.4);">Powered by Get3W</a>`
+		bodyContent := stringutils.FindFirstParenStrings(bodyExp, parsedContent)
+		if len(bodyContent) > 0 {
+			poweredBy := `
+			<div style="text-align: center;">
+	      <a target="_blank" href="https://www.get3w.com/?utm_source=poweredby">
+	        <img src="http://cdn.get3w.com/assets/img/poweredby.png" border="0" />
+	      </a>
+	    </div>`
+			parsedContent = strings.Replace(parsedContent, bodyContent[0], bodyContent[0]+poweredBy, 1)
+		}
 	}
 	return parsedContent
 }
