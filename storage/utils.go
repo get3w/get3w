@@ -150,3 +150,11 @@ func (parser *Parser) LogError(pageURL string, err error) {
 		}).Error(err.Error())
 	}
 }
+
+// AddPoweredBy add powered by branding
+func AddPoweredBy(parsedContent string) string {
+	if !strings.Contains(parsedContent, "Powered by Get3W") {
+		parsedContent += `<a target="_blank" href="https://www.get3w.com/?utm_source=poweredby" style="border: none;text-align: center;width: 120px;height: 40px;z-index: 9393939393;position: fixed;left: 50%;margin-left: -60px;bottom: 0;color: #000;background-color: #fff;font-size: 12px;line-height: 40px;font-weight: 500;cursor: pointer;border-radius: 2px 2px 0 0;box-shadow: 0 5px 10px 0 rgba(0,0,0,.4);">Powered by Get3W</a>`
+	}
+	return parsedContent
+}
