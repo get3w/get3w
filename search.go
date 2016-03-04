@@ -19,10 +19,12 @@ type SearchOptions struct {
 	//   - for code: indexed
 	//   - for issues: comments, created, updated
 	//   - for users: followers, Apps, joined
-	//
+
+	Query string `url:"query,omitempty"`
+	Tag   string `url:"tag,omitempty"`
+
 	// Default is to sort by best match.
 	Sort string `url:"sort,omitempty"`
-
 	// Sort order if sort parameter is provided. Possible values are: asc,
 	// desc. Default is desc.
 	Order string `url:"order,omitempty"`
@@ -30,31 +32,30 @@ type SearchOptions struct {
 
 // AppsSearchResult represents the result of a Apps search.
 type AppsSearchResult struct {
-	TotalCount int          `json:"total_count,omitempty"`
-	AppResults []*AppResult `json:"items,omitempty"`
+	TotalCount int          `json:"total_count"`
+	AppResults []*AppResult `json:"items"`
 }
 
 // AppResult represents a app search result.
 type AppResult struct {
-	App  *App  `json:"app,omitempty"`
-	User *User `json:"user,omitempty"`
+	App  *App  `json:"app"`
+	User *User `json:"user"`
 }
 
 // Apps searches apps via various criteria.
-func (s *SearchService) Apps(query string, opt *SearchOptions) (*AppsSearchResult, *Response, error) {
+func (s *SearchService) Apps(opt *SearchOptions) (*AppsSearchResult, *Response, error) {
 	result := new(AppsSearchResult)
-	resp, err := s.search("apps", query, opt, result)
+	resp, err := s.search("apps", opt, result)
 	return result, resp, err
 }
 
 // Helper function that executes search queries against different
 // Get3W search types (apps, users)
-func (s *SearchService) search(searchType string, query string, opt *SearchOptions, result interface{}) (*Response, error) {
+func (s *SearchService) search(searchType string, opt *SearchOptions, result interface{}) (*Response, error) {
 	params, err := qs.Values(opt)
 	if err != nil {
 		return nil, err
 	}
-	params.Add("q", query)
 	u := fmt.Sprintf("search/%s?%s", searchType, params.Encode())
 
 	req, err := s.client.NewRequest("GET", u, nil)
