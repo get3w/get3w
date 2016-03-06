@@ -110,7 +110,7 @@ func (parser *Parser) parsePost(post *get3w.Post) (string, error) {
 		return "", err
 	}
 
-	parsedContent = AddPoweredBy(parsedContent)
+	parsedContent = PostProcessing(parsedContent)
 
 	return parsedContent, nil
 }

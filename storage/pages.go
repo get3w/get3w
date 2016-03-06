@@ -189,7 +189,7 @@ func (parser *Parser) parsePage(page *get3w.Page, paginator *get3w.Paginator) (s
 		return "", err
 	}
 
-	parsedContent = AddPoweredBy(parsedContent)
+	parsedContent = PostProcessing(parsedContent)
 
 	return parsedContent, nil
 }
