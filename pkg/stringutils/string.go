@@ -15,12 +15,31 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+var reservedUsernames = []string{
+	"www",
+	"assets",
+	"new",
+	"explore",
+	"pricing",
+	"integrations",
+	"organizations",
+	"settings",
+	"stars",
+	"notifications",
+	"watching",
+	"contact",
+	"about",
+	"site",
+	"blog",
+	"shop",
+}
+
 // IsUsername return true if str is username
 func IsUsername(str string) bool {
 	if len(str) < 3 {
 		return false
 	}
-	if str == "www" || str == "assets" {
+	if ContainsIgnoreCase(reservedUsernames, str) {
 		return false
 	}
 	r, _ := regexp.Compile(`^[A-Za-z0-9-]+$`)
