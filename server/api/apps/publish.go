@@ -9,22 +9,24 @@ import (
 )
 
 // Publish app
-func Publish(c *echo.Context) error {
-	appPath := c.Param("app_path")
-	if appPath == "" {
-		return api.ErrorNotFound(c, nil)
+func Publish() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		appPath := c.Param("app_path")
+		if appPath == "" {
+			return api.ErrorNotFound(c, nil)
+		}
+
+		if api.IsAnonymous(c) {
+			return api.ErrorUnauthorized(c, nil)
+		}
+
+		parser, err := storage.NewLocalParser(api.Owner(c), appPath)
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
+
+		parser.Build(true)
+
+		return c.String(http.StatusOK, "")
 	}
-
-	if api.IsAnonymous(c) {
-		return api.ErrorUnauthorized(c, nil)
-	}
-
-	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-
-	parser.Build(true)
-
-	return c.String(http.StatusOK, "")
 }

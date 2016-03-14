@@ -77,6 +77,41 @@ func GetAllKeys(bucket, prefix string) ([]string, error) {
 	return keys, nil
 }
 
+// GetFolderNamesAndFileNames return folder names and file names
+func GetFolderNamesAndFileNames(bucket, prefix string) ([]string, []string, error) {
+	folders := []string{}
+	files := []string{}
+
+	prefix = strings.Trim(prefix, "/") + "/"
+	params := &s3.ListObjectsInput{
+		Bucket:    aws.String(bucket), // Required
+		Prefix:    aws.String(prefix),
+		Delimiter: aws.String("/"),
+	}
+	resp, err := s3Instance.ListObjects(params)
+
+	if err != nil {
+		println(err.Error())
+		return nil, nil, err
+	}
+
+	for _, commonPrefix := range resp.CommonPrefixes {
+		folder := strings.Trim(*commonPrefix.Prefix, "/")
+		folder = strings.TrimPrefix(folder, prefix)
+		folders = append(folders, folder)
+	}
+
+	for _, content := range resp.Contents {
+		if strings.HasSuffix(*content.Key, "/") {
+			continue
+		}
+		file := strings.TrimPrefix(*content.Key, prefix)
+		files = append(files, file)
+	}
+
+	return folders, files, nil
+}
+
 // IsExist return true if specified key exists
 func IsExist(bucket, owner, name string) bool {
 	params := &s3.ListObjectsInput{
@@ -96,7 +131,7 @@ func IsExist(bucket, owner, name string) bool {
 	return false
 }
 
-// CopyAll rename the app
+// CopyAll copy all folders and files in the prefix to newPrefix and return all keys in prefix
 func CopyAll(bucket, prefix, newPrefix string) ([]string, error) {
 	if prefix == newPrefix {
 		return nil, nil

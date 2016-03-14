@@ -96,93 +96,95 @@ func addFromCloud(dirPath, origin string, authConfig *home.AuthConfig) (string, 
 }
 
 // Add app, for open and clone operation
-func Add(c *echo.Context) error {
-	if api.IsAnonymous(c) {
-		return api.ErrorUnauthorized(c, nil)
-	}
-	owner := api.Owner(c)
-
-	input := &get3w.AppAddInput{}
-	err := api.LoadRequestInput(c, input)
-	if err != nil {
-		return api.ErrorBadRequest(c, err)
-	}
-
-	dirPath := input.DirPath
-	dirExists := true
-	if dirPath == "" {
-		dirExists = false
-	} else {
-		stat, err := os.Lstat(dirPath)
-		if err != nil {
-			dirExists = false
-		} else if !stat.IsDir() {
-			dirExists = false
+func Add() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if api.IsAnonymous(c) {
+			return api.ErrorUnauthorized(c, nil)
 		}
-	}
-	if !dirExists {
-		return api.ErrorNotFound(c, nil)
-	}
+		owner := api.Owner(c)
 
-	config, err := home.LoadConfig()
-	if err != nil {
-		return api.ErrorBadRequest(c, err)
-	}
-
-	success := true
-	configExists := true
-	var app *get3w.App
-
-	var appPath string
-	if input.Origin != "" {
-		appPath, err = addFromCloud(dirPath, input.Origin, &config.AuthConfig)
+		input := &get3w.AppAddInput{}
+		err := api.LoadRequestInput(c, input)
 		if err != nil {
 			return api.ErrorBadRequest(c, err)
 		}
-	} else {
-		appPath, configExists, err = addFromLocal(dirPath, config)
-		if err != nil {
-			return api.ErrorBadRequest(c, err)
-		}
-	}
 
-	if input.Check && !configExists {
-		success = false
-	}
-
-	if success {
-		parser, err := storage.NewLocalParser(config.AuthConfig.Username, appPath)
-		if err != nil {
-			return api.ErrorInternal(c, err)
-		}
-
-		app = &get3w.App{
-			Owner:       owner,
-			Name:        parser.Name,
-			Description: parser.Config.Description,
-			Tags:        "",
-			Path:        appPath,
-			Private:     false,
-			CreatedAt:   timeutils.ToString(time.Now()),
-			UpdatedAt:   timeutils.ToString(time.Now()),
-		}
-
-		exists := false
-		for _, app := range config.Apps {
-			if app.Path == appPath {
-				exists = true
-				break
+		dirPath := input.DirPath
+		dirExists := true
+		if dirPath == "" {
+			dirExists = false
+		} else {
+			stat, err := os.Lstat(dirPath)
+			if err != nil {
+				dirExists = false
+			} else if !stat.IsDir() {
+				dirExists = false
 			}
 		}
-		if !exists {
-			config.Apps = append(config.Apps, app)
-			config.Save()
+		if !dirExists {
+			return api.ErrorNotFound(c, nil)
 		}
-	}
 
-	output := &get3w.AppAddOutput{
-		Config: configExists,
-		App:    app,
+		config, err := home.LoadConfig()
+		if err != nil {
+			return api.ErrorBadRequest(c, err)
+		}
+
+		success := true
+		configExists := true
+		var app *get3w.App
+
+		var appPath string
+		if input.Origin != "" {
+			appPath, err = addFromCloud(dirPath, input.Origin, &config.AuthConfig)
+			if err != nil {
+				return api.ErrorBadRequest(c, err)
+			}
+		} else {
+			appPath, configExists, err = addFromLocal(dirPath, config)
+			if err != nil {
+				return api.ErrorBadRequest(c, err)
+			}
+		}
+
+		if input.Check && !configExists {
+			success = false
+		}
+
+		if success {
+			parser, err := storage.NewLocalParser(config.AuthConfig.Username, appPath)
+			if err != nil {
+				return api.ErrorInternal(c, err)
+			}
+
+			app = &get3w.App{
+				Owner:       owner,
+				Name:        parser.Name,
+				Description: parser.Config.Description,
+				Tags:        "",
+				Path:        appPath,
+				Private:     false,
+				CreatedAt:   timeutils.ToString(time.Now()),
+				UpdatedAt:   timeutils.ToString(time.Now()),
+			}
+
+			exists := false
+			for _, app := range config.Apps {
+				if app.Path == appPath {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				config.Apps = append(config.Apps, app)
+				config.Save()
+			}
+		}
+
+		output := &get3w.AppAddOutput{
+			Config: configExists,
+			App:    app,
+		}
+		return c.JSON(http.StatusOK, output)
 	}
-	return c.JSON(http.StatusOK, output)
 }

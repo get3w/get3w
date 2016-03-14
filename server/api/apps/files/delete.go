@@ -12,34 +12,36 @@ import (
 )
 
 // Delete file
-func Delete(c *echo.Context) error {
-	appPath := c.Param("app_path")
-	if appPath == "" {
-		return api.ErrorNotFound(c, nil)
-	}
-	path := c.P(1)
+func Delete() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		appPath := c.Param("app_path")
+		if appPath == "" {
+			return api.ErrorNotFound(c, nil)
+		}
+		path := c.P(1)
 
-	if api.IsAnonymous(c) {
-		return api.ErrorUnauthorized(c, nil)
-	}
+		if api.IsAnonymous(c) {
+			return api.ErrorUnauthorized(c, nil)
+		}
 
-	app, err := api.GetApp(appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	if app == nil {
-		return api.ErrorNotFound(c, nil)
-	}
+		app, err := api.GetApp(appPath)
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
+		if app == nil {
+			return api.ErrorNotFound(c, nil)
+		}
 
-	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+		parser, err := storage.NewLocalParser(api.Owner(c), appPath)
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
 
-	parser.Storage.Delete(parser.Storage.GetSourceKey(path))
+		parser.Storage.Delete(parser.Storage.GetSourceKey(path))
 
-	output := &get3w.FileDeleteOutput{
-		LastModified: timeutils.ToString(time.Now()),
+		output := &get3w.FileDeleteOutput{
+			LastModified: timeutils.ToString(time.Now()),
+		}
+		return c.JSON(http.StatusOK, output)
 	}
-	return c.JSON(http.StatusOK, output)
 }

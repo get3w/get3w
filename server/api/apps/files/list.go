@@ -9,30 +9,32 @@ import (
 )
 
 // List return files
-func List(c *echo.Context) error {
-	appPath := c.Param("app_path")
-	if appPath == "" {
-		return api.ErrorNotFound(c, nil)
-	}
-	path := c.P(1)
+func List() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		appPath := c.Param("app_path")
+		if appPath == "" {
+			return api.ErrorNotFound(c, nil)
+		}
+		path := c.P(1)
 
-	app, err := api.GetApp(appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
-	if app == nil {
-		return api.ErrorNotFound(c, nil)
-	}
+		app, err := api.GetApp(appPath)
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
+		if app == nil {
+			return api.ErrorNotFound(c, nil)
+		}
 
-	parser, err := storage.NewLocalParser(api.Owner(c), appPath)
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+		parser, err := storage.NewLocalParser(api.Owner(c), appPath)
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
 
-	files, err := parser.Storage.GetFiles(parser.Storage.GetRootPrefix(path))
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+		files, err := parser.Storage.GetFiles(parser.Storage.GetRootPrefix(path))
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
 
-	return c.JSON(http.StatusOK, files)
+		return c.JSON(http.StatusOK, files)
+	}
 }

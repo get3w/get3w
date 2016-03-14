@@ -9,15 +9,17 @@ import (
 )
 
 // List return apps
-func List(c *echo.Context) error {
-	if api.IsAnonymous(c) {
-		return api.ErrorUnauthorized(c, nil)
-	}
+func List() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if api.IsAnonymous(c) {
+			return api.ErrorUnauthorized(c, nil)
+		}
 
-	config, err := home.LoadConfig()
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+		config, err := home.LoadConfig()
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
 
-	return c.JSON(http.StatusOK, config.Apps)
+		return c.JSON(http.StatusOK, config.Apps)
+	}
 }

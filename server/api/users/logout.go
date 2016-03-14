@@ -9,12 +9,14 @@ import (
 )
 
 // Logout user logout
-func Logout(c *echo.Context) error {
-	config, _ := home.LoadConfig()
-	err := config.Logout()
-	if err != nil {
-		return api.ErrorInternal(c, err)
-	}
+func Logout() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		config, _ := home.LoadConfig()
+		err := config.Logout()
+		if err != nil {
+			return api.ErrorInternal(c, err)
+		}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{})
+		return c.JSON(http.StatusOK, map[string]interface{}{})
+	}
 }

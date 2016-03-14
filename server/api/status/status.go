@@ -8,8 +8,10 @@ import (
 )
 
 // Get status
-func Get(c *echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"environment": get3w.Environment(),
-	})
+func Get() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"environment": get3w.Environment(),
+		})
+	}
 }
