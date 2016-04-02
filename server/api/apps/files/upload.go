@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bairongsoft/get3w-api/api/apiutils"
 	"github.com/get3w/get3w"
 	"github.com/get3w/get3w/pkg/timeutils"
 	"github.com/get3w/get3w/server/api"
@@ -47,7 +46,7 @@ func Upload() echo.HandlerFunc {
 		req := c.Request().(*standard.Request)
 		mr, err := req.MultipartReader()
 		if err != nil {
-			return apiutils.ErrorInternal(c, err)
+			return api.ErrorInternal(c, err)
 		}
 
 		files := []*get3w.File{}

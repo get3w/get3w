@@ -103,6 +103,10 @@ func StoreHeaders(options ...*StoreHeaderOptions) echo.MiddlewareFunc {
 			config, _ := home.LoadConfig()
 			c.Set("Config", config)
 
+			if err := next.Handle(c); err != nil {
+				c.Error(err)
+			}
+
 			return nil
 		})
 	}
