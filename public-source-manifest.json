@@ -6753,11 +6753,11 @@
     },
     {
       "path": "scripts/release/assemble.py",
-      "sha256": "e897ff07dcfd7e523cdecc836d0d16a6776ce819e4ea15116cfc35d52c7a10cd"
+      "sha256": "49f464b139ab6386c4d44479cdda0600ac82ab881bd1b2dea178e0d20a35bb38"
     },
     {
       "path": "scripts/release/assemble_test.py",
-      "sha256": "0721532cc5953a4135cd1f7dd7d89b812bfcd34ea9f91689e44ed7eb1d46cd79"
+      "sha256": "9dd4bcd6bff1da1192877dc73393437d11beb6be3eab8fc28c86bfe64d42a1fc"
     },
     {
       "path": "scripts/release/windows-signatures.ps1",

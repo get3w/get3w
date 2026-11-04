@@ -24,7 +24,8 @@ def assemble(source, output, version):
                 assets[path.name] = path
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
-            name = f'get3w-{platform}-{arch}-{version}.{ext}'
+            asset_arch = 'x64' if platform == 'linux' and arch == 'x86_64' and ext == 'tar.gz' else arch
+            name = f'get3w-{platform}-{asset_arch}-{version}.{ext}'
             if name not in assets or assets[name].stat().st_size == 0: raise ValueError('Missing installer: ' + name)
     expected_manifests = {'latest-mac.yml', 'latest.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'}
     if set(manifests) != expected_manifests: raise ValueError('Missing updater manifests')
