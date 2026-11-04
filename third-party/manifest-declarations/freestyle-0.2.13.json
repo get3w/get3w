@@ -1,0 +1,22 @@
+{
+  "name": "freestyle",
+  "version": "0.2.13",
+  "license": "MIT",
+  "dist": {
+    "shasum": "80a3b43d431e66a2b711f79a76a447649cca65ca",
+    "tarball": "https://registry.npmjs.org/freestyle/-/freestyle-0.2.13.tgz",
+    "fileCount": 207,
+    "integrity": "sha512-+rJOPBKiQrC6/gCe4Nmj38hEIc2tqW9BNAV1rOxeSb4JyGfLs8ByV+kXXnmuc13d7VQ/wSsKRahOcJ+qGBnrwQ==",
+    "signatures": [
+      {
+        "sig": "MEQCIDLxHRmUF4k+mMmHUNM2E/6WxFZj3analPavEtezbPnLAiBELFFb5gtK9Fp13ixoujSOT0EyMIpxwoZ6sL3n2eU9Jw==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEYCIQDtoFUudKINX2fUxMbjNpJe8JeqRiy2VTAYWNRHYwwokgIhAOB/FLysjBo6P02StHwawFSTSA5MtRHPnb4dzAapKBuz",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 1114316
+  }
+}

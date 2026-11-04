@@ -1,0 +1,237 @@
+import type { WorkspaceInfo } from "../../../../app/lib/desktop";
+import type { WorkspaceSessionGroup } from "../../../../app/types";
+import { t } from "../../../../i18n";
+import { getSessionOrder } from "./session-order";
+
+export const MAX_SESSIONS_PREVIEW = 6;
+
+export type SessionListItem = WorkspaceSessionGroup["sessions"][number];
+export type FlattenedSessionRow = { session: SessionListItem };
+export type GlobalPinnedSessionEntry = {
+  group: WorkspaceSessionGroup;
+  session: SessionListItem;
+};
+type ArchivedSession = SessionListItem & { time: { archived: number } };
+export type GlobalArchivedSessionEntry = {
+  group: WorkspaceSessionGroup;
+  session: ArchivedSession;
+};
+
+export const isSessionArchived = (session: SessionListItem): session is ArchivedSession =>
+  typeof session.time?.archived === "number" && session.time.archived > 0;
+
+/** Active agent work shown as the left-lane loader (never a completion / unread state). */
+export const isActiveWorkSessionStatus = (status: string | undefined) =>
+  status === "running" ||
+  status === "busy" ||
+  status === "retry" ||
+  status === "streaming" ||
+  status === "thinking" ||
+  status === "responding" ||
+  status === "compacting";
+
+export const isNeedsAttentionSessionStatus = (status: string | undefined) =>
+  status === "waiting";
+
+export function formatSessionRelativeTime(updatedAt: number | null | undefined): string | null {
+  if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt) || updatedAt <= 0) return null;
+  const ms = updatedAt < 1_000_000_000_000 ? updatedAt * 1000 : updatedAt;
+  const seconds = Math.max(1, Math.round((Date.now() - ms) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
+const normalizeSessionParentID = (session: { parentID?: string | null }) => {
+  const parentID = session.parentID?.trim();
+  return parentID || "";
+};
+
+/**
+ * A session with a parentID is a sub-agent child, whether or not its parent is
+ * in the loaded page (the parent may be archived, deleted, or beyond the list
+ * limit). Children are only reached from the task card in their parent.
+ */
+export const getRootSessions = <T extends { parentID?: string | null }>(sessions: T[]): T[] =>
+  sessions.filter((session) => !normalizeSessionParentID(session));
+
+/**
+ * Return every descendant of a session in stable session-list order. The
+ * visited set keeps malformed cyclic parent data from looping forever.
+ */
+export const getSessionDescendantIds = (
+  sessions: WorkspaceSessionGroup["sessions"],
+  sessionId: string,
+  taskChildren: Readonly<Record<string, readonly string[]>> = {},
+): string[] => {
+  const root = sessionId.trim();
+  if (!root) return [];
+
+  const descendants: string[] = [];
+  const visited = new Set([root]);
+  let parents = new Set([root]);
+
+  while (parents.size > 0) {
+    const nextParents = new Set<string>();
+    for (const session of sessions) {
+      const id = session.id.trim();
+      if (!id || visited.has(id)) continue;
+      const parentID = normalizeSessionParentID(session);
+      if (!parents.has(parentID)) continue;
+      visited.add(id);
+      descendants.push(id);
+      nextParents.add(id);
+    }
+    for (const parent of parents) {
+      for (const child of taskChildren[parent] ?? []) {
+        const id = child.trim();
+        if (!id || visited.has(id)) continue;
+        visited.add(id);
+        descendants.push(id);
+        nextParents.add(id);
+      }
+    }
+    parents = nextParents;
+  }
+
+  return descendants;
+};
+
+/** Split sessions into active vs. archived. Archived sessions live in their own section. */
+export const partitionArchivedSessions = (sessions: WorkspaceSessionGroup["sessions"]) => {
+  const active: SessionListItem[] = [];
+  const archived: ArchivedSession[] = [];
+  for (const session of sessions) {
+    if (isSessionArchived(session)) archived.push(session);
+    else active.push(session);
+  }
+  return { active, archived };
+};
+
+export function buildGlobalPinnedSessions(groups: WorkspaceSessionGroup[], pinnedIds: readonly string[]): GlobalPinnedSessionEntry[] {
+  const sessionsById = new Map<string, GlobalPinnedSessionEntry>();
+  for (const group of groups) {
+    const seen = new Set<string>();
+    for (const session of getRootSessions(partitionArchivedSessions(group.sessions).active)) {
+      if (seen.has(session.id)) continue;
+      seen.add(session.id);
+      sessionsById.set(session.id, { group, session });
+    }
+  }
+  return pinnedIds.flatMap((id) => {
+    const entry = sessionsById.get(id);
+    return entry ? [entry] : [];
+  });
+}
+
+export function groupSessionRows(
+  sessionRows: FlattenedSessionRow[],
+  groups: readonly { id: string }[],
+  assignments: Readonly<Record<string, string>>,
+) {
+  const groupIds = groups.map((group) => group.id);
+  const knownGroupIds = new Set(groupIds);
+  const rootRowsByGroup = new Map<string, FlattenedSessionRow[]>();
+  const ungroupedRows: FlattenedSessionRow[] = [];
+  for (const row of sessionRows) {
+    const groupId = assignments[row.session.id];
+    if (groupId && knownGroupIds.has(groupId)) {
+      const bucket = rootRowsByGroup.get(groupId) ?? [];
+      bucket.push(row);
+      rootRowsByGroup.set(groupId, bucket);
+    } else {
+      ungroupedRows.push(row);
+    }
+  }
+  return { groupIds, rootRowsByGroup, ungroupedRows };
+}
+
+export function buildGlobalArchivedSessions(groups: WorkspaceSessionGroup[]): GlobalArchivedSessionEntry[] {
+  const entries: GlobalArchivedSessionEntry[] = [];
+  for (const group of groups) {
+    for (const session of partitionArchivedSessions(group.sessions).archived) {
+      entries.push({ group, session });
+    }
+  }
+  return entries.sort((a, b) => {
+    if (a.session.time.archived !== b.session.time.archived) {
+      return b.session.time.archived - a.session.time.archived;
+    }
+    if (a.group.workspace.id !== b.group.workspace.id) {
+      return a.group.workspace.id < b.group.workspace.id ? -1 : 1;
+    }
+    return a.session.id < b.session.id ? -1 : a.session.id > b.session.id ? 1 : 0;
+  });
+}
+
+/**
+ * Order root sessions by saved position and creation, never server recency.
+ */
+export const orderRootSessions = (
+  roots: SessionListItem[],
+  pinnedIds: Set<string>,
+  orderIds: string[],
+): SessionListItem[] => {
+  const byId = new Map<string, SessionListItem>();
+  for (const root of roots) {
+    if (!byId.has(root.id)) byId.set(root.id, root);
+  }
+  const ordered: SessionListItem[] = [];
+  for (const id of getSessionOrder(roots, orderIds)) {
+    const root = byId.get(id);
+    if (root) ordered.push(root);
+  }
+
+  // Stable partition: pinned roots float to the top, preserving relative order.
+  const pinned = ordered.filter((root) => pinnedIds.has(root.id));
+  const rest = ordered.filter((root) => !pinnedIds.has(root.id));
+  return [...pinned, ...rest];
+};
+
+/**
+ * Sub-agent (child) sessions never render in the sidebar: they are reached
+ * through the task card in their parent's transcript. Only root sessions
+ * become rows.
+ */
+export const flattenSessionRows = (
+  sessions: WorkspaceSessionGroup["sessions"],
+  rootLimit: number,
+  pinnedIds: Set<string> = EMPTY_SET,
+  orderIds: string[] = EMPTY_ARRAY,
+  rootFilter?: { include?: Set<string>; exclude?: Set<string> },
+): FlattenedSessionRow[] => {
+  const { active } = partitionArchivedSessions(sessions);
+  return orderRootSessions(getRootSessions(active), pinnedIds, orderIds)
+    .filter((root) => (
+      (!rootFilter?.include || rootFilter.include.has(root.id)) &&
+      !rootFilter?.exclude?.has(root.id)
+    ))
+    .slice(0, rootLimit)
+    .map((session) => ({ session }));
+};
+
+const EMPTY_SET: Set<string> = new Set();
+const EMPTY_ARRAY: string[] = [];
+
+export const workspaceLabel = (workspace: WorkspaceInfo) =>
+  workspace.displayName?.trim() ||
+  workspace.name?.trim() ||
+  workspace.path?.trim() ||
+  t("workspace_list.workspace_fallback");
+
+export const workspaceKindLabel = () => t("workspace.local_badge");
+
+const WORKSPACE_SWATCHES = ["#2563eb", "#5a67d8", "#f97316", "#10b981"];
+
+export const workspaceSwatchColor = (seed: string) => {
+  const value = seed.trim() || "workspace";
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return WORKSPACE_SWATCHES[Math.abs(hash) % WORKSPACE_SWATCHES.length];
+};

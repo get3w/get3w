@@ -1,0 +1,44 @@
+/** @jsxImportSource react */
+import type { ReactNode } from "react";
+import type { McpDirectoryInfo } from "../../../app/constants";
+import { extensionContribution } from "../../../app/extensions";
+import type { OpenworkServerClient } from "../../../app/lib/openwork-server";
+import type { LocalProviderInstallInput, LocalProviderSyncInput } from "./openai-image-extension";
+
+/**
+ * Context bag that the settings route passes to extension config factories.
+ * Each extension picks what it needs; unused fields are ignored.
+ */
+export type ExtensionConfigContext = {
+  openworkServerClient?: OpenworkServerClient | null;
+  hostOpenworkServerClient?: OpenworkServerClient | null;
+  restartLocalServer?: () => Promise<boolean>;
+  localProvider: {
+    busy: boolean;
+    status: string | null;
+    error: string | null;
+    onInstall: (input: LocalProviderInstallInput) => void | Promise<void>;
+    onSync: (input: LocalProviderSyncInput) => void | Promise<void>;
+  };
+};
+
+export type ExtensionConfigFactory = (ctx: ExtensionConfigContext) => ReactNode;
+
+const registry = new Map<string, ExtensionConfigFactory>();
+
+export function registerExtensionConfig(id: string, factory: ExtensionConfigFactory) {
+  registry.set(id, factory);
+}
+
+function configRegistryId(entry: McpDirectoryInfo) {
+  return extensionContribution(entry.extensionManifest, "settings-panel")?.ref ?? entry.serverName ?? entry.name;
+}
+
+export function getExtensionConfigSlot(
+  entry: McpDirectoryInfo,
+  ctx: ExtensionConfigContext,
+): ReactNode | null {
+  const id = configRegistryId(entry);
+  const factory = registry.get(id);
+  return factory ? factory(ctx) : null;
+}

@@ -1,0 +1,3 @@
+
+# Local validation artifacts (never source-control binaries)
+dist-openwork-local/

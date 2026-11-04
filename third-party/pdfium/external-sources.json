@@ -1,0 +1,68 @@
+[
+  {
+    "component": "freetype",
+    "file": "external/freetype/docs/FTL.TXT",
+    "source": "https://chromium.googlesource.com/chromium/src/third_party/freetype2/+/320b72a2955a312f2a392bede8d6af900aec924d/docs/FTL.TXT?format=TEXT",
+    "sha256": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f",
+    "retrieved": true
+  },
+  {
+    "component": "freetype",
+    "file": "external/freetype/docs/GPLv2.TXT",
+    "source": "https://chromium.googlesource.com/chromium/src/third_party/freetype2/+/320b72a2955a312f2a392bede8d6af900aec924d/docs/GPLv2.TXT?format=TEXT",
+    "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+    "retrieved": true
+  },
+  {
+    "component": "freetype",
+    "file": "docs/LICENSE.TXT",
+    "retrieved": false
+  },
+  {
+    "component": "libpng",
+    "file": "external/libpng/LICENSE",
+    "source": "https://chromium.googlesource.com/chromium/src/third_party/libpng/+/058e1ebb31390f26a186f40282c02da8c17ea8ec/LICENSE?format=TEXT",
+    "sha256": "bf5e22b9dce8464064ae17a48ea1133c3369ac9e1d80ef9e320e5219aa14ea9b",
+    "retrieved": true
+  },
+  {
+    "component": "jpeg_turbo",
+    "file": "external/jpeg_turbo/LICENSE.md",
+    "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/e14cbfaa85529d47f9f55b0f104a579c1061f9ad/LICENSE.md?format=TEXT",
+    "sha256": "96f5b328adbb78eeaaec6980d73fd558cb1e4d62560ed615646bc3cf5e532430",
+    "retrieved": true
+  },
+  {
+    "component": "jpeg_turbo",
+    "file": "external/jpeg_turbo/README.ijg",
+    "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/e14cbfaa85529d47f9f55b0f104a579c1061f9ad/README.ijg?format=TEXT",
+    "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6",
+    "retrieved": true
+  },
+  {
+    "component": "zlib",
+    "file": "external/zlib/LICENSE",
+    "source": "https://chromium.googlesource.com/chromium/src/third_party/zlib/+/a1f2fe223f55b6ec6dd3c20796727604ed5ec74a/LICENSE?format=TEXT",
+    "sha256": "e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c",
+    "retrieved": true
+  },
+  {
+    "component": "icu",
+    "file": "external/icu/LICENSE",
+    "source": "https://chromium.googlesource.com/chromium/deps/icu/+/a67fc91f78253e8bc055275d785b634faf27c608/LICENSE?format=TEXT",
+    "sha256": "17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee",
+    "retrieved": true
+  },
+  {
+    "component": "abseil",
+    "file": "external/abseil/LICENSE",
+    "source": "https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp/+/0c63301c7ef3012c448edf67dba246465c9b2443/LICENSE?format=TEXT",
+    "sha256": "c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747",
+    "retrieved": true
+  },
+  {
+    "component": "partition_alloc",
+    "file": "LICENSE",
+    "retrieved": false
+  }
+]

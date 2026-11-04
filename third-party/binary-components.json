@@ -1,0 +1,58 @@
+{
+  "components": [
+    {
+      "name": "opencode",
+      "version": "1.18.33",
+      "sha256": "c06c790b09d92be6aeec02d8780a214928884a2ec5cc8f7659e219618122ad7e",
+      "license": "MIT",
+      "licenseFile": "third-party/engine-licenses/opencode-v1-MIT.txt",
+      "source": "https://github.com/anomalyco/opencode/tree/v1.18.33",
+      "status": "source license retrieved for exact tag; full embedded third-party binary notices validated in R-04"
+    },
+    {
+      "name": "opencode2",
+      "version": "2.2.0",
+      "sha256": "c61298f93b546a7b4fe5c927d28ae6af03e0a427cc4d53bf8b8aad9e7f63313e",
+      "license": "MIT",
+      "licenseFile": "third-party/engine-licenses/opencode-v2-MIT.txt",
+      "source": "https://github.com/anomalyco/opencode/tree/v2.2.0",
+      "status": "source license retrieved for exact tag; full embedded third-party binary notices validated in R-04"
+    },
+    {
+      "name": "PDFium WebAssembly",
+      "wrapperVersion": "2.1.13",
+      "vendorRelease": "7243",
+      "buildSha256": "71aec412a303a0405baee21c3d6d3f30ad2033dc02444130fe476be3976e2d09",
+      "packageSha256": "71aec412a303a0405baee21c3d6d3f30ad2033dc02444130fe476be3976e2d09",
+      "upstreamArchive": "https://github.com/paulocoutinhox/pdfium-lib/releases/download/7243/wasm.tgz",
+      "upstreamArchiveSha256": "efd95da1a8fcf162e63639176b57d9e60fb01b301d740d949f40365522d9eaf5",
+      "archiveWasm": [
+        {
+          "archiveMember": "release/node/pdfium.wasm",
+          "sha256": "71aec412a303a0405baee21c3d6d3f30ad2033dc02444130fe476be3976e2d09"
+        }
+      ],
+      "license": "BSD-3-Clause and individual third-party notices",
+      "licenseDirectory": "third-party/pdfium",
+      "status": "wrapper vendor release pinned; compare package and upstream WASM bytes"
+    },
+    {
+      "name": "Electron",
+      "version": "43.8.1",
+      "license": "MIT and bundled third-party licenses",
+      "source": "https://github.com/electron/electron/releases/tag/v43.8.1",
+      "status": "official Electron 43.8.1 license and Chromium notices retained; final installer inclusion checked at R-04"
+    }
+  ],
+  "pdfiumThirdPartyChoices": {
+    "FreeType": "FTL",
+    "JPEG": "IJG/libjpeg-turbo notices",
+    "libpng": "libpng license",
+    "zlib": "zlib",
+    "ICU": "Unicode/ICU notices",
+    "lcms": "MIT",
+    "libtiff": "libtiff notice",
+    "OpenJPEG": "BSD-2-Clause",
+    "Abseil": "Apache-2.0"
+  }
+}

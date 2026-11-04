@@ -1,0 +1,575 @@
+/**
+ * Zustand store for session management primitives (pin, settle, manual order,
+ * custom group mirror + expanded state). Persisted to localStorage via
+ * zustand/middleware/persist.
+ *
+ * Archive is server-side (OpenCode session.time.archived). Session groups are
+ * synced server-side; this store keeps a local optimistic mirror plus UI-only
+ * collapsed state. Components import it directly with selectors, avoiding
+ * context/prop drilling.
+ */
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+
+export type SessionGroupDefinition = {
+  id: string;
+  label: string;
+};
+
+export type WorkspaceGroupState = {
+  groups: SessionGroupDefinition[];
+  assignments: Record<string, string>;
+  collapsedGroupIds?: string[];
+};
+
+export type SessionGroupServerState = {
+  groups: SessionGroupDefinition[];
+  assignments: Record<string, string>;
+};
+
+type SessionGroupSyncHandler = {
+  createGroup: (workspaceId: string, group: SessionGroupDefinition) => Promise<SessionGroupServerState | null>;
+  assignGroup: (workspaceId: string, sessionId: string, groupId: string | null) => Promise<SessionGroupServerState | null>;
+  reorderGroups: (workspaceId: string, groupIds: string[]) => Promise<SessionGroupServerState | null>;
+  renameGroup: (workspaceId: string, groupId: string, label: string) => Promise<SessionGroupServerState | null>;
+  removeGroup: (
+    workspaceId: string,
+    groupId: string,
+    destinationGroupId: string | null,
+  ) => Promise<SessionGroupServerState | null>;
+};
+
+type SessionGroupMutationSuccess = {
+  version: number;
+  state: SessionGroupServerState;
+};
+
+type SessionGroupDeferredServerSync = {
+  version: number;
+  state: SessionGroupServerState;
+};
+
+type SessionGroupSyncStatus = {
+  nextMutationVersion: number;
+  nextServerSyncVersion: number;
+  pendingMutations: number;
+  lastAppliedMutationVersion: number;
+  latestMutationSuccess?: SessionGroupMutationSuccess;
+  deferredServerSync?: SessionGroupDeferredServerSync;
+};
+
+/** A settled session stays settled until it has activity newer than `settledThrough`. */
+export type SessionSettleEntry = {
+  /** The session's own last-activity time when it was settled, so a remote clock never un-settles it. */
+  settledThrough?: number;
+  /** Local time of an Un-settle, or of work starting on this device; idle time for auto-settle counts from here. */
+  unsettledAt?: number;
+};
+
+/** What Settle or Un-settle changed, so Undo can put it back. */
+export type SessionSettleSnapshot = {
+  entry: SessionSettleEntry | undefined;
+  pinIndex: number;
+  unread: boolean;
+};
+
+/** Settings › Preferences choices; 0 turns auto-settle off. */
+export const AUTO_SETTLE_DAY_OPTIONS = [0, 1, 3, 7] as const;
+export const DEFAULT_AUTO_SETTLE_DAYS = 3;
+
+export type SidebarView = "workspaces" | "feed";
+
+/** A workspace group pinned to the bottom of the Feed; sessions filed there stay until moved. */
+export type FeedFolder = { workspaceId: string; groupId: string };
+
+/** Feed sections: by day, active and inactive, or one list. */
+export const FEED_GROUP_BY_OPTIONS = ["day", "activity", "none"] as const;
+export type FeedGroupBy = (typeof FEED_GROUP_BY_OPTIONS)[number];
+export const DEFAULT_FEED_GROUP_BY: FeedGroupBy = "day";
+
+/** The time the Feed orders and groups by: last activity or creation. */
+export const FEED_SORT_BY_OPTIONS = ["activity", "created"] as const;
+export type FeedSortBy = (typeof FEED_SORT_BY_OPTIONS)[number];
+export const DEFAULT_FEED_SORT_BY: FeedSortBy = "activity";
+
+type SessionManagementState = {
+  pinnedIds: string[];
+  unreadIds: string[];
+  settledById: Record<string, SessionSettleEntry>;
+  autoSettleDays: number;
+  /** Sidebar layout: the workspace tree, or every workspace's sessions in one feed. */
+  sidebarView: SidebarView;
+  feedFolders: FeedFolder[];
+  feedGroupBy: FeedGroupBy;
+  feedSortBy: FeedSortBy;
+  orderByWorkspace: Record<string, string[]>;
+  groupsByWorkspace: Record<string, WorkspaceGroupState>;
+};
+
+type SessionManagementActions = {
+  togglePin: (sessionId: string) => void;
+  reorderPins: (sessionIds: string[]) => void;
+  markUnread: (sessionId: string) => void;
+  clearUnread: (sessionId: string) => void;
+  /** Settle through `activityAt`; also unpins the session and clears its unread dot. */
+  settle: (sessionId: string, activityAt: number) => SessionSettleSnapshot;
+  unsettle: (sessionId: string) => SessionSettleSnapshot;
+  /**
+   * Work started in the session (a reply, a run, an approval answered). It leaves Settled even when the engine's
+   * session time has not moved, which OpenCode v2 does not do per message.
+   */
+  noteActivity: (sessionId: string) => void;
+  restoreSettle: (sessionId: string, snapshot: SessionSettleSnapshot) => void;
+  setAutoSettleDays: (days: number) => void;
+  setSidebarView: (view: SidebarView) => void;
+  setFeedGroupBy: (groupBy: FeedGroupBy) => void;
+  setFeedSortBy: (sortBy: FeedSortBy) => void;
+  toggleFeedFolder: (workspaceId: string, groupId: string) => void;
+  reorderSessions: (workspaceId: string, sessionIds: string[]) => void;
+  assignGroup: (workspaceId: string, sessionId: string, groupId: string | null) => void;
+  createGroup: (workspaceId: string, label: string) => void;
+  renameGroup: (workspaceId: string, groupId: string, label: string) => void;
+  reorderGroups: (workspaceId: string, groupIds: string[]) => void;
+  toggleGroupExpanded: (workspaceId: string, groupId: string) => void;
+  replaceWorkspaceGroups: (workspaceId: string, state: SessionGroupServerState) => void;
+  /** Remove a group definition and move its sessions to another group or ungrouped. */
+  removeGroup: (workspaceId: string, groupId: string, destinationGroupId?: string | null) => void;
+  forgetWorkspace: (workspaceId: string) => void;
+};
+
+type SessionManagementStore = SessionManagementState & SessionManagementActions;
+
+const EMPTY_GROUP_STATE: WorkspaceGroupState = { groups: [], assignments: {} };
+
+function settleSnapshot(state: SessionManagementState, sessionId: string): SessionSettleSnapshot {
+  return {
+    entry: state.settledById[sessionId],
+    pinIndex: state.pinnedIds.indexOf(sessionId),
+    unread: state.unreadIds.includes(sessionId),
+  };
+}
+
+function sameStrings(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function sameGroupDefinitions(left: SessionGroupDefinition[], right: SessionGroupDefinition[]): boolean {
+  return left.length === right.length && left.every((group, index) => (
+    group.id === right[index]?.id && group.label === right[index]?.label
+  ));
+}
+
+function sameAssignments(left: Record<string, string>, right: Record<string, string>): boolean {
+  const entries = Object.entries(left);
+  return entries.length === Object.keys(right).length
+    && entries.every(([sessionId, groupId]) => right[sessionId] === groupId);
+}
+
+let sessionGroupSyncHandler: SessionGroupSyncHandler | null = null;
+const sessionGroupSyncStatusByWorkspace: Record<string, SessionGroupSyncStatus> = {};
+
+export function setSessionGroupSyncHandler(handler: SessionGroupSyncHandler | null): void {
+  sessionGroupSyncHandler = handler;
+}
+
+function syncStatus(workspaceId: string): SessionGroupSyncStatus {
+  sessionGroupSyncStatusByWorkspace[workspaceId] ??= {
+    nextMutationVersion: 0,
+    nextServerSyncVersion: 0,
+    pendingMutations: 0,
+    lastAppliedMutationVersion: 0,
+  };
+  return sessionGroupSyncStatusByWorkspace[workspaceId];
+}
+
+function beginSessionGroupMutation(workspaceId: string): number {
+  const status = syncStatus(workspaceId);
+  status.nextMutationVersion += 1;
+  status.pendingMutations += 1;
+  return status.nextMutationVersion;
+}
+
+export function beginSessionGroupServerSync(workspaceId: string): number {
+  const status = syncStatus(workspaceId);
+  status.nextServerSyncVersion += 1;
+  return status.nextServerSyncVersion;
+}
+
+export function applySessionGroupServerState(
+  workspaceId: string,
+  state: SessionGroupServerState | null,
+  version: number,
+): void {
+  if (!state) return;
+  const status = syncStatus(workspaceId);
+  if (version !== status.nextServerSyncVersion) return;
+  if (status.pendingMutations > 0) {
+    status.deferredServerSync = { version, state };
+    return;
+  }
+  useSessionManagementStore.getState().replaceWorkspaceGroups(workspaceId, state);
+}
+
+function completeSessionGroupMutation(
+  workspaceId: string,
+  version: number,
+  state: SessionGroupServerState | null,
+): void {
+  const status = syncStatus(workspaceId);
+  status.pendingMutations = Math.max(0, status.pendingMutations - 1);
+  if (state && version > (status.latestMutationSuccess?.version ?? 0)) {
+    status.latestMutationSuccess = { version, state };
+  }
+  if (status.pendingMutations > 0) return;
+
+  const success = status.latestMutationSuccess;
+  if (success && success.version > status.lastAppliedMutationVersion) {
+    status.lastAppliedMutationVersion = success.version;
+    status.deferredServerSync = undefined;
+    useSessionManagementStore.getState().replaceWorkspaceGroups(workspaceId, success.state);
+    return;
+  }
+
+  const deferred = status.deferredServerSync;
+  if (!deferred) return;
+  status.deferredServerSync = undefined;
+  useSessionManagementStore.getState().replaceWorkspaceGroups(workspaceId, deferred.state);
+}
+
+function reportSyncError(error: unknown): void {
+  console.warn("[session-groups] server sync failed", error);
+}
+
+/** First send cannot proceed until its captured group has been assigned. */
+export async function assignNewSessionGroup(workspaceId: string, sessionId: string, groupId: string | null): Promise<void> {
+  if (groupId && !useSessionManagementStore.getState().groupsByWorkspace[workspaceId]?.groups.some((group) => group.id === groupId)) {
+    throw new Error("Group is unavailable. Choose another destination.");
+  }
+  const version = beginSessionGroupMutation(workspaceId);
+  try {
+    const state = await sessionGroupSyncHandler?.assignGroup(workspaceId, sessionId, groupId);
+    if (!state) throw new Error("Workspace is disconnected. Reconnect and try again.");
+    completeSessionGroupMutation(workspaceId, version, state);
+  } catch (error) {
+    completeSessionGroupMutation(workspaceId, version, null);
+    throw error;
+  }
+}
+
+function syncServerState(request: Promise<SessionGroupServerState | null> | undefined, workspaceId: string): void {
+  if (!request) return;
+  const version = beginSessionGroupMutation(workspaceId);
+  void request
+    .then((state) => completeSessionGroupMutation(workspaceId, version, state))
+    .catch((error) => {
+      completeSessionGroupMutation(workspaceId, version, null);
+      reportSyncError(error);
+    });
+}
+
+export const useSessionManagementStore = create<SessionManagementStore>()(
+  persist(
+    (set, get) => ({
+      pinnedIds: [],
+      unreadIds: [],
+      settledById: {},
+      autoSettleDays: DEFAULT_AUTO_SETTLE_DAYS,
+      sidebarView: "feed",
+      feedFolders: [],
+      feedGroupBy: DEFAULT_FEED_GROUP_BY,
+      feedSortBy: DEFAULT_FEED_SORT_BY,
+      orderByWorkspace: {},
+      groupsByWorkspace: {},
+
+      togglePin: (sessionId) =>
+        set((state) => {
+          const idx = state.pinnedIds.indexOf(sessionId);
+          if (idx >= 0) return { pinnedIds: state.pinnedIds.filter((id) => id !== sessionId) };
+          // Pinning keeps a session in view, so it is no longer settled.
+          const { [sessionId]: _settled, ...settledById } = state.settledById;
+          return { pinnedIds: [...state.pinnedIds, sessionId], settledById };
+        }),
+
+      reorderPins: (sessionIds) =>
+        set((state) => {
+          const pinnedIds = [...new Set([...sessionIds.filter(id => state.pinnedIds.includes(id)), ...state.pinnedIds])];
+          return sameStrings(state.pinnedIds, pinnedIds) ? state : { pinnedIds };
+        }),
+
+      markUnread: (sessionId) =>
+        set((state) => (
+          state.unreadIds.includes(sessionId)
+            ? state
+            : { unreadIds: [...state.unreadIds, sessionId] }
+        )),
+
+      clearUnread: (sessionId) =>
+        set((state) => (
+          state.unreadIds.includes(sessionId)
+            ? { unreadIds: state.unreadIds.filter((id) => id !== sessionId) }
+            : state
+        )),
+
+      settle: (sessionId, activityAt) => {
+        const snapshot = settleSnapshot(get(), sessionId);
+        set((state) => ({
+          settledById: { ...state.settledById, [sessionId]: { settledThrough: activityAt } },
+          pinnedIds: state.pinnedIds.filter((id) => id !== sessionId),
+          unreadIds: state.unreadIds.filter((id) => id !== sessionId),
+        }));
+        return snapshot;
+      },
+
+      unsettle: (sessionId) => {
+        const snapshot = settleSnapshot(get(), sessionId);
+        set((state) => ({
+          settledById: { ...state.settledById, [sessionId]: { unsettledAt: Date.now() } },
+        }));
+        return snapshot;
+      },
+
+      noteActivity: (sessionId) =>
+        set((state) => ({ settledById: { ...state.settledById, [sessionId]: { unsettledAt: Date.now() } } })),
+
+      restoreSettle: (sessionId, snapshot) =>
+        set((state) => {
+          const { [sessionId]: _current, ...settledById } = state.settledById;
+          if (snapshot.entry) settledById[sessionId] = snapshot.entry;
+          const pinnedIds = state.pinnedIds.filter((id) => id !== sessionId);
+          if (snapshot.pinIndex >= 0) pinnedIds.splice(Math.min(snapshot.pinIndex, pinnedIds.length), 0, sessionId);
+          const unreadIds = state.unreadIds.filter((id) => id !== sessionId);
+          if (snapshot.unread) unreadIds.push(sessionId);
+          return { settledById, pinnedIds, unreadIds };
+        }),
+
+      toggleFeedFolder: (workspaceId, groupId) =>
+        set((state) => {
+          const pinned = state.feedFolders.some((folder) => folder.workspaceId === workspaceId && folder.groupId === groupId);
+          return {
+            feedFolders: pinned
+              ? state.feedFolders.filter((folder) => folder.workspaceId !== workspaceId || folder.groupId !== groupId)
+              : [...state.feedFolders, { workspaceId, groupId }],
+          };
+        }),
+
+      setSidebarView: (view) => set({ sidebarView: view === "workspaces" ? "workspaces" : "feed" }),
+
+      setFeedGroupBy: (groupBy) =>
+        set({ feedGroupBy: FEED_GROUP_BY_OPTIONS.includes(groupBy) ? groupBy : DEFAULT_FEED_GROUP_BY }),
+
+      setFeedSortBy: (sortBy) =>
+        set({ feedSortBy: FEED_SORT_BY_OPTIONS.includes(sortBy) ? sortBy : DEFAULT_FEED_SORT_BY }),
+
+      setAutoSettleDays: (days) =>
+        set({ autoSettleDays: AUTO_SETTLE_DAY_OPTIONS.some((option) => option === days) ? days : DEFAULT_AUTO_SETTLE_DAYS }),
+
+      reorderSessions: (workspaceId, sessionIds) =>
+        set((state) => (
+          sameStrings(state.orderByWorkspace[workspaceId] ?? [], sessionIds)
+            ? state
+            : { orderByWorkspace: { ...state.orderByWorkspace, [workspaceId]: sessionIds } }
+        )),
+
+      assignGroup: (workspaceId, sessionId, groupId) => {
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const nextGroupId = groupId && ws.groups.some((group) => group.id === groupId) ? groupId : null;
+          if ((ws.assignments[sessionId] ?? null) === nextGroupId) return state;
+          const assignments = { ...ws.assignments };
+          if (nextGroupId) {
+            assignments[sessionId] = nextGroupId;
+          } else {
+            delete assignments[sessionId];
+          }
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: { ...ws, assignments },
+            },
+          };
+        });
+        syncServerState(
+          sessionGroupSyncHandler?.assignGroup(workspaceId, sessionId, groupId),
+          workspaceId,
+        );
+      },
+
+      createGroup: (workspaceId, label) => {
+        const id = `grp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+        const group = { id, label };
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: { ...ws, groups: [...ws.groups, group] },
+            },
+          };
+        });
+        syncServerState(sessionGroupSyncHandler?.createGroup(workspaceId, group), workspaceId);
+      },
+
+      renameGroup: (workspaceId, groupId, label) => {
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const target = ws.groups.find((group) => group.id === groupId);
+          if (!target || target.label === label) return state;
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: {
+                ...ws,
+                groups: ws.groups.map((group) => group.id === groupId ? { ...group, label } : group),
+              },
+            },
+          };
+        });
+        syncServerState(sessionGroupSyncHandler?.renameGroup(workspaceId, groupId, label), workspaceId);
+      },
+
+      reorderGroups: (workspaceId, groupIds) => {
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const byId = new Map(ws.groups.map((group) => [group.id, group]));
+          const used = new Set<string>();
+          const groups: SessionGroupDefinition[] = [];
+          for (const id of groupIds) {
+            const group = byId.get(id);
+            if (!group || used.has(id)) continue;
+            groups.push(group);
+            used.add(id);
+          }
+          for (const group of ws.groups) {
+            if (!used.has(group.id)) groups.push(group);
+          }
+          if (sameGroupDefinitions(ws.groups, groups)) return state;
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: { ...ws, groups },
+            },
+          };
+        });
+        syncServerState(sessionGroupSyncHandler?.reorderGroups(workspaceId, groupIds), workspaceId);
+      },
+
+      toggleGroupExpanded: (workspaceId, groupId) =>
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const collapsed = new Set(ws.collapsedGroupIds ?? []);
+          if (collapsed.has(groupId)) {
+            collapsed.delete(groupId);
+          } else {
+            collapsed.add(groupId);
+          }
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: { ...ws, collapsedGroupIds: [...collapsed] },
+            },
+          };
+        }),
+
+      replaceWorkspaceGroups: (workspaceId, serverState) =>
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const knownGroupIds = new Set(serverState.groups.map((group) => group.id));
+          const collapsedGroupIds = (ws.collapsedGroupIds ?? []).filter(
+            (id) => id === "__openwork_ungrouped" || knownGroupIds.has(id),
+          );
+          if (
+            sameGroupDefinitions(ws.groups, serverState.groups)
+            && sameAssignments(ws.assignments, serverState.assignments)
+            && sameStrings(ws.collapsedGroupIds ?? [], collapsedGroupIds)
+          ) return state;
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: {
+                groups: serverState.groups,
+                assignments: serverState.assignments,
+                collapsedGroupIds,
+              },
+            },
+          };
+        }),
+
+      removeGroup: (workspaceId, groupId, destinationGroupId = null) => {
+        const ws = useSessionManagementStore.getState().groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+        const validDestinationGroupId = destinationGroupId && ws.groups.some(
+          (group) => group.id === destinationGroupId && group.id !== groupId,
+        ) ? destinationGroupId : null;
+        const sessionIds = Object.entries(ws.assignments)
+          .filter(([, assignedGroupId]) => assignedGroupId === groupId)
+          .map(([sessionId]) => sessionId);
+        set((state) => {
+          const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
+          const groups = ws.groups.filter((g) => g.id !== groupId);
+          const assignments = { ...ws.assignments };
+          for (const sessionId of sessionIds) {
+            if (validDestinationGroupId) {
+              assignments[sessionId] = validDestinationGroupId;
+            } else {
+              delete assignments[sessionId];
+            }
+          }
+          const collapsedGroupIds = (ws.collapsedGroupIds ?? []).filter((id) => id !== groupId);
+          return {
+            groupsByWorkspace: {
+              ...state.groupsByWorkspace,
+              [workspaceId]: { groups, assignments, collapsedGroupIds },
+            },
+          };
+        });
+        syncServerState(
+          sessionGroupSyncHandler?.removeGroup(
+            workspaceId,
+            groupId,
+            validDestinationGroupId,
+          ),
+          workspaceId,
+        );
+      },
+
+      forgetWorkspace: (workspaceId) =>
+        set((state) => {
+          if (!(workspaceId in state.orderByWorkspace) && !(workspaceId in state.groupsByWorkspace)) return state;
+          const { [workspaceId]: _o, ...orderRest } = state.orderByWorkspace;
+          const { [workspaceId]: _g, ...groupsRest } = state.groupsByWorkspace;
+          return { orderByWorkspace: orderRest, groupsByWorkspace: groupsRest };
+        }),
+    }),
+    {
+      name: "openwork.react.sessionManagement",
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// Selectors (keep render-stable references via shallow selectors)
+// ---------------------------------------------------------------------------
+
+const EMPTY_PINNED = new Set<string>();
+const EMPTY_UNREAD = new Set<string>();
+const EMPTY_ORDER: string[] = [];
+
+export function usePinnedSessionIds(): Set<string> {
+  const ids = useSessionManagementStore((s) => s.pinnedIds);
+  // Derive a Set; reference-stable when the array is the same object.
+  // Consumers only need membership checks so Set is ideal.
+  return ids.length ? new Set(ids) : EMPTY_PINNED;
+}
+
+export function useUnreadSessionIds(): Set<string> {
+  const ids = useSessionManagementStore((s) => s.unreadIds);
+  return ids.length ? new Set(ids) : EMPTY_UNREAD;
+}
+
+export function useSessionOrder(workspaceId: string): string[] {
+  return useSessionManagementStore((s) => s.orderByWorkspace[workspaceId] ?? EMPTY_ORDER);
+}
+
+export function useWorkspaceGroups(workspaceId: string): WorkspaceGroupState {
+  return useSessionManagementStore((s) => s.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE);
+}

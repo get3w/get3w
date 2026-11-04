@@ -1,0 +1,291 @@
+import { t } from "@/i18n";
+"use client"
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button"
+import { TaskRecovery } from "@/components/chat/task-recovery"
+import {
+  describeChatToolFailure,
+  type ChatToolReconnectAction,
+  type ChatToolReconnectProgress,
+  type ChatToolReconnectResult,
+  type ToolErrorAttribution,
+} from "@/components/tools/error-attribution"
+import { useChatToolReconnect } from "@/components/tools/use-chat-tool-reconnect"
+import { getToolActivityLabel, isToolPartInFlight } from "@/lib/tool-activity"
+import { cn } from "@/lib/utils"
+import {
+  Bot,
+  BookOpenCheck,
+  Check,
+  Copy,
+  ExternalLink,
+  FilePen,
+  ListTodo,
+  LoaderCircle,
+  MessageCircleQuestion,
+  RefreshCcw,
+  Search,
+  SquareCode,
+  Wrench,
+} from "lucide-react"
+import { useCallback, useState } from "react"
+import type { DynamicToolUIPart, ToolUIPart } from "ai"
+
+function toolIcon(part: ToolPart) {
+  const name = part.type === "dynamic-tool" ? part.toolName : part.type
+  switch (name) {
+    case "edit":
+    case "write":
+    case "apply_patch":
+      return FilePen
+    case "grep":
+    case "glob":
+      return Search
+    case "lsp":
+      return SquareCode
+    case "skill":
+      return BookOpenCheck
+    case "todowrite":
+      return ListTodo
+    case "question":
+      return MessageCircleQuestion
+    case "task":
+      return Bot
+    default:
+      return Wrench
+  }
+}
+
+export type ToolPart = ToolUIPart | DynamicToolUIPart
+
+export type ToolProps = {
+  title?: string
+  toolPart: ToolPart
+  defaultOpen?: boolean
+  className?: string
+  onReconnect?: (
+    action: ChatToolReconnectAction,
+    onProgress: (progress: ChatToolReconnectProgress) => void,
+  ) => Promise<ChatToolReconnectResult>
+  onReopenAuthorization?: (action: ChatToolReconnectAction, authorizeUrl: string) => Promise<void>
+}
+
+const formatValue = (value: unknown): string => {
+  if (value === null) return "null"
+  if (value === undefined) return "undefined"
+  if (typeof value === "string") return value
+  if (typeof value === "object") {
+    return JSON.stringify(value, null, 2)
+  }
+  return String(value)
+}
+
+function isDiffText(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    (value.includes("@@") || value.includes("+++ ") || value.includes("--- "))
+  )
+}
+
+/** Tools like apply_patch carry the diff in their input (patchText). */
+function getInputDiff(input: unknown): string | null {
+  if (isDiffText(input)) {
+    return input
+  }
+  if (typeof input === "object" && input !== null && "patchText" in input) {
+    const value = input.patchText
+    if (isDiffText(value)) {
+      return value
+    }
+  }
+  return null
+}
+
+function diffLineClass(line: string) {
+  if (line.startsWith("+")) return "text-green-11 bg-green-1/40"
+  if (line.startsWith("-")) return "text-red-11 bg-red-1/40"
+  if (line.startsWith("@@")) return "text-blue-11 bg-blue-1/30"
+  return ""
+}
+
+function DiffLines({ diff }: { diff: string }) {
+  return (
+    <div className="max-h-60 overflow-auto rounded-md font-mono leading-relaxed">
+      {diff.split("\n").map((line, index) => (
+        <div
+          key={`${index}:${line}`}
+          className={cn(
+            "whitespace-pre-wrap wrap-break-word px-1",
+            diffLineClass(line)
+          )}
+        >
+          {line || " "}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function reconnectAttribution(action: ChatToolReconnectAction, label: string): ToolErrorAttribution {
+  return {
+    label,
+    confidence: "Confirmed",
+    description: label === "Reconnected"
+      ? `${action.connectionName} has a fresh authorization. Retry the request when ready.`
+      : `${action.connectionName} rejected its saved authorization and needs to be reconnected.`,
+  }
+}
+
+const Tool = ({
+  title,
+  toolPart,
+  defaultOpen = false,
+  className,
+  onReconnect,
+  onReopenAuthorization,
+}: ToolProps) => {
+  const { state, input } = toolPart
+  const inFlight = isToolPartInFlight(toolPart)
+  const isError = state === "output-error"
+  const { reconnectAction, reconnectState, reconnectError, reconnectPresentation, handleReconnect } =
+    useChatToolReconnect(toolPart, { onReconnect, onReopenAuthorization })
+  const errorAttribution = reconnectAction
+    ? reconnectAttribution(reconnectAction, reconnectPresentation?.badgeLabel ?? "Reconnect required")
+    : null
+  const label = title ?? getToolActivityLabel(toolPart)
+  const hasInput = input !== null && input !== undefined
+  const hasOutput = "output" in toolPart && toolPart.output !== undefined
+  const resultText = hasOutput
+    ? formatValue(toolPart.output)
+    : isError && toolPart.errorText
+      ? toolPart.errorText
+      : null
+  const inputDiff = getInputDiff(input)
+  const Icon = toolIcon(toolPart)
+  const isSkill = toolPart.type === "dynamic-tool" && toolPart.toolName === "skill"
+  const [copied, setCopied] = useState(false)
+  const ReconnectIcon = reconnectState === "opening"
+    ? LoaderCircle
+    : reconnectState === "authorization_opened"
+      ? ExternalLink
+      : RefreshCcw
+
+  const handleCopyResult = useCallback(async () => {
+    if (resultText === null) return
+    try {
+      await navigator.clipboard.writeText(resultText)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be unavailable outside a secure browser context.
+    }
+  }, [resultText])
+
+  if (isError) return <div className={className}>
+    <TaskRecovery compact title={title ? `${title} failed` : t("ui.f740b64be73d")}
+      description={reconnectError ? describeChatToolFailure(reconnectError)
+        : reconnectAction ? reconnectState === "connected" ? `${reconnectAction.connectionName} is connected again. Check whether the action finished before retrying.` : `${reconnectAction.connectionName} needs attention. Check its sign-in.`
+        : describeChatToolFailure(toolPart.errorText ?? "")}
+      technicalDetails={[toolPart.type === "dynamic-tool" ? toolPart.toolName : toolPart.type, hasInput ? formatValue(input) : null, toolPart.errorText].filter(Boolean).join("\n")}
+      actions={reconnectAction && onReconnect ? <Button variant="ghost" size="xs"
+        data-testid="chat-mcp-reconnect-action" disabled={reconnectPresentation?.disabled}
+        aria-label={`${reconnectPresentation?.buttonLabel} ${reconnectAction.connectionName}`}
+        onClick={() => void handleReconnect()}>{reconnectPresentation?.buttonLabel}</Button> : null} />
+  </div>
+
+  return (
+    <Collapsible className={className} defaultOpen={defaultOpen}>
+      <div className="flex min-w-0 items-center gap-2" aria-live="polite">
+        <CollapsibleTrigger
+          className="group text-muted-foreground hover:text-foreground flex min-w-0 flex-1 cursor-pointer items-center justify-start gap-2 overflow-hidden text-start text-sm transition-colors"
+        >
+          <span className="inline-flex size-4 shrink-0 items-center justify-center">
+            {inFlight ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Icon className={cn("size-3.5", isSkill && "text-violet-11")} />
+            )}
+          </span>
+          <span className="min-w-0 truncate">{label}</span>
+          {errorAttribution ? (
+            <span
+              className="shrink-0 text-xs text-dls-secondary"
+              title={`${errorAttribution.confidence}: ${errorAttribution.description}`}
+              aria-label={`Error attribution: ${errorAttribution.label}. ${errorAttribution.confidence}.`}
+            >
+              {errorAttribution.label}
+            </span>
+          ) : null}
+        </CollapsibleTrigger>
+        {reconnectAction && onReconnect ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            data-testid="chat-mcp-reconnect-action"
+            disabled={reconnectPresentation?.disabled}
+            title={`${reconnectPresentation?.buttonLabel} ${reconnectAction.connectionName}`}
+            aria-label={`${reconnectPresentation?.buttonLabel} ${reconnectAction.connectionName}`}
+            onClick={() => void handleReconnect()}
+          >
+            <ReconnectIcon
+              data-icon="inline-start"
+              className={cn("size-3.5", reconnectState === "opening" && "animate-spin")}
+              aria-hidden="true"
+            />
+            {reconnectPresentation?.buttonLabel}
+          </Button>
+        ) : null}
+      </div>
+      {reconnectError ? (
+        <p className="mt-1 text-xs text-dls-secondary" role="alert">{describeChatToolFailure(reconnectError)}</p>
+      ) : null}
+      <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden text-sm transition-[height] duration-150 ease-out data-starting-style:h-0 data-ending-style:h-0 [&[hidden]:not([hidden='until-found'])]:hidden">
+        <div className="bg-muted relative mt-2 flex flex-col gap-2 rounded-lg p-2 pr-10 text-xs">
+          {resultText !== null ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="absolute right-2 top-2"
+              data-testid="tool-result-copy-action"
+              title={copied ? "Copied" : t("ui.b2d9e837955a")}
+              aria-label={copied ? t("ui.96ee3b4f5def") : t("ui.b2d9e837955a")}
+              onClick={() => void handleCopyResult()}
+            >
+              {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+            </Button>
+          ) : null}
+          {hasInput ? (
+            inputDiff !== null ? (
+              <DiffLines diff={inputDiff} />
+            ) : (
+              <pre className="whitespace-pre-wrap wrap-break-word">
+                {formatValue(input)}
+              </pre>
+            )
+          ) : null}
+          {hasOutput ? (
+            isDiffText(toolPart.output) ? (
+              <DiffLines diff={toolPart.output} />
+            ) : (
+              <pre className="max-h-60 overflow-auto whitespace-pre-wrap wrap-break-word opacity-80">
+                {formatValue(toolPart.output)}
+              </pre>
+            )
+          ) : null}
+          {inFlight && !hasInput ? (
+            <span className="text-muted-foreground">{t("ui.200e22355a88")}</span>
+          ) : null}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+export { Tool }

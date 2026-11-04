@@ -1,0 +1,71 @@
+/** @jsxImportSource react */
+import * as React from "react";
+import ReactDOM from "react-dom/client";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, HashRouter } from "react-router";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { initializeDenBootstrapConfig } from "./app/lib/den";
+import { startWebErrorMonitoring } from "./app/lib/error-monitoring";
+import { getOpenWorkDeployment } from "./app/lib/openwork-deployment";
+import { bootstrapTheme } from "./app/theme";
+import { isDesktopRuntime } from "./app/utils";
+import { initLocale } from "./i18n";
+import { getReactQueryClient } from "./react-app/infra/query-client";
+import {
+  createDefaultPlatform,
+  PlatformProvider,
+} from "./react-app/kernel/platform";
+import { AppProviders } from "./react-app/shell/providers";
+import { AppErrorBoundary } from "./react-app/shell/app-error-boundary";
+import { AppRoot } from "./react-app/shell/app-root";
+import { setWebNotificationHandler } from "./react-app/shell/desktop-notifications";
+import { startDeepLinkBridge } from "./react-app/shell/startup-deep-links";
+import { StartupApp, StartupScreen } from "./react-app/shell/startup-screen";
+import "./app/index.css";
+
+const root = document.getElementById("root");
+
+if (!root) {
+  throw new Error("Root element not found");
+}
+
+// Keep one startup promise across StrictMode renders. Rejections now reach the
+// error boundary, and pending bootstrap IPC no longer leaves an empty root.
+const startup = Promise.resolve().then(async () => {
+  startWebErrorMonitoring();
+  bootstrapTheme();
+  initLocale();
+  startDeepLinkBridge();
+  await initializeDenBootstrapConfig();
+
+  root.dataset.openworkDeployment = getOpenWorkDeployment();
+  const platform = createDefaultPlatform();
+  setWebNotificationHandler(platform.notify);
+  const queryClient = getReactQueryClient();
+  const Router = isDesktopRuntime() ? HashRouter : BrowserRouter;
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <PlatformProvider value={platform}>
+          <AppProviders>
+            <Router>
+              <AppRoot />
+            </Router>
+          </AppProviders>
+        </PlatformProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+});
+
+ReactDOM.createRoot(root).render(
+  <React.StrictMode>
+    <AppErrorBoundary>
+      <React.Suspense fallback={<StartupScreen />}>
+        <StartupApp startup={startup} />
+      </React.Suspense>
+    </AppErrorBoundary>
+  </React.StrictMode>,
+);

@@ -1,0 +1,427 @@
+/** @jsxImportSource react */
+import {
+  createContext,
+  useCallback,
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
+import type { ReloadReason, ReloadTrigger } from "@/app/types";
+import { t } from "@/i18n";
+import {
+  useSessionActivityStore,
+  type SessionActivityStatus,
+} from "@/react-app/domains/session/status/session-activity-store";
+import { useSystemState } from "@/react-app/kernel/system-state";
+import { notifyAlert, notifyEvent } from "./notifications";
+
+/** Debounce before an auto-reload, so bursts (an agent writing several
+ *  skills) collapse into one engine dispose. */
+const AUTO_RELOAD_DEBOUNCE_MS = 1500;
+/** Minimum spacing between consecutive auto-reloads. */
+const AUTO_RELOAD_COOLDOWN_MS = 5000;
+
+/** One coalesced center entry tracks the pending → applied lifecycle. */
+const RELOAD_DEDUPE_KEY = "engine-reload";
+const RELOAD_ERROR_DEDUPE_KEY = "engine-reload-error";
+
+function describeTrigger(
+  description: string,
+  trigger: ReloadTrigger | null,
+): string {
+  if (!trigger) {
+    return description;
+  }
+
+  const verb =
+    trigger.action === "removed"
+      ? t("ui.c6280c125c42")
+      : trigger.action === "added"
+        ? t("ui.edf3f4b5d4f5")
+        : trigger. action === "updated"
+          ? t("ui.f027f188159b")
+          : "changed";
+
+  if (trigger.type === "skill") {
+    return trigger.name
+      ? `Skill '${trigger.name}' ${verb}. Reload to use it.`
+      : t("ui.1499b4457b55");
+  }
+  if (trigger.type === "plugin") {
+    return trigger.name
+      ? `Plugin '${trigger.name}' ${verb}. Reload to activate.`
+      : t("ui.d7803c2d9256");
+  }
+  if (trigger.type === "mcp") {
+    return trigger.name
+      ? `MCP '${trigger.name}' ${verb}. Reload to connect.`
+      : t("ui.927600ad39df");
+  }
+  if (trigger.type === "config") {
+    return trigger.name
+      ? `Config '${trigger.name}' ${verb}. Reload to apply.`
+      : t("ui.2589165b78b6");
+  }
+  if (trigger.type === "agent") {
+    return trigger.name
+      ? `Agent '${trigger.name}' ${verb}. Reload to use it.`
+      : t("ui.2578aed17172");
+  }
+  if (trigger.type === "command") {
+    return trigger.name
+      ? `Command '${trigger.name}' ${verb}. Reload to use it.`
+      : t("ui.2dcecbd6b55c");
+  }
+  return t("ui.2589165b78b6");
+}
+
+/** Past-tense copy for the "reload happened automatically" receipt. */
+function describeApplied(trigger: ReloadTrigger | null): string {
+  if (!trigger) return t("ui.ca3f0fc9b7c9");
+
+  const label =
+    trigger.type === "skill"
+      ? t("ui.6df1bb18a59a")
+      : trigger.type === "plugin"
+        ? t("ui.ab1173eed1d4")
+        : trigger.type === "mcp"
+          ? "MCP"
+          : trigger.type === "agent"
+            ? t("ui.11b39c93777e")
+            : trigger.type === "command"
+              ? t("ui.713166971d73")
+              : t("ui.87e89abb4c1c");
+
+  if (trigger.name) {
+    return trigger.action === "removed"
+      ? `${label} '${trigger.name}' was removed.`
+      : `${label} '${trigger.name}' is now active.`;
+  }
+  return `${label} changes are now active.`;
+}
+
+const LIVE_ACTIVITY_STATUSES: SessionActivityStatus[] = [
+  "thinking",
+  "responding",
+  "compacting",
+  "waiting",
+];
+
+/**
+ * Real-time "anything in flight?" signal across all workspaces. The route
+ * session lists used for `activeSessions` refresh on a slower cadence, so
+ * the SSE-fed activity store is the authoritative gate before disposing the
+ * engine: it flips busy on task submit and also covers sessions waiting on
+ * permission/question prompts (a dispose would orphan those).
+ */
+function hasLiveSessionActivity(
+  statusesByWorkspaceId: Record<string, Record<string, SessionActivityStatus>>,
+): boolean {
+  return Object.values(statusesByWorkspaceId).some((sessions) =>
+    Object.values(sessions).some((status) => LIVE_ACTIVITY_STATUSES.includes(status)),
+  );
+}
+
+type ReloadSession = { id: string; title: string };
+
+export type WorkspaceReloadControls = {
+  workspaceId: string;
+  /** Return true when the selected engine observes these changes live. */
+  applyLiveChanges?: () => Promise<boolean>;
+  canReloadWorkspaceEngine: () => boolean;
+  reloadWorkspaceEngine: () => Promise<boolean>;
+  activeSessions?: () => ReloadSession[];
+  stopSession?: (sessionId: string) => void | Promise<void>;
+  allowsBusyReload?: () => boolean;
+};
+
+type ReloadCoordinatorContextValue = {
+  markReloadRequired: (reason: ReloadReason, trigger?: ReloadTrigger) => void;
+  clearReloadRequired: () => void;
+  reloadWorkspaceEngine: () => Promise<void>;
+  withEngineReady: <T>(workspaceId: string, send: () => Promise<T>) => Promise<T>;
+  canReloadWorkspaceEngine: boolean;
+  reloadPending: boolean;
+  reloadBusy: boolean;
+  reloadError: string | null;
+  registerWorkspaceReloadControls: (controls: WorkspaceReloadControls | null) => () => void;
+};
+
+export const orgOnboardingVisibilityEvent = "openwork-org-onboarding-visibility";
+
+const ReloadCoordinatorContext = createContext<ReloadCoordinatorContextValue | null>(null);
+
+export function ReloadCoordinatorProvider({ children }: { children: ReactNode }) {
+  const controlsRef = useRef<WorkspaceReloadControls | null>(null);
+  const inFlightReloadRef = useRef<{ workspaceId: string; promise: Promise<boolean> } | null>(null);
+  const pendingAdmissionsRef = useRef(0);
+  const [pendingAdmissions, setPendingAdmissions] = useState(0);
+  const [activeSessions, setActiveSessions] = useState<ReloadSession[]>([]);
+  const [allowsBusyReload, setAllowsBusyReload] = useState(false);
+  const [orgOnboardingVisible, setOrgOnboardingVisible] = useState(false);
+  const pendingReloadTriggerRef = useRef<ReloadTrigger | null>(null);
+  const hadPendingReloadRef = useRef(false);
+  const lastAutoReloadAtRef = useRef(0);
+  const alertedReloadErrorRef = useRef<string | null>(null);
+
+  const registerWorkspaceReloadControls = useCallback((controls: WorkspaceReloadControls | null) => {
+    controlsRef.current = controls;
+    setActiveSessions(controls?.activeSessions?.() ?? []);
+    setAllowsBusyReload(controls?.allowsBusyReload?.() === true);
+    return () => {
+      if (controlsRef.current === controls) {
+        controlsRef.current = null;
+        setActiveSessions([]);
+        setAllowsBusyReload(false);
+      }
+    };
+  }, []);
+
+  const hasActiveRuns = useCallback(() => activeSessions.length > 0, [activeSessions.length]);
+  const canReloadWorkspaceEngine = useCallback(
+    () => controlsRef.current?.canReloadWorkspaceEngine() === true,
+    [],
+  );
+  const reloadWorkspaceEngine = useCallback(async () => {
+    const controls = controlsRef.current;
+    if (!controls?.reloadWorkspaceEngine) return false;
+    const pending = { workspaceId: controls.workspaceId, promise: controls.reloadWorkspaceEngine() };
+    inFlightReloadRef.current = pending;
+    try {
+      return await pending.promise;
+    } finally {
+      if (inFlightReloadRef.current === pending) inFlightReloadRef.current = null;
+    }
+  }, []);
+  const withEngineReady = useCallback(async function<T>(workspaceId: string, send: () => Promise<T>): Promise<T> {
+    pendingAdmissionsRef.current++;
+    setPendingAdmissions(pendingAdmissionsRef.current);
+    try {
+      while (inFlightReloadRef.current?.workspaceId === workspaceId) {
+        await inFlightReloadRef.current.promise;
+      }
+      return await send();
+    } finally {
+      pendingAdmissionsRef.current--;
+      setPendingAdmissions(pendingAdmissionsRef.current);
+    }
+  }, []);
+  const ignoreError = useCallback(() => {}, []);
+
+  // Receipt for a completed reload. Runs for auto and manual reloads alike,
+  // but only when changes were actually pending (settings' bare "Reload
+  // engine" button shouldn't generate noise).
+  const handleReloadComplete = useCallback(() => {
+    if (!hadPendingReloadRef.current) return;
+    const trigger = pendingReloadTriggerRef.current;
+    hadPendingReloadRef.current = false;
+    pendingReloadTriggerRef.current = null;
+    notifyEvent({
+      kind: "reload",
+      severity: "success",
+      dedupeKey: RELOAD_DEDUPE_KEY,
+      title: t("notifications.engine_reloaded"),
+      body: describeApplied(trigger),
+    });
+  }, []);
+
+  const systemStateOptions = useMemo(
+    () => ({
+      hasActiveRuns,
+      canReloadWorkspaceEngine,
+      reloadWorkspaceEngine,
+      onReloadComplete: handleReloadComplete,
+      setError: ignoreError,
+    }),
+    [canReloadWorkspaceEngine, handleReloadComplete, hasActiveRuns, ignoreError, reloadWorkspaceEngine],
+  );
+
+  const systemState = useSystemState(systemStateOptions);
+  const markReloadRequired = useCallback((reason: ReloadReason, trigger?: ReloadTrigger) => {
+    const controls = controlsRef.current;
+    if (controls?.applyLiveChanges && ["skills", "mcp", "config"].includes(reason)) {
+      void controls.applyLiveChanges().then(applied => {
+        if (!applied && controlsRef.current?.workspaceId === controls.workspaceId) systemState.markReloadRequired(reason, trigger);
+      }).catch(() => {
+        if (controlsRef.current?.workspaceId === controls.workspaceId) systemState.markReloadRequired(reason, trigger);
+      });
+      return;
+    }
+    systemState.markReloadRequired(reason, trigger);
+  }, [systemState.markReloadRequired]);
+
+  useEffect(() => {
+    const update = (event: Event) => {
+      setOrgOnboardingVisible(Boolean((event as CustomEvent<{ visible?: boolean }>).detail?.visible));
+    };
+
+    window.addEventListener(orgOnboardingVisibilityEvent, update);
+
+    return () => {
+      window.removeEventListener(orgOnboardingVisibilityEvent, update);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ reason?: ReloadReason; trigger?: ReloadTrigger }>).detail;
+      markReloadRequired(detail?.reason ?? "config", detail?.trigger);
+    };
+
+    window.addEventListener("openwork-reload-required", handler);
+
+    return () => window.removeEventListener("openwork-reload-required", handler);
+  }, [markReloadRequired]);
+
+  // Track what is pending so the post-reload receipt can describe it.
+  useEffect(() => {
+    if (systemState.reload.reloadPending) {
+      hadPendingReloadRef.current = true;
+      pendingReloadTriggerRef.current = systemState.reload.reloadTrigger;
+    }
+  }, [systemState.reload.reloadPending, systemState.reload.reloadTrigger]);
+
+  const activityBlocked = useSessionActivityStore((state) =>
+    hasLiveSessionActivity(state.statusesByWorkspaceId),
+  );
+
+  const reloadIdle =
+    systemState.reload.reloadPending &&
+    activeSessions.length === 0 && !activityBlocked && pendingAdmissions === 0 &&
+    !orgOnboardingVisible;
+
+  // Auto-reload when idle. Reloading is a cheap in-process engine rebuild
+  // (no window reload, drafts survive), so instead of nagging with a
+  // "Reload required" toast we just do it and drop a receipt in the
+  // notification center. Sessions that are running keep blocking, exactly
+  // like the old toast gating did.
+  useEffect(() => {
+    if (!reloadIdle) return;
+    if (systemState.reload.reloadBusy) return;
+
+    if (!systemState.canReloadWorkspaceEngine) {
+      // Reload controls unavailable: surface the
+      // pending change quietly; auto-reload picks it up once controls
+      // register again.
+      notifyEvent({
+        kind: "reload",
+        severity: "info",
+        dedupeKey: RELOAD_DEDUPE_KEY,
+        title: t("system.reload_required"),
+        body: describeTrigger(systemState.reloadCopy.body, systemState.reload.reloadTrigger),
+      });
+      return;
+    }
+
+    // A failed attempt parks the pending state for manual retry (from the
+    // alert toast or the center entry) instead of retry-looping.
+    if (systemState.reload.reloadError) return;
+
+    const delay = Math.max(
+      AUTO_RELOAD_DEBOUNCE_MS,
+      lastAutoReloadAtRef.current + AUTO_RELOAD_COOLDOWN_MS - Date.now(),
+    );
+    const timer = window.setTimeout(() => {
+      // Re-check at fire time: a task may have started during the debounce
+      // window. The effect re-runs when activity ends and reschedules.
+      // A newly submitted task is already busy in the app before OpenCode's
+      // status endpoint reports it. Even a rollover-capable server can see
+      // that gap as idle and dispose the instance. Automatic reloads wait;
+      // explicit reloads can still use the server's busy-session rollover.
+      if (pendingAdmissionsRef.current > 0 || hasLiveSessionActivity(useSessionActivityStore.getState().statusesByWorkspaceId)) {
+        return;
+      }
+      lastAutoReloadAtRef.current = Date.now();
+      void systemState.reloadWorkspaceEngine();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [reloadIdle, systemState]);
+
+  // Changes pending while tasks are running: quiet center entry instead of
+  // a toast. The same dedupe key means the eventual "applied" receipt
+  // replaces it.
+  useEffect(() => {
+    if (!systemState.reload.reloadPending) return;
+    if (allowsBusyReload) return;
+    if (activeSessions.length === 0 && !activityBlocked) return;
+    notifyEvent({
+      kind: "reload",
+      severity: "info",
+      dedupeKey: RELOAD_DEDUPE_KEY,
+      title: t("notifications.reload_pending_title"),
+      body: t("notifications.reload_pending_body"),
+    });
+  }, [allowsBusyReload, systemState.reload.reloadPending, activeSessions.length, activityBlocked]);
+
+  // Reload failures are the one case that still warrants a toast (Alert
+  // class): transient toast with Retry + persistent center entry.
+  useEffect(() => {
+    const error = systemState.reload.reloadError;
+    if (!error) {
+      alertedReloadErrorRef.current = null;
+      return;
+    }
+    if (alertedReloadErrorRef.current === error) return;
+    alertedReloadErrorRef.current = error;
+    notifyAlert(
+      {
+        kind: "reload",
+        severity: "error",
+        dedupeKey: RELOAD_ERROR_DEDUPE_KEY,
+        title: t("system.reload_failed"),
+        body: error,
+        action: { type: "reload-engine" },
+        actionLabel: t("app.reload_now"),
+      },
+      {
+        toastAction: {
+          label: t("app.reload_now"),
+          onClick: () => void systemState.reloadWorkspaceEngine(),
+        },
+      },
+    );
+  }, [systemState.reload.reloadError, systemState.reloadWorkspaceEngine]);
+
+  const value = useMemo<ReloadCoordinatorContextValue>(
+    () => ({
+      markReloadRequired,
+      clearReloadRequired: systemState.clearReloadRequired,
+      reloadWorkspaceEngine: systemState.reloadWorkspaceEngine,
+      withEngineReady,
+      canReloadWorkspaceEngine: systemState.canReloadWorkspaceEngine,
+      reloadPending: systemState.reload.reloadPending,
+      reloadBusy: systemState.reload.reloadBusy,
+      reloadError: systemState.reload.reloadError,
+      registerWorkspaceReloadControls,
+    }),
+    [
+      registerWorkspaceReloadControls,
+      withEngineReady,
+      systemState.canReloadWorkspaceEngine,
+      systemState.clearReloadRequired,
+      markReloadRequired,
+      systemState.reload.reloadPending,
+      systemState.reload.reloadBusy,
+      systemState.reload.reloadError,
+      systemState.reloadWorkspaceEngine,
+    ],
+  );
+
+  return (
+    <ReloadCoordinatorContext.Provider value={value}>
+      {children}
+    </ReloadCoordinatorContext.Provider>
+  );
+}
+
+export function useReloadCoordinator(): ReloadCoordinatorContextValue {
+  const value = use(ReloadCoordinatorContext);
+  if (!value) {
+    throw new Error("useReloadCoordinator must be used inside <ReloadCoordinatorProvider>");
+  }
+  return value;
+}

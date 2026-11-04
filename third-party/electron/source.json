@@ -1,0 +1,15 @@
+{
+  "version": "43.8.1",
+  "source": "https://github.com/electron/electron/releases/download/v43.8.1/electron-v43.8.1-darwin-arm64.zip",
+  "archiveSha256": "01bb5d8756d220002ed5f8dccfb5a01391c4b919667af7156257cf5252e3e8ae",
+  "files": [
+    {
+      "file": "LICENSES.chromium.html",
+      "sha256": "7ae82e97b8a60b9d97871e0e11a05285aea2d42bef665f93f6a4f415235839ed"
+    },
+    {
+      "file": "LICENSE",
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+    }
+  ]
+}

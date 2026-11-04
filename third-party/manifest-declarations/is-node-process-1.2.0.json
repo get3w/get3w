@@ -1,0 +1,24 @@
+{
+  "name": "is-node-process",
+  "version": "1.2.0",
+  "license": "MIT",
+  "repository": {
+    "url": "git+https://github.com/mswjs/is-node-process.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/mswjs/is-node-process#readme",
+  "dist": {
+    "shasum": "ea02a1b90ddb3934a19aea414e88edef7e11d134",
+    "tarball": "https://registry.npmjs.org/is-node-process/-/is-node-process-1.2.0.tgz",
+    "fileCount": 7,
+    "integrity": "sha512-Vg4o6/fqPxIjtxgUH5QLJhwZ7gW5diGCVlXpuUfELC62CuxM1iHcRe51f2W1FDy04Ai4KJkagKjx3XaqyfRKXw==",
+    "signatures": [
+      {
+        "sig": "MEUCIQCMXzvq/2KU3w45r3SLaNkC3OBfL1tzG1XuXP1HRqrVRgIgJSt1i46bjSS0s7L6f07IGdyeAr0vSGr/b9uYny3VH+4=",
+        "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+      }
+    ],
+    "unpackedSize": 5984,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v4.10.10\r\nComment: https://openpgpjs.org\r\n\r\nwsFzBAEBCAAGBQJkHIGuACEJED1NWxICdlZqFiEECWMYAoorWMhJKdjhPU1b\r\nEgJ2VmqxlhAAlwkgJQ4Tdbbe+aZ9ALPtYGhwQDF65otXcvC9r/T4ePxQWhkd\r\nso08brJzqsPD03BYKzoEfSCDIl3PPJEzQq6mL3CYdaaAM14R0glfOvJbZrso\r\nhoM2gBybiPnwJD1hrA8TZfdeLaO7dy9gLyNFijodswW4xLEy5ILdjCZDuCJt\r\nhHFtV2sPztv6l7Z7oAQsc18Cct9xdrK/G348XjzaFWLZH/BVRHjl9zZDzlFe\r\nqAPCSxz2A5FVPxZKwzA2Mc7K5zO3FJYrpsJ3rDjNvfXiUe3oVLsSxsKClEQ6\r\nwxcsl5R60DsGPFCf1QDSUY7yFoCFUYZ/pYbAEAlswrb02n0AMXn3oN98hgdA\r\nK50WKaFtJDjreo7ORRYaDJ/w0fZ5e0HCglZJZi/ZfdfTmBu/WKnrxiHXZ8QU\r\nmat9tECZIjDaRNMxIZqLJStSeof3JICcGh7Qse/09E0IA0LhvO6WAu7SEXhQ\r\nDwNEpiq7uVYuk0ZFmRVMb7vYBlnT69ahZXTMLDVjLJx20Q0uwHJvWFdGRR6E\r\nZWClZv9ViYyyHjg/KuYPDEVuNYpPsoe7LXPYuMoveGJguYQbNkBrFbqhaXhj\r\njeWiNFjtYbtMnFRYpzZZa0H6AvgVY9anUksZcUB0KTtwuGS/6VFUaeivKNlG\r\nYKphCjPBAsgPLzqBlUOZJWHubvgXRCJMkqs=\r\n=tpP5\r\n-----END PGP SIGNATURE-----\r\n"
+  }
+}

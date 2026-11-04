@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.33"
+  },
+  "packageManager": "pnpm@11.4.0"
+}

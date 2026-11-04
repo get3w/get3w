@@ -1,0 +1,194 @@
+import { join } from "node:path";
+
+import { readBoundedRegularTextFile } from "./jsonc.js";
+import { runtimeStorageDir } from "./runtime-db.js";
+import {
+  ENGINE_GLOBAL_RUNTIME_CONFIG_ID,
+  inspectRuntimeOpencodeConfigState,
+  runtimeMcpMap,
+} from "./runtime-opencode-config-store.js";
+import type { ServerConfig } from "./types.js";
+
+const CONNECT_STATE_FILE = "connect-state.json";
+const CONNECT_STATE_MAX_BYTES = 16 * 1024;
+const CONNECT_SNAPSHOT_MAX_RUNTIME_ROWS = 100;
+const OPENWORK_CLOUD_MCP_NAME = "openwork-cloud";
+
+type PersistedConnectState = {
+  connectEnabled: boolean;
+  updatedAt: number;
+  /**
+   * Server-scoped Get3W Connect (`openwork-cloud`) MCP desired config.
+   * Connect is identity/org scoped, not per-workspace — workspace runtime
+   * copies remain for engine registration, but catalog/skill injection reads
+   * this host-level entry.
+   */
+  cloudMcp: Record<string, unknown> | null;
+};
+
+export type ConnectStateInspectionStatus = "available" | "missing" | "invalid" | "unreadable";
+
+export type ConnectStateInspection = {
+  status: ConnectStateInspectionStatus;
+  state: PersistedConnectState;
+};
+
+export type ConnectSnapshot = {
+  status: ConnectStateInspectionStatus;
+  connectEnabled: boolean;
+  connectCatalogEnabled: boolean;
+  cloudMcpPresent: boolean;
+  cloudHealth: { usable: boolean; usableByCurrentModel: boolean | null } | null;
+  workspace: {
+    resolution: "resolved" | "unknown" | "ambiguous";
+    id: string | null;
+    directory: string | null;
+    reason?: string;
+  };
+};
+
+export type ConnectSnapshotInspection = {
+  status: ConnectStateInspectionStatus;
+  snapshot: ConnectSnapshot;
+};
+
+export type ConnectStateInspectionOptions = {
+  maxBytes?: number;
+  maxRuntimeRows?: number;
+  runtimeConfigMaxBytes?: number;
+  signal?: AbortSignal;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function connectStatePath(config: ServerConfig): string {
+  return join(runtimeStorageDir(config), CONNECT_STATE_FILE);
+}
+
+const DEFAULT_CONNECT_STATE: PersistedConnectState = {
+  connectEnabled: false,
+  updatedAt: 0,
+  cloudMcp: null,
+};
+
+function normalizeConnectState(value: Record<string, unknown>): PersistedConnectState {
+  return {
+    connectEnabled: value.connectEnabled as boolean,
+    updatedAt: typeof value.updatedAt === "number" && Number.isFinite(value.updatedAt)
+      ? value.updatedAt
+      : 0,
+    // Legacy credentials are intentionally not loaded by passive diagnostics.
+    cloudMcp: null,
+  };
+}
+
+/**
+ * Read the persisted Connect switch without collapsing corruption or I/O
+ * failures into the legitimate first-run default. Diagnostics use the status
+ * to avoid reporting an unreadable state file as a healthy disabled switch.
+ */
+export async function inspectConnectState(
+  config: ServerConfig,
+  options?: ConnectStateInspectionOptions,
+): Promise<ConnectStateInspection> {
+  try {
+    const raw = await readBoundedRegularTextFile(connectStatePath(config), {
+      maxBytes: options?.maxBytes ?? CONNECT_STATE_MAX_BYTES,
+      signal: options?.signal,
+    });
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed) || typeof parsed.connectEnabled !== "boolean") {
+      return { status: "invalid", state: DEFAULT_CONNECT_STATE };
+    }
+    return { status: "available", state: normalizeConnectState(parsed) };
+  } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (isRecord(error) && error.code === "ENOENT") {
+      return { status: "missing", state: DEFAULT_CONNECT_STATE };
+    }
+    if (error instanceof SyntaxError) {
+      return { status: "invalid", state: DEFAULT_CONNECT_STATE };
+    }
+    return { status: "unreadable", state: DEFAULT_CONNECT_STATE };
+  }
+}
+
+/** Passive inspection only; this module never probes an engine or remote Gateway. */
+export async function inspectConnectSnapshot(
+  config: ServerConfig,
+  options?: ConnectStateInspectionOptions,
+): Promise<ConnectSnapshotInspection> {
+  const stateInspection = await inspectConnectState(config, options);
+  const runtimeInspection = await inspectConnectRuntime(config, options);
+  return {
+    status: runtimeInspection.complete
+      || stateInspection.status === "invalid"
+      || stateInspection.status === "unreadable"
+      ? stateInspection.status
+      : "unreadable",
+    snapshot: {
+      status: stateInspection.status,
+      connectEnabled: stateInspection.state.connectEnabled,
+      connectCatalogEnabled: stateInspection.state.connectEnabled,
+      cloudMcpPresent: runtimeInspection.cloudMcpPresent,
+      cloudHealth: null,
+      workspace: {
+        resolution: "unknown",
+        id: null,
+        directory: null,
+        reason: "Passive diagnostics inspection does not probe OpenCode health",
+      },
+    },
+  };
+}
+
+async function inspectConnectRuntime(
+  config: ServerConfig,
+  options?: ConnectStateInspectionOptions,
+): Promise<{ cloudMcpPresent: boolean; complete: boolean }> {
+  const globalInspection = await inspectRuntimeOpencodeConfigState(config, ENGINE_GLOBAL_RUNTIME_CONFIG_ID, {
+    maxBytes: options?.runtimeConfigMaxBytes,
+    signal: options?.signal,
+  });
+  if (globalInspection.status === "unreadable" || globalInspection.status === "invalid-row") {
+    return { cloudMcpPresent: false, complete: false };
+  }
+  if (Object.hasOwn(runtimeMcpMap(globalInspection.config), OPENWORK_CLOUD_MCP_NAME)) {
+    return { cloudMcpPresent: true, complete: true };
+  }
+
+  const configuredMaxRows = options?.maxRuntimeRows;
+  const maxRuntimeRows = typeof configuredMaxRows === "number"
+    && Number.isSafeInteger(configuredMaxRows)
+    && configuredMaxRows > 0
+    ? configuredMaxRows
+    : CONNECT_SNAPSHOT_MAX_RUNTIME_ROWS;
+  let inspectedRows = 0;
+
+  for (const workspace of config.workspaces) {
+    options?.signal?.throwIfAborted();
+    if (workspace.workspaceType !== "local") continue;
+    if (inspectedRows >= maxRuntimeRows) {
+      return { cloudMcpPresent: false, complete: false };
+    }
+    inspectedRows += 1;
+
+    const inspection = await inspectRuntimeOpencodeConfigState(config, workspace.id, {
+      maxBytes: options?.runtimeConfigMaxBytes,
+      signal: options?.signal,
+    });
+    if (inspection.status === "unreadable" || inspection.status === "invalid-row") {
+      return { cloudMcpPresent: false, complete: false };
+    }
+    if (Object.hasOwn(runtimeMcpMap(inspection.config), OPENWORK_CLOUD_MCP_NAME)) {
+      return { cloudMcpPresent: true, complete: true };
+    }
+    if (inspection.status === "database-missing" || inspection.status === "table-missing") {
+      break;
+    }
+  }
+
+  return { cloudMcpPresent: false, complete: true };
+}

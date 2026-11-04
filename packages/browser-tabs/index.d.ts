@@ -1,0 +1,142 @@
+export type BrowserTabSurfacing = "foreground" | "background";
+
+export type CdpCommand = {
+  method: string;
+  params?: Record<string, unknown>;
+};
+
+export type Bounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type Viewport = {
+  width: number;
+  height: number;
+};
+
+/** Browser tab state mirrored across the desktop IPC bridge. */
+export type BrowserPanelTab = {
+  id: string;
+  type: "browser";
+  label: string;
+  url: string;
+  favicon: string | null;
+  status: "loading" | "ready" | "suspending" | "suspended" | "restoring";
+  automationProtected?: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  /** Conversation (session) that opened the tab; null for shared/legacy tabs. */
+  ownerSessionId: string | null;
+  loadError?:
+    | { code: "policy_unavailable" | "organization_policy_denied"; message: string }
+    | { code: "page_load_failed" | "blocked_by_organization"; message: string; url: string; errorCode: number; errorDescription: string }
+    | null;
+  browserTask?: { status: "idle" | "running" | "paused" | "needs_attention"; operation: string | null };
+  /** Set while the agent controls the tab: the fixed size it lays out at and how far it is scaled to fit. */
+  agentViewport?: { key: AgentViewportKey; width: number; height: number; scale: number } | null;
+  siteToolCount: number;
+  siteTools: Array<{
+    toolId?: string;
+    name: string;
+    title: string;
+    origin: string;
+    readOnly: boolean;
+  }>;
+  siteToolActivity: Array<{
+    at: string;
+    name: string;
+    origin: string;
+    readOnly: boolean;
+    status: "completed" | "failed";
+    code?: string;
+  }>;
+
+};
+
+export type BrowserStatePayload = {
+  /** The tab currently on screen, if any. */
+  activeTabId?: string | null;
+  /** Active tab per owner session id (or `SHARED_OWNER_KEY`). */
+  activeTabIdByOwner?: Record<string, string>;
+  /** The conversation whose tabs may take the screen. */
+  visibleSessionId?: string | null;
+  tabs?: BrowserPanelTab[];
+  /** Actual native hierarchy and bounds, included by getState (not state events). */
+  nativeViews?: Array<{ tabId: string; attached: boolean; aboveApp: boolean; bounds: Bounds }>;
+};
+
+export type BrowserPanelOwnerPayload = {
+  ownerSessionId: string | null;
+  /** The page to select on a panel-opened event; absent on panel-closed. */
+  tab?: BrowserPanelTab;
+};
+
+export type OpenBrowserUrlResult = {
+  provider: "builtin";
+  browser_url: string;
+  target_id: string;
+  tab_id: string;
+  url: string;
+  owner_session_id: string | null;
+  /** False when the tab loads silently for a conversation that is not on screen. */
+  visible: boolean;
+};
+
+export type RegistryTab = {
+  tabId: string;
+  ownerSessionId: string | null;
+};
+
+export type RemovedRegistryTab = {
+  tab: RegistryTab;
+  wasActive: boolean;
+  nextActiveTabId: string | null;
+  ownerHasTabs: boolean;
+};
+
+export type BrowserTabRegistry = {
+  add(tab: { tabId: string; ownerSessionId?: string | null }): RegistryTab;
+  select(tabId: string): RegistryTab;
+  remove(tabId: string): RemovedRegistryTab | null;
+  reorder(tabIds: string[]): RegistryTab[];
+  get(tabId: string): RegistryTab | null;
+  has(tabId: string): boolean;
+  list(): RegistryTab[];
+  tabsFor(ownerSessionId: string | null | undefined): RegistryTab[];
+  ownerOf(tabId: string): string | null;
+  surfacingFor(tabId: string): BrowserTabSurfacing | null;
+  setVisibleSession(sessionId: string | null | undefined): string | null;
+  visibleSessionId(): string | null;
+  onScreenTabId(): string | null;
+  activeTabIdFor(ownerSessionId: string | null | undefined): string | null;
+  activeTabIdByOwner(): Record<string, string>;
+  clear(): void;
+  size(): number;
+};
+
+export const SHARED_OWNER_KEY: "*";
+export const BACKGROUND_TAB_VIEWPORT: Readonly<Viewport>;
+
+export function backgroundTabEmulationCommands(viewport?: Viewport): CdpCommand[];
+export function foregroundTabEmulationCommands(): CdpCommand[];
+
+export type AgentViewportKey = "panel" | "desktop" | "tablet" | "phone";
+/** `fitsPanel`: locks to the page's on-screen size; width and height are the off-screen fallback. */
+export type AgentViewport = Viewport & { label: string; mobile: boolean; fitsPanel?: boolean };
+export const AGENT_VIEWPORTS: Readonly<Record<AgentViewportKey, Readonly<AgentViewport>>>;
+export const DEFAULT_AGENT_VIEWPORT: AgentViewportKey;
+export function agentViewportFor(key: unknown): Readonly<AgentViewport>;
+export function lockedAgentViewport(key: unknown, bounds: Viewport | null): Readonly<AgentViewport>;
+export function fitAgentViewport(viewport: Viewport, bounds: Bounds): { scale: number; bounds: Bounds };
+export function mobileUserAgentOverride(chromeVersion: string): { userAgent: string; userAgentMetadata: Record<string, unknown> };
+export function agentViewportEmulationCommands(viewport: AgentViewport, scale: number, chromeVersion: string): CdpCommand[];
+export function createBrowserTabRegistry(): BrowserTabRegistry;
+export function browserTabsForSession<Tab extends { ownerSessionId: string | null }>(tabs: Tab[], sessionId: string): Tab[];
+export function activeBrowserTabIdForSession(
+  payload: BrowserStatePayload,
+  sessionId: string,
+  tabs: Array<{ id: string }>,
+): string | null;

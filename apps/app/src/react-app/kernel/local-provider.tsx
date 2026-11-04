@@ -1,0 +1,267 @@
+import { t } from "@/i18n";
+/** @jsxImportSource react */
+import {
+  createContext,
+  useCallback,
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
+import { MODEL_PREF_KEY, THINKING_PREF_KEY } from "../../app/constants";
+import { coerceReleaseChannel } from "../../app/lib/release-channels";
+import type { ModelRef, ReleaseChannel, SettingsTab, View } from "../../app/types";
+import {
+  DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE,
+  isDesktopNotificationPreference,
+  type DesktopNotificationPreference,
+} from "./desktop-notification-preferences";
+import { DEFAULT_SHOW_THINKING, isLinkOpenDestination, LOCAL_PREFERENCES_KEY, needsShowThinkingReset, type LinkOpenDestination } from "./local-preferences-storage";
+import {
+  readStoredDefaultModel,
+  storedDefaultModelChangedEvent,
+  writeStoredDefaultModel,
+} from "./model-config";
+
+export type LocalUIState = {
+  view: View;
+  tab: SettingsTab;
+};
+
+export type LocalPreferences = {
+  showThinking: boolean;
+  /** Set once the one-time reset of Show model reasoning to off has run. */
+  showThinkingResetToOff: boolean;
+  modelVariant: string | null;
+  defaultModel: ModelRef | null;
+  /**
+   * Name of the opencode agent used for new prompts (null = the server's
+   * default, usually "build"). Persisted so a reload does not silently
+   * fall back to the default agent (#2101).
+   */
+  selectedAgent: string | null;
+  /**
+   * Release channel the desktop app is subscribed to. Defaults to
+   * "stable". Alpha is only honored on macOS; the updater helper falls
+   * back to stable elsewhere.
+   */
+  releaseChannel: ReleaseChannel;
+  featureFlags: {
+    workspaceRunMode: boolean;
+  };
+  /**
+   * Set to true after the user completes the welcome/onboarding flow
+   * (creates or connects their first workspace). When false and the
+   * workspace list is empty, the app redirects to /welcome.
+   */
+  hasCompletedOnboarding: boolean;
+  /**
+   * Anonymous product analytics (PostHog). On by default with a visible
+   * opt-out in Settings -> Preferences. Never includes message content.
+   */
+  analyticsEnabled: boolean;
+  /**
+   * Native OS notifications from the desktop app. Off by default so upgrading
+   * users are not surprised by system popups.
+   */
+  desktopNotifications: DesktopNotificationPreference;
+  linkOpenDestination: LinkOpenDestination;
+  askBeforeOpeningLinks: boolean;
+  /**
+   * Desktop only: stop the computer sleeping while an agent is working.
+   * On by default so long tasks are not cut off when the computer sleeps.
+   */
+  keepAwake: boolean;
+};
+
+type LocalContextValue = {
+  ui: LocalUIState;
+  setUi: (updater: (previous: LocalUIState) => LocalUIState) => void;
+  prefs: LocalPreferences;
+  setPrefs: (updater: (previous: LocalPreferences) => LocalPreferences) => void;
+  ready: boolean;
+};
+
+const LocalContext = createContext<LocalContextValue | undefined>(undefined);
+
+const UI_STORAGE_KEY = "openwork.ui";
+export { DEFAULT_SHOW_THINKING };
+
+const INITIAL_UI: LocalUIState = { view: "settings", tab: "general" };
+const INITIAL_PREFS: LocalPreferences = {
+  showThinking: DEFAULT_SHOW_THINKING,
+  showThinkingResetToOff: true,
+  modelVariant: null,
+  defaultModel: null,
+  selectedAgent: null,
+  releaseChannel: "stable",
+  featureFlags: { workspaceRunMode: false },
+  hasCompletedOnboarding: false,
+  analyticsEnabled: true,
+  desktopNotifications: DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE,
+  linkOpenDestination: "openwork",
+  askBeforeOpeningLinks: true,
+  keepAwake: true,
+};
+
+function readStored(key: string): unknown {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPersisted<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object") {
+      return { ...fallback, ...(parsed as Record<string, unknown>) } as T;
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writePersisted(key: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+type LocalProviderProps = {
+  children: ReactNode;
+};
+
+export function LocalProvider({ children }: LocalProviderProps) {
+  const [ui, setUiRaw] = useState<LocalUIState>(() =>
+    readPersisted(UI_STORAGE_KEY, INITIAL_UI),
+  );
+  const [prefs, setPrefsRaw] = useState<LocalPreferences>(() => {
+    const persisted = readPersisted(LOCAL_PREFERENCES_KEY, INITIAL_PREFS);
+    if (needsShowThinkingReset(readStored(LOCAL_PREFERENCES_KEY))) persisted.showThinking = false;
+    persisted.showThinkingResetToOff = true;
+    persisted.askBeforeOpeningLinks = persisted.askBeforeOpeningLinks !== false;
+    persisted.linkOpenDestination = isLinkOpenDestination(persisted.linkOpenDestination)
+      ? persisted.linkOpenDestination
+      : "openwork";
+    persisted.desktopNotifications = isDesktopNotificationPreference(persisted.desktopNotifications)
+      ? persisted.desktopNotifications
+      : DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE;
+    try {
+      if (window.localStorage.getItem(MODEL_PREF_KEY) !== null) {
+        return { ...persisted, defaultModel: readStoredDefaultModel() };
+      }
+    } catch {
+      // Retain the preferences migration when storage is unavailable.
+    }
+    if (persisted.defaultModel) return persisted;
+    return {
+      ...persisted,
+      defaultModel: readStoredDefaultModel(),
+    };
+  });
+  const prefsRef = useRef(prefs);
+  const setPrefs = useCallback(
+    (updater: (previous: LocalPreferences) => LocalPreferences) => {
+      const previous = prefsRef.current;
+      const next = updater(previous);
+      prefsRef.current = next;
+      setPrefsRaw(next);
+      if (next.defaultModel && (
+        next.defaultModel.providerID !== previous.defaultModel?.providerID ||
+        next.defaultModel.modelID !== previous.defaultModel?.modelID
+      )) writeStoredDefaultModel(next.defaultModel);
+    },
+    [],
+  );
+  const ready = true;
+  const migratedThinkingRef = useRef(false);
+
+  useEffect(() => {
+    writePersisted(UI_STORAGE_KEY, ui);
+  }, [ui]);
+
+  useEffect(() => {
+    writePersisted(LOCAL_PREFERENCES_KEY, prefs);
+  }, [prefs]);
+
+  useEffect(() => {
+    const updateDefaultModel = () => {
+      const model = readStoredDefaultModel();
+      setPrefs((previous) => {
+        if (
+          previous.defaultModel?.providerID === model.providerID &&
+          previous.defaultModel.modelID === model.modelID
+        ) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          defaultModel: model,
+          modelVariant: null,
+        };
+      });
+    };
+
+    window.addEventListener(storedDefaultModelChangedEvent, updateDefaultModel);
+    try {
+      if (window.localStorage.getItem(MODEL_PREF_KEY) === null && prefsRef.current.defaultModel) {
+        writeStoredDefaultModel(prefsRef.current.defaultModel);
+      }
+    } catch {
+      // Storage may be unavailable.
+    }
+    updateDefaultModel();
+    return () => window.removeEventListener(storedDefaultModelChangedEvent, updateDefaultModel);
+  }, [setPrefs]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (migratedThinkingRef.current) return;
+    migratedThinkingRef.current = true;
+
+    // The legacy value predates the one-time reset of Show model reasoning to
+    // off, so it is discarded rather than applied.
+    try {
+      window.localStorage.removeItem(THINKING_PREF_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setUi = useCallback(
+    (updater: (previous: LocalUIState) => LocalUIState) => {
+      setUiRaw(updater);
+    },
+    [],
+  );
+
+  const value = useMemo<LocalContextValue>(
+    () => ({ ui, setUi, prefs, setPrefs, ready }),
+    [prefs, ready, setPrefs, setUi, ui],
+  );
+
+  return <LocalContext.Provider value={value}>{children}</LocalContext.Provider>;
+}
+
+export function useLocal(): LocalContextValue {
+  const context = use(LocalContext);
+  if (!context) {
+    throw new Error(t("ui.8d99f90165f9"));
+  }
+  return context;
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@get3w/desktop-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter ./apps/desktop dev",
+    "build": "pnpm --filter ./apps/desktop build:electron",
+    "build:ui": "pnpm --filter ./apps/app build",
+    "typecheck": "pnpm --filter ./apps/app typecheck && pnpm --filter ./apps/server typecheck",
+    "check:public-workspace": "python3 scripts/check-public-workspace.py",
+    "dev:ui": "pnpm --filter ./apps/app dev"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "6.16.3",
+    "@types/node": "^24.0.0",
+    "turbo": "^2.10.7",
+    "typescript": "^5.9.0"
+  },
+  "packageManager": "pnpm@11.4.0"
+}

@@ -1,0 +1,43 @@
+{
+  "name": "@openwork/ui",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./provider-icon": {
+      "types": "./src/react/provider-icon.tsx",
+      "development": "./src/react/provider-icon.tsx",
+      "default": "./src/react/provider-icon.tsx"
+    },
+    "./secret-input": {
+      "types": "./src/react/secret-input.ts",
+      "development": "./src/react/secret-input.ts",
+      "default": "./src/react/secret-input.ts"
+    },
+    "./react": {
+      "types": "./src/react/index.ts",
+      "development": "./src/react/index.ts",
+      "default": "./src/react/index.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.react.ts"
+  },
+  "dependencies": {
+    "@paper-design/shaders": "0.0.72",
+    "@paper-design/shaders-react": "0.0.72"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "react": "catalog:",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,194 @@
+// Minimal Streamable-HTTP MCP client used to read discovery resources from an
+// openwork-cloud connection. Extracted from connect-skill-catalog so the skill
+// index and the Automation index speak to the same connection the same way.
+export type McpFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function stringHeaders(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
+function parseJsonOrText(raw: string): unknown {
+  try { return JSON.parse(raw); } catch { return raw; }
+}
+
+export async function readMcpPayload(response: Response, requestId?: string | number): Promise<unknown> {
+  const matches = (payload: unknown) => requestId === undefined || (
+    isRecord(payload) && payload.jsonrpc === "2.0" && payload.id === requestId &&
+    (payload.result !== undefined || payload.error !== undefined)
+  );
+  if (!response.headers.get("content-type")?.toLowerCase().includes("text/event-stream")) {
+    const raw = await response.text();
+    const payload = raw.trim() ? parseJsonOrText(raw) : null;
+    return matches(payload) ? payload : null;
+  }
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let pending = "";
+  let data: string[] = [];
+  let skipLf = false;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) return null;
+      pending += decoder.decode(chunk.value, { stream: true });
+      // Parse lines incrementally: CR, LF and CRLF are legal, including across chunks.
+      while (pending.length) {
+        if (skipLf) {
+          if (pending.startsWith("\n")) pending = pending.slice(1);
+          skipLf = false;
+        }
+        const end = pending.search(/[\r\n]/);
+        if (end === -1) break;
+        const line = pending.slice(0, end);
+        skipLf = pending[end] === "\r";
+        pending = pending.slice(end + 1);
+        if (line === "") {
+          if (data.length) {
+            const payload = parseJsonOrText(data.join("\n"));
+            data = [];
+            if (matches(payload)) return payload;
+          }
+        } else if (line === "data" || line.startsWith("data:")) {
+          data.push(line.slice(5).replace(/^ /, ""));
+        }
+      }
+    }
+  } finally {
+    // A server may keep the stream open after the result. Never wait for EOF.
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
+export function jsonRpcResult(payload: unknown): Record<string, unknown> | null {
+  const record = Array.isArray(payload) ? payload.find(isRecord) : payload;
+  if (!isRecord(record) || record.error !== undefined || !isRecord(record.result)) return null;
+  return record.result;
+}
+
+export async function mcpPost(fetcher: McpFetch, url: string, headers: Record<string, string>, body: unknown) {
+  const response = await fetcher(url, {
+    method: "POST",
+    headers: { accept: "application/json, text/event-stream", "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(5_000),
+  });
+  const requestId = isRecord(body) && (typeof body.id === "string" || typeof body.id === "number") ? body.id : undefined;
+  return { response, payload: await readMcpPayload(response, requestId) };
+}
+
+export type McpResourceReader = {
+  /** Resource text, or null when the read failed or returned no matching text. */
+  read(uri: string, meta?: Record<string, unknown>): Promise<string | null>;
+  /**
+   * One `resources/read` whose result may list several resources: each URI's
+   * text, plus the result's `_meta`. Null when the request itself failed.
+   */
+  readContents(uri: string, meta?: Record<string, unknown>): Promise<{ texts: Map<string, string>; meta: Record<string, unknown> } | null>;
+  /** Set once a request failed at the transport or session level; open a new reader. */
+  readonly broken: boolean;
+};
+
+/**
+ * Opens one initialized Streamable HTTP session against an openwork-cloud
+ * config. Returns null when the config is unusable (invalid URL, disabled, auth
+ * rejected, transport or protocol error). The reader issues sequential
+ * `resources/read` requests on that session, so one session can serve a whole
+ * refresh instead of paying initialize and notifications/initialized per read.
+ */
+export async function openMcpResourceReader(input: {
+  config: Record<string, unknown>;
+  fetcher: McpFetch;
+  clientName: string;
+}): Promise<McpResourceReader | null> {
+  const url = typeof input.config.url === "string" ? input.config.url : "";
+  if (!/^https?:\/\//.test(url) || input.config.enabled === false) return null;
+  const baseHeaders = stringHeaders(input.config.headers);
+  const initialized = await mcpPost(input.fetcher, url, baseHeaders, {
+    id: 1,
+    jsonrpc: "2.0",
+    method: "initialize",
+    params: {
+      capabilities: {},
+      clientInfo: { name: input.clientName, version: "1.0.0" },
+      protocolVersion: "2025-06-18",
+    },
+  });
+  if (!initialized.response.ok) return null;
+  const protocolVersion = jsonRpcResult(initialized.payload)?.protocolVersion;
+  // These are the Streamable HTTP revisions supported by this discovery client.
+  if (protocolVersion !== "2025-06-18" && protocolVersion !== "2025-03-26") return null;
+  const sessionId = initialized.response.headers.get("mcp-session-id");
+  // Normalize header names so configured casing cannot duplicate session headers.
+  const sessionHeaders = {
+    ...Object.fromEntries(new Headers(baseHeaders)),
+    ...(sessionId ? { "mcp-session-id": sessionId } : {}),
+    "mcp-protocol-version": protocolVersion,
+  };
+  const notification = await mcpPost(input.fetcher, url, sessionHeaders, { jsonrpc: "2.0", method: "notifications/initialized", params: {} });
+  if (notification.response.status !== 202 || notification.payload !== null) return null;
+  let nextId = 2;
+  let broken = false;
+  const readContents: McpResourceReader["readContents"] = async (uri, meta) => {
+    const resource = await mcpPost(input.fetcher, url, sessionHeaders, {
+      id: nextId++,
+      jsonrpc: "2.0",
+      method: "resources/read",
+      params: { uri, ...(meta ? { _meta: meta } : {}) },
+    }).catch(() => null);
+    // An expired session (404) or a transport failure ends this reader; a
+    // JSON-RPC error for one resource does not.
+    if (!resource?.response.ok || resource.payload === null) {
+      broken = true;
+      return null;
+    }
+    const result = jsonRpcResult(resource.payload);
+    if (!result || !Array.isArray(result.contents)) return null;
+    const texts = new Map<string, string>();
+    for (const item of result.contents) {
+      if (isRecord(item) && typeof item.uri === "string" && typeof item.text === "string" && !texts.has(item.uri)) texts.set(item.uri, item.text);
+    }
+    return { texts, meta: isRecord(result._meta) ? result._meta : {} };
+  };
+  return {
+    readContents,
+    async read(uri, meta) {
+      return (await readContents(uri, meta))?.texts.get(uri) ?? null;
+    },
+    get broken() {
+      return broken;
+    },
+  };
+}
+
+/**
+ * Reads one JSON resource from an openwork-cloud config. Returns the resource
+ * text, or null when the config is unusable (invalid URL, disabled, auth
+ * rejected, transport or protocol error) so callers can try another candidate.
+ */
+export async function readMcpResourceText(input: {
+  config: Record<string, unknown>;
+  uri: string;
+  fetcher: McpFetch;
+  clientName: string;
+}): Promise<string | null> {
+  const reader = await openMcpResourceReader(input);
+  return reader ? reader.read(input.uri) : null;
+}
+
+export function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}

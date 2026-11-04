@@ -1,0 +1,18 @@
+Get3W Desktop
+
+This distribution includes MIT-licensed, non-Enterprise source derived from
+OpenWork. Copyright (c) 2026-present Different AI, Inc.
+The original OpenWork license, including its copyright notice and MIT
+permission and warranty text, is retained verbatim in third-party/openwork/LICENSE.
+Get3W changes: Copyright (c) 2026 Get3W contributors; see LICENSE.
+
+OpenWork Enterprise Edition source is excluded; its license is not a license
+for this Get3W source distribution. Historical upstream mixed-license scope is
+recorded in the private preparation evidence, not applied to absent files.
+
+Third-party packages and binary components keep their own licenses, copyrights
+and notices. See THIRD_PARTY_NOTICES.md and third-party/ for the dependency
+inventory and verbatim license texts. The bundled codemode derives from
+anomalyco/opencode; its original NOTICE remains in packages/codemode/NOTICE.
+
+Get3W branding does not change ownership of any third-party software or marks.

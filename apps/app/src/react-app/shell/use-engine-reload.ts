@@ -1,0 +1,213 @@
+// Engine reload wiring for the session route: UI-triggered engine reload,
+// reload-coordinator registration, the post-org-onboarding reload latch,
+// server reload-event polling, and desktop engine info. Extracted verbatim
+// from session-route.tsx; reload events are now typed (OpenworkReloadEvent)
+// instead of `any`.
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { engineInfo } from "@/app/lib/desktop";
+import { isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
+import type { EngineInfo } from "@/app/lib/desktop-types";
+import { isDesktopRuntime } from "@/app/lib/runtime-env";
+import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { ResolvedWorkspaceEndpoint } from "@/app/lib/workspace-endpoint";
+import { t } from "@/i18n";
+import { reloadEngineWithDesktopFallback } from "./engine-reload-escalation";
+import { useReloadCoordinator } from "./reload-coordinator";
+import { refreshProviderListQueries } from "@/react-app/infra/provider-list-query";
+import { getReactQueryClient } from "@/react-app/infra/query-client";
+import type { RouteWorkspace } from "./route-workspaces";
+import { toast } from "@/components/ui/sonner";
+import { useLiveProviderSync } from "@/react-app/domains/connections/provider-auth/use-live-provider-sync";
+import { shouldRefreshProvidersForReloadEvent } from "@/react-app/domains/connections/provider-auth/live-provider-sync";
+
+const reloadAfterOrgOnboardingKey = "openwork.reloadAfterOrgOnboarding";
+
+function taskCreateUnavailableToastId(workspaceId: string) {
+  return `opencode-unavailable:${workspaceId}`;
+}
+
+export type UseEngineReloadInput = {
+  client: OpenworkServerClient | null;
+  workspaceId: string;
+  opencodeBaseUrl: string;
+  workspace: RouteWorkspace | null | undefined;
+  endpointForWorkspace: (
+    workspace: RouteWorkspace | null | undefined,
+  ) => ResolvedWorkspaceEndpoint | null;
+  activeReloadBlockingSessions: { id: string; title: string }[];
+  onError: (message: string) => void;
+  refreshRouteState: () => Promise<void>;
+};
+
+export function useEngineReload(input: UseEngineReloadInput) {
+  const {
+    client,
+    workspaceId,
+    opencodeBaseUrl,
+    workspace,
+    endpointForWorkspace,
+    activeReloadBlockingSessions,
+    onError,
+    refreshRouteState,
+  } = input;
+  const reloadCoordinator = useReloadCoordinator();
+  const liveProviderSync = useLiveProviderSync(client, opencodeBaseUrl);
+  const [engineReloadVersion, setEngineReloadVersion] = useState(0);
+  const [routeEngineInfo, setRouteEngineInfo] = useState<EngineInfo | null>(null);
+  const [engineRolloverAvailable, setEngineRolloverAvailable] = useState(false);
+  const reloadEventCursorByWorkspaceRef = useRef<Record<string, number | null>>({});
+
+  useEffect(() => {
+    const endpoint = endpointForWorkspace(workspace);
+    if (!endpoint) {
+      setEngineRolloverAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    void endpoint.client.capabilities()
+      .then((capabilities) => {
+        if (!cancelled) setEngineRolloverAvailable(capabilities.engine?.rollover === true);
+      })
+      .catch(() => {
+        if (!cancelled) setEngineRolloverAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [endpointForWorkspace, workspace]);
+
+  const reloadWorkspaceEngineFromUi = useCallback(async () => {
+    if (!client || !workspaceId) {
+      onError(t("app.error_connect_first"));
+      return false;
+    }
+    const endpoint = endpointForWorkspace(workspace);
+    if (!endpoint) {
+      onError(t("app.error_connect_first"));
+      return false;
+    }
+    const { restartedEngine } = await reloadEngineWithDesktopFallback(
+      endpoint.client,
+      endpoint.workspaceId,
+    );
+    if (restartedEngine) {
+      await refreshRouteState();
+      await refreshProviderListQueries(getReactQueryClient()).catch(() => undefined);
+    } else {
+      await refreshProviderListQueries(getReactQueryClient());
+    }
+    setEngineReloadVersion((v) => v + 1);
+    try {
+      window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+    } catch {
+      // ignore browser event dispatch failures
+    }
+    if (!restartedEngine) {
+      await refreshRouteState();
+    }
+    toast.dismiss(taskCreateUnavailableToastId(workspaceId));
+    toast.dismiss();
+    return true;
+  }, [client, endpointForWorkspace, onError, refreshRouteState, workspace, workspaceId]);
+
+  useEffect(() => {
+    return reloadCoordinator.registerWorkspaceReloadControls({
+      workspaceId,
+      applyLiveChanges: async () => {
+        if (!isOpencodeV2BaseUrl(opencodeBaseUrl)) return false;
+        await refreshProviderListQueries(getReactQueryClient()).catch(() => undefined);
+        return true;
+      },
+      canReloadWorkspaceEngine: () => Boolean(client && workspaceId),
+      reloadWorkspaceEngine: reloadWorkspaceEngineFromUi,
+      activeSessions: () => activeReloadBlockingSessions,
+      allowsBusyReload: () => engineRolloverAvailable,
+    });
+  }, [activeReloadBlockingSessions, client, engineRolloverAvailable, opencodeBaseUrl, reloadCoordinator, reloadWorkspaceEngineFromUi, workspaceId]);
+
+  useEffect(() => {
+    if (!reloadCoordinator.canReloadWorkspaceEngine) return;
+    try {
+      if (window.localStorage.getItem(reloadAfterOrgOnboardingKey) !== "1") return;
+      window.localStorage.removeItem(reloadAfterOrgOnboardingKey);
+    } catch {
+      return;
+    }
+    // Marking is enough: the reload coordinator auto-reloads once idle.
+    reloadCoordinator.markReloadRequired("config", {
+      type: "config",
+      name: "opencode.json",
+      action: "updated",
+    });
+  }, [reloadCoordinator, reloadCoordinator.canReloadWorkspaceEngine]);
+
+  useEffect(() => {
+    if (!client || !workspaceId) return;
+    const endpoint = endpointForWorkspace(workspace);
+    if (!endpoint) return;
+    let cancelled = false;
+
+    const pollReloadEvents = async () => {
+      const currentCursor = reloadEventCursorByWorkspaceRef.current[workspaceId];
+      try {
+        const response = await endpoint.client.listReloadEvents(
+          endpoint.workspaceId,
+          typeof currentCursor === "number" ? { since: currentCursor } : undefined,
+        );
+        if (cancelled) return;
+        reloadEventCursorByWorkspaceRef.current[workspaceId] =
+          typeof response.cursor === "number"
+            ? response.cursor
+            : Math.max(currentCursor ?? 0, ...((response.items ?? []).map((item) => Number(item.seq) || 0)));
+        // The first poll establishes the server cursor so historical reload
+        // events don't show a stale toast on route entry. Subsequent polls mark
+        // new filesystem/server-side mutations, including skills created by an
+        // agent while the session page is open.
+        if (currentCursor === undefined || currentCursor === null) return;
+        for (const event of response.items ?? []) {
+          // V2 watches these changes in the running location. Refresh the
+          // visible catalog without scheduling the legacy engine disposal.
+          if (isOpencodeV2BaseUrl(opencodeBaseUrl)
+            && (event.reason === "skills" || event.reason === "mcp" || event.reason === "config")) {
+            // Native provider/model events drive live sync; the 3s reload-event poll
+            // must not become a second provider refresh loop.
+            if (shouldRefreshProvidersForReloadEvent(liveProviderSync)) await refreshProviderListQueries(getReactQueryClient());
+            continue;
+          }
+          reloadCoordinator.markReloadRequired(event.reason, event.trigger);
+        }
+      } catch {
+        // Reload-event polling is best-effort; normal route health checks still
+        // surface connection failures.
+      }
+    };
+
+    void pollReloadEvents();
+    const interval = window.setInterval(() => void pollReloadEvents(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [client, endpointForWorkspace, liveProviderSync, opencodeBaseUrl, reloadCoordinator, workspace, workspaceId]);
+
+  useEffect(() => {
+    if (!isDesktopRuntime()) return;
+    let cancelled = false;
+    void engineInfo()
+      .then((info) => {
+        // Pre-existing cast: the desktop bridge is a dynamic Proxy, so
+        // engineInfo() returns unknown until the IPC surface is typed
+        // (queued: DesktopCommandMap).
+        if (!cancelled) setRouteEngineInfo(info as EngineInfo | null);
+      })
+      .catch(() => {
+        if (!cancelled) setRouteEngineInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { engineReloadVersion, routeEngineInfo, reloadWorkspaceEngineFromUi };
+}

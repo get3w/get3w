@@ -1,0 +1,28 @@
+{
+  "name": "kubernetes-types",
+  "version": "1.30.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Lyra Naeseth",
+    "email": "lyra@naeseth.com"
+  },
+  "repository": {
+    "url": "git+https://github.com/silverlyra/kubernetes-types.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/silverlyra/kubernetes-types#readme",
+  "gitHead": "a46eb94629404af98a6758cd843b31816237d7d0",
+  "dist": {
+    "shasum": "f686cacb08ffc5f7e89254899c2153c723420116",
+    "tarball": "https://registry.npmjs.org/kubernetes-types/-/kubernetes-types-1.30.0.tgz",
+    "fileCount": 37,
+    "integrity": "sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==",
+    "signatures": [
+      {
+        "sig": "MEUCIFzFcatmAevAXcfjmo0pheBskm/daW0W1Eh4+dtrBur2AiEAwIrkKq6Yo1sNRQHMIrcozBu2D3UwS1McxkdMNv4TEPc=",
+        "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+      }
+    ],
+    "unpackedSize": 779214
+  }
+}

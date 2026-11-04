@@ -1,0 +1,12 @@
+{
+  "name": "Get3W Docs",
+  "navigation": {
+    "pages": [
+      "desktop"
+    ]
+  },
+  "links": {
+    "website": "https://get3w.com",
+    "help": "https://get3w.com/docs"
+  }
+}

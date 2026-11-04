@@ -1,0 +1,86 @@
+diff --git a/dist/cjs/client/auth.js b/dist/cjs/client/auth.js
+--- a/dist/cjs/client/auth.js
++++ b/dist/cjs/client/auth.js
+@@ -289,12 +289,33 @@ async function authInternal(provider, { serverUrl, authorizationCode, scope, res
+     // provider's own `validateResourceURL` is used as returned.
+     const selectedResource = await selectResourceURL(serverUrl, provider, resourceMetadata);
+     const resource = selectedResource && resourceMetadata && !provider.validateResourceURL ? resourceMetadata.resource : selectedResource;
+-    // Apply scope selection strategy (SEP-835):
+-    // 1. WWW-Authenticate scope (passed via `scope` param)
+-    // 2. PRM scopes_supported
+-    // 3. Client metadata scope (user-configured fallback)
+-    // The resolved scope is used consistently for both DCR and the authorization request.
+-    const resolvedScope = scope || resourceMetadata?.scopes_supported?.join(' ') || provider.clientMetadata.scope;
++    // Treat scopes_supported as an availability declaration, never as the
++    // permission set to request. Combine challenge-required scopes with the
++    // client-selected least-privilege set and add offline_access only when the
++    // server advertises both that scope and refresh-token support.
++    const requiredScopes = scope?.split(/\s+/).filter(Boolean) ?? [];
++    const selectedScopes = provider.clientMetadata.scope?.split(/\s+/).filter(Boolean) ?? [];
++    const advertisedScopes = metadata?.scopes_supported ?? resourceMetadata?.scopes_supported;
++    if (advertisedScopes) {
++        const unsupportedScope = selectedScopes.find(selectedScope => !advertisedScopes.includes(selectedScope));
++        if (unsupportedScope) {
++            throw new Error(`The selected OAuth scope is not advertised by the authorization server or protected resource: ${unsupportedScope}`);
++        }
++    }
++    const resolvedScopes = [...new Set([...requiredScopes, ...selectedScopes])];
++    // Some providers publish the only workable permission set in discovery
++    // and omit scope from their 401 challenge. Preserve least-privilege
++    // selection when configured, but restore the SDK's advertised fallback
++    // when neither the provider challenge nor the admin selected scopes.
++    if (resolvedScopes.length === 0 && advertisedScopes) {
++        resolvedScopes.push(...new Set(advertisedScopes));
++    }
++    if (resolvedScopes.includes('offline_access') &&
++        !requiredScopes.includes('offline_access') &&
++        (!advertisedScopes?.includes('offline_access') || !metadata?.grant_types_supported?.includes('refresh_token'))) {
++        resolvedScopes.splice(resolvedScopes.indexOf('offline_access'), 1);
++    }
++    const resolvedScope = resolvedScopes.length > 0 ? resolvedScopes.join(' ') : undefined;
+     // Handle client registration if needed. Client information stamped for a different
+     // authorization server reads back as `undefined`, so the flow re-registers exactly as if
+     // nothing were stored.
+diff --git a/dist/esm/client/auth.js b/dist/esm/client/auth.js
+--- a/dist/esm/client/auth.js
++++ b/dist/esm/client/auth.js
+@@ -264,12 +264,33 @@ async function authInternal(provider, { serverUrl, authorizationCode, scope, res
+     // provider's own `validateResourceURL` is used as returned.
+     const selectedResource = await selectResourceURL(serverUrl, provider, resourceMetadata);
+     const resource = selectedResource && resourceMetadata && !provider.validateResourceURL ? resourceMetadata.resource : selectedResource;
+-    // Apply scope selection strategy (SEP-835):
+-    // 1. WWW-Authenticate scope (passed via `scope` param)
+-    // 2. PRM scopes_supported
+-    // 3. Client metadata scope (user-configured fallback)
+-    // The resolved scope is used consistently for both DCR and the authorization request.
+-    const resolvedScope = scope || resourceMetadata?.scopes_supported?.join(' ') || provider.clientMetadata.scope;
++    // Treat scopes_supported as an availability declaration, never as the
++    // permission set to request. Combine challenge-required scopes with the
++    // client-selected least-privilege set and add offline_access only when the
++    // server advertises both that scope and refresh-token support.
++    const requiredScopes = scope?.split(/\s+/).filter(Boolean) ?? [];
++    const selectedScopes = provider.clientMetadata.scope?.split(/\s+/).filter(Boolean) ?? [];
++    const advertisedScopes = metadata?.scopes_supported ?? resourceMetadata?.scopes_supported;
++    if (advertisedScopes) {
++        const unsupportedScope = selectedScopes.find(selectedScope => !advertisedScopes.includes(selectedScope));
++        if (unsupportedScope) {
++            throw new Error(`The selected OAuth scope is not advertised by the authorization server or protected resource: ${unsupportedScope}`);
++        }
++    }
++    const resolvedScopes = [...new Set([...requiredScopes, ...selectedScopes])];
++    // Some providers publish the only workable permission set in discovery
++    // and omit scope from their 401 challenge. Preserve least-privilege
++    // selection when configured, but restore the SDK's advertised fallback
++    // when neither the provider challenge nor the admin selected scopes.
++    if (resolvedScopes.length === 0 && advertisedScopes) {
++        resolvedScopes.push(...new Set(advertisedScopes));
++    }
++    if (resolvedScopes.includes('offline_access') &&
++        !requiredScopes.includes('offline_access') &&
++        (!advertisedScopes?.includes('offline_access') || !metadata?.grant_types_supported?.includes('refresh_token'))) {
++        resolvedScopes.splice(resolvedScopes.indexOf('offline_access'), 1);
++    }
++    const resolvedScope = resolvedScopes.length > 0 ? resolvedScopes.join(' ') : undefined;
+     // Handle client registration if needed. Client information stamped for a different
+     // authorization server reads back as `undefined`, so the flow re-registers exactly as if
+     // nothing were stored.

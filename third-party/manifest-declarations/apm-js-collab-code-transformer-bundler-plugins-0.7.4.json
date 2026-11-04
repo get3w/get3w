@@ -1,0 +1,34 @@
+{
+  "name": "@apm-js-collab/code-transformer-bundler-plugins",
+  "version": "0.7.4",
+  "license": "MIT",
+  "repository": {
+    "url": "git+https://github.com/apm-js-collab/code-transformer-bundler-plugins.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/apm-js-collab/code-transformer-bundler-plugins#readme",
+  "gitHead": "6bf9c2800e629ed08e974cc1a8ea1f3a1775ed14",
+  "dist": {
+    "shasum": "f323d5f723565e34f1409aa96e445ad489020f76",
+    "tarball": "https://registry.npmjs.org/@apm-js-collab/code-transformer-bundler-plugins/-/code-transformer-bundler-plugins-0.7.4.tgz",
+    "fileCount": 62,
+    "integrity": "sha512-nAfOeZPSUAQvJa1iFT/5oCrTm5YQhMMrfCNthNnaXHZiOQhu1KGuLoIx7HtbAi3wfwaBYLaICPIeenIaEwcXIg==",
+    "signatures": [
+      {
+        "sig": "MEYCIQCB6bjqZwOiSRqQNd+vATnEZybEhlG+dQURvioR+l1zBwIhAKnYJ+RxTT6f+yhqKHwpgMKJO0W8cuu0u0SovHDbp6XG",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEYCIQCRA9sZQk4vc0Pu22L5r/1bpcwYMGujqKstZ2+HlZ5VtQIhAP4bU6GvkvuiRyhM3afbT6ZinizJICJ0//7/fqH1tawY",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "attestations": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@apm-js-collab%2fcode-transformer-bundler-plugins@0.7.4",
+      "provenance": {
+        "predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    "unpackedSize": 508548
+  }
+}

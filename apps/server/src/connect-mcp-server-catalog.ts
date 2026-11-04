@@ -1,0 +1,22 @@
+import { createHash } from "node:crypto";
+import type { ServerConfig } from "./types.js";
+import type { OrganizationMcpServers } from "./organization-mcp-names.js";
+export const CONNECT_MCP_SERVER_INDEX_URI = "openwork://connect/mcp-servers/index.json";
+export const CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION = "openwork.connect/mcp-servers/1";
+export const CONNECT_MCP_APP_HOST_NAME_PREFIX = "openwork-app-host-connect-";
+export const CONNECT_MCP_SERVER_NAME_PREFIX = "openwork-connect-";
+export const CONNECT_DIRECT_MCP_SERVER_NAME_PREFIX = "openwork-direct-";
+export const CONNECT_MCP_APP_HOST_CAPABILITY_HEADER = "x-openwork-mcp-client-capabilities";
+export const CONNECT_MCP_APP_HOST_CAPABILITY = "mcp-app-host-v1";
+export type OpenWorkConnectMcpServerIndex = { schemaVersion: typeof CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION; servers: { connectionId: string; name: string; description: string | null; url: string; exposeDirectly: boolean }[] };
+export type OpenWorkConnectMcpServerIndexInput = OpenWorkConnectMcpServerIndex;
+export type ConnectMcpCatalogDiagnostic = "ready" | "empty" | "missing_app_host_auth" | "untrusted_origin" | "invalid_catalog" | "invalid_proxy_descriptor" | "discovery_unavailable";
+export type ConnectMcpCatalogReadResult = { index: OpenWorkConnectMcpServerIndex | null; diagnostic: ConnectMcpCatalogDiagnostic };
+export const trustedAppHostCloudEndpoint = async (_config: Record<string, unknown>) => false;
+export function connectMcpAppHostName(connectionId: string) { return `${CONNECT_MCP_APP_HOST_NAME_PREFIX}${createHash("sha256").update(connectionId).digest("hex").slice(0, 12)}`; }
+export const registeredOrganizationMcpServers = async (_config: ServerConfig, _workspaces: Iterable<string>): Promise<OrganizationMcpServers> => ({});
+export const readOpenWorkConnectMcpAppHostCatalog = async (_config: ServerConfig, _workspaceId: string): Promise<OpenWorkConnectMcpServerIndex> => ({ schemaVersion: CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION, servers: [] });
+export const readOpenWorkConnectMcpAppHostAuthorization = async (..._input: unknown[]): Promise<string | null> => null;
+export const readOpenWorkConnectMcpAppHostAuthorizationRevision = async (..._input: unknown[]): Promise<number | null> => null;
+export const findOpenWorkConnectMcpAppHostServer = async (..._input: unknown[]): Promise<OpenWorkConnectMcpServerIndex["servers"][number] | null> => null;
+export const refreshOpenWorkConnectMcpAppHostCatalog = async (_config: ServerConfig, _workspaceId: string, _fetcher?: (input: string, init?: RequestInit) => Promise<Response>): Promise<{ status: "unavailable" | "synced"; appHostNames: string[]; diagnostic: ConnectMcpCatalogDiagnostic }> => ({ status: "unavailable", appHostNames: [], diagnostic: "discovery_unavailable" });

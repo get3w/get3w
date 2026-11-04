@@ -1,0 +1,468 @@
+import { t } from "@/i18n";
+/** @jsxImportSource react */
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Ellipsis, ExternalLink, FolderOpen, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+
+import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import type { OpenTargetOptions } from "@/lib/target-provider";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TaskRecovery } from "@/components/chat/task-recovery";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePlatform } from "@/react-app/kernel/platform";
+import { type ArtifactPanelTab, usePanelTabStore } from "../panel/panel-tab-store";
+import { isCollectibleArtifactTarget, openTargetFromWorkspaceFile, type BinaryData, type Data, type OpenTarget, type TextData } from "./open-target";
+import { HTMLPreview, ImagePreview, MarkdownPreview, PdfPreview, PlainText, PreviewError, PreviewLoading, PreviewUnavailable } from "./preview";
+
+const ArtifactTextEditor = lazy(() =>
+  import("./artifact-text-editor").then((module) => ({ default: module.ArtifactTextEditor })),
+);
+const ArtifactSpreadsheetEditor = lazy(() =>
+  import("./artifact-spreadsheet-editor").then((module) => ({ default: module.ArtifactSpreadsheetEditor })),
+);
+const ArtifactCodeView = lazy(() =>
+  import("./artifact-code-view").then((module) => ({ default: module.ArtifactCodeView })),
+);
+const WorkspaceFileTree = lazy(() =>
+  import("./workspace-file-tree").then((module) => ({ default: module.WorkspaceFileTree })),
+);
+
+const EMPTY_TRANSCRIPT_TARGETS: OpenTarget[] = [];
+type ArtifactPanelProps = {
+  sessionId: string;
+  tab: ArtifactPanelTab;
+  client: OpenworkServerClient | null;
+  workspaceId: string | null;
+  workspaceRoot: string;
+  onOpenTarget?: (target: OpenTarget, options?: OpenTargetOptions) => void;
+  isLocalWorkspace?: boolean;
+  onClose: () => void;
+};
+
+type ArtifactPanelViewProps = {
+  sessionId: string;
+  client: OpenworkServerClient;
+  workspaceId: string;
+  workspaceRoot: string;
+  onOpenTarget?: (target: OpenTarget, options?: OpenTargetOptions) => void;
+  isLocalWorkspace?: boolean;
+  target: OpenTarget;
+  onClose: () => void;
+};
+
+type ArtifactQueryState =
+  | (TextData & { updatedAt: number | null })
+  | (BinaryData & { contentType: string | null; updatedAt: number | null });
+
+type SaveArtifactInput = Data & { baseUpdatedAt: number | null };
+
+function isTextContent(target: OpenTarget): boolean {
+  return ["markdown", "code", "text", "sheet", "html"].includes(target.preview) && !/\.(xlsx|xls|ods)$/i.test(target.value);
+}
+
+export function ArtifactPanel({ sessionId, tab, client, workspaceId, workspaceRoot, onOpenTarget, isLocalWorkspace, onClose }: ArtifactPanelProps) {
+  const transcriptTargets = usePanelTabStore((state) => state.transcriptArtifactTargets[sessionId] ?? EMPTY_TRANSCRIPT_TARGETS);
+  const artifactTargets = useMemo(() => transcriptTargets.filter(isCollectibleArtifactTarget), [transcriptTargets]);
+  const target = tab.target ?? artifactTargets.find((item) => item.id === tab.id) ?? null;
+
+  if (!target || !client || !workspaceId) {
+    return null;
+  }
+
+  return (
+    <ArtifactPanelView
+      sessionId={sessionId}
+      client={client}
+      workspaceId={workspaceId}
+      workspaceRoot={workspaceRoot}
+      onOpenTarget={onOpenTarget}
+      isLocalWorkspace={isLocalWorkspace}
+      target={target}
+      onClose={onClose}
+    />
+  );
+}
+
+function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, target, onOpenTarget, isLocalWorkspace, onClose }: ArtifactPanelViewProps) {
+  const [failure, setFailure] = useState<{ owner: string; title: string; details: string } | null>(null);
+  const owner = JSON.stringify([sessionId, workspaceId, target.id]);
+  const reportFailure = (title: string, error: unknown) => setFailure({ owner, title, details: error instanceof Error ? error.message : String(error) });
+  const platform = usePlatform();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [treeOpen, setTreeOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const lastSyncedRef = useRef<string | null>(null);
+  const failedDraftRef = useRef<string | null>(null);
+  const isMermaidArtifact = target.kind === "file" && /\.mmd$/i.test(target.value);
+  // Plain text opens directly in CodeMirror. Markdown and HTML default to
+  // their rendered previews and retain the existing Edit toggle.
+  const isDirectTextEdit = isTextContent(target) && target.preview === "text";
+  const isDirectCodeEdit = target.kind === "file" && target.preview === "code";
+  const canUseDesktopWorkspaceActions = Boolean(isLocalWorkspace && onOpenTarget && platform.capabilities.revealInFileManager);
+  const canUseDesktopFileActions = target.kind === "file" && canUseDesktopWorkspaceActions;
+  const workspaceName = workspaceRoot.split(/[/\\]/).filter(Boolean).pop() ?? "Workspace";
+
+  const openWorkspaceFile = (entry: { path: string; size: number; mtimeMs: number }) => {
+    const nextTarget = openTargetFromWorkspaceFile(entry.path, { size: entry.size, updatedAt: entry.mtimeMs });
+    if (!nextTarget) return;
+    usePanelTabStore.getState().openTab(sessionId, {
+      id: nextTarget.id,
+      type: "artifact",
+      label: nextTarget.name,
+      preview: nextTarget.preview,
+      target: nextTarget,
+    });
+  };
+
+  const queryKey = ["artifact-panel", workspaceId, sessionId, target.fileScope ?? null, target.id, target.updatedAt ?? null];
+  const { data, error, isError, isLoading } = useQuery<ArtifactQueryState>({
+    queryKey,
+    queryFn: async () => {
+      if (target.kind === "url") {
+        throw new Error(t("ui.f490e282e050"));
+      }
+      else if (target.exists === false) {
+        throw new Error(t("ui.c156b45d7dc8"));
+      }
+
+      if (isTextContent(target)) {
+        const result = await client.readWorkspaceFile(workspaceId, target.value, { sessionId, fileScope: target.fileScope });
+
+        return { kind: "text", data: result.content, updatedAt: result.updatedAt ?? null };
+      }
+
+      const result = await client.downloadWorkspaceFile(workspaceId, target.value, { sessionId, fileScope: target.fileScope });
+
+      return { kind: "binary", data: result.data, contentType: result.contentType, updatedAt: target.updatedAt ?? null };
+    },
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+
+  const [binaryObjectUrl, setBinaryObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data || data.kind !== "binary") {
+      setBinaryObjectUrl(null);
+
+      return;
+    }
+
+    const fallbackType = target.preview === "pdf" ? "application/pdf" : "application/octet-stream";
+    const url = URL.createObjectURL(new Blob([data.data], { type: data.contentType ?? fallbackType }));
+
+    setBinaryObjectUrl(url);
+
+    return () => URL.revokeObjectURL(url);
+  }, [data, target.preview]);
+
+  useEffect(() => {
+    setEditing(false);
+    setDraft("");
+    lastSyncedRef.current = null;
+    failedDraftRef.current = null;
+  }, [target.id, workspaceId]);
+
+  useEffect(() => {
+    if (data?.kind === "text" && data.data !== lastSyncedRef.current) {
+      lastSyncedRef.current = data.data;
+      setDraft(data.data);
+    }
+  }, [data]);
+
+  const { mutate, mutateAsync, isPending: isSaving } = useMutation({
+    onMutate: () => ({ owner }),
+    mutationFn: async (input: SaveArtifactInput) => {
+      if (target.kind !== "file") {
+        throw new Error(t("ui.147ff0315364"));
+      }
+
+      if (input.kind === "text") {
+        return client.writeWorkspaceFile(workspaceId, { path: target.value, content: input.data, baseUpdatedAt: input.baseUpdatedAt, sessionId, fileScope: target.fileScope });
+      }
+
+      return client.writeWorkspaceBinaryFile(workspaceId, { path: target.value, data: input.data, baseUpdatedAt: input.baseUpdatedAt, sessionId, fileScope: target.fileScope });
+    },
+    onSuccess: (result, input, context) => {
+      if (context?.owner !== owner) return;
+      setFailure((current) => current?.owner === owner ? null : current);
+      queryClient.setQueryData<ArtifactQueryState>(
+        queryKey,
+        input.kind === "text"
+          ? { kind: "text", data: input.data, updatedAt: result.updatedAt ?? null }
+          : { kind: "binary", data: input.data, contentType: data?.kind === "binary" ? data.contentType : null, updatedAt: result.updatedAt ?? null },
+      );
+
+      if (input.kind === "text") {
+        lastSyncedRef.current = input.data;
+        failedDraftRef.current = null;
+      }
+    },
+    onError: (cause, input, context) => {
+      if (context?.owner !== owner) return;
+      if (input.kind === "text") {
+        failedDraftRef.current = input.data;
+      }
+
+      reportFailure("Could not save changes. Check the file before saving again.", cause);
+    },
+  });
+
+  const downloadFile = async (path: string, name: string) => {
+    const result = await client.downloadWorkspaceFile(workspaceId, path, { sessionId, fileScope: path === target.value ? target.fileScope : "workspace" });
+    const url = URL.createObjectURL(new Blob([result.data], { type: result.contentType ?? "application/octet-stream" }));
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = name;
+    anchor.click();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const openFileExternally = async (path: string) => {
+    const fileTarget = path === target.value ? target : openTargetFromWorkspaceFile(path);
+    if (fileTarget) onOpenTarget?.(fileTarget, { external: true });
+  };
+
+  const revealFile = async (path: string) => {
+    const fileTarget = path === target.value ? target : openTargetFromWorkspaceFile(path);
+    if (fileTarget) onOpenTarget?.(fileTarget, { external: true, reveal: true });
+  };
+
+  const download = async () => {
+    if (target.kind === "url") {
+      return;
+    }
+
+    await downloadFile(target.value, target.name).catch((error: unknown) => reportFailure("Could not download this file. Try again.", error));
+  };
+
+  const openExternal = async () => {
+    if (target.kind === "url") {
+      window.open(target.value, "_blank", "noopener,noreferrer");
+
+      return;
+    }
+
+    await openFileExternally(target.value);
+  };
+
+  const revealExternal = async () => {
+    if (target.kind !== "file") return;
+    await revealFile(target.value);
+  };
+
+  const isTextEditing = data?.kind === "text" && (editing || isDirectTextEdit);
+  const isEditingSurface = data?.kind === "text" && (editing || isDirectTextEdit || isDirectCodeEdit);
+  const isDirty = data?.kind === "text" && draft !== data.data;
+
+  useEffect(() => {
+    if (
+      target.kind !== "file" ||
+      data?.kind !== "text" ||
+      !(editing || isDirectTextEdit || isDirectCodeEdit) ||
+      isSaving ||
+      draft === data.data ||
+      draft === failedDraftRef.current
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      mutate({ kind: "text", data: draft, baseUpdatedAt: data.updatedAt });
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [draft, data, editing, isDirectTextEdit, isDirectCodeEdit, isSaving, target.kind, mutate]);
+
+  const saveSpreadsheetContent = async (payload: Data) => {
+    if (target.kind !== "file") {
+      return;
+    }
+
+    await mutateAsync({
+      ...payload,
+      baseUpdatedAt: data?.kind === payload.kind ? data.updatedAt : target.updatedAt ?? null,
+    });
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      {failure?.owner === owner ? <div className="shrink-0 px-3 py-2"><TaskRecovery compact title={failure.title} technicalDetails={failure.details}
+        actions={<Button variant="ghost" size="xs" onClick={() => setFailure(null)}>{t("ui.48845bff334a")}</Button>} /></div> : null}
+      <div className="shrink-0 border-b border-border bg-background mac:bg-background/80 mac:backdrop-blur-2xl mac:backdrop-saturate-150">
+        <div className="flex h-10 items-center gap-2 pe-2 ps-2">
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <Button variant="ghost" size="icon-sm" onClick={() => setTreeOpen((value) => !value)} aria-label={treeOpen ? t("ui.b93de0f023fd") : t("ui.c4266b3d94b7")}>
+                  {treeOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+                </Button>
+              )}
+            />
+            <TooltipContent>{treeOpen ? t("ui.b93de0f023fd") : t("ui.c4266b3d94b7")}</TooltipContent>
+          </Tooltip>
+          <div className="min-w-0 flex-1 flex items-center gap-1.5">
+            <h3 className="min-w-0 truncate text-sm font-medium text-foreground">
+              {target.name}
+            </h3>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {target.exists === false ? t("ui.ffa63583dfa6") : isEditingSurface ? (isSaving || isDirty ? t("ui.23e39291d613") : t("ui.b5c120b316c2")) : ""}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {isTextContent(target) && data?.kind === "text" && !isDirectTextEdit && !isDirectCodeEdit ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <Button variant="ghost" size="sm" onClick={() => setEditing((value) => !value)}>{editing ? t("ui.11a6767d5674") : t("ui.464c4ffd019e")}</Button>
+                  )}
+                />
+                <TooltipContent>{editing ? t("ui.ec84040e6100") : t("ui.86b8717e1006")}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {target.kind === "file" || target.kind === "url" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={(
+                    <Button variant="ghost" size="icon-sm" aria-label={t("ui.012caca9c438")}>
+                      <Ellipsis />
+                    </Button>
+                  )}
+                />
+                <DropdownMenuContent align="end">
+                  {target.kind === "file" ? (
+                    <DropdownMenuItem onClick={() => void download()}>
+                      <Download /> {t("ui.d6eafe823591")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canUseDesktopFileActions ? (
+                    <DropdownMenuItem onClick={() => void revealExternal()}>
+                      <FolderOpen /> {t("ui.da478765741e")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {target.kind === "url" || canUseDesktopFileActions ? (
+                    <DropdownMenuItem onClick={() => void openExternal()}>
+                      <ExternalLink /> {t("ui.1b4935ffcfa8")}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("ui.0a7ca3dd4c3f")}>
+                    <X />
+                  </Button>
+                )}
+              />
+              <TooltipContent>{t("ui.0a7ca3dd4c3f")}</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {treeOpen ? (
+          <Suspense fallback={<div className="w-40 shrink-0 border-r border-border bg-muted/20" />}>
+            <WorkspaceFileTree
+              client={client}
+              workspaceId={workspaceId}
+              workspaceName={workspaceName}
+              selectedPath={target.value}
+              onOpenFile={openWorkspaceFile}
+              fileActions={[
+                { id: "download", get label() { return t("ui.d6eafe823591"); }, run: (entry) => void downloadFile(entry.path, entry.path.split(/[/\\]/).pop() ?? entry.path) },
+                ...(canUseDesktopWorkspaceActions
+                  ? [
+                    { id: "reveal", label: t("ui.da478765741e"), run: (entry: OpenworkWorkspaceCatalogEntry) => void revealFile(entry.path) },
+                    { id: "open-external", label: t("ui.1b4935ffcfa8"), run: (entry: OpenworkWorkspaceCatalogEntry) => void openFileExternally(entry.path) },
+                  ]
+                  : []),
+              ]}
+            />
+          </Suspense>
+        ) : null}
+        <div className="min-w-0 flex-1 overflow-hidden">
+          {isLoading || (data?.kind === "binary" && !binaryObjectUrl) ? (
+          <PreviewLoading />
+        ) : isError ? (
+          <PreviewError message={error instanceof Error ? error.message : t("ui.a3cdb8ebc381") } />
+        ) : data?.kind === "text" && (editing || isDirectTextEdit) ? (
+          <TextEditor value={draft} language={target.preview === "markdown" ? "markdown" : "text"} onChange={setDraft} />
+        ) : target.preview === "markdown" && data?.kind === "text" ? (
+          <MarkdownPreview content={data.data} mermaidSource={isMermaidArtifact} />
+        ) : target.preview === "code" && data?.kind === "text" ? (
+          <Suspense fallback={<PreviewLoading />}>
+            <ArtifactCodeView
+              name={target.name}
+              path={target.value}
+              content={data.data}
+              editable={isDirectCodeEdit}
+              onChange={setDraft}
+            />
+          </Suspense>
+        ) : target.preview === "sheet" ? (
+          <SheetEditor
+            name={target.name}
+            content={data ?? { kind: "binary", data: new ArrayBuffer(0) }}
+            saving={isSaving}
+            onSave={saveSpreadsheetContent}
+          />
+        ) : target.preview === "html" && data?.kind === "text" ? (
+          <HTMLPreview type="text" title={target.name} content={data.data} />
+        ) : target.preview === "image" && data?.kind === "binary" && binaryObjectUrl ? (
+          <ImagePreview src={binaryObjectUrl} alt={target.name} />
+        ) : target.preview === "pdf" && data?.kind === "binary" && binaryObjectUrl ? (
+          <PdfPreview url={binaryObjectUrl} title={target.name} />
+        ) : data?.kind === "binary" && binaryObjectUrl && target.preview === "html" ? (
+          <HTMLPreview type="binary" title={target.name} url={binaryObjectUrl} />
+        ) : data?.kind === "text" ? (
+          <PlainText content={data.data} />
+        ) : (
+          <PreviewUnavailable />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface TextEditorProps extends React.ComponentProps<typeof ArtifactTextEditor> {
+  value: string;
+  language: "markdown" | "text";
+  onChange: (value: string) => void;
+}
+
+function TextEditor({ value, language, onChange, ...props }: TextEditorProps) {
+  return (
+    <Suspense fallback={<PreviewLoading />}>
+      <ArtifactTextEditor value={value} language={language} onChange={onChange} {...props} />
+    </Suspense>
+  );
+}
+
+interface SheetEditorProps extends React.ComponentProps<typeof ArtifactSpreadsheetEditor> {
+  
+}
+
+function SheetEditor({ className, ...props }: SheetEditorProps) {
+  return (
+    <Suspense fallback={<PreviewLoading />}>
+      <ArtifactSpreadsheetEditor
+        className={className}
+        {...props}
+      />
+    </Suspense>
+  );
+}

@@ -1,0 +1,12 @@
+{
+  "name": "OpenWork",
+  "source": "https://github.com/different-ai/openwork/blob/1ba9764c24bf3f40b58bbc97dc34673a0d6a7829/LICENSE",
+  "revision": "1ba9764c24bf3f40b58bbc97dc34673a0d6a7829",
+  "scope": "Non-Enterprise Edition source outside /ee, used under the MIT section of this license. The /ee directory is not distributed.",
+  "files": [
+    {
+      "file": "LICENSE",
+      "sha256": "5e5b2649fd7f0dd83e21cc7b911e8d95af1e7456744c6e492bfc5c057858d45b"
+    }
+  ]
+}

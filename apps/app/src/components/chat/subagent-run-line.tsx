@@ -1,0 +1,248 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { useMessageList } from "@/components/chat/message-list-provider"
+import { taskChildSessionId, type TaskToolPart } from "@/lib/build-in-tools"
+import { isToolPartInFlight } from "@/lib/tool-activity"
+import { formatElapsedSeconds, getToolCallStartedAt, trackToolCallDuration } from "@/lib/tool-call-duration"
+import { cn } from "@/lib/utils"
+import { t } from "@/i18n"
+import { useSessionActivityStore } from "@/react-app/domains/session/status/session-activity-store"
+import { hasNoNewActivity } from "@/react-app/domains/session/status/session-progress"
+import { statusKey } from "@/react-app/domains/session/sync/session-sync"
+import { useQueryCacheState } from "@/react-app/infra/query-cache-state"
+import type { SessionStatus } from "@opencode-ai/sdk/v2/client"
+
+type SubagentRunLineProps = {
+  part: TaskToolPart
+  className?: string
+  parentActive?: boolean
+}
+
+export function subagentRunActivity(input: {
+  permissionPending: boolean
+  questionPending?: boolean
+  retrying?: boolean
+  resultPending?: boolean
+  childFailed?: boolean
+  noNewActivity?: boolean
+  timingUnknown?: boolean
+  syncDegraded?: boolean
+  inFlight: boolean
+  failed: boolean
+}): "waiting-permission" | "waiting-question" | "waiting-result" | "waiting-start" | "retrying" | "no-new-activity" | "reconnecting" | "shimmer" | "failed" | "completed" {
+  // A pending ask is the actionable state and does not depend on the stream
+  // ticking; a lost connection only downgrades the live "Working" treatment.
+  if (input.permissionPending) return "waiting-permission"
+  if (input.questionPending) return "waiting-question"
+  if (input.inFlight && input.retrying) return "retrying"
+  if (input.inFlight && input.syncDegraded) return "reconnecting"
+  if (input.failed || input.childFailed) return "failed"
+  if (input.inFlight && input.resultPending) return "waiting-result"
+  if (input.inFlight && input.timingUnknown) return "waiting-start"
+  if (input.inFlight && input.noNewActivity) return "no-new-activity"
+  if (input.inFlight) return "shimmer"
+  return "completed"
+}
+
+export function agentName(slug: string): string {
+  const words = slug.split(/[-_.\s]+/).filter(Boolean)
+  if (words.length === 0) return t("ui.11b39c93777e")
+  return words
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+/** A task the person (or a Stop) interrupted reads as stopped, not failed (DESIGN.md C5). */
+export function isStoppedTaskError(errorText: string | undefined): boolean {
+  return /abort|interrupt|cancel/i.test(errorText ?? "")
+}
+
+/**
+ * Live state of one sub-agent task, from its tool part plus the child
+ * session's activity record and status. Shared by the transcript line and the
+ * composer's Agents list so both always agree.
+ */
+export function useSubagentRunState(part: TaskToolPart, parentActive: boolean, workspaceId: string, syncDegraded: boolean) {
+  const childSessionId = taskChildSessionId(part)
+  const child = useSessionActivityStore((state) => (
+    childSessionId
+      ? state.recordsByWorkspaceId[workspaceId]?.[childSessionId]
+      : undefined
+  ))
+  const childStatus = useQueryCacheState<SessionStatus | null>(
+    childSessionId ? statusKey(workspaceId, childSessionId) : null, null,
+  )
+  const permissionPending = (child?.waitingPermissionIds.length ?? 0) > 0
+  const questionPending = (child?.waitingQuestionIds.length ?? 0) > 0
+  const childRunning = child?.runActive === true || childStatus?.type === "busy" || childStatus?.type === "retry"
+  const inFlight = isToolPartInFlight(part) || childRunning
+  const isFailed = part.state === "output-error"
+  // Native start time survives reload; optimistic timing survives remounts.
+  const startedAt = childRunning && child && child.runStartedAt > 0 ? child.runStartedAt : getToolCallStartedAt(part)
+  const lastProgressAt = child?.lastProgressAt || startedAt || 0
+  const noNewActivity = hasNoNewActivity({
+    active: inFlight, lastProgressAt, now: Date.now(),
+  })
+  const activity = subagentRunActivity({
+    permissionPending, questionPending, retrying: childStatus?.type === "retry" || child?.retrying, noNewActivity,
+    timingUnknown: startedAt === null,
+    syncDegraded, inFlight, failed: isFailed,
+    childFailed: child?.errorActive,
+    resultPending: !childRunning && (Boolean(child && !child.runActive && child.runStatusAt > 0) || !parentActive),
+  })
+  const errorText = part.state === "output-error" ? part.errorText : undefined
+  return {
+    childSessionId, child, childRunning, inFlight, isFailed, permissionPending, questionPending,
+    startedAt, activity, stoppedByError: isFailed && isStoppedTaskError(errorText),
+  }
+}
+
+/** Whole seconds since `startedAt`, ticking only while the run is live and confirmed. */
+export function useElapsedSeconds(active: boolean, startedAt: number | null, syncDegraded: boolean, key?: string): number {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  useEffect(() => {
+    // While run liveness is unconfirmed the counter must not tick; the
+    // module-scoped anchor resumes the true elapsed time on recovery.
+    if (!active || startedAt === null || syncDegraded) return
+    const update = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)))
+    }
+    update()
+    const interval = window.setInterval(update, 1000)
+    return () => window.clearInterval(interval)
+  }, [active, startedAt, key, syncDegraded])
+  return elapsedSeconds
+}
+
+/**
+ * Running sub-agent task cards use a quiet text shimmer for activity.
+ * Line 1 = task title + agent name; line 2 = live status verb or
+ * t("ui.22a970d2e5b1"). The card is the doorway into the sub-agent's own session:
+ * when the engine reports the child session id, clicking it opens that
+ * session in the main chat surface. Without that route, details stay limited
+ * to safe task/output labels, never raw prompts or payloads.
+ */
+export function SubagentRunLine({ part, className, parentActive = true }: SubagentRunLineProps) {
+  const [open, setOpen] = useState(false)
+  const { onOpenSubagentSession, onStopSubagentSession, composerSubagentToolCallIds, syncDegraded, workspaceId } = useMessageList()
+  const [stopping, setStopping] = useState(false)
+  const [stopError, setStopError] = useState<string | null>(null)
+  const stoppedByPerson = useRef(false)
+  const {
+    childSessionId, child, childRunning, inFlight, isFailed, permissionPending, questionPending,
+    startedAt, activity, stoppedByError,
+  } = useSubagentRunState(part, parentActive, workspaceId, syncDegraded)
+  const duration = trackToolCallDuration(part)
+  const elapsedSeconds = useElapsedSeconds(inFlight, startedAt, syncDegraded, part.toolCallId)
+  const title = part.input?.description?.trim().slice(0, 160) || "Sub-agent task"
+  // A helper the person stopped is not a failure (DESIGN.md C5): say "Stopped".
+  const stopped = stoppedByPerson.current || stoppedByError
+  const agent = agentName(part.input?.subagent_type ?? "")
+  const status = stopping ? "Stopping…" : stopError ? t("ui.6e2a50dd834b") : stopped && !childRunning ? "Stopped" : permissionPending
+    ? t("session.subagent_permission_needed")
+    : questionPending ? t("session.subagent_question_pending")
+    : activity === "retrying" ? t("ui.f8fe6f863109")
+    : activity === "failed" ? (stopped ? "Stopped" : t("ui.91f0720935db"))
+    : activity === "waiting-result" ? t("ui.c371010962d2")
+    : activity === "waiting-start" ? t("ui.5a347cd6c2d2")
+    : activity === "no-new-activity" ? t("ui.dd37c52e6845")
+    : inFlight
+    ? syncDegraded
+      ? t("ui.d8bed36da2d2")
+      : `Working ${formatElapsedSeconds(elapsedSeconds)}`
+    : isFailed
+      ? t("ui.973420f51104")
+      : t("ui.22a970d2e5b1")
+
+  const lines = (
+    <>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className={cn("min-w-0 truncate", activity === "shimmer" && "ow-text-shimmer")}>
+          {title}
+          <span className="text-muted-foreground/70"> · {agent} {"agent"}</span>
+        </span>
+      </span>
+      <span role={stopError ? "alert" : undefined} className={cn("min-w-0 truncate text-xs", permissionPending ? "font-medium text-amber-11" : "text-muted-foreground/70")}>
+        {status}
+        {!inFlight && !isFailed && duration ? ` · ${duration}` : ""}
+      </span>
+      {inFlight && child?.latestActivity ? (
+        <span className="text-xs text-muted-foreground/70">{t("ui.ade43e0f021f")} {child.latestActivity}{child.lastProgressAt > 0 ? ` · ${formatElapsedSeconds(Math.max(0, Math.floor((Date.now() - child.lastProgressAt) / 1000)))} ago` : ""}</span>
+      ) : null}
+    </>
+  )
+
+  if (childSessionId && onOpenSubagentSession) {
+    return (
+      <div
+        data-subagent-run={part.toolCallId}
+        data-subagent-session-id={childSessionId}
+        data-subagent-activity={activity}
+        data-subagent-permission={permissionPending ? "pending" : undefined}
+        // The open button stays a direct child of the row: hover styling and
+        // row probes address it as `:scope > button.group`.
+        className={cn("flex min-w-0 max-w-full items-start gap-2", className)}
+      >
+        <button
+          type="button"
+          className="group flex min-w-0 max-w-full cursor-pointer flex-col gap-0.5 text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+          aria-label={`${title}. Open sub-agent chat`}
+          onClick={() => onOpenSubagentSession(childSessionId)}
+        >
+          {lines}
+        </button>
+        {/* Stop just this helper; the turn's own Stop stays in the composer.
+            While the composer's Agents list shows this call, its Stop lives there. */}
+        {childRunning && onStopSubagentSession && !composerSubagentToolCallIds.has(part.toolCallId) ? (
+          <button
+            type="button"
+            data-subagent-stop=""
+            disabled={stopping}
+            aria-label={stopping ? `${title}. Stopping sub-agent` : `${title}. Stop sub-agent`}
+            className="mt-0.5 shrink-0 cursor-pointer rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-default disabled:opacity-50"
+            onClick={() => {
+              setStopError(null)
+              setStopping(true)
+              void Promise.resolve().then(() => onStopSubagentSession(childSessionId)).then(() => { stoppedByPerson.current = true }, error => {
+                setStopError(error instanceof Error ? error.message : t("ui.b71874ed8b8c"))
+              }).finally(() => setStopping(false))
+            }}
+          >
+            {t("text_activity.stop")}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
+  return (
+    <Collapsible
+      data-subagent-run={part.toolCallId}
+      data-subagent-activity={activity}
+      data-subagent-permission={permissionPending ? "pending" : undefined}
+      open={open}
+      onOpenChange={setOpen}
+      className={cn("min-w-0 max-w-full", className)}
+    >
+      <CollapsibleTrigger
+        className="group flex min-w-0 max-w-full cursor-pointer flex-col gap-0.5 text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={open ? `${title}. Hide details` : `${title}. Show details`}
+      >
+        {lines}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out data-starting-style:h-0 data-ending-style:h-0 [&[hidden]:not([hidden='until-found'])]:hidden">
+        <div className="mt-2 flex flex-col gap-2 rounded-lg bg-muted p-2 text-xs">
+          <span>{childSessionId ? t("ui.568a30c68f64") : t("ui.5e715bf252d3")}</span>
+          <span>{part.state === "output-available" ? t("ui.b01ac8f10384") : isFailed ? t("ui.91f0720935db") : t("ui.2dc9d6e5c10e")}</span>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}

@@ -1,0 +1,7 @@
+// Applies to product service requests, not the user's browser navigation.
+export function assertGet3wServiceTarget(value) {
+  const host = new URL(value).hostname.toLowerCase().replace(/\.$/, "");
+  if (["openwork.com", "openworklabs.com", "openwork.software", "openwork.so"].some(domain => host === domain || host.endsWith(`.${domain}`))) {
+    throw new Error("This legacy service is unavailable in Get3W. Reconnect your Get3W account.");
+  }
+}

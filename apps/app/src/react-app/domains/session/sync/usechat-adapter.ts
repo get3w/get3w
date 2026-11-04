@@ -1,0 +1,249 @@
+/** @jsxImportSource react */
+import type { UIMessage } from "ai";
+import { replyModelFromInfo } from "./reply-model";
+import type { FilePart, Part, TextPart, ToolPart } from "@opencode-ai/sdk/v2/client";
+
+import type { OpenworkSessionSnapshot } from "../../../../app/lib/openwork-server";
+import { SYNTHETIC_SESSION_ERROR_MESSAGE_PREFIX } from "../../../../app/types";
+import {
+  parseDynamicToolUIPart,
+  parseStructuredOutputUIPart,
+  withToolAttachmentOwner,
+  reasoningTime,
+  STRUCTURED_OUTPUT_TOOL,
+} from "./parse-tool-parts";
+import { readComposerPill } from "../surface/composer/composer-pills";
+import { BACKGROUND_SHELL_NOTICE_KEY, readBackgroundShellNotice } from "../../../../app/lib/background-shell-tasks";
+import { SUBAGENT_NOTICE_KEY, readSubagentNotice } from "../../../../app/lib/subagent-notices";
+import {
+  presentOpencodeSessionError,
+  type OpencodeSessionErrorPresentation,
+} from "./session-error";
+
+function sessionErrorMessageId(turnKey: string) {
+  return `${SYNTHETIC_SESSION_ERROR_MESSAGE_PREFIX}${turnKey}`;
+}
+
+/**
+ * Build the synthetic chat message that surfaces a session error.
+ *
+ * The error is keyed to the *turn* that failed (`turnKey`), not the session.
+ * Both the live `session.error` event and the snapshot reload derive the same
+ * `turnKey` from the errored assistant message id, so they reconcile to one
+ * message instead of duplicating — while a brand new error on a later turn
+ * still produces its own message instead of overwriting the previous one.
+ */
+export function createSessionErrorUIMessage(
+  turnKey: string,
+  presentation: OpencodeSessionErrorPresentation,
+  options?: { created?: number },
+): UIMessage {
+  const id = sessionErrorMessageId(turnKey);
+  const created = options?.created;
+  return {
+    id,
+    role: "assistant",
+    ...(typeof created === "number" ? { metadata: { opencode: { created } } } : {}),
+    parts: [{
+      type: "text",
+      text: presentation.title,
+      state: "done",
+      providerMetadata: { opencode: { partId: `${id}:text`, sessionError: presentation } },
+    }],
+  };
+}
+
+function fileProviderMetadata(part: FilePart) {
+  if (part.source) {
+    return { opencode: { partId: part.id, source: part.source } };
+  }
+  return { opencode: { partId: part.id } };
+}
+
+function getTextPartValue(part: Part) {
+  if (part.type === "text") {
+    return part.text;
+  }
+  if (part.type === "reasoning") {
+    return part.text;
+  }
+  return "";
+}
+
+function mapFilePart(part: FilePart): UIMessage["parts"][number] {
+  return {
+    type: "file",
+    url: part.url,
+    filename: part.filename,
+    mediaType: part.mime,
+    providerMetadata: fileProviderMetadata(part),
+  };
+}
+
+function mapFileSourcePart(part: FilePart): UIMessage["parts"][number] | null {
+  const source = part.source;
+  if (!source) return null;
+
+  const sourceId = `${part.id}:source`;
+  const providerMetadata = { opencode: { partId: sourceId, sourcePartId: part.id, source } };
+
+  if (source.type === "resource") {
+    if (source.uri.startsWith("http://")) {
+      return { type: "source-url", sourceId, url: source.uri, title: source.uri, providerMetadata };
+    }
+    if (source.uri.startsWith("https://")) {
+      return { type: "source-url", sourceId, url: source.uri, title: source.uri, providerMetadata };
+    }
+    return { type: "source-document", sourceId, mediaType: part.mime, title: source.uri, providerMetadata };
+  }
+
+  if (source.type === "symbol") {
+    return { type: "source-document", sourceId, mediaType: part.mime, title: source.name, filename: source.path, providerMetadata };
+  }
+
+  return { type: "source-document", sourceId, mediaType: part.mime, title: source.path, filename: source.path, providerMetadata };
+}
+
+function mapFileParts(part: FilePart): UIMessage["parts"] {
+  const sourcePart = mapFileSourcePart(part);
+  if (sourcePart) return [mapFilePart(part), sourcePart];
+  return [mapFilePart(part)];
+}
+
+function mapSnapshotToolParts(part: ToolPart): UIMessage["parts"] {
+  if (part.tool === STRUCTURED_OUTPUT_TOOL) {
+    const mapped = parseStructuredOutputUIPart(part);
+    return mapped ? [mapped] : [];
+  }
+
+  const mapped = parseDynamicToolUIPart(part);
+  if (!mapped) return [];
+
+  if (part.state.status === "completed" && part.state.attachments) {
+    return [mapped, ...withToolAttachmentOwner(part.state.attachments.flatMap(mapFileParts), part.callID)];
+  }
+
+  return [mapped];
+}
+
+/** Recover display-only attachments without sending unsupported binary parts to the model. */
+export function attachmentNoteToUIParts(part: TextPart): UIMessage["parts"] {
+  if (!part.synthetic || part.ignored) return [];
+  const attachments = part.metadata?.openworkAttachments;
+  if (!Array.isArray(attachments)) return [];
+  return attachments.flatMap<UIMessage["parts"][number]>((attachment: unknown, index) => {
+    if (!attachment || typeof attachment !== "object"
+      || !("filename" in attachment) || typeof attachment.filename !== "string"
+      || !("mime" in attachment) || typeof attachment.mime !== "string"
+      || !("url" in attachment) || typeof attachment.url !== "string"
+      || !attachment.url.startsWith("file://")) return [];
+    const bytes = "bytes" in attachment && typeof attachment.bytes === "number" ? attachment.bytes : undefined;
+    return [{
+      type: "file",
+      filename: attachment.filename,
+      mediaType: attachment.mime,
+      url: attachment.url,
+      providerMetadata: { opencode: { partId: `${part.id}:attachment:${index}`, ...(bytes === undefined ? {} : { bytes }) } },
+    }];
+  });
+}
+
+export function textPartToUIPart(part: TextPart): UIMessage["parts"][number] | null {
+  if (part.synthetic || part.ignored) return null;
+  const composerToken = part.metadata?.openworkComposerToken;
+  const composerPill = readComposerPill(part.metadata?.openworkComposerPill);
+  const backgroundShell = readBackgroundShellNotice(part.metadata?.[BACKGROUND_SHELL_NOTICE_KEY]);
+  const subagentNotice = readSubagentNotice(part.metadata?.[SUBAGENT_NOTICE_KEY]);
+  return {
+    type: "text",
+    text: part.text,
+    state: "done",
+    providerMetadata: { opencode: {
+      partId: part.id,
+      ...(typeof composerToken === "string" ? { composerToken } : {}),
+      ...(composerPill ? { composerPill } : {}),
+      ...(backgroundShell ? { backgroundShell } : {}),
+      ...(subagentNotice ? { subagentNotice } : {}),
+      ...(part.metadata?.openworkPastedText === true ? { pastedText: true } : {}),
+    } },
+  };
+}
+
+type SnapshotMessages = OpenworkSessionSnapshot["messages"];
+const snapshotMessagesCache = new WeakMap<SnapshotMessages, UIMessage[]>();
+const snapshotMessageCache = new WeakMap<SnapshotMessages[number], UIMessage[]>();
+
+// Query snapshots are immutable. Share the projection between rendering and
+// hydration; a refreshed tail can also reuse unchanged historical messages.
+// Callers must copy before applying live updates to these cached messages.
+export function snapshotToUIMessages(snapshot: Pick<OpenworkSessionSnapshot, "messages">): UIMessage[] {
+  const cached = snapshotMessagesCache.get(snapshot.messages);
+  if (cached) return cached;
+  const messages = snapshot.messages.flatMap((message) => {
+    const cachedMessage = snapshotMessageCache.get(message);
+    if (cachedMessage) return cachedMessage;
+    const created = message.info.time?.created;
+    const time = message.info.time;
+    const completed = time && "completed" in time ? time.completed : undefined;
+    const parentID = "parentID" in message.info ? message.info.parentID : undefined;
+    const uiMessage = {
+      id: message.info.id,
+      role: message.info.role,
+      metadata: { opencode: {
+        ...(typeof created === "number" ? { created } : {}),
+        ...(typeof completed === "number" ? { completed } : {}),
+        ...(typeof parentID === "string" ? { parentID } : {}),
+        ...(replyModelFromInfo(message.info) ? { replyModel: replyModelFromInfo(message.info) } : {}),
+      } },
+      parts: message.parts.flatMap<UIMessage["parts"][number]>((part) => {
+        if (part.type === "text") {
+          const mapped = textPartToUIPart(part);
+          return mapped ? [mapped] : attachmentNoteToUIParts(part);
+        }
+        if (part.type === "reasoning") {
+          return [{
+            type: "reasoning",
+            text: getTextPartValue(part),
+            state: "done" as const,
+            providerMetadata: { opencode: { partId: part.id, ...reasoningTime(part) } },
+          }];
+        }
+        if (part.type === "file") {
+          return mapFileParts(part);
+        }
+        if (part.type === "tool") {
+          return mapSnapshotToolParts(part);
+        }
+        if (part.type === "agent") {
+          return [{
+            type: "text",
+            text: part.name ? `@${part.name}` : "@agent",
+            state: "done",
+            providerMetadata: { opencode: { partId: part.id, ...(part.name ? { agentMention: part.name } : {}) } },
+          }];
+        }
+        if (part.type === "step-start") {
+          return [{ type: "step-start", providerMetadata: { opencode: { partId: part.id } } }];
+        }
+        return [];
+      }),
+    };
+
+    // Surface a failed turn as its own synthetic error message keyed by the
+    // errored assistant message id. The live `session.error` event keys its
+    // message off the latest assistant turn the same way, so the two
+    // reconcile to one message instead of duplicating — while a later turn's
+    // error still gets its own message. An empty assistant carcass for the
+    // errored turn is dropped so the error reads as that turn's outcome.
+    const error = message.info.role === "assistant" && "error" in message.info ? message.info.error : undefined;
+    let result: UIMessage[] = [uiMessage];
+    if (error) {
+      const errorMessage = createSessionErrorUIMessage(message.info.id, presentOpencodeSessionError(error), { created });
+      result = uiMessage.parts.length > 0 ? [uiMessage, errorMessage] : [errorMessage];
+    }
+    snapshotMessageCache.set(message, result);
+    return result;
+  });
+  snapshotMessagesCache.set(snapshot.messages, messages);
+  return messages;
+}

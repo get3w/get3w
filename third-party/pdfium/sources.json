@@ -1,0 +1,62 @@
+{
+  "pdfiumBranch": "chromium/7243",
+  "wrapperVersion": "2.1.13",
+  "wasmUpstreamRelease": "paulocoutinhox/pdfium-lib 7243",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/LICENSE",
+      "sha256": "1fe9dea718fbd75cf149adaf4d8a22a4335604d964ddb76d1b45383dec8668c9"
+    },
+    {
+      "path": "DEPS",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/DEPS",
+      "sha256": "ebceeb523d2b335e9d23bf32c352b08425101f57aeccd5a0a6e5c8ccf3909484"
+    },
+    {
+      "path": "third_party/NotoSansCJK/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/NotoSansCJK/LICENSE",
+      "sha256": "d6639d6624144ef0611b03172e085251c29d4c929b3c11e891e72db6a5b5c2e1"
+    },
+    {
+      "path": "third_party/bigint/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/bigint/LICENSE",
+      "sha256": "32759d1397d8f7b9e15ece146e4038b22b90e93b4935b5a840bcef4d2ba5ea55"
+    },
+    {
+      "path": "third_party/fp16/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/fp16/LICENSE",
+      "sha256": "c91377adafa2f498211a4fe017788e20c38892124673860f068f2919c289193d"
+    },
+    {
+      "path": "third_party/highway/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/highway/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "third_party/lcms/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/lcms/LICENSE",
+      "sha256": "6dbd60437f8ef91d8de1f08ad75882547fd4931bfcc3566a0735f28db1484d31"
+    },
+    {
+      "path": "third_party/libopenjpeg/LICENSE",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/libopenjpeg/LICENSE",
+      "sha256": "a6af136f3e15038a666b61f376612a07d9a4e48cb7c01adbf3e33b3f14ab49b6"
+    },
+    {
+      "path": "third_party/libtiff/LICENSE.md",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/libtiff/LICENSE.md",
+      "sha256": "0780558a8bfba0af1160ec1ff11ade4f41c0d7deafd6ecfc796b492a788e380d"
+    },
+    {
+      "path": "third_party/pymock/LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/pymock/LICENSE.txt",
+      "sha256": "c5b14f5a3814d2e57b9bb9520dcf57a2c3817b65c4f989e5c82e332c82af1038"
+    },
+    {
+      "path": "third_party/pymock/README.chromium",
+      "source": "https://raw.githubusercontent.com/chromium/pdfium/chromium/7243/third_party/pymock/README.chromium",
+      "sha256": "576e523808d9b2a60313dd72a46d701ee24da45c8dc5282ffe7322ec7668a311"
+    }
+  ]
+}

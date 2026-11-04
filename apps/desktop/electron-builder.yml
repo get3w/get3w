@@ -1,0 +1,10 @@
+extends: ./electron-builder.base.yml
+appId: com.get3w.desktop
+productName: Get3W
+protocols:
+  - name: Get3W
+    schemes:
+      - openwork
+linux:
+  executableName: get3w
+artifactName: get3w-${os}-${arch}-${version}.${ext}

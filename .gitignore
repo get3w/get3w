@@ -1,0 +1,86 @@
+.turbo/
+node_modules/
+apps/desktop/dist-electron/
+apps/desktop/electron/generated/
+apps/desktop/.electron-runtime/
+apps/desktop/dist-electron-demo-a/
+apps/desktop/dist-electron-demo-b/
+packages/*/node_modules/
+apps/*/node_modules/
+.next/
+out/
+dist/
+packages/*/dist/
+apps/*/dist/
+# Generated catalog left by pre-Gateway builds, not an active app path.
+tmp/
+coverage/
+evals/results/flake/
+
+# Local git worktrees
+_worktrees/
+.worktrees/
+
+# Desktop sidecars
+apps/desktop/resources/sidecars/
+apps/desktop/server/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Bun build artifacts
+*.bun-build
+apps/server/cli
+
+# pnpm store (created by Docker volume mounts)
+.pnpm-store/
+
+# Docker dev workspace (ephemeral mount point)
+packaging/docker/workspace/
+
+# OS
+.DS_Store
+
+# OpenCode mirror
+vendor/opencode/
+
+# OpenCode local deps
+.opencode/node_modules/
+.opencode/bun.lock
+
+# Get3W workspace-local artifacts
+.opencode/openwork/
+.opencode/agents/openwork.md
+.opencode/openwork.json
+opencode.jsonc
+.vercel
+.env*.local
+.claude/*
+.security
+transcript-analysis
+# Eval runner output
+evals/results/
+# DocShot review receipts are capture evidence, tied to the source commit.
+*.png.review.json
+.playwright-mcp/
+.vscode/
+
+# Warden local run logs
+.warden/logs/
+
+# Local Workbot runner database (scripts/dev-workbot.sh)
+/.data/
+
+# TypeScript incremental build state
+*.tsbuildinfo
+
+# API contracts are generated from source for builds and CI.
+/packages/docs/openapi.json
+/packages/sdk/src/gen/
+
+# Native compiler output and generated helpers
+**/.build/
+apps/desktop/resources/helpers/
+/artifacts/

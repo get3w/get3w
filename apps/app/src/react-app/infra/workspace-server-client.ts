@@ -1,0 +1,111 @@
+import { useMemo } from "react";
+
+import {
+  resolveWorkspaceEndpoint,
+  type LocalServerHandle,
+  type ResolvedWorkspaceEndpoint,
+} from "@/app/lib/workspace-endpoint";
+
+export type WorkspaceServerClientWorkspace = Parameters<typeof resolveWorkspaceEndpoint>[0];
+export type WorkspaceServerClientResolver = (
+  workspace: WorkspaceServerClientWorkspace,
+) => ResolvedWorkspaceEndpoint | null;
+
+type NormalizedLocalServer = {
+  baseUrl: string;
+  token: string;
+};
+
+function trim(value: string | null | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function normalizeLocalServer(localServer: LocalServerHandle): NormalizedLocalServer {
+  return {
+    baseUrl: trim(localServer.baseUrl),
+    token: trim(localServer.token),
+  };
+}
+
+function cacheKey(parts: string[]): string {
+  return parts.join("\u001f");
+}
+
+export function createWorkspaceServerClientCacheKey(
+  workspace: WorkspaceServerClientWorkspace,
+  localServer: LocalServerHandle,
+): string {
+  if (!workspace) return "workspace:none";
+
+  const normalizedLocalServer = normalizeLocalServer(localServer);
+  return cacheKey([
+    "workspace:local",
+    trim(workspace.id),
+    normalizedLocalServer.baseUrl,
+    normalizedLocalServer.token,
+  ]);
+}
+
+/**
+ * Workspace-scoped Get3W server client resolver.
+ *
+ * The returned endpoint includes the correctly mounted workspace URLs and a
+ * memoized Get3W server client. The cache is intentionally per resolver so
+ * React routes/stores do not share mutable clients across workspace contexts.
+ */
+export function createWorkspaceServerClientResolver(
+  localServer: LocalServerHandle,
+): WorkspaceServerClientResolver {
+  const normalizedLocalServer = normalizeLocalServer(localServer);
+  const cache = new Map<string, ResolvedWorkspaceEndpoint | null>();
+
+  return (workspace) => {
+    const key = createWorkspaceServerClientCacheKey(workspace, normalizedLocalServer);
+    if (cache.has(key)) {
+      const cached = cache.get(key);
+      return cached === undefined ? null : cached;
+    }
+
+    const endpoint = resolveWorkspaceEndpoint(workspace, normalizedLocalServer);
+    cache.set(key, endpoint);
+    return endpoint;
+  };
+}
+
+/** Keep a route's client identities stable across equivalent connection refreshes. */
+export function createWorkspaceServerClientResolverState(localServer: LocalServerHandle) {
+  let current = normalizeLocalServer(localServer);
+  let resolver = createWorkspaceServerClientResolver(current);
+  return {
+    resolve(workspace: WorkspaceServerClientWorkspace) {
+      return resolver(workspace);
+    },
+    update(nextServer: LocalServerHandle): WorkspaceServerClientResolver {
+      const next = normalizeLocalServer(nextServer);
+      if (next.baseUrl !== current.baseUrl || next.token !== current.token) {
+        current = next;
+        resolver = createWorkspaceServerClientResolver(next);
+      }
+      return resolver;
+    },
+  };
+}
+
+export function useWorkspaceServerClient(
+  workspace: WorkspaceServerClientWorkspace,
+  localServer: LocalServerHandle,
+): ResolvedWorkspaceEndpoint | null {
+  const localBaseUrl = trim(localServer.baseUrl);
+  const localToken = trim(localServer.token);
+  const workspaceKey = createWorkspaceServerClientCacheKey(workspace, {
+    baseUrl: localBaseUrl,
+    token: localToken,
+  });
+
+  // `workspaceKey` intentionally includes only fields that change endpoint
+  // behavior.
+  return useMemo(
+    () => createWorkspaceServerClientResolver({ baseUrl: localBaseUrl, token: localToken })(workspace),
+    [workspaceKey],
+  );
+}

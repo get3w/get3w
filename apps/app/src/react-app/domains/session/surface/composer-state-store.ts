@@ -1,0 +1,304 @@
+import { create } from "zustand";
+import type { AutoAccessWall } from "@/app/lib/inference-access";
+
+import { createPromptMessageID } from "../../../../app/lib/opencode";
+import type { ComposerAttachment, ComposerDraft } from "../../../../app/types";
+import type { ComposerMentionKind } from "./composer/mention-encoding";
+
+export type QueuedComposerItem = {
+  id: string;
+  draft: ComposerDraft;
+  steer?: { owner: string; generation: number; agent: string | null; order?: number };
+};
+
+export type ComposerPastePart = {
+  id: string;
+  label: string;
+  text: string;
+  lines: number;
+};
+
+export type ComposerSessionState = {
+  draft: string;
+  attachments: ComposerAttachment[];
+  mentions: Record<string, ComposerMentionKind>;
+  pasteParts: ComposerPastePart[];
+  revertMessageId: string | null;
+};
+
+export function snapshotComposerSessionState(state: ComposerSessionState): ComposerSessionState {
+  return {
+    draft: state.draft,
+    attachments: state.attachments.map((attachment) => ({ ...attachment })),
+    mentions: { ...state.mentions },
+    pasteParts: state.pasteParts.map((part) => ({ ...part })),
+    revertMessageId: state.revertMessageId,
+  };
+}
+
+export type ComposerStateStore = {
+  failedDrafts: Record<string, ComposerSessionState[]>;
+  pendingMessages: Record<string, {
+    draft: ComposerDraft & { messageId: string };
+    /** The composer as submitted, so a send whose hold is released later can still be saved as unsent. */
+    composer: ComposerSessionState;
+    previousMessageIds: string[];
+    submissionMessageIds: readonly string[];
+    serverMessageId?: string;
+    preparedText?: string;
+    settled: boolean;
+    autoAccessWall?: AutoAccessWall;
+  }[]>;
+  settleAutoAccessWall: (owner: string, messageId: string, wall: AutoAccessWall) => void;
+  pendingFocusSessionId: string | null;
+  sessions: Record<string, ComposerSessionState>;
+  queuedDrafts: Record<string, QueuedComposerItem[]>;
+  setDraft: (sessionId: string, draft: string) => void;
+  replaceDraft: (sessionId: string, draft: string, revertMessageId?: string | null) => void;
+  hydrateDraft: (sessionId: string, draft: string) => void;
+  clearRevertTarget: (sessionId: string) => void;
+  setAttachments: (sessionId: string, attachments: ComposerAttachment[]) => void;
+  setMentions: (sessionId: string, mentions: Record<string, ComposerMentionKind>) => void;
+  setPasteParts: (sessionId: string, pasteParts: ComposerPastePart[]) => void;
+  appendQueuedDraft: (sessionId: string, draft: ComposerDraft, steer?: QueuedComposerItem["steer"]) => void;
+  requestQueuedDraftSend: (sessionId: string, id: string, steer: NonNullable<QueuedComposerItem["steer"]>) => void;
+  removeQueuedDraft: (sessionId: string, id: string) => void;
+  updateQueuedDraft: (sessionId: string, id: string, draft: ComposerDraft) => void;
+  reorderQueuedDrafts: (sessionId: string, ids: string[]) => void;
+  clearQueuedDrafts: (sessionId: string) => void;
+  prependQueuedDrafts: (sessionId: string, items: QueuedComposerItem[]) => void;
+  clearSession: (sessionId: string) => void;
+};
+
+const EMPTY_ATTACHMENTS: ComposerAttachment[] = [];
+const EMPTY_MENTIONS: Record<string, ComposerMentionKind> = {};
+const EMPTY_PASTE_PARTS: ComposerPastePart[] = [];
+const EMPTY_QUEUED_DRAFTS: QueuedComposerItem[] = [];
+const composerSessionDraftScopes = new Map<string, string>();
+let queuedSteerOrder = 0;
+
+export function claimComposerSessionDraftScope(sessionId: string, scopeKey: string) {
+  const session = sessionId.trim();
+  if (!session) return;
+  composerSessionDraftScopes.set(session, scopeKey);
+}
+
+export function releaseComposerSessionDraftScope(sessionId: string, expected: string) {
+  if (composerSessionDraftScopes.get(sessionId.trim()) === expected) composerSessionDraftScopes.delete(sessionId.trim());
+}
+
+export function getComposerSessionDraftScope(sessionId: string) {
+  return composerSessionDraftScopes.get(sessionId.trim()) ?? null;
+}
+
+export function persistableComposerDraftText(text: string) {
+  return text.replace(/\[attachment [^\]]+\]/g, "");
+}
+
+/**
+ * Decide whether the persisted draft snapshot should replace the in-memory
+ * composer. Crossing an account or organization boundary always rehydrates so
+ * the previous scope's text and attachments never survive into the next one.
+ * Inside one claimed scope the person's live composer is the newest source of
+ * truth: a snapshot that moved underneath it (another window, a queue mirror,
+ * a refused compare-and-swap) may only fill an empty composer, never replace
+ * text or attachments that are being edited here.
+ */
+export function composerDraftNeedsHydration(input: {
+  claimedScopeKey: string | null;
+  nextScopeKey: string;
+  currentText: string;
+  storedText: string;
+  currentHasAttachments?: boolean;
+}) {
+  if (input.claimedScopeKey !== input.nextScopeKey) return true;
+  const currentText = persistableComposerDraftText(input.currentText);
+  if (currentText.length > 0 || input.currentHasAttachments) return false;
+  return currentText !== input.storedText;
+}
+
+function createEmptyComposerSession(): ComposerSessionState {
+  return {
+    draft: "",
+    attachments: [],
+    mentions: {},
+    pasteParts: [],
+    revertMessageId: null,
+  };
+}
+
+function getWritableSession(state: ComposerStateStore, sessionId: string): ComposerSessionState {
+  return state.sessions[sessionId] ?? createEmptyComposerSession();
+}
+
+function createQueuedItem(draft: ComposerDraft, id?: string): QueuedComposerItem {
+  return { id: id ?? crypto.randomUUID(), draft: { ...draft, messageId: draft.messageId ?? createPromptMessageID() } };
+}
+
+export const useComposerStateStore = create<ComposerStateStore>((set) => ({
+  failedDrafts: {},
+  pendingMessages: {},
+  settleAutoAccessWall: (owner, messageId, wall) => set((state) => {
+    const pending = state.pendingMessages[owner];
+    if (!pending?.some((item) => item.draft.messageId === messageId)) return state;
+    return { pendingMessages: { ...state.pendingMessages, [owner]: pending.map((item) => item.draft.messageId === messageId
+      ? { ...item, settled: true, autoAccessWall: wall } : item) } };
+  }),
+  pendingFocusSessionId: null,
+  sessions: {},
+  queuedDrafts: {},
+  setDraft: (sessionId, draft) => set((state) => {
+    const current = getWritableSession(state, sessionId);
+    const revertMessageId = draft ? current.revertMessageId : null;
+    if (current.draft === draft && current.revertMessageId === revertMessageId) return state;
+    return { sessions: { ...state.sessions, [sessionId]: { ...current, draft, revertMessageId } } };
+  }),
+  replaceDraft: (sessionId, draft, revertMessageId = null) => set((state) => {
+    const current = getWritableSession(state, sessionId);
+    const target = revertMessageId?.trim() || null;
+    if (current.draft === draft && current.revertMessageId === target) return state;
+    return { sessions: { ...state.sessions, [sessionId]: { ...current, draft, revertMessageId: target } } };
+  }),
+  hydrateDraft: (sessionId, draft) => set((state) => {
+    const current = state.sessions[sessionId];
+    if (!draft) {
+      if (!current) return state;
+      const sessions = { ...state.sessions };
+      delete sessions[sessionId];
+      return { sessions };
+    }
+    if (
+      current?.draft === draft
+      && current.attachments.length === 0
+      && Object.keys(current.mentions).length === 0
+      && current.pasteParts.length === 0
+      && current.revertMessageId === null
+    ) return state;
+    return {
+      sessions: {
+        ...state.sessions,
+        [sessionId]: { ...createEmptyComposerSession(), draft },
+      },
+    };
+  }),
+  clearRevertTarget: (sessionId) => set((state) => {
+    const current = state.sessions[sessionId];
+    if (!current?.revertMessageId) return state;
+    return {
+      sessions: {
+        ...state.sessions,
+        [sessionId]: { ...current, revertMessageId: null },
+      },
+    };
+  }),
+  setAttachments: (sessionId, attachments) => set((state) => {
+    const current = getWritableSession(state, sessionId);
+    if (current.attachments === attachments) return state;
+    return { sessions: { ...state.sessions, [sessionId]: { ...current, attachments } } };
+  }),
+  setMentions: (sessionId, mentions) => set((state) => {
+    const current = getWritableSession(state, sessionId);
+    if (current.mentions === mentions) return state;
+    return { sessions: { ...state.sessions, [sessionId]: { ...current, mentions } } };
+  }),
+  setPasteParts: (sessionId, pasteParts) => set((state) => {
+    const current = getWritableSession(state, sessionId);
+    if (current.pasteParts === pasteParts) return state;
+    return { sessions: { ...state.sessions, [sessionId]: { ...current, pasteParts } } };
+  }),
+  appendQueuedDraft: (sessionId, draft, steer) => set((state) => {
+    const current = state.queuedDrafts[sessionId] ?? EMPTY_QUEUED_DRAFTS;
+    const item = createQueuedItem(draft);
+    return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: [...current, steer ? { ...item, steer: { ...steer, order: ++queuedSteerOrder } } : item] } };
+  }),
+  requestQueuedDraftSend: (sessionId, id, steer) => set((state) => {
+    const current = state.queuedDrafts[sessionId];
+    const item = current?.find((item) => item.id === id);
+    if (!current || !item || item.steer) return state;
+    const requested = { ...item, steer: { ...steer, order: ++queuedSteerOrder } };
+    return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: current.map((item) => item.id === id ? requested : item) } };
+  }),
+  removeQueuedDraft: (sessionId, id) => set((state) => {
+    const current = state.queuedDrafts[sessionId];
+    if (!current) return state;
+    const next = current.filter((item) => item.id !== id);
+    if (next.length === current.length) return state;
+    if (next.length > 0) return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: next } };
+    const queuedDrafts = { ...state.queuedDrafts };
+    delete queuedDrafts[sessionId];
+    return { queuedDrafts };
+  }),
+  updateQueuedDraft: (sessionId, id, draft) => set((state) => {
+    const current = state.queuedDrafts[sessionId];
+    if (!current) return state;
+    let changed = false;
+    const next = current.map((item) => {
+      if (item.id !== id) return item;
+      changed = true;
+      return { ...item, draft: { ...draft, messageId: item.draft.messageId } };
+    });
+    if (!changed) return state;
+    return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: next } };
+  }),
+  reorderQueuedDrafts: (sessionId, ids) => set((state) => {
+    const current = state.queuedDrafts[sessionId];
+    if (!current || current.length === 0) return state;
+    if (ids.length !== current.length) return state;
+    const byId = new Map(current.map((item) => [item.id, item]));
+    const next: QueuedComposerItem[] = [];
+    for (const id of ids) {
+      const item = byId.get(id);
+      if (!item) return state;
+      next.push(item);
+    }
+    return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: next } };
+  }),
+  clearQueuedDrafts: (sessionId) => set((state) => {
+    if (!state.queuedDrafts[sessionId]) return state;
+    const queuedDrafts = { ...state.queuedDrafts };
+    delete queuedDrafts[sessionId];
+    return { queuedDrafts };
+  }),
+  prependQueuedDrafts: (sessionId, items) => set((state) => {
+    if (items.length === 0) return state;
+    const current = state.queuedDrafts[sessionId] ?? EMPTY_QUEUED_DRAFTS;
+    return { queuedDrafts: { ...state.queuedDrafts, [sessionId]: [...items.map((item) => ({ ...item, ...createQueuedItem(item.draft, item.id) })), ...current] } };
+  }),
+  clearSession: (sessionId) => set((state) => {
+    if (!state.sessions[sessionId]) return state;
+    const sessions = { ...state.sessions };
+    delete sessions[sessionId];
+    return { sessions };
+  }),
+}));
+
+export function getComposerDraft(state: ComposerStateStore, sessionId: string): string {
+  return state.sessions[sessionId]?.draft ?? "";
+}
+
+export function getComposerAttachments(state: ComposerStateStore, sessionId: string): ComposerAttachment[] {
+  return state.sessions[sessionId]?.attachments ?? EMPTY_ATTACHMENTS;
+}
+
+export function getComposerMentions(state: ComposerStateStore, sessionId: string): Record<string, ComposerMentionKind> {
+  return state.sessions[sessionId]?.mentions ?? EMPTY_MENTIONS;
+}
+
+export function getComposerPasteParts(state: ComposerStateStore, sessionId: string): ComposerPastePart[] {
+  return state.sessions[sessionId]?.pasteParts ?? EMPTY_PASTE_PARTS;
+}
+
+export function getComposerQueuedDrafts(state: ComposerStateStore, sessionId: string): QueuedComposerItem[] {
+  return state.queuedDrafts[sessionId] ?? EMPTY_QUEUED_DRAFTS;
+}
+
+export function getNextComposerQueuedDraft(state: ComposerStateStore, sessionId: string, owner: string | undefined, generation: number): QueuedComposerItem | undefined {
+  const eligible = getComposerQueuedDrafts(state, sessionId).filter((item) =>
+    !item.steer || (item.steer.owner === owner && item.steer.generation === generation));
+  const requested = eligible.filter((item) => item.steer).sort((left, right) => (left.steer?.order ?? 0) - (right.steer?.order ?? 0));
+  return requested[0] ?? eligible[0];
+}
+
+export function getComposerRevertMessageId(state: ComposerStateStore, sessionId: string): string | null {
+  return state.sessions[sessionId]?.revertMessageId ?? null;
+}

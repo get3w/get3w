@@ -1,0 +1,260 @@
+import type { WorkspaceWire } from "@openwork/types/workspace";
+
+export type WorkspaceType = "local";
+
+export type ApprovalMode = "manual" | "auto";
+
+export type TokenScope = "owner" | "collaborator" | "viewer";
+
+export type SandboxBackend = "none" | "docker" | "container";
+
+export type ProviderPlacement = "in-sandbox" | "host-machine" | "client-machine" | "external";
+
+export type LogFormat = "pretty" | "json";
+
+export interface WorkspaceConfig {
+  id?: string;
+  path: string;
+  name?: string;
+  preset?: string;
+  workspaceType?: WorkspaceType;
+  baseUrl?: string;
+  directory?: string;
+  displayName?: string;
+  sandboxBackend?: string;
+  sandboxRunId?: string;
+  sandboxContainerName?: string;
+  opencodeUsername?: string;
+  opencodePassword?: string;
+}
+
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+  path: string;
+  preset: string;
+  workspaceType: WorkspaceType;
+  baseUrl?: string;
+  directory?: string;
+  displayName?: string;
+  sandboxBackend?: string;
+  sandboxRunId?: string;
+  sandboxContainerName?: string;
+  opencodeUsername?: string;
+  opencodePassword?: string;
+  opencode?: {
+    baseUrl?: string;
+    directory?: string;
+    username?: string;
+    password?: string;
+  };
+}
+
+// Compile-time contract tripwires against the shared wire shape consumed by
+// apps/app (packages/types/src/workspace.ts). The first check rejects fields
+// whose values no longer fit the wire contract; the second rejects fields the
+// contract does not know about. Both are erased at build time.
+type Extends<A extends B, B> = A;
+type _WorkspaceInfoFitsWire = Extends<WorkspaceInfo, WorkspaceWire>;
+type _WorkspaceInfoKeysKnown = Extends<keyof WorkspaceInfo, keyof WorkspaceWire>;
+
+export interface OpencodeConfigFile {
+  path: string;
+  exists: boolean;
+  content: string | null;
+}
+
+export interface ApprovalConfig {
+  mode: ApprovalMode;
+  timeoutMs: number;
+}
+
+export type LocalManagedMcpVaultKeyProvider = () => Promise<Uint8Array>;
+
+/** What Get3W Desktop tells the free Auto relay about this installation. */
+export type DesktopFreeHost = {
+  currentVersion: string;
+  /** Whether this build and its bootstrap may offer signed-out Auto (the public app on hosted Get3W Cloud). */
+  eligible: () => boolean;
+};
+
+export interface ServerConfig {
+  host: string;
+  port: number;
+  token: string;
+  hostToken: string;
+  configPath?: string;
+  opencodeBaseUrl?: string;
+  /**
+   * Bootstrap snapshot of supplied global/workspace engine URLs, before managed URL hydration.
+   * External engines do not share this host's history database; never auto-select local v2 for them.
+   */
+  externalOpencode?: boolean;
+  opencodeDirectory?: string;
+  opencodeUsername?: string;
+  opencodePassword?: string;
+  approval: ApprovalConfig;
+  corsOrigins: string[];
+  /**
+   * Host names the server answers to besides loopback names, IP addresses and
+   * its bind host ("*" for any). Unset skips the check; `web` always sets it.
+   */
+  allowedHosts?: string[];
+  workspaces: WorkspaceInfo[];
+  authorizedRoots: string[];
+  readOnly: boolean;
+  startedAt: number;
+  tokenSource: "cli" | "env" | "file" | "generated";
+  hostTokenSource: "cli" | "env" | "file" | "generated";
+  logFormat: LogFormat;
+  logRequests: boolean;
+  /** In-memory secure key custody supplied by an embedding host such as Get3W Desktop. */
+  localManagedMcpVaultKey?: LocalManagedMcpVaultKeyProvider;
+  /** In-process Desktop confirmation; never configured through HTTP, files or the engine environment. */
+  /** Desktop-owned managed engines only; never enabled by remote clients. */
+  resumeInterruptedTasks?: boolean;
+  anonymousInference?: { desktop: DesktopFreeHost };
+  /**
+   * Set by Get3W Desktop or a hosted web bootstrap for a brand-new install (no earlier
+   * Get3W state on disk). The server then starts on this engine unless an
+   * engine choice is already saved or OpenCode v1 history exists.
+   */
+  freshInstallEngine?: "v2";
+  /** Automatic v1-to-v2 migration is on by default; false is an explicit local opt-out. */
+  engineAutoUpgrade?: boolean;
+  /** @deprecated Legacy rollout marker, ignored. Never reverts a migrated instance. */
+  engineForcePolicy?: boolean;
+}
+
+export interface Capabilities {
+  schemaVersion: number;
+  serverVersion: string;
+  opencodeVersion: string;
+  providerSync: true;
+  skills: { read: boolean; write: boolean; source: "openwork" | "opencode" };
+  plugins: { read: boolean; write: boolean };
+  mcp: { read: boolean; write: boolean };
+  commands: { read: boolean; write: boolean };
+  config: { read: boolean; write: boolean };
+  engine: { rollover: boolean };
+
+  approvals: { mode: ApprovalMode; timeoutMs: number };
+  sandbox: { enabled: boolean; backend: SandboxBackend };
+  tokens: { scoped: boolean; scopes: TokenScope[] };
+  proxy: {
+    opencode: boolean;
+  };
+  toolProviders: {
+    browser: {
+      enabled: boolean;
+      placement: ProviderPlacement;
+      mode: "none" | "headless" | "interactive";
+    };
+    files: {
+      injection: boolean;
+      outbox: boolean;
+      inboxPath: string;
+      outboxPath: string;
+      maxBytes: number;
+    };
+  };
+}
+
+export type ReloadReason = "plugins" | "skills" | "mcp" | "config" | "agents" | "commands";
+
+export type ReloadTrigger = {
+  type: "skill" | "plugin" | "config" | "mcp" | "agent" | "command";
+  name?: string;
+  action?: "added" | "removed" | "updated";
+  path?: string;
+};
+
+export interface ReloadEvent {
+  id: string;
+  seq: number;
+  workspaceId: string;
+  reason: ReloadReason;
+  trigger?: ReloadTrigger;
+  timestamp: number;
+}
+
+export interface ApiErrorBody {
+  code: string;
+  message: string;
+  details?: unknown;
+}
+
+export interface PluginItem {
+  spec: string;
+  source: "config" | "dir.project" | "dir.global";
+  scope: "project" | "global";
+  path?: string;
+}
+
+export interface McpItem {
+  name: string;
+  config: Record<string, unknown>;
+  source: "config.project" | "config.global" | "config.remote";
+  disabledByTools?: boolean;
+  toolDenies?: Array<{
+    source: "config.project" | "config.global";
+    style: "tools.deny" | "tools" | "permission" | "permissions";
+    pattern: string;
+    matched: string;
+  }>;
+}
+
+export interface SkillItem {
+  name: string;
+  path: string;
+  description: string;
+  scope: "project" | "global";
+  trigger?: string;
+  error?: string;
+}
+
+export interface CommandItem {
+  name: string;
+  description?: string;
+  template: string;
+  agent?: string;
+  model?: string | null;
+  subtask?: boolean;
+  scope: "workspace" | "global";
+}
+
+export interface Actor {
+  type: "remote" | "host";
+  clientId?: string;
+  tokenHash?: string;
+  scope?: TokenScope;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  workspaceId: string;
+  action: string;
+  summary: string;
+  paths: string[];
+  createdAt: number;
+  actor: Actor;
+}
+
+export type UiControlKind = "context" | "query" | "command";
+
+export interface UiControlRequest {
+  id: string;
+  kind: UiControlKind;
+  input?: unknown;
+  createdAt: number;
+}
+
+export interface AuditEntry {
+  id: string;
+  workspaceId: string;
+  actor: Actor;
+  action: string;
+  target: string;
+  summary: string;
+  timestamp: number;
+}

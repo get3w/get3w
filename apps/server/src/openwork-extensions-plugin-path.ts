@@ -1,0 +1,52 @@
+import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+declare global {
+  namespace NodeJS {
+    interface Process {
+      resourcesPath?: string;
+    }
+  }
+}
+
+function resourcesPathFromAppAsarPath(path: string): string | null {
+  const match = /[\\/]app\.asar(?:[\\/]|$)/.exec(path);
+  return match ? path.slice(0, match.index) : null;
+}
+
+export function openworkPluginPath(name: string, here?: string): string {
+  const pluginDir = process.env.OPENWORK_EXTENSIONS_PLUGIN_DIR;
+  if (pluginDir) {
+    return join(pluginDir, `${name}.js`);
+  }
+
+  here = here ?? dirname(fileURLToPath(import.meta.url));
+  const resourcesPath = resourcesPathFromAppAsarPath(here);
+  if (resourcesPath) {
+    const electronResourcesPath = process.resourcesPath?.includes("app.asar") ? resourcesPath : process.resourcesPath?.trim();
+    return join(electronResourcesPath || resourcesPath, "opencode-plugins", `${name}.js`);
+  }
+
+  const extension = basename(here) === "dist" ? "js" : "ts";
+  return join(here, "opencode-plugins", `${name}.${extension}`);
+}
+
+export const openworkExtensionsPreviewPluginPath = () => openworkPluginPath("openwork-extensions-preview");
+export const openworkChromeDevtoolsPluginPath = () => openworkPluginPath("openwork-chrome-devtools");
+export const openworkComputerUsePluginPath = () => openworkPluginPath("openwork-computer-use");
+export const openworkCapabilitiesKnowledgePluginPath = () => openworkPluginPath("openwork-capabilities-knowledge");
+export const openworkAnthropicAdaptiveThinkingPluginPath = () => openworkPluginPath("openwork-anthropic-adaptive-thinking");
+export const openworkAnthropicToolSchemaPluginPath = () => openworkPluginPath("openwork-anthropic-tool-schema");
+export const openworkOfficeAttachmentsPluginPath = () => openworkPluginPath("openwork-office-attachments");
+export const openworkSpreadsheetsPluginPath = () => openworkPluginPath("openwork-spreadsheets");
+export const openworkPdfAttachmentsPluginPath = () => openworkPluginPath("openwork-pdf-attachments");
+export const openworkTitleRecoveryPluginPath = () => openworkPluginPath("openwork-title-recovery");
+export const openworkGatewayQuotaPluginPath = () => openworkPluginPath("openwork-gateway-quota");
+export const openworkGatewayQuotaV2PluginPath = () => openworkPluginPath("openwork-gateway-quota-v2");
+export const openworkContextV2PluginPath = () => openworkPluginPath("openwork-context-v2");
+export const openworkProviderFiltersV2PluginPath = () => openworkPluginPath("openwork-provider-filters-v2");
+export const openworkMcpResultsV2PluginPath = () => openworkPluginPath("openwork-mcp-results-v2");
+export const openworkMcpReadinessV2PluginPath = () => openworkPluginPath("openwork-mcp-readiness-v2");
+export const openworkVisibleReasoningV2PluginPath = () => openworkPluginPath("openwork-visible-reasoning-v2");
+export const openworkAutoRouteV2PluginPath = () => openworkPluginPath("openwork-auto-route-v2");
+export const openworkAgentPermissionsV2PluginPath = () => openworkPluginPath("openwork-agent-permissions-v2");
