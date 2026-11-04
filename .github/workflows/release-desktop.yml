@@ -39,6 +39,7 @@ jobs:
       run:
         shell: bash
     env:
+      PYTHONUTF8: '1'
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       OPENWORK_COMPUTER_USE_SIGN_IDENTITY: '-'
       SIGN_WINDOWS: 'false'
