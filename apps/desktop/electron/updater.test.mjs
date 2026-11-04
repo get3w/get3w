@@ -135,7 +135,7 @@ describe("targetedStableUpdaterFeed", () => {
   it("builds a fixed GitHub release feed from a strict stable version", () => {
     assert.equal(
       targetedStableUpdaterFeed("0.17.22", "0.17.23"),
-      "https://get3w.com/desktop/releases/download/v0.17.23",
+      "https://github.com/get3w/get3w/releases/download/v0.17.23",
     );
   });
 
@@ -164,7 +164,7 @@ describe("targetedStableUpdaterFeed", () => {
   it("allows only an explicit exact recovery downgrade", () => {
     assert.equal(
       targetedStableUpdaterFeed("0.17.23", "0.17.22", true),
-      "https://get3w.com/desktop/releases/download/v0.17.22",
+      "https://github.com/get3w/get3w/releases/download/v0.17.22",
     );
     assert.throws(
       () => targetedStableUpdaterFeed("0.17.23", "0.17.23", true),
@@ -253,7 +253,7 @@ describe("recovery metadata and candidates", () => {
       platform: "darwin",
       arch: "arm64",
       distribution: "public",
-      url: "https://get3w.com/desktop/releases/download/v1.2.3/get3w-mac-arm64-1.2.3.dmg",
+      url: "https://github.com/get3w/get3w/releases/download/v1.2.3/get3w-mac-arm64-1.2.3.dmg",
       sha512: "verified",
     });
     assert.equal(selectRecoveryArtifact(files, {
@@ -274,7 +274,7 @@ describe("recovery metadata and candidates", () => {
       const files = [{ url: fileName, sha512: `${distribution}-checksum` }];
       assert.equal(selectRecoveryArtifact(files, {
         version: "1.2.3", platform: "darwin", arch: "arm64", distribution,
-      })?.url, `https://get3w.com/desktop/releases/download/v1.2.3/${fileName}`);
+      })?.url, `https://github.com/get3w/get3w/releases/download/v1.2.3/${fileName}`);
       for (const otherDistribution of Object.keys(artifacts).filter((flavor) => flavor !== distribution)) {
         assert.equal(selectRecoveryArtifact(files, {
           version: "1.2.3", platform: "darwin", arch: "arm64", distribution: otherDistribution,
@@ -318,7 +318,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
         cacheVerifiedRecoveryArtifact({
 
           app: { getPath: () => userData },
-          artifact: { url: "https://get3w.com/desktop/releases/download/v1.2.3/openwork.dmg", sha512: "invalid" },
+          artifact: { url: "https://github.com/get3w/get3w/releases/download/v1.2.3/openwork.dmg", sha512: "invalid" },
           fetchArtifact: async () => new Response("tampered"),
         }),
         /checksum did not match/,
@@ -337,7 +337,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
       platform: "darwin",
       arch: "arm64",
       distribution: "public",
-      url: "https://get3w.com/desktop/releases/download/v1.2.3/get3w-mac-arm64-1.2.3.dmg",
+      url: "https://github.com/get3w/get3w/releases/download/v1.2.3/get3w-mac-arm64-1.2.3.dmg",
       sha512: createHash("sha512").update(bytes).digest("base64"),
     };
     try {
@@ -376,7 +376,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
       platform: "darwin",
       arch: "arm64",
       distribution: "public",
-      url: "https://get3w.com/desktop/releases/download/v0.18.18/get3w-mac-arm64-0.18.18.dmg",
+      url: "https://github.com/get3w/get3w/releases/download/v0.18.18/get3w-mac-arm64-0.18.18.dmg",
       sha512: createHash("sha512").update(bytes).digest("base64"),
     };
     const expected = { platform: "darwin", arch: "arm64", distribution: "public" };
@@ -408,7 +408,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
       platform: "darwin",
       arch: "arm64",
       distribution: "public",
-      url: "https://get3w.com/desktop/releases/download/v1.9.0/get3w-mac-arm64-1.9.0.dmg",
+      url: "https://github.com/get3w/get3w/releases/download/v1.9.0/get3w-mac-arm64-1.9.0.dmg",
       sha512: createHash("sha512").update(bytes).digest("base64"),
     };
     const handlers = new Map();
@@ -859,7 +859,7 @@ describe("metadata-only updater checks", () => {
       const check = handlers.get("openwork:updater:check");
       assert.equal((await check(null, "alpha")).available, true);
       assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
-      assert.equal(downloadFeeds.at(-1).url, "https://get3w.com/desktop/releases/download/alpha-macos-latest");
+      assert.equal(downloadFeeds.at(-1).url, "https://github.com/get3w/get3w/releases/download/alpha-macos-latest");
       const nativeFeed = nativeUpdater.getFeedURL();
       const autoInstall = updater.autoInstallOnAppQuit;
       updater.checkForUpdates = async () => ({ updateInfo: { version: "0.18.0-alpha.2966" } });
@@ -1127,7 +1127,7 @@ describe("evalUpdaterFeedUrl", () => {
       });
       assert.equal((await handlers.get("openwork:updater:getChannel")()).feedUrl, "http://127.0.0.1:4567");
       // A version-targeted check still resolves to the fixed GitHub release.
-      assert.equal(targetedStableUpdaterFeed("0.17.22", "0.17.23"), "https://get3w.com/desktop/releases/download/v0.17.23");
+      assert.equal(targetedStableUpdaterFeed("0.17.22", "0.17.23"), "https://github.com/get3w/get3w/releases/download/v0.17.23");
     } finally {
       if (previous === undefined) delete process.env.OPENWORK_EVAL_UPDATE_FEED_URL;
       else process.env.OPENWORK_EVAL_UPDATE_FEED_URL = previous;
@@ -1164,7 +1164,7 @@ describe("release channel changes", () => {
       assert.equal(typeof setChannel, "function");
       assert.deepEqual(await setChannel(null, "alpha"), {
         channel: "stable",
-        feedUrl: "https://get3w.com/desktop/releases/latest/download",
+        feedUrl: "https://github.com/get3w/get3w/releases/latest/download",
         currentVersion: desktopVersion,
       });
     } finally {
@@ -1205,7 +1205,7 @@ describe("release channel changes", () => {
       assert.deepEqual(await download(), { ok: true });
       assert.equal(
         downloadFeeds.at(-1)?.url,
-        "https://get3w.com/desktop/releases/download/alpha-macos-latest",
+        "https://github.com/get3w/get3w/releases/download/alpha-macos-latest",
       );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -1253,7 +1253,7 @@ describe("release channel changes", () => {
       );
       assert.equal(
         feeds.at(-1)?.url,
-        "https://get3w.com/desktop/releases/download/alpha-macos-latest",
+        "https://github.com/get3w/get3w/releases/download/alpha-macos-latest",
       );
     } finally {
       await rm(tempDir, { recursive: true, force: true });

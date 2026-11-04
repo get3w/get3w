@@ -1,6 +1,6 @@
 # Get3W
 
-> Get 3W, get things done
+> Get3W, get things done
 
 Get3W 是 WorkBuddy、Claude Cowork 和 Codex 的免费开源替代品：一款适用于 macOS、Windows 和 Linux 的桌面应用，AI 智能体可以直接在你自己的文件上完成实际工作。系统支持任意模型（50+ 提供商、你自己的 API 密钥，或通过 Ollama 运行的本地模型），并支持团队共享技能和 MCP 服务器。
 

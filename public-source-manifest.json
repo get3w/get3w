@@ -16,6 +16,10 @@
       "sha256": "95e353b05cd8b19f8a25f58cf5b7dfc1773798ba14c12c04e6facef588f08efe"
     },
     {
+      "path": ".github/workflows/release-desktop.yml",
+      "sha256": "cb7ac0982cdddefd2c2dd052ee3dd5df5936ebabf04f049e62a0b4486372164b"
+    },
+    {
       "path": ".gitignore",
       "sha256": "eebc44381bb79cc6b82cbcf38aeee65ec595674ca9be20415c7d31c2578f177a"
     },
@@ -49,7 +53,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ef58057078af1a86c6c0105e3b260f8f98b85116b67d14e7268a93a00e3dd08b"
+      "sha256": "2780138bd03974f0aefc015b618a9a0e48df72c0c5d3db91a21f82c7e06e50e1"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -4209,7 +4213,7 @@
     },
     {
       "path": "apps/desktop/electron/recovery.mjs",
-      "sha256": "4a9808832bd82ecb92d52298a9ac62cf76662eedc3e241770506cdb9db1463dd"
+      "sha256": "cfaec38491ad684d04196bf03644e3fedf06b2d018c2e4d551a48185c228843c"
     },
     {
       "path": "apps/desktop/electron/runtime.mjs",
@@ -4277,11 +4281,11 @@
     },
     {
       "path": "apps/desktop/electron/updater.mjs",
-      "sha256": "cef7ebae99724f820933324898532bf4fa7f40cf9b250ebac71515083b5531cc"
+      "sha256": "504f6c356658cb3083dd7ecf60cbfe399621b36d61807ed05ab212123c62468d"
     },
     {
       "path": "apps/desktop/electron/updater.test.mjs",
-      "sha256": "028131950f02db074a3e326da8a8dd3acf95028de971745d2a20871a708a945c"
+      "sha256": "481c5d726095fcc990e55a5b667e420a905a93b6238d1cd0952fc6c24c5f0dda"
     },
     {
       "path": "apps/desktop/electron/webmcp-host.mjs",
@@ -4329,7 +4333,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "6368220667299a503e3506be00a5cbda69c067c037a78c79ac5c4ce2000cc3d1"
+      "sha256": "ce7fa72bb409de09110a1558e8e38deb940c31db8671d5288dbbc85b04566f5d"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -5534,6 +5538,10 @@
     {
       "path": "constants.json",
       "sha256": "d954179cbbd492552e51dbdd29967bdae7aaac09a06a2d4aa564a9f1d3c43450"
+    },
+    {
+      "path": "docs/release-notes.md",
+      "sha256": "5fcb39532ba8fa85283cd8c3cd7e1fec061fed214a972b93437bae088033d5dd"
     },
     {
       "path": "package.json",
@@ -6742,6 +6750,14 @@
     {
       "path": "scripts/check-public-workspace.py",
       "sha256": "b8b3bca9476bcf95e6e502e7d7d17c4473c6efcc05592d447823ad011781b5b3"
+    },
+    {
+      "path": "scripts/release/assemble.py",
+      "sha256": "e897ff07dcfd7e523cdecc836d0d16a6776ce819e4ea15116cfc35d52c7a10cd"
+    },
+    {
+      "path": "scripts/release/assemble_test.py",
+      "sha256": "0721532cc5953a4135cd1f7dd7d89b812bfcd34ea9f91689e44ed7eb1d46cd79"
     },
     {
       "path": "scripts/release/windows-signatures.ps1",

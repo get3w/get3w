@@ -44,8 +44,8 @@ export function resolveAppVersion(app) {
   return _cachedAppVersion;
 }
 const ELECTRON_UPDATER_FEEDS = Object.freeze({
-  stable: "https://get3w.com/desktop/releases/latest/download",
-  alpha: "https://get3w.com/desktop/releases/download/alpha-macos-latest",
+  stable: "https://github.com/get3w/get3w/releases/latest/download",
+  alpha: "https://github.com/get3w/get3w/releases/download/alpha-macos-latest",
 });
 
 function normalizeElectronUpdaterChannel(value, manifestChannel = "latest") {
@@ -199,7 +199,7 @@ export function targetedStableUpdaterFeed(currentVersion, targetVersion, allowOl
       ? "Recovery target version must differ from the installed version."
       : "Target update version must be newer than the installed version.");
   }
-  return `https://get3w.com/desktop/releases/download/v${normalizedTarget}`;
+  return `https://github.com/get3w/get3w/releases/download/v${normalizedTarget}`;
 }
 
 function updaterChannelState(app, channel, targetVersion = null, manifestChannel = "latest") {
@@ -502,7 +502,7 @@ export function registerUpdaterIpc({
   async function resolveRecoveryArtifact(version) {
     if (!electronNet?.fetch) return null;
     try {
-      const manifestUrl = `https://get3w.com/desktop/releases/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
+      const manifestUrl = `https://github.com/get3w/get3w/releases/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
       const response = await electronNet.fetch(manifestUrl, { headers: { Accept: "text/yaml, text/plain, */*" } });
       if (!response.ok) return null;
       return selectRecoveryArtifact(parseRecoveryManifest(await response.text()), {
