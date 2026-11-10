@@ -47,14 +47,14 @@ jobs:
     steps:
       - name: Preserve source bytes on Windows
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           version: 11.4.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.22.1'
           cache: pnpm
@@ -100,6 +100,8 @@ jobs:
             echo "GET3W_COMPUTER_USE_SIGN_IDENTITY=$IDENTITY"
             echo "GET3W_COMPUTER_USE_CODESIGN_IDENTITY=$IDENTITY"
             echo "APPLE_API_KEY_PATH=$KEY_PATH"
+            echo "APPLE_API_KEY=${{ secrets.APPLE_API_KEY }}"
+            echo "APPLE_API_ISSUER=${{ secrets.APPLE_API_ISSUER }}"
             echo "MACOS_NOTARIZE=true"
           } >> "$GITHUB_ENV"
       - name: Install frozen workspace
@@ -125,7 +127,7 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/get3w-signing.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP"/AuthKey_*.p8
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: release-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: error
@@ -138,11 +140,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: release-*
           path: artifacts/release-input

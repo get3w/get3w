@@ -10,14 +10,14 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           version: 11.4.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.22.1'
           cache: pnpm
@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build, package and verify the isolated Desktop runtime
         run: python3 scripts/verify-public-release.py --desktop
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: desktop-verification-macos-x64

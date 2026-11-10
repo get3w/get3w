@@ -13,11 +13,11 @@
     },
     {
       "path": ".github/workflows/public-desktop.yml",
-      "sha256": "95e353b05cd8b19f8a25f58cf5b7dfc1773798ba14c12c04e6facef588f08efe"
+      "sha256": "a2e9c9c2451cf8ad97cbb8637674a39a0c1507f97570762a21bf9cf72a4129b5"
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "7dcf87b1e2815f19bf8f378f317dd3c98c75633b5e00b9f94c4ddab4c106335b"
+      "sha256": "9f6e21d747e31807a9b0fc6511dde88b1d0b4c4e91b8eeafa09dcd8ff2923781"
     },
     {
       "path": ".gitignore",
@@ -4297,7 +4297,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "40c7a6c57caf78fe2e259e7f0609f938b431507da1640ca743507a8078b24ccc"
+      "sha256": "fba103a930b536809556ac102a65d470a415d0ac72484d7eaff5ce8c37cd04a9"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -5461,7 +5461,7 @@
     },
     {
       "path": "docs/release-notes.md",
-      "sha256": "5fcb39532ba8fa85283cd8c3cd7e1fec061fed214a972b93437bae088033d5dd"
+      "sha256": "a9a1718cbd7d00624098e7ad6112b49c5a12fe5210aa03289f5cd28befc27301"
     },
     {
       "path": "package.json",
