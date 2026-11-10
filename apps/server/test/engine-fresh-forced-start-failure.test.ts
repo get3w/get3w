@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { createEngineV2Preview, readEngineV2PreviewState, seedFreshInstallEngineState, writeEngineV2PreviewState } from "../src/engine-v2-preview.js";
 import type { ServerConfig } from "../src/types.js";
 
-const nativeBinary = process.env.OPENWORK_OPENCODE2_BIN;
+const nativeBinary = process.env.GET3W_OPENCODE2_BIN;
 
 async function profile(run: (config: ServerConfig) => Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "openwork-fresh-forced-failure-"));
@@ -17,10 +17,10 @@ async function profile(run: (config: ServerConfig) => Promise<void>) {
     XDG_CONFIG_HOME: join(directory, "config"),
     XDG_CACHE_HOME: join(directory, "cache"),
     OPENCODE_DISABLE_MODELS_FETCH: "1",
-    OPENWORK_RUNTIME_DB: join(directory, "runtime.sqlite"),
+    GET3W_RUNTIME_DB: join(directory, "runtime.sqlite"),
     OPENCODE_DB: join(directory, "v1.db"),
-    OPENWORK_OPENCODE2_BIN: join(directory, "nonexistent-opencode2"),
-    OPENWORK_ENGINE_V2_PREVIEW: "",
+    GET3W_OPENCODE2_BIN: join(directory, "nonexistent-opencode2"),
+    GET3W_ENGINE_V2_PREVIEW: "",
   };
   const previous = new Map(Object.keys(overrides).map(key => [key, process.env[key]]));
   Object.assign(process.env, overrides);
@@ -88,7 +88,7 @@ test("a later healthy fresh retry clears the error receipt and keeps forced owne
     // Arrange an expired durable cooldown, as on a later boot; production
     // still owns all binary startup, readiness and engine switching behavior.
     await writeEngineV2PreviewState(config, { ...failed, autoUpgradeRetry: { attempts: 1, retryAt: 0 } });
-    process.env.OPENWORK_OPENCODE2_BIN = nativeBinary;
+    process.env.GET3W_OPENCODE2_BIN = nativeBinary;
     const retried = createEngineV2Preview({ config, autoUpgradeIdle: async () => true });
     try {
       const deadline = Date.now() + 60_000;

@@ -57,7 +57,7 @@ function entry(start: RemoteThreadStart, overrides: Partial<RemoteSessionThreadS
     title: start.title, computerId: "cmp_1", computerLabel: "Studio computer", sessionId: "ses_remote", workspaceId: "ws_remote",
     messageCount: 2, preview: null, latestStep: null, error: null, observedAt: Date.now(), ...overrides,
   }
-  return { start, organizationId: "org_1", version: "v1", status, stale: false, checkedAt: Date.now(), activeSince: Date.now(), firstSeenAt: Date.now(),
+  return { start, version: "v1", status, stale: false, checkedAt: Date.now(), activeSince: Date.now(), firstSeenAt: Date.now(),
     followedUpAt: null, owners: {}, viewers: 0, lastViewedAt: Date.now() }
 }
 

@@ -19,14 +19,14 @@ import { recordInspectorEvent } from "./app-inspector";
 import { isDesktopRuntime } from "./runtime-env";
 import { resolvePosthogKey } from "./analytics-key";
 
-const ENV_POSTHOG_HOST = String(import.meta.env.VITE_OPENWORK_POSTHOG_HOST ?? "").trim();
-const ENV_APP_VERSION = String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim();
+const ENV_POSTHOG_HOST = String(import.meta.env.VITE_GET3W_POSTHOG_HOST ?? "").trim();
+const ENV_APP_VERSION = String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
 
 const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 
 // All builds stay silent unless a project key is explicitly configured.
 // The inspector mirror still records events locally either way.
-const POSTHOG_KEY = resolvePosthogKey(import.meta.env.VITE_OPENWORK_POSTHOG_KEY, import.meta.env.DEV);
+const POSTHOG_KEY = resolvePosthogKey(import.meta.env.VITE_GET3W_POSTHOG_KEY, import.meta.env.DEV);
 const POSTHOG_HOST = (ENV_POSTHOG_HOST || DEFAULT_POSTHOG_HOST).replace(/\/+$/, "");
 
 const PREFS_STORAGE_KEY = "openwork.preferences";

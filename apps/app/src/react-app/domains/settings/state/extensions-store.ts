@@ -46,7 +46,6 @@ import {
   type LibraryAuthorableKind,
 } from "../library";
 
-type DenOrgMarketplaceResolved = import("../../../../app/lib/den").DenOrgMarketplaceResolved;
 type CloudImportedMarketplace = import("../../../../app/cloud/import-state").CloudImportedMarketplace;
 type CloudImportedPlugin = import("../../../../app/cloud/import-state").CloudImportedPlugin;
 type PendingCloudPluginChange = "modified" | "removed";
@@ -63,8 +62,6 @@ export type ExtensionsStoreSnapshot = {
   workspaceContextKey: string;
   skills: SkillCard[];
   skillsStatus: string | null;
-  cloudOrgMarketplaces: DenOrgMarketplaceResolved[];
-  cloudOrgMarketplacesStatus: string | null;
   importedCloudMarketplaces: Record<string, CloudImportedMarketplace>;
   importedCloudPlugins: Record<string, CloudImportedPlugin>;
   pendingCloudPluginChanges: Record<string, PendingCloudPluginChange>;
@@ -86,8 +83,6 @@ type MutableState = {
   pluginsContextKey: string;
   skills: SkillCard[];
   skillsStatus: string | null;
-  cloudOrgMarketplaces: DenOrgMarketplaceResolved[];
-  cloudOrgMarketplacesStatus: string | null;
   importedCloudMarketplaces: Record<string, CloudImportedMarketplace>;
   importedCloudPlugins: Record<string, CloudImportedPlugin>;
   pendingCloudPluginChanges: Record<string, PendingCloudPluginChange>;
@@ -180,8 +175,6 @@ export function createExtensionsStore(options: {
     pluginsContextKey: "",
     skills: [],
     skillsStatus: null,
-    cloudOrgMarketplaces: [],
-    cloudOrgMarketplacesStatus: null,
     importedCloudMarketplaces: {},
     importedCloudPlugins: {},
     pendingCloudPluginChanges: {},
@@ -244,8 +237,6 @@ export function createExtensionsStore(options: {
       workspaceContextKey,
       skills: state.skills,
       skillsStatus: state.skillsStatus,
-      cloudOrgMarketplaces: state.cloudOrgMarketplaces,
-      cloudOrgMarketplacesStatus: state.cloudOrgMarketplacesStatus,
       importedCloudMarketplaces: state.importedCloudMarketplaces,
       importedCloudPlugins: state.importedCloudPlugins,
       pendingCloudPluginChanges: state.pendingCloudPluginChanges,
@@ -321,13 +312,6 @@ export function createExtensionsStore(options: {
     refreshSnapshot();
     emitChange();
   };
-
-  async function refreshCloudOrgMarketplaces(_options?: { force?: boolean }) {
-    // Compatibility for existing settings consumers; no organization inventory is loaded.
-    mutateState((current) => ({ ...current, cloudOrgMarketplaces: [],
-      cloudOrgMarketplacesStatus: null, importedCloudMarketplaces: {},
-      importedCloudPlugins: {}, pendingCloudPluginChanges: {} }));
-  }
 
   function extensionMutationDenied() {
     if (!options.checkDesktopAppRestriction({ restriction: "allowManageExtensions" })) return false;
@@ -1242,7 +1226,6 @@ export function createExtensionsStore(options: {
     if (!key || key === "::::") return;
     void refreshSkills({ force: true });
     void refreshPlugins();
-    void refreshCloudOrgMarketplaces();
   };
 
   refreshSnapshot();
@@ -1264,8 +1247,6 @@ export function createExtensionsStore(options: {
     syncFromOptions,
     skills: () => snapshot.skills,
     skillsStatus: () => snapshot.skillsStatus,
-    cloudOrgMarketplaces: () => snapshot.cloudOrgMarketplaces,
-    cloudOrgMarketplacesStatus: () => snapshot.cloudOrgMarketplacesStatus,
     importedCloudMarketplaces: () => snapshot.importedCloudMarketplaces,
     importedCloudPlugins: () => snapshot.importedCloudPlugins,
     pendingCloudPluginChanges: () => snapshot.pendingCloudPluginChanges,
@@ -1297,7 +1278,6 @@ export function createExtensionsStore(options: {
     pluginsStale: () => snapshot.pluginsStale,
     isPluginInstalledByName,
     refreshSkills,
-    refreshCloudOrgMarketplaces,
     refreshPlugins,
     addPlugin,
     removePlugin,

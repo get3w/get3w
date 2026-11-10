@@ -12,7 +12,7 @@ import { sandboxBlockConformanceCases } from "./testing/index.js"
 for (const c of sandboxBlockConformanceCases(() => createFakeProvider({
   onRun(spec) {
     assert.equal(spec.cwd, "/tmp")
-    assert.equal(spec.env?.OPENWORK_CHECK, "value with ' quotes $ and spaces")
-    return { exitCode: 7, stdout: spec.env?.OPENWORK_CHECK ?? "", stderr: "stderr" }
+    assert.equal(spec.env?.GET3W_CHECK, "value with ' quotes $ and spaces")
+    return { exitCode: 7, stdout: spec.env?.GET3W_CHECK ?? "", stderr: "stderr" }
   },
 }), ["run", "files", "pause", "snapshots"])) test(`fake provider: ${c.name}`, c.run)

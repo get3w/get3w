@@ -24,12 +24,6 @@ import {
   resolvePastedTextPlaceholders,
   type PastedTextChip,
 } from "@/react-app/domains/session/surface/composer/pasted-text";
-import {
-  loadSessionConnectCapabilities,
-  readCachedConnectCapabilities,
-  readCloudInventoryScope,
-} from "@/react-app/domains/connections/cloud-inventory-cache";
-import { connectPluginsForComposer, EMPTY_CONNECT_CAPABILITY_INVENTORY } from "@/react-app/domains/session/surface/connect-capability-inventory";
 import { resolveAttachmentFileMetadata } from "@/react-app/domains/session/sync/attachment-file-part";
 import type { NewSessionDestination } from "./new-session-destination";
 import { draftHasWorkspaceFiles, draftWorkspaceChangeBlocked, newSessionDraftSlot } from "./new-session-destination";
@@ -172,9 +166,6 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
     currentHolder.state = { ...currentHolder.state, draft: props.draft };
   }
   draftRef.current = props.draft;
-  const skillsConnectPushRef = useRef(0);
-  const mcpConnectPushRef = useRef(0);
-  const pluginConnectPushRef = useRef(0);
   const workspaceClient = context?.client ?? null;
   const workspaceId = context?.workspaceId ?? null;
   const groupsByWorkspace = useSessionManagementStore((state) => state.groupsByWorkspace);
@@ -263,11 +254,6 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
 
   const listSkills = workspaceClient && workspaceId
     ? async (): Promise<SkillCard[]> => {
-        const pushId = ++skillsConnectPushRef.current;
-        // Paint cached Connect inventory instantly; the fresh fan-out lands live.
-        const scope = readCloudInventoryScope();
-        const cachedConnect = (scope ? readCachedConnectCapabilities(scope) : null) ?? EMPTY_CONNECT_CAPABILITY_INVENTORY;
-        const connectPromise = loadSessionConnectCapabilities();
         const response = await workspaceClient.listSkills(workspaceId, { includeGlobal: true });
         const localSkills = (response.items ?? []).map((skill) => ({
           name: skill.name,
@@ -277,22 +263,13 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
           scope: skill.scope,
           origin: "local",
         } satisfies SkillCard));
-        void connectPromise.then((connect) => {
-          if (skillsConnectPushRef.current !== pushId) return;
-          setSkills([...localSkills, ...connect.skills]);
-        });
-        const next = [...localSkills, ...cachedConnect.skills];
-        setSkills(next);
-        return next;
+        setSkills(localSkills);
+        return localSkills;
       }
     : undefined;
 
   const listMcp = workspaceClient && workspaceId
     ? async (): Promise<{ servers: McpServerEntry[]; statuses: McpStatusMap; status: string | null }> => {
-        const pushId = ++mcpConnectPushRef.current;
-        const scope = readCloudInventoryScope();
-        const cachedConnect = (scope ? readCachedConnectCapabilities(scope) : null) ?? EMPTY_CONNECT_CAPABILITY_INVENTORY;
-        const connectPromise = loadSessionConnectCapabilities();
         const response = await workspaceClient.listMcp(workspaceId);
         const localServers = (response.items ?? []).map((entry) => ({
           name: entry.name,
@@ -300,16 +277,8 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
           source: entry.source,
           origin: entry.name === "openwork-cloud" ? "openwork-connect" : "local",
         } satisfies McpServerEntry));
-        void connectPromise.then((connect) => {
-          if (mcpConnectPushRef.current !== pushId) return;
-          const freshServers = [...localServers, ...connect.mcpServers];
-          const freshStatus = freshServers.length ? null : t("ui.cc7998a5375b");
-          setMcpServers(freshServers);
-          setMcpStatuses(connect.mcpStatuses);
-          setMcpStatus(freshStatus);
-        });
-        const servers = [...localServers, ...cachedConnect.mcpServers];
-        const statuses = cachedConnect.mcpStatuses;
+        const servers = localServers;
+        const statuses: McpStatusMap = {};
         const status = servers.length ? null : t("ui.cc7998a5375b");
         setMcpServers(servers);
         setMcpStatuses(statuses);
@@ -319,15 +288,7 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
     : undefined;
 
   const listImportedPlugins = async (): Promise<CloudImportedPlugin[]> => {
-    const pushId = ++pluginConnectPushRef.current;
-    const scope = readCloudInventoryScope();
-    const cachedConnect = (scope ? readCachedConnectCapabilities(scope) : null) ?? EMPTY_CONNECT_CAPABILITY_INVENTORY;
-    const connectPromise = loadSessionConnectCapabilities();
-    void connectPromise.then((connect) => {
-      if (pluginConnectPushRef.current !== pushId) return;
-      setImportedPlugins(connectPluginsForComposer(connect.plugins));
-    });
-    const plugins = connectPluginsForComposer(cachedConnect.plugins);
+    const plugins: CloudImportedPlugin[] = [];
     setImportedPlugins(plugins);
     return plugins;
   };

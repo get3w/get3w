@@ -23,7 +23,7 @@ const helperName = "openwork-computer-use.exe";
  */
 export function createWindowsComputerAdapter({ resourcesPath = process.resourcesPath, appRoot = defaultAppRoot, fileExists = existsSync, spawnChild } = {}) {
   const binary = () => [
-    process.env.OPENWORK_COMPUTER_USE_BINARY?.trim() || null,
+    process.env.GET3W_COMPUTER_USE_BINARY?.trim() || null,
     resourcesPath ? path.join(resourcesPath, "helpers", helperName) : null,
     path.join(appRoot, "resources", "helpers", helperName),
   ].find((candidate) => candidate && fileExists(candidate)) ?? null;

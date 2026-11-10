@@ -23,7 +23,7 @@ const addHost = (value?: string | null) => {
 };
 
 envAllowedHosts.split(",").forEach(addHost);
-addHost(process.env.OPENWORK_PUBLIC_HOST ?? null);
+addHost(process.env.GET3W_PUBLIC_HOST ?? null);
 const hostname = os.hostname();
 addHost(hostname);
 const shortHostname = hostname.split(".")[0];
@@ -64,13 +64,13 @@ function readPackageVersion(packagePath: string): string | null {
 }
 
 const buildAppVersion =
-  process.env.VITE_OPENWORK_APP_VERSION?.trim() ||
+  process.env.VITE_GET3W_APP_VERSION?.trim() ||
   readPackageVersion(desktopPackagePath) ||
   readPackageVersion(appPackagePath) ||
   "0.0.0";
 const buildSha = firstNonEmpty([
-  process.env.VITE_OPENWORK_BUILD_SHA,
-  process.env.OPENWORK_GIT_SHA,
+  process.env.VITE_GET3W_BUILD_SHA,
+  process.env.GET3W_GIT_SHA,
   process.env.VERCEL_GIT_COMMIT_SHA,
   process.env.GITHUB_SHA,
 ]) ?? readLocalGitSha();
@@ -79,7 +79,7 @@ const shortBuildSha = buildSha ? buildSha.slice(0, 7) : "";
 // Electron packaged builds load index.html via `file://`, so asset URLs
 // must be relative. Tauri serves via its own protocol so absolute paths
 // work there. Gate on an env var the electron build script sets.
-const isElectronPackagedBuild = process.env.OPENWORK_ELECTRON_BUILD === "1";
+const isElectronPackagedBuild = process.env.GET3W_ELECTRON_BUILD === "1";
 
 // Headless-web dev (scripts/dev-headless-web.ts): serve /api/den same-origin
 // from the dev server, proxied to the Den control plane, so the browser never
@@ -91,19 +91,19 @@ export default defineConfig(({ command, isPreview }) => {
   const denProxy = devDenProxy(command === "serve" && !isPreview ? process.env : {});
   const openworkProxy = devOpenworkProxy(command === "serve" && !isPreview ? process.env : {});
   const headlessBrowserHostSuffix = Object.keys(openworkProxy).length > 0
-    ? process.env.OPENWORK_DEV_BROWSER_HOST_SUFFIX
+    ? process.env.GET3W_DEV_BROWSER_HOST_SUFFIX
     : undefined;
   if (headlessBrowserHostSuffix && !/^\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(headlessBrowserHostSuffix)) {
     throw new Error("Invalid development browser host suffix.");
   }
   return {
     base: isElectronPackagedBuild ? "./" : "/",
-    ...(process.env.OPENWORK_VITE_CACHE_DIR ? { cacheDir: process.env.OPENWORK_VITE_CACHE_DIR } : {}),
+    ...(process.env.GET3W_VITE_CACHE_DIR ? { cacheDir: process.env.GET3W_VITE_CACHE_DIR } : {}),
     define: {
-      "import.meta.env.VITE_OPENWORK_APP_VERSION": JSON.stringify(buildAppVersion),
-      "import.meta.env.VITE_OPENWORK_BUILD_SHA": JSON.stringify(shortBuildSha),
+      "import.meta.env.VITE_GET3W_APP_VERSION": JSON.stringify(buildAppVersion),
+      "import.meta.env.VITE_GET3W_BUILD_SHA": JSON.stringify(shortBuildSha),
       // Names the MCP App sandbox page built from this source; a server serving it lets Apps load it from the browser cache.
-      "import.meta.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION": JSON.stringify(MCP_APP_SANDBOX_PROXY_VERSION),
+      "import.meta.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION": JSON.stringify(MCP_APP_SANDBOX_PROXY_VERSION),
     },
     // The compiler injects this import after Vite's initial dependency scan.
     // Prebundle it before the first navigation to avoid a startup-time reload.

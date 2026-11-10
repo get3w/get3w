@@ -28,7 +28,7 @@ describe("parseSentryDsn", () => {
     expect(parseSentryDsn("")).toBeNull();
     expect(parseSentryDsn("   ")).toBeNull();
     expect(parseSentryDsn("not-a-dsn")).toBeNull();
-    expect(parseSentryDsn("%VITE_OPENWORK_SENTRY_DSN%")).toBeNull();
+    expect(parseSentryDsn("%VITE_GET3W_SENTRY_DSN%")).toBeNull();
     expect(parseSentryDsn("http://key@host/1")).toBeNull();
   });
 });
@@ -49,7 +49,7 @@ describe("shouldMonitorWebErrors", () => {
   test("stays off without a usable DSN", () => {
     expect(shouldMonitorWebErrors({ dsn: "", deployment: "web", electronRuntime: false })).toBe(false);
     expect(
-      shouldMonitorWebErrors({ dsn: "%VITE_OPENWORK_SENTRY_DSN%", deployment: "web", electronRuntime: false }),
+      shouldMonitorWebErrors({ dsn: "%VITE_GET3W_SENTRY_DSN%", deployment: "web", electronRuntime: false }),
     ).toBe(false);
   });
 });
@@ -152,21 +152,21 @@ describe("reportCaughtWebError", () => {
     });
     const logError = spyOn(console, "error").mockImplementation(() => {});
     const previous = {
-      deployment: process.env.VITE_OPENWORK_DEPLOYMENT,
-      dsn: process.env.VITE_OPENWORK_SENTRY_DSN,
+      deployment: process.env.VITE_GET3W_DEPLOYMENT,
+      dsn: process.env.VITE_GET3W_SENTRY_DSN,
     };
     const boundary = new AppErrorBoundary({ children: null });
     const info = { componentStack: "\n    at AppRoot" };
     const thrown = new Error("Deep link rejected: openwork://open?token=eval-secret-token");
     try {
-      process.env.VITE_OPENWORK_DEPLOYMENT = "desktop";
-      process.env.VITE_OPENWORK_SENTRY_DSN = DSN;
+      process.env.VITE_GET3W_DEPLOYMENT = "desktop";
+      process.env.VITE_GET3W_SENTRY_DSN = DSN;
       startWebErrorMonitoring();
       boundary.componentDidCatch(thrown, info);
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(window.__openworkWebErrorMonitorActive).toBeUndefined();
 
-      process.env.VITE_OPENWORK_DEPLOYMENT = "web";
+      process.env.VITE_GET3W_DEPLOYMENT = "web";
       startWebErrorMonitoring();
       boundary.componentDidCatch(thrown, info);
       boundary.componentDidCatch(thrown, info);
@@ -237,10 +237,10 @@ describe("reportCaughtWebError", () => {
       Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
       fetchSpy.mockRestore();
       logError.mockRestore();
-      if (previous.deployment === undefined) delete process.env.VITE_OPENWORK_DEPLOYMENT;
-      else process.env.VITE_OPENWORK_DEPLOYMENT = previous.deployment;
-      if (previous.dsn === undefined) delete process.env.VITE_OPENWORK_SENTRY_DSN;
-      else process.env.VITE_OPENWORK_SENTRY_DSN = previous.dsn;
+      if (previous.deployment === undefined) delete process.env.VITE_GET3W_DEPLOYMENT;
+      else process.env.VITE_GET3W_DEPLOYMENT = previous.deployment;
+      if (previous.dsn === undefined) delete process.env.VITE_GET3W_SENTRY_DSN;
+      else process.env.VITE_GET3W_SENTRY_DSN = previous.dsn;
       await GlobalRegistrator.unregister();
     }
   });

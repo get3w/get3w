@@ -12,7 +12,7 @@ beforeEach(async () => {
   await setDenBootstrapConfig({ baseUrl: "https://den.example.test", apiBaseUrl: "https://den.example.test" });
   writeDenSettings({
     baseUrl: "https://den.example.test", apiBaseUrl: "https://den.example.test",
-    authToken: "fixture-session", activeOrgId: "org-fixture",
+    authToken: "fixture-session",
   }, { persistBootstrap: false });
 });
 afterEach(async () => {
@@ -35,7 +35,6 @@ test("retired Den model sync never delivers saved tokens or mutates workspace co
     for (const reason of ["sign_in", "app_launch", "app_resume", "manual", "model_picker_open", "new_chat", "settings_cloud_opened"] as const) {
       await store.runCloudProviderSync(reason);
     }
-    expect(await store.refreshCloudOrgProviders({ force: true })).toEqual([]);
     expect(await store.refreshImportedCloudProviders({ strict: true })).toEqual({});
     await expect(store.connectCloudProvider("lpr_fixture")).rejects.toThrow();
     await expect(store.removeCloudProvider("lpr_fixture")).rejects.toThrow();
@@ -45,7 +44,6 @@ test("retired Den model sync never delivers saved tokens or mutates workspace co
     await Promise.resolve();
     expect(requests).toEqual([]);
     expect(savedDenSettings()).toEqual(before);
-    expect(store.getSnapshot().cloudOrgProviders).toEqual([]);
     expect(store.getSnapshot().cloudProviderServerSync).toBeNull();
   } finally { store.dispose(); fetch.mockRestore(); }
 });

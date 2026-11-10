@@ -24,15 +24,15 @@ import {
   type InspectAgentDiagnosticsEngine,
 } from "./agent-context-engine-inspection.js";
 import {
-  differentialCloudVerdict,
-  probeOpenworkCloudCatalog,
-  type CloudCatalogProbe,
-} from "./agent-context-cloud-probe.js";
-import {
   isCloudEndpointCertificateVerificationFailure,
   probeCloudEndpointTransport,
   type CloudEndpointTransportProbe,
 } from "./agent-context-transport-probe.js";
+import {
+  runtimeDiagnosticTransportInfo,
+  type RuntimeDiagnosticRuntimeFamily,
+  type RuntimeDiagnosticTransport,
+} from "./server-fetch.js";
 import {
   inspectConnectSnapshot,
   type ConnectSnapshot,
@@ -528,6 +528,170 @@ function collisionDetails(collisions: McpConfigCollision[]): string[] {
   });
 }
 
+// ── Cloud catalog probe (retired: always "not performed") ─────────────────
+
+export type CloudCatalogProbeStatus = "observed" | "not-performed" | "failed";
+
+export type CloudCatalogProbeStage =
+  | "eligibility"
+  | "dns"
+  | "connect"
+  | "tls"
+  | "proxy"
+  | "initialize_request"
+  | "initialize_http"
+  | "initialize_protocol"
+  | "initialized_notification"
+  | "tools_list_request"
+  | "tools_list_http"
+  | "tools_list_protocol"
+  | "catalog_validation"
+  | "session_cleanup"
+  | "complete";
+
+export type CloudCatalogProbeNetworkCode =
+  | "ENOTFOUND"
+  | "EAI_AGAIN"
+  | "ECONNREFUSED"
+  | "ECONNRESET"
+  | "ETIMEDOUT"
+  | "UND_ERR_CONNECT_TIMEOUT"
+  | "CERT_HAS_EXPIRED"
+  | "SELF_SIGNED_CERT_IN_CHAIN"
+  | "DEPTH_ZERO_SELF_SIGNED_CERT"
+  | "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+  | "ERR_TLS_CERT_ALTNAME_INVALID"
+  | "PROXY_ERROR"
+  | "UNKNOWN_NETWORK_ERROR";
+
+export type CloudCatalogProbeCode =
+  | "catalog_observed"
+  | "runtime_config_unavailable"
+  | "remote_workspace_unavailable"
+  | "cloud_mcp_missing"
+  | "cloud_mcp_not_remote"
+  | "cloud_mcp_disabled"
+  | "invalid_endpoint"
+  | "untrusted_endpoint"
+  | "credential_missing"
+  | "duplicate_authorization"
+  | "probe_busy"
+  | "timeout"
+  | "network_error"
+  | "dns_error"
+  | "connection_refused"
+  | "connection_reset"
+  | "tls_error"
+  | "proxy_error"
+  | "redirect_rejected"
+  | "unauthorized"
+  | "forbidden"
+  | "mcp_route_not_found"
+  | "rate_limited"
+  | "gateway_unavailable"
+  | "http_error"
+  | "response_too_large"
+  | "invalid_content_type"
+  | "invalid_utf8"
+  | "invalid_json"
+  | "invalid_jsonrpc_envelope"
+  | "request_id_mismatch"
+  | "jsonrpc_error"
+  | "unsupported_protocol_version"
+  | "invalid_session_header"
+  | "pagination_unsupported"
+  | "invalid_catalog"
+  | "required_tools_missing";
+
+export type CloudEngineRegistrationStatus =
+  | "connected"
+  | "disabled"
+  | "failed"
+  | "needs-auth"
+  | "needs-client-registration"
+  | "not-recorded";
+
+/**
+ * Cached engine-side evidence for the exact managed Get3W Cloud entry.
+ * This is a comparison input for the differential verdict; it never gates
+ * whether the independent runtime probe is allowed to run.
+ */
+export type CloudEngineRegistrationEvidence = {
+  status: CloudEngineRegistrationStatus;
+  source: "transport_failure" | "engine_status" | null;
+  recordAgeMs: number | null;
+};
+
+export type CloudRuntimeEngineDifferential =
+  | "runtime_and_engine_connected"
+  | "runtime_connected_engine_failed"
+  | "runtime_failed_engine_connected"
+  | "runtime_and_engine_failed"
+  | "runtime_probe_not_performed"
+  | "engine_evidence_stale_or_unavailable";
+
+/**
+ * Which allowlist entry authorized the credentialed request, or why none did.
+ * Reported instead of the origin itself so an administrator can distinguish
+ * "this install is not enterprise activated" from "it is activated, but
+ * against a different origin than the configured Cloud MCP" — a real
+ * misconfiguration — without the report ever carrying a hostname.
+ */
+export type CloudEndpointTrustSource =
+  | "builtin-cloud"
+  | "loopback"
+  | "administrator-env"
+  | "enterprise-activation"
+  | "untrusted"
+  /** The endpoint was absent or structurally invalid, so trust never applied. */
+  | "not-evaluated";
+
+export type CloudCatalogProbe = {
+  performed: boolean;
+  trustSource: CloudEndpointTrustSource;
+  enterpriseActivationPresent: boolean;
+  status: CloudCatalogProbeStatus;
+  stage: CloudCatalogProbeStage;
+  code: CloudCatalogProbeCode;
+  networkCode: CloudCatalogProbeNetworkCode | null;
+  retryable: boolean;
+  runtimeFamily: RuntimeDiagnosticRuntimeFamily;
+  transport: RuntimeDiagnosticTransport;
+  httpStatus: number | null;
+  durationMs: number;
+  toolsListPerformed: boolean;
+  sessionEstablished: boolean;
+  cleanupAttempted: boolean;
+  cleanupSucceeded: boolean | null;
+  toolIds: string[];
+  totalToolCount: number | null;
+  requiredToolsPresent: boolean | null;
+  referenceId: string | null;
+  proxyConfigured: boolean;
+  extraCaConfigured: boolean;
+  steps: string[];
+  engineRegistrationStatus: CloudEngineRegistrationStatus;
+  engineEvidenceSource: "transport_failure" | "engine_status" | null;
+  engineEvidenceAgeMs: number | null;
+};
+
+function cloudProbeNotPerformed(code: CloudCatalogProbeCode, engine: CloudEngineRegistrationEvidence): CloudCatalogProbe {
+  return {
+    performed: false, status: "not-performed", stage: "eligibility", code, networkCode: null, retryable: false,
+    runtimeFamily: runtimeDiagnosticTransportInfo().runtimeFamily, transport: runtimeDiagnosticTransportInfo().transport,
+    httpStatus: null, durationMs: 0, toolsListPerformed: false, sessionEstablished: false, cleanupAttempted: false,
+    cleanupSucceeded: null, toolIds: [], totalToolCount: null, requiredToolsPresent: null, referenceId: null,
+    proxyConfigured: false, extraCaConfigured: false, steps: [`eligibility ${code}`],
+    trustSource: "not-evaluated", enterpriseActivationPresent: false,
+    engineRegistrationStatus: engine.status, engineEvidenceSource: engine.source, engineEvidenceAgeMs: engine.recordAgeMs,
+  };
+}
+
+function differentialCloudVerdict(probe: CloudCatalogProbe, _engineReachableNow: boolean): CloudRuntimeEngineDifferential {
+  if (!probe.performed) return "runtime_probe_not_performed";
+  return probe.engineRegistrationStatus === "not-recorded" ? "engine_evidence_stale_or_unavailable" : "runtime_and_engine_failed";
+}
+
 export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnosticCheck {
   const common = {
     id: "cloud-tool-catalog" as const,
@@ -625,8 +789,8 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
         ? "The runtime endpoint probe was not performed: this installation is enterprise activated, but against a different control-plane origin than the configured Get3W Cloud MCP. No request was sent, so this is a configuration mismatch, not a network, TLS, or MCP failure."
         : "The runtime endpoint probe was not performed because the configured origin is not in the diagnostics trust list; no request was sent, so this is a trust-configuration state, not a network, TLS, or MCP failure.";
       action = probe.enterpriseActivationPresent
-        ? "Reconcile the enterprise activation origin with the configured Get3W Cloud MCP origin, or have an administrator add the exact endpoint origin to OPENWORK_AGENT_DIAGNOSTICS_TRUSTED_ORIGINS, then rerun diagnostics."
-        : "Activate this installation against your on-prem Den, or have an administrator set OPENWORK_AGENT_DIAGNOSTICS_TRUSTED_ORIGINS on the Get3W desktop/server process to the exact endpoint origin, then rerun diagnostics.";
+        ? "Reconcile the enterprise activation origin with the configured Get3W Cloud MCP origin, or have an administrator add the exact endpoint origin to GET3W_AGENT_DIAGNOSTICS_TRUSTED_ORIGINS, then rerun diagnostics."
+        : "Activate this installation against your on-prem Den, or have an administrator set GET3W_AGENT_DIAGNOSTICS_TRUSTED_ORIGINS on the Get3W desktop/server process to the exact endpoint origin, then rerun diagnostics.";
       break;
     case "credential_missing":
     case "duplicate_authorization":
@@ -1239,9 +1403,6 @@ export async function runAgentContextDiagnostics(input: {
   input.dependencies?.signal?.throwIfAborted();
   const now = input.dependencies?.now ?? Date.now;
   const uuid = input.dependencies?.uuid ?? randomUUID;
-  // No global-fetch fallback here: the probe resolves its transport through
-  // the named runtimeDiagnosticFetch wrapper unless a test seam is injected.
-  const fetchImpl = input.dependencies?.fetchImpl;
   const startedMs = now();
   const startedAt = new Date(startedMs).toISOString();
   const runId = uuid();
@@ -1448,29 +1609,20 @@ export async function runAgentContextDiagnostics(input: {
     return "unspecified";
   };
   const engineReachableNow = engineInspectionStatus === "observed" || engineInspectionStatus === "invalid";
-  // Local workspaces only: the activation record describes this installation,
-  // so it must never authorize egress on behalf of a remote workspace shell.
-  const activatedEnterpriseOrigin = null;
   input.dependencies?.signal?.throwIfAborted();
   // Cached engine registration and agent tool policy are comparison inputs
   // for the differential verdict, never eligibility gates: the independent
   // runtime probe exists precisely to diagnose engine-side failures.
-  const cloudProbe = await probeOpenworkCloudCatalog({
-    workspaceId: input.workspace.id,
-    workspaceType: input.workspace.workspaceType,
-    runtimeConfigAvailable: runtimeInspection.status === "available",
-    config: null,
-    engineRegistration: {
+  // Personal Desktop has no Get3W Cloud MCP to probe: the check reports
+  // "not performed" without any network request.
+  const cloudProbe = cloudProbeNotPerformed(
+    runtimeInspection.status === "available" ? "cloud_mcp_missing" : "runtime_config_unavailable",
+    {
       status: runtimeCloudRegistration?.status ?? "not-recorded",
       source: runtimeCloudRegistration?.source ?? null,
       recordAgeMs: runtimeCloudRegistration?.recordAgeMs ?? null,
     },
-    activatedEnterpriseOrigin,
-    requestId: runId,
-    fetchImpl,
-    now,
-    signal: input.dependencies?.signal,
-  });
+  );
   input.dependencies?.signal?.throwIfAborted();
   const transportProbeApplicable = false;
   const cloudEndpointTransportProbe = await probeCloudEndpointTransport({

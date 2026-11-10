@@ -26,7 +26,7 @@ function option(name) {
 
 /** The desktop's bridge, found the way the engine finds it. Loopback only; the token is never printed. */
 async function bridge() {
-  const explicit = process.env.OPENWORK_UI_CONTROL_DISCOVERY?.trim();
+  const explicit = process.env.GET3W_UI_CONTROL_DISCOVERY?.trim();
   const base = join(homedir(), "Library", "Application Support");
   const candidates = explicit ? [explicit] : [join(base, "com.get3w.desktop", "openwork-ui-control.json"), join(base, "com.get3w.desktop.dev", "openwork-ui-control.json")];
   for (const candidate of candidates) {

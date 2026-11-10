@@ -35,7 +35,7 @@ export async function resolvePackageRoot(input: {
   env: NodeJS.ProcessEnv;
   execPath: string;
 }): Promise<string | null> {
-  const explicit = input.env.OPENWORK_PACKAGE_ROOT?.trim();
+  const explicit = input.env.GET3W_PACKAGE_ROOT?.trim();
   if (explicit && await isDirectory(explicit)) return resolve(explicit);
   const fromBinary = resolve(dirname(input.execPath), "..", "..");
   if (await isFile(join(fromBinary, "package.json")) && await isDirectory(join(fromBinary, "web"))) {
@@ -51,7 +51,7 @@ export async function resolveWebRoot(input: {
   sourceDir: string;
 }): Promise<string | null> {
   const candidates = [
-    input.env.OPENWORK_WEB_ROOT?.trim(),
+    input.env.GET3W_WEB_ROOT?.trim(),
     input.packageRoot ? join(input.packageRoot, "web") : undefined,
     resolve(input.sourceDir, "..", "..", "app", "dist"),
   ];
@@ -213,7 +213,7 @@ export async function renameWithRetry(
 
 /**
  * Make sure the pinned OpenCode version is installed under the data dir and
- * return its path. An explicit OPENWORK_OPENCODE_BIN always wins (bring your
+ * return its path. An explicit GET3W_OPENCODE_BIN always wins (bring your
  * own engine); otherwise the version the server was released with is
  * downloaded once and reused.
  */
@@ -225,7 +225,7 @@ export async function ensureManagedEngine(input: {
   platform?: NodeJS.Platform;
   arch?: string;
 }): Promise<{ bin: string; installedVersion: string | null; source: "env" | "installed" | "downloaded" }> {
-  const explicit = input.env.OPENWORK_OPENCODE_BIN?.trim();
+  const explicit = input.env.GET3W_OPENCODE_BIN?.trim();
   if (explicit) {
     return { bin: explicit, installedVersion: readBinaryVersion(explicit), source: "env" };
   }
@@ -245,10 +245,10 @@ export async function ensureManagedEngine(input: {
   const arch = input.arch ?? process.arch;
   const asset = opencodeReleaseAsset(platform, arch);
   if (!asset) {
-    throw new Error(`No OpenCode release asset for ${platform}-${arch}. Install OpenCode yourself and set OPENWORK_OPENCODE_BIN.`);
+    throw new Error(`No OpenCode release asset for ${platform}-${arch}. Install OpenCode yourself and set GET3W_OPENCODE_BIN.`);
   }
-  const repo = input.env.OPENWORK_OPENCODE_GITHUB_REPO?.trim() || OPENCODE_GITHUB_REPO;
-  const url = input.env.OPENWORK_OPENCODE_DOWNLOAD_URL?.trim() || opencodeReleaseUrl(version, asset, repo);
+  const repo = input.env.GET3W_OPENCODE_GITHUB_REPO?.trim() || OPENCODE_GITHUB_REPO;
+  const url = input.env.GET3W_OPENCODE_DOWNLOAD_URL?.trim() || opencodeReleaseUrl(version, asset, repo);
   input.log(`Downloading OpenCode ${version} (${asset}) from ${url}`);
 
   const stagingDir = join(tmpdir(), `openwork-engine-${randomBytes(6).toString("hex")}`);
@@ -436,7 +436,7 @@ export async function checkForUpdate(input: {
   env: NodeJS.ProcessEnv;
   fetchImpl?: FetchLike;
 }): Promise<string | null> {
-  if (input.env.OPENWORK_NO_UPDATE_CHECK === "1" || !isReleaseVersion(input.currentVersion)) return null;
+  if (input.env.GET3W_NO_UPDATE_CHECK === "1" || !isReleaseVersion(input.currentVersion)) return null;
   try {
     const response = await (input.fetchImpl ?? fetch)(`https://registry.npmjs.org/${NPM_PACKAGE}/latest`, {
       signal: AbortSignal.timeout(UPDATE_CHECK_TIMEOUT_MS),

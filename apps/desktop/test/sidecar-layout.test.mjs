@@ -48,8 +48,8 @@ for (const [platform, arch, triple] of targets) {
     }
     assert.equal(readFileSync(path.join(directory, "versions.json"), "utf8"), '{"target":"correct"}');
     assert.deepEqual(bundledEngineEnv([directory], { required: true, platform, arch }), {
-      OPENWORK_OPENCODE_BIN: path.join(directory, `opencode${ext}`),
-      OPENWORK_OPENCODE2_BIN: path.join(directory, `opencode2${ext}`),
+      GET3W_OPENCODE_BIN: path.join(directory, `opencode${ext}`),
+      GET3W_OPENCODE2_BIN: path.join(directory, `opencode2${ext}`),
     });
   });
 
@@ -61,9 +61,9 @@ for (const [platform, arch, triple] of targets) {
     for (const base of ["opencode", "opencode2"]) {
       writeFileSync(path.join(directory, `${base}-${triple}${ext}`), "legacy");
     }
-    assert.equal(bundledEngineEnv([directory], options).OPENWORK_OPENCODE2_BIN, path.join(directory, `opencode2-${triple}${ext}`));
+    assert.equal(bundledEngineEnv([directory], options).GET3W_OPENCODE2_BIN, path.join(directory, `opencode2-${triple}${ext}`));
     for (const base of ["opencode", "opencode2"]) writeFileSync(path.join(directory, `${base}${ext}`), "canonical");
-    assert.equal(bundledEngineEnv([directory], options).OPENWORK_OPENCODE2_BIN, path.join(directory, `opencode2${ext}`));
+    assert.equal(bundledEngineEnv([directory], options).GET3W_OPENCODE2_BIN, path.join(directory, `opencode2${ext}`));
     rmSync(path.join(directory, `opencode2${ext}`));
     rmSync(path.join(directory, `opencode2-${triple}${ext}`));
     mkdirSync(path.join(directory, `opencode2${ext}`));

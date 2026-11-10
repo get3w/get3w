@@ -52,6 +52,6 @@ test("a real failure on Windows still tries the rundll32 fallback once and repor
 });
 
 test("the simulated failure switch still works for evals", async () => {
-  const result = await openExternalUrl(URL_A, { env: { OPENWORK_SIMULATE_OPEN_EXTERNAL_FAILURE: "1" } });
+  const result = await openExternalUrl(URL_A, { env: { GET3W_SIMULATE_OPEN_EXTERNAL_FAILURE: "1" } });
   assert.deepEqual(result, { ok: false, error: "simulated failure" });
 });

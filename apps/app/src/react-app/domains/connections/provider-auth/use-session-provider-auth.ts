@@ -15,7 +15,6 @@ import { useReloadCoordinator } from "@/react-app/shell/reload-coordinator";
 import { type RouteWorkspace, workspaceLabel } from "@/react-app/shell/route-workspaces";
 import { reconcilePolicyDisabledProviders } from "@/react-app/domains/connections/policy-provider-reconcile";
 import {
-  shouldWaitForCloudProviderSyncBeforePolicyReconcile,
   type OrganizationModelsRefreshReason,
 } from "./managed-models-recovery";
 import { createSessionOpenworkServer, type SessionServerEndpoint } from "./session-openwork-server";
@@ -188,7 +187,6 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
       engineRoot: Boolean(engineRootServer),
       workspaceRoot: selectedWorkspaceRoot,
       denBaseUrl: settings.baseUrl,
-      activeOrgId: settings.activeOrgId?.trim() ?? "",
       signedIn: denAuth.isSignedIn && Boolean(settings.authToken?.trim()),
     };
   }, [denAuth.isSignedIn, denSettingsVersion, engineRootServer, opencodeClient, selectedWorkspaceEndpoint?.workspaceId, selectedWorkspaceRoot]);
@@ -224,13 +222,6 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
 
   useEffect(() => {
     if (!opencodeClient || !selectedWorkspaceId) return;
-    if (shouldWaitForCloudProviderSyncBeforePolicyReconcile({
-      signedIn: cloudProviderSyncContext.signedIn,
-      clientConnected: Boolean(cloudProviderSyncContext.client),
-      workspaceId: cloudProviderSyncContext.workspaceId,
-      activeOrgId: cloudProviderSyncContext.activeOrgId,
-      cloudProviderSyncReady,
-    })) return;
     if (policyProviderReconcileInFlightRef.current) return;
 
     policyProviderReconcileInFlightRef.current = true;
@@ -258,11 +249,6 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
     });
   }, [
     checkDesktopRestriction,
-    cloudProviderSyncContext.activeOrgId,
-    cloudProviderSyncContext.client,
-    cloudProviderSyncContext.signedIn,
-    cloudProviderSyncContext.workspaceId,
-    cloudProviderSyncReady,
     disabledProviderIds,
     markReloadRequired,
     opencodeClient,
@@ -290,25 +276,6 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
     engineRootServer?.baseUrl,
     store,
   ]);
-
-  useEffect(() => {
-    if (
-      !cloudProviderSyncContext.client ||
-      !(cloudProviderSyncContext.workspaceId || cloudProviderSyncContext.engineRoot) ||
-      !cloudProviderSyncContext.signedIn ||
-      !cloudProviderSyncContext.activeOrgId
-    ) return;
-
-    let cancelled = false;
-    void loadCloudProviderSync("app_launch").then((providerList) => {
-      if (!cancelled) {
-        setCompletedCloudProviderSync({ context: cloudProviderSyncContext, providerList });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [cloudProviderSyncContext, loadCloudProviderSync]);
 
   // After onboarding, auto-open the provider modal if no providers are connected.
   // The welcome route appends ?onboarding=1 to the session URL after workspace creation.

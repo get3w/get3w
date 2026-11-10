@@ -58,7 +58,7 @@ export type BadgeTone = "violet" | "sky" | "cyan" | "gray";
 
 export type ComposerBadge = {
   /** Stable kind, exposed as `data-composer-badge`. */
-  kind: "skill" | "connect-skill" | "connector" | "computer" | "session" | "agent" | "file" | "pasted";
+  kind: "model" | "skill" | "connect-skill" | "connector" | "computer" | "session" | "agent" | "file" | "pasted";
   label: string;
   /** Muted detail after the label, e.g. "42 lines". */
   meta?: string;
@@ -89,6 +89,7 @@ export const ATTACHMENT_CHIP_META_CLASS = "block truncate text-[11px] leading-4 
 export function composerPillBadge(pill: ComposerPill): ComposerBadge {
   const title = composerPillTitle(pill);
   switch (pill.kind) {
+    case "model": return {kind:"model",label:`@${pill.name}`,title,tone:"sky",slot:{icon:"lines"}};
     case "skill":
       return { kind: "skill", label: humanizeCapabilityName(pill.name), title, tone: "violet", slot: { icon: "book" } };
     case "connect-skill":

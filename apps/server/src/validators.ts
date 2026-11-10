@@ -1,6 +1,6 @@
 import { parse as parseJsonc } from "jsonc-parser";
 import { ApiError } from "./errors.js";
-import { isOrganizationMcpName } from "./organization-mcp-names.js";
+import { isOrganizationMcpName } from "./reserved-mcp-names.js";
 
 const SKILL_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const COMMAND_NAME_REGEX = /^[A-Za-z0-9_-]+$/;

@@ -37,7 +37,7 @@ export function createCommandPaletteModelControls(input: CommandPaletteModelCont
   const nextPinnedOption = input.options.find((option) => option.providerID === nextPin?.providerID && option.modelID === nextPin.modelID);
   const cycle = (option: ModelOption | undefined | null) => {
     if (!option || option.disabled) return null;
-    // Get3W Free and Auto manage their own settings, so they never inherit the previous model's effort.
+    // Smart and Auto manage their own settings, so they never inherit the previous model's effort.
     const behavior = !managesOwnBehavior(option) && option.behaviorOptions?.some((choice) => choice.value === input.behavior) ? input.behavior : null;
     input.onSelect({ providerID: option.providerID, modelID: option.modelID }, behavior, option);
     return modelTitle(option);

@@ -5,8 +5,8 @@ import { resolveWithinRoot } from "./paths.js";
 import { transferResponseBody } from "./server-fetch.js";
 import type { ServerConfig } from "./types.js";
 
-const WEB_ROOT_ENV = "OPENWORK_WEB_ROOT";
-const WEB_BOOTSTRAP_TOKEN_ENV = "OPENWORK_WEB_BOOTSTRAP_TOKEN";
+const WEB_ROOT_ENV = "GET3W_WEB_ROOT";
+const WEB_BOOTSTRAP_TOKEN_ENV = "GET3W_WEB_BOOTSTRAP_TOKEN";
 const ASSET_CACHE = "public, max-age=31536000, immutable";
 const INDEX_CACHE = "no-cache";
 

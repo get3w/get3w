@@ -517,7 +517,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
         return "";
       } },
       env: {
-        OPENWORK_EVAL_RECOVERY_CANDIDATES: JSON.stringify([
+        GET3W_EVAL_RECOVERY_CANDIDATES: JSON.stringify([
           { version: "1.2.2", verified: false, artifactUrl: "https://tampered.invalid/openwork.dmg" },
         ]),
       },
@@ -1092,9 +1092,9 @@ describe("macOS native staging", () => {
 
 describe("evalUpdaterFeedUrl", () => {
   it("honours only a plain-HTTP loopback feed", () => {
-    assert.equal(evalUpdaterFeedUrl({ OPENWORK_EVAL_UPDATE_FEED_URL: " http://127.0.0.1:4567/feed/ " }), "http://127.0.0.1:4567/feed");
-    assert.equal(evalUpdaterFeedUrl({ OPENWORK_EVAL_UPDATE_FEED_URL: "http://localhost:4567" }), "http://localhost:4567");
-    assert.equal(evalUpdaterFeedUrl({ OPENWORK_EVAL_UPDATE_FEED_URL: "http://[::1]:4567" }), "http://[::1]:4567");
+    assert.equal(evalUpdaterFeedUrl({ GET3W_EVAL_UPDATE_FEED_URL: " http://127.0.0.1:4567/feed/ " }), "http://127.0.0.1:4567/feed");
+    assert.equal(evalUpdaterFeedUrl({ GET3W_EVAL_UPDATE_FEED_URL: "http://localhost:4567" }), "http://localhost:4567");
+    assert.equal(evalUpdaterFeedUrl({ GET3W_EVAL_UPDATE_FEED_URL: "http://[::1]:4567" }), "http://[::1]:4567");
   });
 
   it("ignores remote, credentialed, non-HTTP, and malformed feeds", () => {
@@ -1108,15 +1108,15 @@ describe("evalUpdaterFeedUrl", () => {
       "file:///tmp/feed",
       "not a url",
     ]) {
-      assert.equal(evalUpdaterFeedUrl({ OPENWORK_EVAL_UPDATE_FEED_URL: value }), null, String(value));
+      assert.equal(evalUpdaterFeedUrl({ GET3W_EVAL_UPDATE_FEED_URL: value }), null, String(value));
     }
   });
 
   it("points the untargeted feed at the loopback feed", async () => {
     const handlers = new Map();
     const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-eval-feed-"));
-    const previous = process.env.OPENWORK_EVAL_UPDATE_FEED_URL;
-    process.env.OPENWORK_EVAL_UPDATE_FEED_URL = "http://127.0.0.1:4567";
+    const previous = process.env.GET3W_EVAL_UPDATE_FEED_URL;
+    process.env.GET3W_EVAL_UPDATE_FEED_URL = "http://127.0.0.1:4567";
     try {
       registerUpdaterIpc({
         assertReleaseReady: () => {},
@@ -1129,8 +1129,8 @@ describe("evalUpdaterFeedUrl", () => {
       // A version-targeted check still resolves to the fixed GitHub release.
       assert.equal(targetedStableUpdaterFeed("0.17.22", "0.17.23"), "https://github.com/get3w/get3w/releases/download/v0.17.23");
     } finally {
-      if (previous === undefined) delete process.env.OPENWORK_EVAL_UPDATE_FEED_URL;
-      else process.env.OPENWORK_EVAL_UPDATE_FEED_URL = previous;
+      if (previous === undefined) delete process.env.GET3W_EVAL_UPDATE_FEED_URL;
+      else process.env.GET3W_EVAL_UPDATE_FEED_URL = previous;
       await rm(userData, { recursive: true, force: true });
     }
   });

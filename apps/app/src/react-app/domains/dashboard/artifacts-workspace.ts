@@ -5,7 +5,7 @@ export type ArtifactRow =
   | { kind: "built"; id: string; title: string; pinned: boolean; isOwner: boolean; app: BuiltMcpAppCatalogEntry }
   | { kind: "saved"; id: string; title: string; pinned: boolean; isOwner: boolean; app: SavedAppSummary };
 
-export type ArtifactGroup = { title: "Pinned" | "Yours" | "Team"; rows: ArtifactRow[] };
+export type ArtifactGroup = { title: "Pinned" | "Artifacts"; rows: ArtifactRow[] };
 
 /** Placement never determines access: every accessible catalog entry gets a row. */
 export function artifactRows(
@@ -20,6 +20,13 @@ export function artifactRows(
     unique.set(id, { kind: "built", id, title: app.title, pinned: pinned.has(app.connectionId), isOwner: app.isOwner === true, app });
   }
   for (const app of savedApps) {
+    const built = unique.get(`personal:${app.view.id}`);
+    if (built) {
+      // The native active catalog and saved-view index describe the same app.
+      // Preserve the live launch and explicit ownership from the catalog.
+      built.pinned = built.pinned || app.onDashboard;
+      continue;
+    }
     const id = `saved:${app.view.id}`;
     // Legacy summaries expose management permission, not authorship. Admin
     // access must never turn an unknown author into an ownership claim.
@@ -29,10 +36,10 @@ export function artifactRows(
 }
 
 export function groupArtifacts(rows: readonly ArtifactRow[], search = ""): ArtifactGroup[] {
-  const groups: ArtifactGroup[] = [{ title: "Pinned", rows: [] }, { title: "Yours", rows: [] }, { title: "Team", rows: [] }];
+  const groups: ArtifactGroup[] = [{ title: "Pinned", rows: [] }, { title: "Artifacts", rows: [] }];
   const matching = rows.filter((row) => row.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   for (const group of groups) {
-    group.rows = matching.filter((row) => group.title === "Pinned" ? row.pinned : !row.pinned && (group.title === "Yours" ? row.isOwner : !row.isOwner));
+    group.rows = matching.filter((row) => group.title === "Pinned" ? row.pinned : !row.pinned);
     group.rows.sort((left, right) => left.title.localeCompare(right.title));
   }
   return groups;

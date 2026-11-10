@@ -55,12 +55,12 @@ test("an ordinary 429 and a foreign origin keep their normal retry behaviour", a
   assert.equal(spoofed.status, 429, "headers alone do not classify without the gateway's body");
 });
 
-test("other providers named openwork-free or custom fetches are left alone", async () => {
+test("other providers or custom fetches are left alone", async () => {
   const config: { provider: Record<string, Record<string, unknown>> } = { provider: {
-    "openwork-free": { options: { baseURL: base } },
+    "other-provider": { options: { baseURL: base } },
     openwork: { options: { baseURL: base, fetch: "custom" } },
   } };
   await (await OpenWorkGatewayQuota()).config(config);
-  assert.equal(config.provider["openwork-free"]?.options && "fetch" in config.provider["openwork-free"].options, false);
+  assert.equal(config.provider["other-provider"]?.options && "fetch" in config.provider["other-provider"].options, false);
   assert.deepEqual(config.provider.openwork?.options, { baseURL: base, fetch: "custom" });
 });

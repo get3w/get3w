@@ -12,7 +12,6 @@
  * main process resolves. Results marked `unknown` are not yet modeled —
  * tighten them instead of widening call sites.
  */
-import type { ConnectLinkVerifyFailure, ConnectLinkVerifyResult } from "./connect-link.js";
 import type { WorkspaceWire } from "./workspace.js";
 
 // ---------------------------------------------------------------------------
@@ -191,15 +190,6 @@ export type DesktopDistributionInfo = {
   requireActivation: boolean;
 };
 
-/** Org + first-skill identity shared by the handoff and prepared records. */
-export type DesktopBootstrapOrgSkill = {
-  orgId: string;
-  orgName: string;
-  orgSlug: string;
-  skillId: string;
-  skillTitle: string;
-};
-
 export type DesktopBootstrapConfig = {
   baseUrl: string;
   apiBaseUrl?: string | null;
@@ -210,27 +200,6 @@ export type DesktopBootstrapConfig = {
   brandIconUrl?: string | null;
   writtenAt?: string | null;
   fromFile?: boolean;
-  claimLinks?: Array<{
-    id: string;
-    role: string;
-    token?: string;
-    url: string;
-    expiresAt: string;
-  }> | null;
-  handoff?: (DesktopBootstrapOrgSkill & {
-    grant: string;
-    denBaseUrl: string;
-    createdAt: string;
-  }) | null;
-  prepared?: (DesktopBootstrapOrgSkill & {
-    skillsDir: string;
-    skillPath: string;
-    preparedAt: string;
-  }) | null;
-  enterpriseActivation?: {
-    activatedAt: string;
-    denBaseUrl: string;
-  } | null;
 };
 
 export type OpenworkDockerCleanupResult = {
@@ -461,7 +430,7 @@ export type DesktopCommandMap = {
     result: DesktopNotificationResult;
   };
   desktopSentrySetSession: {
-    args: [input: { userId: string; orgId: string }];
+    args: [input: { userId: string }];
     result: { enabled: boolean };
   };
   desktopSentryClearSession: { args: []; result: { enabled: boolean } };
@@ -506,15 +475,6 @@ export type DesktopCommandMap = {
     result: DesktopBootstrapConfig;
   };
 
-  // Connect links use a short-lived HTTPS exchange by default and can use an
-  // embedded-key signed token when explicitly enabled. The renderer relays
-  // only the raw URL. `connectLinkAccept` resolves it again after confirmation,
-  // enforces one-time use, and persists the target as desktop bootstrap config.
-  connectLinkVerify: { args: [rawUrl: string]; result: ConnectLinkVerifyResult };
-  connectLinkAccept: {
-    args: [rawUrl: string];
-    result: { ok: true; config: DesktopBootstrapConfig } | ConnectLinkVerifyFailure;
-  };
   nukeOpenworkAndOpencodeConfigPreview: { args: [options?: NukeOptions]; result: NukeManifestPreview };
   nukeOpenworkAndOpencodeConfigAndExit: { args: [options?: NukeOptions]; result: NukeReceipt };
 

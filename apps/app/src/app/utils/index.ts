@@ -1,3 +1,4 @@
+import { get3wProviderId } from "../lib/get3w-provider-id";
 import type { Part } from "@opencode-ai/sdk/v2/client";
 import { t } from "../../i18n";
 import type {
@@ -16,7 +17,7 @@ export function parseModelRef(raw: string | null): ModelRef | null {
   if (!trimmed) return null;
   const [providerID, ...rest] = trimmed.split("/");
   if (!providerID || rest.length === 0) return null;
-  return { providerID, modelID: rest.join("/") };
+  return { providerID: get3wProviderId(providerID), modelID: rest.join("/") };
 }
 
 /**
@@ -24,6 +25,7 @@ export function parseModelRef(raw: string | null): ModelRef | null {
  * Used when the backend doesn't return a provider name.
  */
 export const FRIENDLY_PROVIDER_LABELS: Record<string, string> = {
+  "get3w-account": "Get3W Models",
   opencode: "OpenCode",
   openai: "OpenAI",
   anthropic: "Anthropic",

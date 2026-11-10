@@ -13,9 +13,8 @@ import { useModelCatalog, useModelChoice } from "@/react-app/domains/models/use-
 import { useWorkspace } from "@/react-app/shell/workspace-provider";
 import { useSetWorkspaceDefaultModel } from "@/react-app/kernel/use-workspace-model-default";
 import { useCheckDesktopRestriction } from "@/react-app/domains/cloud/desktop-config-provider";
-import { openAutoProviderSettings } from "@/react-app/domains/cloud/auto-access-ui";
 import { openProviderAuthEvent } from "@/react-app/shell/new-providers-listener";
-import { openComposerModelPickerEvent } from "@/app/lib/inference-access";
+import { openComposerModelPickerEvent, openProviderSettings } from "@/app/lib/model-picker-events";
 import { fixedModelTitle, managesOwnBehavior, modelTitle, nonDefaultModelSummary, type RetainedModelSelection } from "@/react-app/domains/models/model-catalog";
 import { useModelPickerCatalogStore } from "@/react-app/domains/session/models/model-collections-store";
 
@@ -53,8 +52,8 @@ export function ModelSelect({ open, value, hideValue = false, onOpenChange, onCh
   const choice = useModelChoice(JSON.stringify([sessionId, value, behaviorValue, disabled]));
   const catalog = useModelCatalog({ client: workspace.client, baseUrl: workspace.opencodeBaseUrl, directory: workspace.selectedWorkspaceRoot,
     enabled: true, refreshWhen: open, fallbackOptions, pendingOptions: choice.pendingOptions, disabledProviders: choice.disabledProviders,
-    current: value, savedSelection, sessionScoped: Boolean(sessionId), openWorkModelsSyncing });
-  const { options, catalogState, retainedSelection, restrictToCloud, autoVisible } = catalog;
+    current: value, savedSelection, sessionScoped: Boolean(sessionId) });
+  const { options, catalogState, retainedSelection, restrictToCloud } = catalog;
   React.useEffect(() => {
     const recover = (event: Event) => {
       // The New Task composer has no session; its requests carry none either.
@@ -88,7 +87,7 @@ export function ModelSelect({ open, value, hideValue = false, onOpenChange, onCh
     onOpenChange(false);
   });
   const openProvider = () => { onOpenChange(false); window.dispatchEvent(new Event(openProviderAuthEvent)); };
-  const openSettings = () => { onOpenChange(false); openAutoProviderSettings(); };
+  const openSettings = () => { onOpenChange(false); openProviderSettings(); };
   return <Popover open={open} onOpenChange={(next) => {
     // A provider sign-in opened from this picker owns focus until it finishes or is cancelled.
     if (!next && choice.loginOpen) return;
@@ -102,7 +101,7 @@ export function ModelSelect({ open, value, hideValue = false, onOpenChange, onCh
       <ModelPickerPanel searchInputRef={searchInputRef} options={options} current={value} behaviorValue={behaviorValue} fallbackBehaviorOptions={behaviorOptions}
         onSelect={select} onBehaviorChange={onBehaviorChange} focusAlternative={focusAlternative} catalogState={catalogState} retainedSelection={retainedSelection}
         onConnectProvider={!restrictToCloud ? openProvider : undefined} onOpenProviderSettings={!checkRestriction({ restriction: "allowControlSettings" }) ? openSettings : undefined}
-        onSetWorkspaceDefault={onSetWorkspaceDefault ?? setWorkspaceDefault} openWorkModelsSyncing={openWorkModelsSyncing} autoVisible={autoVisible} onReloadWorkspace={onReloadWorkspace} />
+        onSetWorkspaceDefault={onSetWorkspaceDefault ?? setWorkspaceDefault} openWorkModelsSyncing={openWorkModelsSyncing} onReloadWorkspace={onReloadWorkspace} />
     </PopoverContent>
   </Popover>;
 }

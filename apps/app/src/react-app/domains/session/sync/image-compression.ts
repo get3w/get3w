@@ -3,7 +3,9 @@ const IMAGE_COMPRESS_QUALITY = 0.82;
 const IMAGE_COMPRESS_TARGET_BYTES = 1_500_000;
 
 /**
- * Re-encode oversized images as JPEG before upload / prompt inlining.
+ * Re-encode oversized JPEG photos before upload / prompt inlining.
+ * Keep other formats byte-for-byte: converting PNG/WebP/AVIF to JPEG loses
+ * transparency, and re-encoding animated formats loses frames.
  *
  * Runs at send time (inside the async send pipeline, while attachment chips
  * show their uploading state) instead of at attach time, so dropping a large
@@ -11,8 +13,7 @@ const IMAGE_COMPRESS_TARGET_BYTES = 1_500_000;
  * UI on canvas work (#attachment-upload-ux).
  */
 export async function compressImageFile(file: File): Promise<File> {
-  if (!file.type.startsWith("image/")) return file;
-  if (file.type === "image/gif" || file.size <= IMAGE_COMPRESS_TARGET_BYTES) {
+  if (file.type !== "image/jpeg" || file.size <= IMAGE_COMPRESS_TARGET_BYTES) {
     return file;
   }
 

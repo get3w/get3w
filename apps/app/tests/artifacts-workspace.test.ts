@@ -13,7 +13,7 @@ test("all accessible artifacts appear automatically, grouped exclusively by pin 
   const rows = artifactRows([...catalog, catalog[0]!], ["overview", "overview", "not-accessible"], []);
   const groups = groupArtifacts(rows);
   expect(groups.map((group) => [group.title, group.rows.map((row) => row.title)])).toEqual([
-    ["Pinned", ["Overview"]], ["Yours", ["Notes"]], ["Team", ["Archive", "Review queue"]],
+    ["Pinned", ["Overview"]], ["Artifacts", ["Archive", "Notes", "Review queue"]],
   ]);
   expect(rows).toHaveLength(4);
 });
@@ -24,8 +24,7 @@ test("legacy saved views stay accessible; management permission is not ownership
     workflowTitle: "Saved report", canManage: true, onDashboard: false,
   };
   const groups = groupArtifacts(artifactRows([], [], [saved]));
-  expect(groups[1]?.rows).toEqual([]);
-  expect(groups[2]?.rows.map((row) => row.id)).toEqual(["saved:saved-view"]);
+  expect(groups[1]?.rows.map((row) => row.id)).toEqual(["saved:saved-view"]);
   expect(groupArtifacts(artifactRows([], [], [{ ...saved, onDashboard: true }]))[0]?.rows.map((row) => row.id)).toEqual(["saved:saved-view"]);
 });
 
@@ -33,7 +32,7 @@ test("unpinning moves the row without changing the selected artifact identity", 
   const pinned = artifactRows(catalog, ["overview"], []);
   const unpinned = artifactRows(catalog, [], []);
   expect(selectedArtifact(pinned, "personal:overview")?.id).toBe(selectedArtifact(unpinned, "personal:overview")?.id);
-  expect(groupArtifacts(unpinned)[1]?.rows.map((row) => row.title)).toEqual(["Notes", "Overview"]);
+  expect(groupArtifacts(unpinned)[1]?.rows.map((row) => row.title)).toEqual(["Archive", "Notes", "Overview", "Review queue"]);
 });
 
 test("selection never defaults to an arbitrary app and a removed grant cannot stay selected", () => {
@@ -55,6 +54,17 @@ test("selection survives remount memory but never crosses member, organization o
 
 test("search filters names without changing selection eligibility", () => {
   const rows = artifactRows(catalog, [], []);
-  expect(groupArtifacts(rows, "  REVIEW  ")[2]?.rows.map((row) => row.title)).toEqual(["Review queue"]);
+  expect(groupArtifacts(rows, "  REVIEW  ")[1]?.rows.map((row) => row.title)).toEqual(["Review queue"]);
   expect(selectedArtifact(rows, "personal:overview")?.title).toBe("Overview");
 });
+
+ test("a native app in both catalogs has one live row and preserves saved pinning", () => {
+  const saved: SavedAppSummary = {
+    view: { id: "overview", configObjectId: "overview", title: "Overview", description: null, status: "active", activeRevisionId: "r", revisions: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" },
+    workflowTitle: "Overview", canManage: true, onDashboard: true,
+  };
+  const rows = artifactRows([catalog[0]!], [], [saved]);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({kind: "built", id: "personal:overview", pinned: true, isOwner: true});
+  expect(groupArtifacts(rows)[1]?.rows).toEqual([]);
+ });

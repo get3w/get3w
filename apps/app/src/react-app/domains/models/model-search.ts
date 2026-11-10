@@ -1,7 +1,7 @@
 import { t } from "@/i18n";
 import { FAST_DEFAULT_VARIANT, fastVariantId } from "@openwork/types/cloud-model-fast";
 import type { ModelOption } from "@/app/types";
-import { isAutoModel, modelTitle } from "./model-catalog";
+import { modelTitle } from "./model-catalog";
 
 /**
  * Model picker search that understands what people type:
@@ -124,8 +124,8 @@ function providerIndex(options: readonly ModelOption[]): ProviderHint[] {
   for (const option of options) {
     const label = option.description?.trim() || option.providerID;
     const words = [...nameWords(option.providerID), ...nameWords(label)];
-    // Free Auto and Get3W Models answer to "openwork"/"ow".
-    const key = isAutoModel(option) || option.providerID === "openwork" ? "openwork"
+    // Get3W Models answer to "openwork"/"ow".
+    const key = option.providerID === "openwork" ? "openwork"
       : Object.keys(KNOWN_PROVIDERS).find((known) => words.includes(known) || normalize(KNOWN_PROVIDERS[known]) === normalize(label)) ?? normalize(label);
     add(key, KNOWN_PROVIDERS[key] ?? label, words, option.providerID);
   }

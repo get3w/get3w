@@ -243,7 +243,7 @@ export function createUiControlServer({
       "utf8",
     );
     // Make the discovery path available to child processes (server → managed OpenCode → plugin).
-    process.env.OPENWORK_UI_CONTROL_DISCOVERY = uiControlDiscoveryPath;
+    process.env.GET3W_UI_CONTROL_DISCOVERY = uiControlDiscoveryPath;
   }
 
   async function stop() {

@@ -17,6 +17,6 @@ export function prepareLocalPackageEnvironment(userDataPath, env = process.env, 
     else env.HOME = systemHome;
   }
   // The outer Electron profile has already been selected and remains stable.
-  env.OPENWORK_ELECTRON_USERDATA = userDataPath;
+  env.GET3W_ELECTRON_USERDATA = userDataPath;
   return profile;
 }

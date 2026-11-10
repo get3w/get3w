@@ -41,7 +41,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      OPENWORK_COMPUTER_USE_SIGN_IDENTITY: '-'
+      GET3W_COMPUTER_USE_SIGN_IDENTITY: '-'
       SIGN_WINDOWS: 'false'
       MACOS_NOTARIZE: 'false'
     steps:
@@ -69,6 +69,39 @@ jobs:
           python3 scripts/check-public-personal-boundary.py
           python3 scripts/check-public-brand.py
           python3 scripts/check-public-licenses.py
+      - name: Import macOS signing and notarization credentials
+        if: matrix.platform == 'mac'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/get3w-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+          curl -fsSL -o "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          IDENTITY='Developer ID Application: xinxing lai (XHS3S9KT4A)'
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -F "$IDENTITY"
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${{ secrets.APPLE_API_KEY }}.p8"
+          printf '%s' "$APPLE_API_KEY_P8" | base64 --decode > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          {
+            echo "CSC_NAME=xinxing lai (XHS3S9KT4A)"
+            echo "CSC_KEYCHAIN=$KEYCHAIN"
+            echo "GET3W_COMPUTER_USE_SIGN_IDENTITY=$IDENTITY"
+            echo "GET3W_COMPUTER_USE_CODESIGN_IDENTITY=$IDENTITY"
+            echo "APPLE_API_KEY_PATH=$KEY_PATH"
+            echo "MACOS_NOTARIZE=true"
+          } >> "$GITHUB_ENV"
       - name: Install frozen workspace
         run: pnpm install --frozen-lockfile
       - name: Typecheck
@@ -86,7 +119,12 @@ jobs:
           test -n "$APP"
           pnpm --dir apps/desktop exec asar extract "$PWD/$APP/Contents/Resources/app.asar" "$RUNNER_TEMP/asar"
           python3 scripts/verify-public-package.py "$APP" "$RUNNER_TEMP/asar" "$RUNNER_TEMP/package-inventory.json"
-          ELECTRON_RUN_AS_NODE=1 OPENWORK_TEST_EMBEDDED_MODULE_URL="file://$PWD/$APP/Contents/Resources/app.asar/server/dist/embedded.js" OPENWORK_TEST_ENGINE_BIN="$PWD/$APP/Contents/Resources/sidecars/opencode" "$APP/Contents/MacOS/Get3W" --test apps/desktop/test/engine-cold-start.test.mjs
+          ELECTRON_RUN_AS_NODE=1 GET3W_TEST_EMBEDDED_MODULE_URL="file://$PWD/$APP/Contents/Resources/app.asar/server/dist/embedded.js" GET3W_TEST_ENGINE_BIN="$PWD/$APP/Contents/Resources/sidecars/opencode" "$APP/Contents/MacOS/Get3W" --test apps/desktop/test/engine-cold-start.test.mjs
+      - name: Remove macOS signing credentials
+        if: always() && matrix.platform == 'mac'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/get3w-signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}-${{ matrix.arch }}

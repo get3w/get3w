@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": [
-    "OPENWORK_DEV_MODE"
+    "GET3W_DEV_MODE"
   ],
   "tasks": {
     "dev": {

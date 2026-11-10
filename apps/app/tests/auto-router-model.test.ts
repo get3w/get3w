@@ -2,11 +2,8 @@ import { expect, test } from "bun:test";
 
 import type { ModelOption } from "../src/app/types";
 import {
-  AUTO_MODEL_ID,
-  AUTO_PROVIDER_ID,
   AUTO_ROUTER_GROUP,
   fixedModelTitle,
-  isAutoModel,
   isAutoRouterModel,
   managesOwnBehavior,
   modelGroups,
@@ -23,17 +20,16 @@ function option(providerID: string, modelID: string, title: string, description:
 
 const router = option("openwork-auto", "openwork-smart-ar_engineering", "Smart: Engineering", "Smart Model Router");
 const design = option("openwork-auto", "openwork-smart-ar_design", "Smart: Design", "Smart Model Router");
-const free = { ...option(AUTO_PROVIDER_ID, AUTO_MODEL_ID, "GPT-6 Luna", "Get3W Models (Free)"), isFree: true };
 const opus = option("anthropic", "opus", "Claude Opus", "Anthropic");
 
 test("Smart is the first entry, in its own group, even when pinned or recent", () => {
-  const groups = modelGroups([opus, free, router], [router], [router]);
+  const groups = modelGroups([opus, router], [router], [router]);
   expect(groups[0]).toEqual({ value: AUTO_ROUTER_GROUP, items: [router] });
   expect(groups.slice(1).flatMap((group) => group.items).some(isAutoRouterModel)).toBe(false);
 });
 
 test("two Smart Routers are both listed first, by name, whatever order the engine reports them in", () => {
-  for (const options of [[opus, router, free, design], [design, opus, free, router]]) {
+  for (const options of [[opus, router, design], [design, opus, router]]) {
     const groups = modelGroups(options, [design], []);
     expect(groups[0]).toEqual({ value: AUTO_ROUTER_GROUP, items: [design, router] });
     expect(groups[0]?.items.map(modelTitle)).toEqual(["Smart: Design", "Smart: Engineering"]);
@@ -41,17 +37,13 @@ test("two Smart Routers are both listed first, by name, whatever order the engin
   }
 });
 
-test("Smart and Get3W Free are told apart", () => {
+test("Smart models are named by their router", () => {
   expect(isAutoRouterModel(router)).toBe(true);
   expect(isAutoRouterModel(design)).toBe(true);
-  expect(isAutoModel(router)).toBe(false);
-  expect(isAutoRouterModel(free)).toBe(false);
-  expect(isAutoModel(free)).toBe(true);
+  expect(isAutoRouterModel(opus)).toBe(false);
   expect(modelTitle(router)).toBe("Smart: Engineering");
   expect(publicModelTitle(design)).toBe("Smart: Design");
   expect(fixedModelTitle(router)).toBe("Smart: Engineering");
-  expect(modelTitle(free)).toBe("Get3W Free");
-  expect(publicModelTitle(free)).toBe("Get3W Free");
   expect(modelSubtitle(router)).toBe("Picks the best model for each task");
 });
 
@@ -71,5 +63,5 @@ test("Smart is an Get3W Gateway model with no effort of its own", () => {
 });
 
 test("without a Smart Router there is no Smart group", () => {
-  expect(modelGroups([opus, free], [], []).some((group) => group.value === AUTO_ROUTER_GROUP)).toBe(false);
+  expect(modelGroups([opus], [], []).some((group) => group.value === AUTO_ROUTER_GROUP)).toBe(false);
 });

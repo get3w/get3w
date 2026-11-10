@@ -7,11 +7,11 @@ struct Presence {
     let name: String
     let color: NSColor
 
-    /// `OPENWORK_COMPUTER_USE_PRESENCE` is JSON `{"name": "…", "color": "#rrggbb"}`.
+    /// `GET3W_COMPUTER_USE_PRESENCE` is JSON `{"name": "…", "color": "#rrggbb"}`.
     static func load(fallbackName: String = "Get3W") -> Presence {
         let blue = NSColor(srgbRed: 0.27, green: 0.52, blue: 0.95, alpha: 1)
         let fallback = Presence(name: fallbackName, color: blue)
-        guard let raw = ProcessInfo.processInfo.environment["OPENWORK_COMPUTER_USE_PRESENCE"], raw.utf8.count <= 4096,
+        guard let raw = ProcessInfo.processInfo.environment["GET3W_COMPUTER_USE_PRESENCE"], raw.utf8.count <= 4096,
               let value = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any] else { return fallback }
         let name = (value["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let color = (value["color"] as? String).flatMap(hex) ?? blue
@@ -41,7 +41,7 @@ final class AgentCursor {
     private let presence = Presence.load()
     /// The embedded Get3W host always shows presence; standalone clients opt in by passing one.
     private let enabled = SessionControls.embedded
-        || ProcessInfo.processInfo.environment["OPENWORK_COMPUTER_USE_PRESENCE"] != nil
+        || ProcessInfo.processInfo.environment["GET3W_COMPUTER_USE_PRESENCE"] != nil
     private var window: NSWindow?
     private var badge: NSPanel?
     private var pill: PresencePill?

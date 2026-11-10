@@ -825,7 +825,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
     const raw = String(input ?? "").trim();
     const envMatch = raw.match(/^env:([A-Za-z0-9_]+)$/i);
     if (!envMatch) return raw;
-    const key = `OPENWORK_BROWSER_PROXY_${envMatch[1].toUpperCase()}`;
+    const key = `GET3W_BROWSER_PROXY_${envMatch[1].toUpperCase()}`;
     const value = String(process.env[key] ?? "").trim();
     if (!value) throw new Error(`No proxy configured: set the ${key} environment variable to a proxy URL.`);
     return value;

@@ -10,7 +10,7 @@ import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/openwork-session-g
 import { loopbackFetch } from "./server-fetch.js";
 
 const requestSchema = z.object({
-  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read"]),
+  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call"]),
   input: z.unknown(),
   sessionId: z.string().max(256).optional(),
   // The calling tool's place in its chat, where a Drive approval is shown.
@@ -175,6 +175,11 @@ export async function createV2ContextBridge(
         signal.throwIfAborted();
         return hostRequest(path, { ...init, signal });
       };
+      if (call.name === "get3w_model_call") {
+        deadline = AbortSignal.timeout(APPROVAL_WAIT_MS);
+        if (!call.sessionId || !call.caller) throw new Error("Conversation context required");
+        return Response.json(await read("/experimental/model-call", {method:"POST",body:JSON.stringify(call)}));
+      }
       // Older engine plugins may still ask for retired organization catalogs.
       // Answer locally without reading credentials or calling a cloud endpoint.
       if (call.name === "openwork_skills") return Response.json({ ok: true, skills: [] });

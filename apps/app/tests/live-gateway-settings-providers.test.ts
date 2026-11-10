@@ -1,5 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { createDenClient } from "../src/app/lib/den";
+import { describe, expect, test } from "bun:test";
 import {
   isLiveGatewaySetConnected,
   resolveGatewayProviderIds,
@@ -93,45 +92,5 @@ describe("Settings lists Gateway providers under live provider sync", () => {
     expect(isLiveGatewaySetConnected(setRow, [{ ...mixed, authorizationRequests: [] }])).toBe(false);
     expect(isLiveGatewaySetConnected(setRow, [{ ...mixed, authorizationRequests: [], models: [model(readySet), model(pendingSet)] }])).toBe(true);
     expect(isLiveGatewaySetConnected(setRow, [])).toBe(false);
-  });
-});
-
-describe("listOrgUsableGatewayProviders", () => {
-  const withFetch = async (respond: () => Response, run: (client: ReturnType<typeof createDenClient>) => Promise<void>) => {
-    const requests: Array<{ path: string; org: string | null }> = [];
-    const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
-      requests.push({ path: url.pathname + url.search, org: new Headers(init?.headers).get("x-openwork-org-id") });
-      return respond();
-    });
-    try {
-      await run(createDenClient({ baseUrl: "https://den.example.test", apiBaseUrl: "https://den.example.test", token: "member-token" }));
-    } finally { fetch.mockRestore(); }
-    return requests;
-  };
-
-  test("reads the member's usable providers and drops only malformed rows and models", async () => {
-    const requests = await withFetch(() => Response.json({ inferenceProviders: [
-      { ...ready, source: "openwork_gateway", models: [model(readySet), { id: "not-a-gateway-model" }], authorizationRequests: [{ credentialSetId: "bad", name: "x", authUrl: "y" }] },
-      { ...mixed, source: "openwork_gateway" },
-      { id: "lpr_legacy", providerId: "x", name: "Legacy", source: "openwork_gateway", credentialStatus: "ready" },
-      { ...memberOnly, source: "custom" },
-    ] }), async (client) => {
-      const providers = await client.listOrgUsableGatewayProviders("org-a");
-      expect(providers.map((provider) => provider.id)).toEqual(["ipr_ready", "ipr_mixed"]);
-      expect(providers[0]?.models.map((entry) => entry.id)).toEqual([model(readySet).id]);
-      expect(providers[0]?.authorizationRequests).toEqual([]);
-      expect(providers[1]?.authorizationRequests[0]?.models?.map((entry) => entry.id)).toEqual([model(pendingSet).id]);
-    });
-    expect(requests).toEqual([{ path: "/v1/inference-providers?scope=usable", org: "org-a" }]);
-  });
-
-  test("Den servers without Gateway list nothing; other failures surface", async () => {
-    await withFetch(() => Response.json({ error: "not_found" }, { status: 404 }), async (client) => {
-      expect(await client.listOrgUsableGatewayProviders("org-a")).toEqual([]);
-    });
-    await withFetch(() => Response.json({ error: "forbidden" }, { status: 403 }), async (client) => {
-      await expect(client.listOrgUsableGatewayProviders("org-a")).rejects.toThrow();
-    });
   });
 });

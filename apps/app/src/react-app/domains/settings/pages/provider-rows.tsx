@@ -61,8 +61,8 @@ export function CredentialHealthStatus({ health }: { health: ProviderCredentialH
   return <ProviderStatus tone="ready">{t("ui.996f87b386e1")}</ProviderStatus>;
 }
 
-export function LocalProviderStatus({ state, organizationName, credentialHealth }: { state?: LocalProviderEngineState; organizationName?: string; credentialHealth?: ProviderCredentialHealth }) {
-  if (state === "managed_by_organization") return <ProviderStatus tone="locked">{organizationName || t("ui.8fd3f0c72de9")} {t("ui.143ef05e434e")}</ProviderStatus>;
+export function LocalProviderStatus({ state, credentialHealth }: { state?: LocalProviderEngineState; credentialHealth?: ProviderCredentialHealth }) {
+  if (state === "managed_by_organization") return <ProviderStatus tone="locked">{t("ui.8fd3f0c72de9")} {t("ui.143ef05e434e")}</ProviderStatus>;
   if (state === "not_on_engine") return <ProviderStatus tone="neutral">{t("ui.0e586708bfc2")}</ProviderStatus>;
   if (credentialHealth) return <CredentialHealthStatus health={credentialHealth} />;
   return <ProviderStatus tone="ready">{t("ui.996f87b386e1")}</ProviderStatus>;
@@ -110,22 +110,6 @@ export function ProviderRow(props: {
       {props.aside ? <div className="hidden shrink-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex">{props.aside}</div> : null}
       {props.actions ? <div className="ml-auto flex shrink-0 items-center gap-1">{props.actions}</div> : null}
     </div>
-  );
-}
-
-/** Initials for an organization mark, e.g. "Different AI" → "DA". */
-export function organizationInitials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const initials = (words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : [...(words[0] ?? "").slice(0, 2)]).join("");
-  return initials.toUpperCase() || "?";
-}
-
-export function OrganizationMark({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
-  return (
-    <span aria-hidden className={cn(
-      "inline-flex shrink-0 items-center justify-center rounded-full bg-dls-text font-semibold text-dls-surface",
-      size === "md" ? "size-6 text-[10px]" : "size-5 text-[9px]",
-    )}>{organizationInitials(name)}</span>
   );
 }
 

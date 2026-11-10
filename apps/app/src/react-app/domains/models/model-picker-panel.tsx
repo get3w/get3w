@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { fastModeShortcutLabel } from "@/react-app/shell/fast-mode-shortcut";
 import { resolveThinkingModeShortcutOs, thinkingModeShortcutLabel } from "@/react-app/shell/thinking-mode-shortcut";
-import { AutoAccessFooter } from "@/react-app/domains/cloud/auto-access-ui";
 import { ModelPickerList } from "./model-picker-list";
 import { isAutoRouterModel, managesOwnBehavior, type ModelPickerCatalogState, type RetainedModelSelection } from "./model-catalog";
 
@@ -63,7 +62,6 @@ export type ModelPickerPanelProps = {
   onOpenProviderSettings?: () => void;
   onSetWorkspaceDefault?: (model: ModelRef, variant?: string | null) => void | boolean | Promise<void | boolean>;
   openWorkModelsSyncing?: boolean;
-  autoVisible: boolean;
   onReloadWorkspace?: () => void | Promise<unknown>;
   /** Rows under the footer that only one surface offers. */
   footerExtra?: React.ReactNode;
@@ -113,12 +111,11 @@ export function ModelPickerPanel(props: ModelPickerPanelProps) {
   return <ModelPickerList searchInputRef={props.searchInputRef} autoFocusSearch={false} options={options} current={current} query={query} onQueryChange={setQuery} onSelect={props.onSelect}
     focusAlternative={props.focusAlternative} catalogState={props.catalogState} retainedSelection={props.retainedSelection} onConnectProvider={props.onConnectProvider}
     onOpenProviderSettings={props.onOpenProviderSettings} onSetWorkspaceDefault={props.onSetWorkspaceDefault} currentBehaviorValue={behaviorValue}
-    openWorkModelsSyncing={props.autoVisible && props.openWorkModelsSyncing} onReloadWorkspace={props.onReloadWorkspace} onRetryAuto={props.catalogState.onRetry} footer={<>
+    openWorkModelsSyncing={props.openWorkModelsSyncing} onReloadWorkspace={props.onReloadWorkspace} footer={<>
       <ModelPickerFooter effortButtonRef={effortButtonRef} effortLabel={effortValueLabel} effortShortcut={thinkingModeShortcutLabel(shortcutOs)} canChangeEffort={canChangeEffort} onOpenEffort={() => setEffort(true)}
         fast={selected && onBehaviorChange && !autoSelected && controls.hasFast ? { on: controls.fast, shortcut: fastModeShortcutLabel(shortcutOs), disabled: controls.toggleValue === undefined,
           onToggle: () => { if (controls.toggleValue !== undefined) onBehaviorChange(controls.toggleValue); } } : undefined}
         onConnectProvider={props.onConnectProvider} />
       {props.footerExtra}
-      <AutoAccessFooter available={props.autoVisible} syncing={props.autoVisible && Boolean(props.openWorkModelsSyncing)} />
     </>} />;
 }

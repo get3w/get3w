@@ -69,7 +69,7 @@ type ProfilerState = {
 // produces 2 words then the app blocks" symptom.
 //
 // Explicit opt-ins:
-//   - VITE_OPENWORK_PROFILER=1 at `pnpm dev`
+//   - VITE_GET3W_PROFILER=1 at `pnpm dev`
 //   - window.localStorage.setItem("openwork.debug.profiler", "1")
 // When off, <DevProfiler> is a pure pass-through (no <Profiler> mounted) and
 // the overlay renders null.
@@ -77,7 +77,7 @@ const PROFILER_ENABLED = (() => {
   if (typeof window === "undefined") return false;
   try {
     const env = (import.meta as unknown as { env?: Record<string, unknown> }).env ?? {};
-    const flag = env.VITE_OPENWORK_PROFILER;
+    const flag = env.VITE_GET3W_PROFILER;
     if (flag === "1" || flag === "true" || flag === true) return true;
   } catch {
     // ignore

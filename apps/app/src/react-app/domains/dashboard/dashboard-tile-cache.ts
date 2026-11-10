@@ -173,6 +173,12 @@ export function createPresentationCacheStore(maxBytes: number) {
       scope.set(entryId, next);
       store.schedule(scopeKey);
     },
+    prune(scopeKey: string, available: ReadonlySet<string>): void {
+      const scope = store.read(scopeKey);
+      if (!scope) return;
+      for (const key of scope.keys()) if (!available.has(key)) scope.delete(key);
+      store.schedule(scopeKey);
+    },
     remove(scopeKey: string, entryId: string): void {
       const scope = store.read(scopeKey);
       if (!scope) return;
@@ -184,8 +190,10 @@ export function createPresentationCacheStore(maxBytes: number) {
 
 const cacheStore = createPresentationCacheStore(MAX_SCOPE_CACHE_BYTES);
 
-export function dashboardTileCacheScopeKey(userId: string | null, organizationId: string | null): string {
-  return `${DASHBOARD_TILE_CACHE_STORAGE_PREFIX}.${userId?.trim() || "local"}.${organizationId?.trim() || "none"}`;
+/** The second segment repeats the user id so tile caches written by earlier releases stay readable. */
+export function dashboardTileCacheScopeKey(userId: string | null): string {
+  const id = userId?.trim();
+  return `${DASHBOARD_TILE_CACHE_STORAGE_PREFIX}.${id || "local"}.${id || "none"}`;
 }
 
 export function dashboardTileRunsAutomatically(
@@ -236,3 +244,5 @@ export function writeDashboardTileCache(
 export function removeDashboardTileCache(scopeKey: string, entryId: string): void {
   cacheStore.remove(scopeKey, entryId);
 }
+
+export function pruneDashboardTiles(scopeKey: string, available: ReadonlySet<string>): void { cacheStore.prune(scopeKey, available); }

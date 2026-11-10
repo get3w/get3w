@@ -1,4 +1,4 @@
-// Real Linux desktop proof. Run with OPENWORK_TEST_COMPUTER_CONTAINER set to an
+// Real Linux desktop proof. Run with GET3W_TEST_COMPUTER_CONTAINER set to an
 // isolated container running fixtures/computer-shortcuts-gtk.py under Xvfb and
 // dbus-run-session. No production VM, credentials or personal desktop is used.
 import assert from "node:assert/strict";
@@ -13,8 +13,8 @@ import { createX11Driver } from "@openwork/computer-use/computer-x11-driver";
 import { runComputerProgram } from "@openwork/computer-use/runtime";
 import { createCloudComputer } from "@openwork/computer-use/cloud";
 
-const container = process.env.OPENWORK_TEST_COMPUTER_CONTAINER;
-assert.ok(container, "Set OPENWORK_TEST_COMPUTER_CONTAINER to the isolated GTK fixture container.");
+const container = process.env.GET3W_TEST_COMPUTER_CONTAINER;
+assert.ok(container, "Set GET3W_TEST_COMPUTER_CONTAINER to the isolated GTK fixture container.");
 const exec = promisify(execFile);
 let commands = 0;
 let workerDirectory = "";

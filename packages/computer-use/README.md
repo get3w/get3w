@@ -104,7 +104,7 @@ cursor sit just above the selected window instead of above every window, so a
 window the person brings in front covers them too; the pill stays on top so
 Take over and Stop are always reachable.
 
-The host may pass `OPENWORK_COMPUTER_USE_PRESENCE` as JSON
+The host may pass `GET3W_COMPUTER_USE_PRESENCE` as JSON
 `{"name": "…", "color": "#rrggbb"}`. The name falls back to "Get3W" and the
 color to blue. Presence is display only and never grants access. Embedded mode
 always shows it; standalone `mcp` shows it only when the variable is set.
@@ -366,5 +366,5 @@ The real X11 fixture in `apps/desktop/test/computer-shortcuts-x11.mjs` proves
 semantic fill, idempotent checkbox setting, save, scrolling, physical typing
 in one provider request, cancellation and rollout rollback. It requires an
 isolated Xvfb/DBus desktop running `fixtures/computer-shortcuts-gtk.py` and
-`OPENWORK_TEST_COMPUTER_CONTAINER`; it never connects to a production VM.
+`GET3W_TEST_COMPUTER_CONTAINER`; it never connects to a production VM.
 The browser proof is `evals/proofs/computer-shortcuts.proof.test.ts`.

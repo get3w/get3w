@@ -1,16 +1,14 @@
-import { freeAutoSwitchedOff } from "@/app/lib/inference-access";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { CloudImportedProvider } from "@/app/cloud/import-state";
 import type { Client, ModelOption, ModelRef } from "@/app/types";
 import { newProvidersEvent } from "@/app/lib/provider-events";
 import { useCheckDesktopRestriction } from "@/react-app/domains/cloud/desktop-config-provider";
 import { useDenAuth } from "@/react-app/domains/cloud/den-auth-provider";
-import { useAutoAccess } from "@/react-app/domains/cloud/auto-access-ui";
 import { useGatewayModelSelection } from "@/react-app/domains/connections/provider-auth/gateway-model-access";
 import { useProviderListQuery } from "@/react-app/infra/provider-list-query";
 import { modelRefKey, useModelCollectionsStore } from "../session/models/model-collections-store";
-import { buildModelCatalog, resolveRetainedSelection, runtimeModelOptions, withAutoActionState, withoutBlockedSelection } from "./catalog";
-import { isAutoModel, type ModelCatalogOption, type ModelPickerCatalogState, type RetainedModelSelection } from "./model-catalog";
+import { buildModelCatalog, resolveRetainedSelection, runtimeModelOptions, withoutBlockedSelection } from "./catalog";
+import type { ModelCatalogOption, ModelPickerCatalogState, RetainedModelSelection } from "./model-catalog";
 
 export type UseModelCatalogInput = {
   client: Client | null;
@@ -34,7 +32,6 @@ export type UseModelCatalogInput = {
   current?: ModelRef;
   savedSelection?: RetainedModelSelection;
   sessionScoped?: boolean;
-  openWorkModelsSyncing?: boolean;
 };
 
 export type ModelCatalogView = {
@@ -42,15 +39,13 @@ export type ModelCatalogView = {
   options: ModelCatalogOption[];
   /** Everything the person could have chosen here, disabled rows included. */
   knownOptions: ModelCatalogOption[];
-  /** `options` with Auto disabled while it cannot run; for the palette and shortcuts, which switch without showing why. */
+  /** What the palette and shortcuts may switch to. */
   actionOptions: ModelCatalogOption[];
   catalogState: ModelPickerCatalogState;
   retainedSelection?: RetainedModelSelection;
   /** The current model's option when it is selectable, else the last one seen in this identity scope. */
   currentOption?: ModelOption;
   restrictToCloud: boolean;
-  /** Whether Auto is (or would be) offered here, so its access status matters. */
-  autoVisible: boolean;
   /** The provider list's load error, if the last load failed. */
   error: unknown;
   refetch: () => Promise<unknown>;
@@ -74,7 +69,7 @@ export function providerListLoadState(input: {
 /**
  * The single entitlement pipeline behind every model picker: engine models,
  * assigned and pending gateway models, organization pins, desktop policy,
- * disabled providers, the Zen fallback rule and Auto's pin and readiness.
+ * disabled providers and the Zen fallback rule.
  */
 export function useModelCatalog(input: UseModelCatalogInput): ModelCatalogView {
   const auth = useDenAuth();
@@ -95,18 +90,12 @@ export function useModelCatalog(input: UseModelCatalogInput): ModelCatalogView {
 
   const runtime = useMemo(() => providers.data?.all ? runtimeModelOptions(providers.data, input.isNewProvider) : null, [providers.data, input.isNewProvider]);
   const restrictToCloud = checkRestriction({ restriction: "allowCustomProviders" });
-  const autoPresent = Boolean(runtime?.some(isAutoModel) || input.fallbackOptions?.some(isAutoModel) || (input.current && isAutoModel(input.current)));
-  const { query: autoQuery } = useAutoAccess(autoPresent);
-  const autoStatus = autoQuery.data;
-  // A failed status check still shows Auto (as unavailable); only a check that is running and has not answered
-  // hides it. A check that never runs (outside the desktop) leaves Auto as the engine lists it.
-  const autoPending = autoPresent && autoQuery.isPending && autoQuery.fetchStatus !== "idle";
   const catalog = useMemo(() => buildModelCatalog({
     runtime, fallback: input.fallbackOptions, pending: input.pendingOptions, imports: input.importedProviders,
     signedIn, restrictToCloud, checkRestriction, disabledProviders: input.disabledProviders,
-    gatewayProviderIds: input.gatewayProviderIds, autoStatus, autoPending,
+    gatewayProviderIds: input.gatewayProviderIds,
   }), [runtime, input.fallbackOptions, input.pendingOptions, input.importedProviders, signedIn, restrictToCloud, checkRestriction,
-    input.disabledProviders, input.gatewayProviderIds, autoStatus, autoPending]);
+    input.disabledProviders, input.gatewayProviderIds]);
 
   const catalogState: ModelPickerCatalogState = {
     state: providerListLoadState({ ...providers, active: Boolean(input.client) && input.enabled }),
@@ -125,20 +114,13 @@ export function useModelCatalog(input: UseModelCatalogInput): ModelCatalogView {
   const retainedSelection = current ? resolveRetainedSelection({
     current, catalog, remembered: rememberedOption, saved: input.savedSelection, signedIn,
     restrictToCloud, checkRestriction, sessionScoped: input.sessionScoped ?? false,
-    // A conversation already on Auto is not called unavailable while Auto's first check is still answering.
-    catalogState: autoPending && isAutoModel(current) ? "loading" : catalogState.state,
+    catalogState: catalogState.state,
   }) : undefined;
   const options = useMemo(() => withoutBlockedSelection(catalog.options, retainedSelection), [catalog.options, retainedSelection?.model.providerID, retainedSelection?.model.modelID, retainedSelection?.reason]);
-  const auto = options.find(isAutoModel);
-  const autoBlocked = Boolean(input.openWorkModelsSyncing || autoQuery.isError
-    || (auto && autoStatus && modelRefKey(autoStatus) === modelRefKey(auto) && autoStatus.state !== "ready"));
-  const actionOptions = useMemo(() => withAutoActionState(options, { blocked: autoBlocked }), [options, autoBlocked]);
-  const hiddenByChoice = retainedSelection?.reason === "policy" || retainedSelection?.reason === "disabled";
 
   return {
-    options, knownOptions: catalog.known, actionOptions, catalogState, retainedSelection, restrictToCloud,
+    options, knownOptions: catalog.known, actionOptions: options, catalogState, retainedSelection, restrictToCloud,
     currentOption: selectable ?? (current ? catalog.known.find((option) => modelRefKey(option) === modelRefKey(current)) ?? (rememberedOption && modelRefKey(rememberedOption) === modelRefKey(current) ? rememberedOption : undefined) : undefined),
-    autoVisible: !freeAutoSwitchedOff(autoStatus) && !hiddenByChoice && (Boolean(auto) || Boolean(current && isAutoModel(current))),
     error: providers.error,
     refetch,
   };

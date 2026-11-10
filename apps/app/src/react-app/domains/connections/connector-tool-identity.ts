@@ -2,7 +2,6 @@ import type { DynamicToolUIPart } from "ai";
 import { getConnectionStatusProbeId } from "@/lib/capability-call";
 
 import { getMcpServerName, MCP_QUICK_CONNECT } from "@/app/constants";
-import type { DenExternalMcpConnection } from "@/app/lib/den";
 import type { McpServerEntry } from "@/app/types";
 import { CONNECT_DIRECT_MCP_SERVER_NAME_PREFIX } from "./cloud-mcp-user-state";
 import {
@@ -87,34 +86,13 @@ function identityFromServer(server: McpServerEntry): ConnectorToolIdentity {
   };
 }
 
-function identityFromConnection(connection: DenExternalMcpConnection): ConnectorToolIdentity {
-  const url = connection.url.trim() || null;
-  const native = connection.nativeProviderKey
-    ? NATIVE_CONNECTOR_IDENTITIES.find((identity) => normalized(identity.name) === normalized(connection.nativeProviderKey ?? ""))
-    : null;
-  return {
-    id: `connection:${connection.id}`,
-    name: native?.name ?? connection.name,
-    iconUrl: native?.iconUrl ?? iconFor({
-      name: connection.name,
-      url,
-      nativeProviderKey: connection.nativeProviderKey,
-    }),
-    serviceUrl: native?.serviceUrl ?? url,
-    toolNamespace: null,
-    connectionId: connection.id,
-    connectedForMe: connection.connectedForMe && connection.needsReconnect !== true,
-  };
-}
-
 /**
  * One first-class presentation inventory for every connector source the
- * desktop knows about. Later, user- and organization-specific entries replace
+ * desktop knows about. Later, user-specific entries replace
  * catalog fallbacks with the exact name, URL, and connection id in use.
  */
 export function buildConnectorToolIdentities(input: {
   mcpServers: McpServerEntry[];
-  orgConnections: DenExternalMcpConnection[];
 }): ConnectorToolIdentity[] {
   const identities = new Map<string, ConnectorToolIdentity>();
 
@@ -139,11 +117,6 @@ export function buildConnectorToolIdentities(input: {
     const identity = identityFromServer(server);
     identities.set(identity.id, identity);
   }
-  for (const connection of input.orgConnections) {
-    const identity = identityFromConnection(connection);
-    identities.set(identity.id, identity);
-  }
-
   return [...identities.values()];
 }
 

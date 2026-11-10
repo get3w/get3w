@@ -111,7 +111,7 @@ test("ordinary-send environment preflight opts in without changing other environ
   expect(world.renderer).toHaveLength(0);
   expect(world.main).toHaveLength(1);
   expect(world.main[0].headers.get("authorization")).toBe("Bearer fixture-client");
-  expect(world.main[0].headers.get("x-openwork-host-token")).toBe("fixture-host");
+  expect(world.main[0].headers.get("x-get3w-host-token")).toBe("fixture-host");
   await client.listUserEnvKeys();
   expect(world.renderer).toHaveLength(1);
   expect(world.main).toHaveLength(1);

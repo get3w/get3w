@@ -1,17 +1,16 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, test } from "bun:test";
 import { useWorkspaceModelProfile } from "../src/react-app/kernel/use-workspace-model-default";
-import { useOrgMcpConnections } from "../src/react-app/domains/connections/use-org-mcp-connections";
-import { loadSessionConnectCapabilities } from "../src/react-app/domains/connections/cloud-inventory-cache";
-import { createDenClient } from "../src/app/lib/den";
 import { CredentialPromptCard } from "../src/components/chat/credential-prompt-card";
 import { DashboardPage } from "../src/react-app/domains/dashboard/dashboard-page";
 import type { DynamicToolUIPart } from "ai";
 
 test("old organization credentials cannot fetch inventory, solicit a key, or prevent local preferences", async () => {
  GlobalRegistrator.register({ url: "http://localhost" });
+ (await import("../src/i18n")).setLocale("en");
  Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
  const originalFetch = globalThis.fetch;
  let requests = 0;
@@ -21,17 +20,14 @@ test("old organization credentials cannot fetch inventory, solicit a key, or pre
  const host = document.createElement("div"); const root = createRoot(host);
  const part: DynamicToolUIPart = { type: "dynamic-tool", toolName: "openwork-cloud_credential_prompt", toolCallId: "old", state: "output-available", input: {}, output: {} };
  function Probe() {
-  const profile = useWorkspaceModelProfile(); const connections = useOrgMcpConnections();
-  return <><span data-profile>{profile}</span><span data-connections>{connections.connections.length}</span><CredentialPromptCard part={part} /><DashboardPage onCreateApp={async () => { throw new Error("unexpected cloud app"); }} /></>;
+  const profile = useWorkspaceModelProfile();
+  return <><span data-profile>{profile}</span><CredentialPromptCard part={part} /><DashboardPage onCreateApp={async () => { throw new Error("unexpected cloud app"); }} /></>;
  }
  try {
-  await act(async () => root.render(<Probe />));
+  await act(async () => root.render(<QueryClientProvider client={new QueryClient()}><Probe /></QueryClientProvider>));
   expect(host.querySelector("[data-profile]")?.textContent).toBe("local");
-  expect(host.querySelector("[data-connections]")?.textContent).toBe("0");
-  expect(host.querySelector("input")).toBeNull();
-  expect(host.querySelector("button")).toBeNull();
-  expect((await loadSessionConnectCapabilities()).skills).toEqual([]);
-  await expect(createDenClient({ baseUrl: "https://legacy.example", token: "retained-synthetic-token" }).listOrgs()).rejects.toThrow("unavailable");
+  expect(host.querySelector("input[type=password]")).toBeNull();
+  expect(host.textContent).toContain("Sign in to open cloud artifacts");
   expect(requests).toBe(0);
   expect([...Object.keys(localStorage)].map(key => [key, localStorage.getItem(key)])).toEqual(before);
  } finally { await act(async () => root.unmount()); globalThis.fetch = originalFetch; GlobalRegistrator.unregister(); }

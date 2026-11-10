@@ -78,7 +78,7 @@ export async function draftToParts(
   // Prefer draft.text token order so attachment chips stay inline with surrounding text
   // (same positions as the composer), instead of dumping every file part at the end.
   const hasAttachmentTokens = /\[attachment [^\]]+\]/.test(draft.text);
-  if (hasAttachmentTokens || attachmentFileById.size > 0) {
+  if (hasAttachmentTokens || attachmentFileById.size > 0 || draft.text.split(COMPOSER_DRAFT_TOKEN_RE).some(segment=>parseComposerPillToken(segment)?.kind==="model")) {
     const pasteByLabel = new Map(
       draft.parts
         .filter((part): part is Extract<ComposerPart, { type: "paste" }> => part.type === "paste")

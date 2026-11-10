@@ -16,7 +16,7 @@ enum InputDelivery: String {
     static let foregroundFrameworkPrefixes = ["qtcore", "qtgui", "libwx_", "tk.framework", "tcl.framework", "libtk", "_tkinter"]
 
     /// Set by the trusted host for parallel computer-use sessions.
-    static let hostVariable = "OPENWORK_COMPUTER_USE_DELIVERY"
+    static let hostVariable = "GET3W_COMPUTER_USE_DELIVERY"
 
     /// `frameworks` are the names in the app's Contents/Frameworks.
     static func decide(enabled: Bool, available: Bool, mode: AccessMode, bundleID: String,

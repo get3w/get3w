@@ -10,7 +10,7 @@ const fromPackage = (relative) => fileURLToPath(new URL(relative, `${new URL("..
 const args = process.argv.slice(2);
 
 // Lets `openwork-server web` find the bundled web UI and plugins in this package.
-process.env.OPENWORK_PACKAGE_ROOT = process.env.OPENWORK_PACKAGE_ROOT?.trim() || packageRoot;
+process.env.GET3W_PACKAGE_ROOT = process.env.GET3W_PACKAGE_ROOT?.trim() || packageRoot;
 
 function run(command, commandArgs) {
   const result = spawnSync(command, commandArgs, { stdio: "inherit", env: process.env });

@@ -23,7 +23,7 @@ export function sandboxBlockConformanceCases(factory: () => SandboxProvider | Pr
         try {
           if (block === "run") {
             const { run } = withBlocks(p, ["run"])
-            const result = await run(h, { ...opts, command: "printf '%s' \"$OPENWORK_CHECK\"; printf 'stderr' >&2; exit 7", cwd: "/tmp", env: { OPENWORK_CHECK: "value with ' quotes $ and spaces" } })
+            const result = await run(h, { ...opts, command: "printf '%s' \"$GET3W_CHECK\"; printf 'stderr' >&2; exit 7", cwd: "/tmp", env: { GET3W_CHECK: "value with ' quotes $ and spaces" } })
             assert.equal(result.exitCode, 7)
             assert.equal(result.stdout, "value with ' quotes $ and spaces")
             assert.equal(result.stderr, "stderr")

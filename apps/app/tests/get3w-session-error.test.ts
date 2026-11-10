@@ -6,3 +6,16 @@ test('Get3W balance, quota and unknown outcome have distinct recovery',()=>{
     expect(result.kind).toBe(kind);expect(result.description).toBeTruthy();
   }
 });
+test('model task errors map to actionable desktop states',()=>{
+  const cases=[
+    ['quote_expired','model-quote-expired'],
+    ['insufficient_balance','model-insufficient-balance'],
+    ['invalid_inputs','model-schema-invalid'],
+    ['session_mismatch','model-session-mismatch'],
+    ['upstream_failed','model-upstream-failed'],
+  ] as const;
+  for (const [code,kind] of cases) {
+    const result=presentOpencodeSessionError({name:'APIError',data:{statusCode:409,message:code,responseBody:JSON.stringify({error:{code,message:code}})}});
+    expect(result.kind).toBe(kind);expect(result.description).toBeTruthy();
+  }
+});

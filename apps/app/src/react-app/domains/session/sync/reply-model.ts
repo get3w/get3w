@@ -42,7 +42,7 @@ export function mergeReplyMetadata(previous: unknown, next: unknown) {
   } };
 }
 
-/** The requested Get3W Free model keeps Get3W's mark even after routing upstream; Smart replies show the routed model's maker. */
+/** Get3W Models' Luna keeps Get3W's mark even after routing upstream; Smart replies show the routed model's maker. */
 export function replyModelProvider(message: UIMessage, autoRoutes: readonly AutoRouterReplyRoute[] = []) {
   const route = autoRouteForReply(message, autoRoutes);
   if (route) return route.provider && !/^(ipr|gwm)_/.test(route.provider) ? route.provider : undefined;
@@ -129,7 +129,7 @@ export function replyModelLabel(
     const resolvedLabel = publicLabel(field(model, "name")) ?? publicLabel(modelID);
     if (resolvedLabel) return resolvedLabel;
   }
-  // Get3W Free routes upstream itself: its id is not the model that answered.
+  // Luna routes upstream itself: its id is not the model that answered.
   if (!providerID || requestedModelID === AUTO_MODEL_ID) return null;
   return publicLabel(resolveTitle?.({ providerID, modelID: requestedModelID })) ?? null;
 }

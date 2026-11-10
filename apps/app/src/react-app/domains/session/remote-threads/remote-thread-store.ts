@@ -46,7 +46,6 @@ export type RemoteThreadOwner = { workspaceId: string; sessionId: string }
 
 export type RemoteThreadEntry = {
   start: RemoteThreadStart
-  organizationId: string
   version: string | null
   status: RemoteSessionThreadStatus | null
   /** The last check couldn't confirm the state; the row shows the last known one. */
@@ -69,7 +68,7 @@ export type RemoteThreadEntry = {
 
 type RemoteThreadState = {
   threads: Record<string, RemoteThreadEntry>
-  watch: (start: RemoteThreadStart, input: { owner: RemoteThreadOwner; organizationId: string; startedAt: number | null }) => () => void
+  watch: (start: RemoteThreadStart, input: { owner: RemoteThreadOwner; startedAt: number | null }) => () => void
   followedUp: (key: string) => void
   /** The agent sent the task a follow-up itself; reviving for the same follow-up again changes nothing. */
   revive: (followUp: RemoteThreadFollowUp) => void
@@ -86,8 +85,7 @@ export function remoteThreadAwaitingFollowUp(entry: RemoteThreadEntry, now: numb
   return settled(entry) && entry.followedUpAt !== null && now - entry.followedUpAt < FOLLOW_UP_GRACE_MS
 }
 
-export function remoteThreadNeedsStatus(entry: RemoteThreadEntry, organizationId: string, now: number): boolean {
-  if (entry.organizationId !== organizationId) return false
+export function remoteThreadNeedsStatus(entry: RemoteThreadEntry, now: number): boolean {
   if (entry.viewers === 0 && now - entry.lastViewedAt > LINGER_MS) return false
   if (now - (entry.activeSince ?? entry.firstSeenAt) > FOLLOW_MAX_MS) return false
   if (!entry.status || entry.stale) return true
@@ -106,7 +104,6 @@ export const useRemoteThreadStore = create<RemoteThreadState>()((set, get) => ({
         ? { ...current, viewers: current.viewers + 1, lastViewedAt: now, owners: { ...current.owners, [ownerKey]: input.owner } }
         : {
             start,
-            organizationId: input.organizationId,
             version: null,
             status: null,
             stale: false,
@@ -204,8 +201,7 @@ export function useFollowRemoteThread(start: RemoteThreadStart | null, owner: Re
   useEffect(() => {
     const current = latest.current
     if (!key || !current.start) return
-    const organizationId = "historical"
-    return useRemoteThreadStore.getState().watch(current.start, { owner: { workspaceId, sessionId }, organizationId, startedAt: current.startedAt })
+    return useRemoteThreadStore.getState().watch(current.start, { owner: { workspaceId, sessionId }, startedAt: current.startedAt })
   }, [key, workspaceId, sessionId])
 }
 

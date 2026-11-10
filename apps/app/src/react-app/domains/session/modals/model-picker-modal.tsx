@@ -12,8 +12,8 @@ import { gatewayConnectCopy, gatewayConnectProviderKey, type GatewayConnectProvi
 import { useCheckDesktopRestriction } from "../../cloud/desktop-config-provider";
 import { useDenAuth } from "../../cloud/den-auth-provider";
 import type { ModelOption, ModelRef } from "@/app/types";
-import { openAutoProviderSettings } from "../../cloud/auto-access-ui";
-import { isAutoModel, managesOwnBehavior, type ModelCatalogOption, type ModelPickerCatalogState, type RetainedModelSelection } from "@/react-app/domains/models/model-catalog";
+import { openProviderSettings } from "@/app/lib/model-picker-events";
+import { managesOwnBehavior, type ModelCatalogOption, type ModelPickerCatalogState, type RetainedModelSelection } from "@/react-app/domains/models/model-catalog";
 
 export const MODEL_PICKER_DEFAULT_SUBTITLE = "Select a model for this session.";
 export const MODEL_PICKER_UNAVAILABLE_SUBTITLE = "The model you were using is no longer available, please select a different model for this session.";
@@ -81,9 +81,8 @@ export function ModelPickerModal(props: ModelPickerModalProps) {
   const options = withoutBlockedSelection(catalog.options, retained);
   const selected = options.find((option) => option.providerID === props.current.providerID && option.modelID === props.current.modelID && !option.disabled);
   const behaviorValue = props.currentBehaviorValue !== undefined ? props.currentBehaviorValue : selected?.behaviorValue ?? null;
-  const autoVisible = retained?.reason !== "policy" && retained?.reason !== "disabled" && (options.some(isAutoModel) || isAutoModel(props.current));
   useEffect(() => { if (props.open) props.setQuery(""); }, [props.open]);
-  const openSettings = () => { props.onClose({ restorePromptFocus: false }); (props.onOpenProviderSettings ?? openAutoProviderSettings)(); };
+  const openSettings = () => { props.onClose({ restorePromptFocus: false }); (props.onOpenProviderSettings ?? openProviderSettings)(); };
   const pendingProviders = props.gatewayConnectProviders?.filter((provider) => !provider.models?.length) ?? [];
   // The same panel as the composer's picker, in a dialog for surfaces without a composer.
   return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !choice.loginOpen) props.onClose(); }}>
@@ -100,7 +99,7 @@ export function ModelPickerModal(props: ModelPickerModalProps) {
         onConnectProvider={!restrictToCloud ? props.onOpenSettings : undefined}
         onOpenProviderSettings={!checkRestriction({ restriction: "allowControlSettings" }) ? openSettings : undefined}
         onSetWorkspaceDefault={props.onSetWorkspaceDefault ?? setWorkspaceDefault}
-        openWorkModelsSyncing={props.openWorkModelsSyncing} autoVisible={autoVisible} onReloadWorkspace={props.onReloadWorkspace}
+        openWorkModelsSyncing={props.openWorkModelsSyncing} onReloadWorkspace={props.onReloadWorkspace}
         footerExtra={pendingProviders.length ? <div className="border-t border-border p-1.5">{pendingProviders.map((provider) => <div key={gatewayConnectProviderKey(provider)} className="flex h-9 items-center gap-2.5 px-2 text-sm">
           <Cloud className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} /><span className="min-w-0 flex-1 truncate">{gatewayConnectCopy(provider.name)}</span>
           <Button size="sm" variant="ghost" disabled={!props.onConnectGatewayProvider || props.disabledProviders?.includes(provider.providerId)} onClick={() => void props.onConnectGatewayProvider?.(provider)}>{t("ui.9d6322c1f4d9")}</Button>

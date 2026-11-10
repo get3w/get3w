@@ -57,7 +57,7 @@ test("confirmed removal names both models and Change opens the composer picker",
 
 test("recovery renders signed out without requesting feature state", async () => {
   record();
-  spyOn(den, "readDenSettings").mockReturnValue({ ...den.readDenSettings(), authToken: null, activeOrgId: null });
+  spyOn(den, "readDenSettings").mockReturnValue({ ...den.readDenSettings(), authToken: null });
   const fetch = spyOn(globalThis, "fetch");
   const view = await mount();
   expect(view.host.textContent).toContain("was removed by your organization");
@@ -78,20 +78,6 @@ test("dismissal affects only this chat", async () => {
 test("an unrelated chat does not inherit the note", async () => {
   record();
   expect((await mount({ sessionId: "chat-b" })).host.textContent).toBe("");
-});
-
-test("a visible side composer verifies return independently of the selected route", async () => {
-  record();
-  useModelRecoveryStore.getState().dismiss(key);
-  const settings = { ...den.readDenSettings(), baseUrl: "https://den.example.test", authToken: "member-token", activeOrgId: "org-a" };
-  const client = den.createDenClient({ baseUrl: settings.baseUrl, token: settings.authToken });
-  const inventory = spyOn(client, "getModelRemovalInventory").mockResolvedValue({ models: [previous, replacement], lockedModels: [] });
-  spyOn(den, "createDenClient").mockReturnValue(client);
-  spyOn(den, "readDenSettings").mockReturnValue(settings);
-  const view = await mount();
-  expect(inventory).toHaveBeenCalledWith("org-a");
-  expect(view.host.textContent).toContain("Claude Opus 4.5 is available again");
-  expect(view.host.textContent).toContain("Switch back");
 });
 
 test("Switch back is offered only after return and restores the prior choice", async () => {

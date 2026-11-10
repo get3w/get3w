@@ -7,8 +7,8 @@ export const EXTERNAL_OPEN_CAPTURE_FILENAME = "openwork-eval-external-opens.json
 
 export function shouldCaptureExternalOpens(isPackaged, env) {
   return isPackaged === false
-    && env.OPENWORK_DEV_MODE === "1"
-    && env.OPENWORK_EVAL_CAPTURE_EXTERNAL_OPENS === "1";
+    && env.GET3W_DEV_MODE === "1"
+    && env.GET3W_EVAL_CAPTURE_EXTERNAL_OPENS === "1";
 }
 
 function describeError(error) {
@@ -39,7 +39,7 @@ export function resetPendingExternalOpensForTest() {
 
 export async function openExternalUrl(url, deps = {}) {
   const env = deps.env ?? process.env;
-  if (env.OPENWORK_SIMULATE_OPEN_EXTERNAL_FAILURE === "1") {
+  if (env.GET3W_SIMULATE_OPEN_EXTERNAL_FAILURE === "1") {
     const message = "simulated failure";
     // why: enables evals to prove the failure UX without breaking a real machine.
     console.error("[shell] openExternal failed:", message);

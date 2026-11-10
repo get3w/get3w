@@ -1,4 +1,5 @@
-import { t } from "@/i18n";
+import { formatMoney } from "@/i18n/money";
+import { t, useLocale } from "@/i18n";
 /** @jsxImportSource react */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ export function DebugProviders(props: {
   resolveAvailability?: ModelAvailabilityResolver;
   onCopyThread: () => Promise<void>;
 }) {
+  useLocale();
   // Null follows the focused thread's model, including changes made elsewhere.
   // Inspecting another provider never writes model selection or configuration.
   const [inspection, setInspection] = useState<ModelRef | null>(null);
@@ -136,7 +138,7 @@ export function DebugProviders(props: {
     ["Cache read / write", `${format(cacheRead)} / ${format(cacheWrite)}`],
     ["Output limit", format(model?.limit.output && model.limit.output > 0 ? model.limit.output : null)],
     ["Reply duration", elapsed === null ? t("ui.adadface0166") : `${(elapsed / 1_000).toFixed(1)}s`],
-    ["Reported cost", cost === null ? t("ui.adadface0166") : `$${cost.toFixed(6)}`],
+    ["Reported cost", cost === null ? t("ui.adadface0166") : formatMoney(cost, "USD")],
     ["Error type", typeof errorName === "string" ? errorName : error ? "Unclassified" : "None"],
     ["HTTP status", httpStatus ?? "Not reported"],
     ["Last checked", history.dataUpdatedAt ? new Date(history.dataUpdatedAt).toLocaleTimeString() : t("ui.d16948e73a68")],

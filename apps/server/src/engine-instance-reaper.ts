@@ -55,14 +55,14 @@ export type EngineInstanceReaperHooks = {
 
 /** How long an instance may sit unused before it is eligible for eviction. 0 disables eviction. */
 export function engineInstanceIdleTtlMs(): number {
-  const raw = process.env.OPENWORK_ENGINE_INSTANCE_IDLE_TTL_MS?.trim();
+  const raw = process.env.GET3W_ENGINE_INSTANCE_IDLE_TTL_MS?.trim();
   if (!raw) return 15 * 60_000;
   const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : 15 * 60_000;
 }
 
 function sweepIntervalMs(): number {
-  const value = Number(process.env.OPENWORK_ENGINE_INSTANCE_SWEEP_MS);
+  const value = Number(process.env.GET3W_ENGINE_INSTANCE_SWEEP_MS);
   return Number.isFinite(value) && value > 0 ? value : 60_000;
 }
 

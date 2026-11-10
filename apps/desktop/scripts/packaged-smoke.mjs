@@ -8,7 +8,7 @@ import { runCommand } from "./packaged-smoke-runner.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 if (process.platform !== "linux") throw new Error("The fast packaged smoke gate currently targets Linux.");
-const output = resolve(process.env.OPENWORK_PACKAGED_SMOKE_DIR || join(tmpdir(), `openwork-packaged-smoke-${process.pid}`));
+const output = resolve(process.env.GET3W_PACKAGED_SMOKE_DIR || join(tmpdir(), `openwork-packaged-smoke-${process.pid}`));
 mkdirSync(output, { recursive: true });
 const report = { commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim(), phases: [], passed: false };
 const started = performance.now();
@@ -84,8 +84,8 @@ try {
   run("engine-cold-start", binary, ["--test", join(repo, "apps/desktop/test/engine-cold-start.test.mjs")],
     45_000, {
       ELECTRON_RUN_AS_NODE: "1", NODE_PATH: "", NODE_OPTIONS: "",
-      OPENWORK_TEST_EMBEDDED_MODULE_URL: embedded,
-      OPENWORK_TEST_ENGINE_BIN: sidecar,
+      GET3W_TEST_EMBEDDED_MODULE_URL: embedded,
+      GET3W_TEST_ENGINE_BIN: sidecar,
     }, output);
   await bootPackagedDesktop("desktop-boot", binary, 90_000);
   report.passed = true;

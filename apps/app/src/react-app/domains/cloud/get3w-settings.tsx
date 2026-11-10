@@ -17,7 +17,7 @@ export function Get3wSettings({ userId }: { userId: string }) {
     return () => { generation.current++; };
   }, [userId, setPrefs]);
   async function transfer(save: boolean) {
-    const bridge = window.__OPENWORK_ACCOUNT__;
+    const bridge = window.__GET3W_ACCOUNT__;
     if (!bridge || (save && !document)) return;
     const epoch = generation.current;
     const captured = latestPrefs.current;

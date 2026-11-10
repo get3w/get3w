@@ -90,7 +90,7 @@ export async function resolveProviderConfigTemplates(
         }
         // The managed v1 child removes this server-only secret too. Remote
         // definitions must never consult the server process, even as a fallback.
-        const replacement = name.toUpperCase() === "OPENWORK_ENCRYPTION_KEY" ? undefined
+        const replacement = name.toUpperCase() === "GET3W_ENCRYPTION_KEY" ? undefined
           : local ? inherited[name] ?? options.environment.get(name) : options.environment.get(name);
         if (!replacement) {
           errors.push({ providerId, field, code: "missing_environment_variable", message: `Provider ${providerId}: ${field} references missing environment variable ${name}. Set it in Settings > Environment and apply the changes.` });

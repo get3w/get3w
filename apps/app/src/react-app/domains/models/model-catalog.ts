@@ -28,12 +28,8 @@ export function nonDefaultModelSummary(model: ModelRef, value: string | null, la
   return !managesOwnBehavior(model) && value !== null ? label : null;
 }
 
-// "Get3W Free": the free model every desktop gets. Its ids (and the `Auto`
-// names of these helpers) predate the organization's Smart Routers and stay so
-// saved selections keep working; people only ever read "Get3W Free".
+/** GPT-6 Luna as served by Get3W Models (provider `openwork`). */
 export const AUTO_MODEL_ID = "openai/gpt-6-luna";
-export const AUTO_PROVIDER_ID = "openwork-free";
-export const FREE_MODEL_NAME = "Get3W Free";
 /** The picker group that holds only Smart Router models, above everything else, without a label. */
 export const AUTO_ROUTER_GROUP = "Smart";
 /** What a Smart Router model is called when the engine reports no name for it. */
@@ -42,7 +38,7 @@ export const SMART_MODEL_FALLBACK_NAME = "Smart";
 /**
  * One of the organization's Smart Routers (feature `autoRouter`): the Gateway
  * picks the real model for every prompt. Every router is a model of the one
- * `openwork-auto` provider, named "Smart: <router name>". Not Get3W Free.
+ * `openwork-auto` provider, named "Smart: <router name>".
  */
 export function isAutoRouterModel(model: ModelRef | null | undefined) {
   return model?.providerID === AUTO_ROUTER_PROVIDER_ID;
@@ -50,7 +46,7 @@ export function isAutoRouterModel(model: ModelRef | null | undefined) {
 
 /** Models that choose their own settings, so they offer no effort, fast mode or inherited behavior. */
 export function managesOwnBehavior(model: ModelRef | null | undefined) {
-  return isAutoModel(model) || isAutoRouterModel(model);
+  return isAutoRouterModel(model) || (model?.providerID === "get3w-account" && model.modelID === "get3w-auto");
 }
 export const EXPLICIT_MODEL_CHOICE_KEY = "openwork.modelChoice.explicit";
 export function shouldSelectInitialAuto(input: { available: readonly ModelRef[]; current: ModelRef | null; empty: boolean; explicit: boolean }) {
@@ -65,46 +61,15 @@ export const MODEL_SOURCE_LABELS: Record<ModelSource, string> = {
   gateway: "Get3W Gateway", local: "Local", organization: "Organization",
 };
 
-/** Free Auto, as opposed to the same model served by an organization's Get3W Models. */
-export function isFreeAutoModel(model: ModelRef | null | undefined) {
-  return model?.providerID === AUTO_PROVIDER_ID && model.modelID === AUTO_MODEL_ID;
-}
-
-/** The organization has Get3W Models, so its members pick those models instead of free Auto. */
-export function freeAutoCoveredByOpenWorkModels(options: readonly (ModelRef & { disabled?: boolean })[]) {
-  return options.some((option) => option.providerID === "openwork" && !option.disabled);
-}
-
-/** The organization's Get3W Models serve Auto's model under its own name; members use it instead of free Auto. */
-export function openWorkModelsLuna<T extends ModelRef & { disabled?: boolean }>(available: readonly T[]): T | undefined {
-  return available.find((model) => model.providerID === "openwork" && model.modelID === AUTO_MODEL_ID && !model.disabled);
-}
-
-/** The model a new member starts on: Luna from Get3W Models when the organization has them, free Auto otherwise. */
+/** The model a new member starts on: the Get3W account's Auto model, then any Get3W account model, then any model. */
 export function starterModel<T extends ModelRef & { disabled?: boolean }>(available: readonly T[]): T | undefined {
-  return freeAutoCoveredByOpenWorkModels(available) ? openWorkModelsLuna(available) : available.find(isAutoModel);
+  return available.find((model) => model.providerID === "get3w-account" && model.modelID === "get3w-auto" && !model.disabled)
+    ?? available.find((model) => model.providerID === "get3w-account" && !model.disabled)
+    ?? available.find((model) => !model.disabled);
 }
 
-/** A saved free Auto choice moves to Luna from Get3W Models once the organization has it. */
-export function openWorkModelsLunaReplacement<T extends ModelRef & { disabled?: boolean }>(current: ModelRef | null | undefined, available: readonly T[]): T | undefined {
-  return isAutoModel(current) ? openWorkModelsLuna(available) : undefined;
-}
-
-/**
- * Get3W Free (provider `openwork-free`), never a Smart Router: use
- * `isAutoRouterModel` for the models people see as "Smart: <name>".
- */
-export function isAutoModel(model: ModelRef | null | undefined) {
-  return isFreeAutoModel(model);
-}
-
-/**
- * The display name of Get3W Free whatever the engine calls it, or a Smart
- * Router's own name ("Smart: Engineering") when it is known; undefined
- * otherwise.
- */
+/** A Smart Router's own name ("Smart: Engineering") when it is known; undefined otherwise. */
 export function fixedModelTitle(model: ModelRef & { title?: string }): string | undefined {
-  if (isAutoModel(model)) return FREE_MODEL_NAME;
   if (isAutoRouterModel(model)) {
     const title = model.title?.trim();
     return title && title !== model.modelID && autoRouterIdFromModel(title) === null ? title : undefined;
@@ -113,7 +78,7 @@ export function fixedModelTitle(model: ModelRef & { title?: string }): string | 
 }
 
 export function modelSource(model: ModelRef & { source?: ModelOption["source"] }): ModelSource {
-  if (isAutoModel(model) || isAutoRouterModel(model) || model.providerID === "openwork" || model.source === "gateway" || model.providerID.startsWith("ipr_")) return "gateway";
+  if (isAutoRouterModel(model) || model.providerID === "openwork" || model.providerID === "get3w-account" || model.source === "gateway" || model.providerID.startsWith("ipr_")) return "gateway";
   if (model.source === "cloud" || model.providerID.startsWith("lpr_")) return "organization";
   return "local";
 }
@@ -145,14 +110,9 @@ export function publicModelTitle(model: ModelRef & { title?: string }): string |
   return title;
 }
 
-/** The Get3W Models row's meta line, the same in Settings and the Connect a provider sheet. */
-export function autoProviderSubtitle() {
-  return FREE_MODEL_NAME;
-}
-
 const MODEL_MAKERS: readonly [RegExp, string][] = [
   [/\bclaude\b/, "anthropic"], [/\b(gpt|codex|o[1-9])(\b|-|\d)/, "openai"], [/\b(gemini|gemma)\b/, "google"],
-  [/\bgrok\b/, "xai"], [/\bllama\b/, "meta"], [/\b(mistral|codestral|devstral|magistral)\b/, "mistral"], [/\bdeepseek\b/, "deepseek"],
+  [/\bqwen/i, "alibaba"], [/\bgrok\b/, "xai"], [/\bllama\b/, "meta"], [/\b(mistral|codestral|devstral|magistral)\b/, "mistral"], [/\bdeepseek\b/, "deepseek"],
 ];
 
 /**
@@ -172,8 +132,7 @@ export function modelStateLabel(model: ModelOption): string | null {
   return null;
 }
 
-export function modelSubtitle(model: ModelOption, exhausted = false) {
-  if (isAutoModel(model)) return exhausted ? t("ui.0bb130df5191") : t("ui.ed5d72af10b0");
+export function modelSubtitle(model: ModelOption) {
   if (isAutoRouterModel(model)) return t("ui.8e66a8b3eccb");
   // Gateway models assigned to the member that wait on their own provider sign-in.
   if (model.gatewayAuthorization) return [model.description?.trim(), "Sign-in required"].filter(Boolean).join(" · ");
@@ -196,22 +155,17 @@ export function withImportedModelMetadata(options: readonly ModelOption[], impor
   }));
 }
 
-export type ModelCatalogOption = ModelOption & { defaultPinned?: boolean };
-export function withAutoDefaultPin(options: readonly ModelOption[], status?: { providerID: string; modelID: string; defaultPinned?: boolean }): ModelCatalogOption[] {
-  return options.map((option) => isAutoModel(option) && status && typeof status.defaultPinned === "boolean" && modelRefKey(option) === modelRefKey(status)
-    ? { ...option, defaultPinned: status.defaultPinned } : option);
-}
+export type ModelCatalogOption = ModelOption;
 
+/** Organization pins cannot be removed by a member. */
 export function immutableModelPin(model: ModelCatalogOption) {
-  // Auto is pinned for everyone only when an organization admin pins it; otherwise it pins like any model.
-  return (isAutoModel(model) && model.defaultPinned === true) || model.organizationPinOrder !== undefined;
+  return model.organizationPinOrder !== undefined;
 }
 
 export function orderedModelPins(options: readonly ModelCatalogOption[], personal: readonly ModelRef[]) {
   const available = options.filter((option) => !option.disabled);
   const byKey = new Map(available.map((option) => [modelRefKey(option), option]));
   const ordered = [
-    ...available.filter((option) => isAutoModel(option) && option.defaultPinned === true),
     ...available.filter((option) => option.organizationPinOrder !== undefined).sort((a, b) => a.organizationPinOrder! - b.organizationPinOrder!),
     ...personal.flatMap((model) => { const option = byKey.get(modelRefKey(model)); return option ? [option] : []; }),
   ];
@@ -253,7 +207,7 @@ export function modelGroups(options: readonly ModelOption[], personal: readonly 
     .sort((a, b) => modelTitle(a).localeCompare(modelTitle(b)) || a.modelID.localeCompare(b.modelID)));
   add("Pinned", orderedModelPins(available, personal));
   add("Recent", recent.flatMap((model) => available.filter((option) => modelRefKey(option) === modelRefKey(model))), false);
-  add("Get3W Models", available.filter((option) => option.providerID === "openwork" || option.providerID === AUTO_PROVIDER_ID));
+  add("Get3W Models", available.filter((option) => option.providerID === "openwork" || option.providerID === "get3w-account"));
   const providers = [...new Set(available.map((option) => option.providerID))].sort((a, b) => {
     const name = (id: string) => available.find((option) => option.providerID === id)?.description || id;
     return name(a).localeCompare(name(b));

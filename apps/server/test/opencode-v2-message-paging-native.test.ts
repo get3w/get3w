@@ -8,7 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { createV2ReadAdapter } from "../src/opencode-v2-read-adapter.js";
 import type { ServerConfig } from "../src/types.js";
 
-const binary = process.env.OPENWORK_TEST_OPENCODE2 ?? "/Applications/Get3W.app/Contents/Resources/sidecars/opencode2";
+const binary = process.env.GET3W_TEST_OPENCODE2 ?? "/Applications/Get3W.app/Contents/Resources/sidecars/opencode2";
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -17,7 +17,7 @@ function record(value: unknown): value is Record<string, unknown> {
 // native worker tests. All messages are imported through the actual engine API.
 test("semantic search pages real v2 histories of 150, 200, 201, 400 and 450 messages", { timeout: 90_000 }, async t => {
   try { await access(binary); } catch {
-    t.skip("needs: pinned OpenCode v2 binary; set OPENWORK_TEST_OPENCODE2");
+    t.skip("needs: pinned OpenCode v2 binary; set GET3W_TEST_OPENCODE2");
     return;
   }
   assert.match(spawnSync(binary, ["--version"], { encoding: "utf8", timeout: 15_000 }).stdout, /\bv2\.0\.26\b/);
@@ -25,8 +25,8 @@ test("semantic search pages real v2 histories of 150, 200, 201, 400 and 450 mess
   const overrides = {
     HOME: root, XDG_CONFIG_HOME: join(root, "config"), XDG_DATA_HOME: join(root, "data"),
     XDG_CACHE_HOME: join(root, "cache"), XDG_STATE_HOME: join(root, "state"),
-    OPENWORK_RUNTIME_DB: join(root, "runtime.sqlite"), OPENWORK_OPENCODE2_BIN: binary,
-    OPENWORK_ENGINE_V2_PREVIEW: "1", OPENWORK_ENGINE_V2_CHAT: "1", OPENCODE_DISABLE_MODELS_FETCH: "true",
+    GET3W_RUNTIME_DB: join(root, "runtime.sqlite"), GET3W_OPENCODE2_BIN: binary,
+    GET3W_ENGINE_V2_PREVIEW: "1", OPENWORK_ENGINE_V2_CHAT: "1", OPENCODE_DISABLE_MODELS_FETCH: "true",
   };
   const previous = new Map(Object.keys(overrides).map(key => [key, process.env[key]]));
   Object.assign(process.env, overrides);

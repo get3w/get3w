@@ -37,7 +37,7 @@ export type PreservedMcpResult =
   | { tool: string; input: unknown; status: "completed"; output: unknown }
   | { tool: string; input: unknown; status: "error"; error: string };
 
-const OPENWORK_CLOUD_TOOL = /^(?:openwork|openwork-cloud)_/;
+const OPENWORK_CLOUD_TOOL = /^(?:openwork|openwork-cloud|get3w-account)_/;
 const MAX_ENTRY_BYTES = 64 * 1_024;
 const MAX_ENTRIES = 20;
 const MAX_OPEN_CALLS = 200;
@@ -92,7 +92,7 @@ function stableJson(value: unknown): string | undefined {
 
 /** Code Mode reports inner calls as `openwork-cloud.create_app`; older engines used `_`. */
 function normalizedTool(tool: string): string {
-  return tool.replace(/^(openwork(?:-cloud)?)\./, "$1_");
+  return tool.replace(/^(openwork(?:-cloud)?|get3w-account)\./, "$1_");
 }
 
 export function preservedEntry(rawEvent: ExecuteAfter): PreservedMcpResult | null {

@@ -33,7 +33,7 @@ export function importNodeSqlite(): Promise<typeof import("node:sqlite")> {
 }
 
 export function runtimeDbPath(config: Pick<ServerConfig, "configPath">): string {
-  const override = process.env.OPENWORK_RUNTIME_DB?.trim();
+  const override = process.env.GET3W_RUNTIME_DB?.trim();
   if (override) return resolve(override);
   const configPath = config.configPath?.trim();
   const configDir = configPath ? dirname(configPath) : openworkConfigDir();

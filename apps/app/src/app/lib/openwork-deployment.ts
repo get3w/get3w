@@ -8,8 +8,8 @@ function normalizeDeployment(value: string | undefined): OpenWorkDeployment {
 
 export function getOpenWorkDeployment(): OpenWorkDeployment {
   const envValue =
-    typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_OPENWORK_DEPLOYMENT === "string"
-      ? import.meta.env.VITE_OPENWORK_DEPLOYMENT
+    typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_GET3W_DEPLOYMENT === "string"
+      ? import.meta.env.VITE_GET3W_DEPLOYMENT
       : undefined;
 
   return normalizeDeployment(envValue);

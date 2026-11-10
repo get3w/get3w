@@ -25,14 +25,9 @@ import { useOpencodeEngineControls } from "@/react-app/shell/opencode-engine-con
 import { showEngineMigrationProgress } from "@/react-app/shell/engine-migration";
 import { isDesktopRuntime } from "@/app/utils";
 import { t } from "@/i18n";
-import { ControlPlaneUrlEditor } from "../cloud/control-plane-url-editor";
 import { usePlatform } from "../../../kernel/platform";
 import { useFeatureFlagsPreferences } from "../state/feature-flags-preferences";
 import { useDesktopRestriction } from "../../cloud/desktop-config-provider";
-import {
-  displayCustomControlPlaneUrl,
-  isValidControlPlaneUrl,
-} from "../cloud/control-plane-url";
 import {
   SettingsInset,
   SettingsNotice,

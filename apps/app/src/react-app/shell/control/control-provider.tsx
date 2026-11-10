@@ -1,3 +1,4 @@
+import { requireGet3wSignIn } from "@/react-app/domains/cloud/get3w-account";
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import {
@@ -418,6 +419,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
     origin?: OpenworkAffordanceOrigin,
     bridged = false,
   ): Promise<OpenworkControlResult> => {
+    if (!requireGet3wSignIn()) return { ok: false, actionId, error: "Sign in to Get3W to continue." };
     const registered = actionsRef.current.get(actionId);
     const action = registered?.ref.current;
     if (!registered || !action) return { ok: false, actionId, error: `Unknown action: ${actionId}` };

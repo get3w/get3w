@@ -7,7 +7,6 @@ import {
   readDenBootstrapConfig,
   readDenSettings,
 } from "../../../app/lib/den";
-import { isDefaultControlPlaneUrl } from "../settings/cloud/control-plane-url";
 import { denSettingsChangedEvent } from "../../../app/lib/den-session-events";
 import { useSyncExternalStore } from "react";
 

@@ -11,9 +11,9 @@ import { createManagedOpencodeV2Server } from "../src/managed-opencode-v2.js";
 import { createV2ContextBridge } from "../src/opencode-v2-context-bridge.js";
 import { groupHost } from "./fixtures/native-codemode-groups.js";
 
-const binary = process.env.OPENWORK_TEST_OPENCODE2 ?? "/Applications/Get3W.app/Contents/Resources/sidecars/opencode2";
+const binary = process.env.GET3W_TEST_OPENCODE2 ?? "/Applications/Get3W.app/Contents/Resources/sidecars/opencode2";
 const modelInput = z.object({
-  tools: z.array(z.object({ function: z.object({ name: z.string() }) })).optional(),
+  tools: z.array(z.object({ function: z.object({ name: z.string(), parameters: z.unknown().optional() }) })).optional(),
   messages: z.array(z.object({ role: z.string(), content: z.unknown().optional() })),
 });
 const catalogSchema = z.object({ items: z.array(z.object({ path: z.string() })) });
@@ -26,7 +26,7 @@ function unwrap(value: unknown): unknown {
 }
 
 test("the pinned native engine discovers and runs Get3W group queries and commands inside one Code Mode loop", { timeout: 90_000 }, async t => {
-  try { await access(binary); } catch { t.skip("needs: OpenCode V2 binary; set OPENWORK_TEST_OPENCODE2"); return; }
+  try { await access(binary); } catch { t.skip("needs: OpenCode V2 binary; set GET3W_TEST_OPENCODE2"); return; }
   const root = await mkdtemp(join(tmpdir(), "openwork-native-codemode-"));
   const home = join(root, "home");
   const directory = join(root, "project");
@@ -43,6 +43,10 @@ test("the pinned native engine discovers and runs Get3W group queries and comman
       const body = modelInput.parse(JSON.parse(text));
       const results = body.messages.filter(message => message.role === "tool");
       const execute = body.tools?.find(tool => tool.function.name === "execute");
+      if (execute) {
+        const schema = z.object({ type: z.literal("object"), properties: z.object({ code: z.object({ type: z.literal("string") }) }), required: z.array(z.string()) }).parse(execute.function.parameters);
+        assert.ok(schema.required.includes("code"), "Code Mode must advertise its required code argument");
+      }
       res.writeHead(200, { "content-type": "text/event-stream" });
       if (!execute) { res.end(frame({ role: "assistant", content: "Native Code Mode proof" }) + frame({}, "stop") + "data: [DONE]\n\n"); return; }
       let code: string;

@@ -1612,8 +1612,8 @@ export const OpenWorkExtensionsPreview = async (factoryInput?: unknown, _options
     await assertSessionContinuation(postJson, { directory: engineMcpStatusDirectory, sessionID: input.sessionID });
   },
   "chat.headers": async (input: { sessionID: string; model: { providerID: string }; message: { id: string } }, output: { headers: Record<string, string> }) => {
-    // Get3W Models and free Auto: the desktop relay checks the session against the task the user started.
-    if (input.model.providerID !== "openwork" && input.model.providerID !== "openwork-free") return;
+    // Get3W Models: the desktop relay checks the session against the task the user started.
+    if (input.model.providerID !== "openwork") return;
     output.headers["x-openwork-session-id"] = input.sessionID;
     output.headers["x-openwork-task-id"] = input.message.id;
   },

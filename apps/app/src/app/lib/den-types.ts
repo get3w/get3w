@@ -1,19 +1,13 @@
 // Den wire types shared across module boundaries (den.ts, den-session-events,
-// openwork-server, desktop cloud sync). Extracted from den.ts so that modules
-// needing only the shapes do not import the 2k-line client implementation —
-// den.ts re-exports everything here, so existing imports keep working.
-import type {
-  OpenWorkExtensionManifest,
-  OpenWorkExtensionSourceFormat,
-} from "../extensions";
+// desktop config and connector views). Kept in a leaf module so callers that
+// only need the shapes do not import the den.ts implementation; den.ts
+// re-exports everything here, so existing imports keep working.
+import type { DesktopConfig } from "@openwork/types/den/desktop-policies";
 
 export type DenSettings = {
   baseUrl: string;
   apiBaseUrl?: string;
   authToken?: string | null;
-  activeOrgId?: string | null;
-  activeOrgSlug?: string | null;
-  activeOrgName?: string | null;
 };
 
 export type DenUser = {
@@ -22,135 +16,61 @@ export type DenUser = {
   name: string | null;
 };
 
-export type DenPluginConfigObjectType =
-  | "skill"
-  | "agent"
-  | "command"
-  | "tool"
-  | "mcp"
-  | "hook"
-  | "context"
-  | "custom"
-  | "workflow";
+export type DenDesktopConfig = DesktopConfig;
 
-export type DenPluginConfigObjectVersion = {
-  id: string;
-  rawSourceText: string | null;
-  normalizedPayloadJson: Record<string, unknown> | null;
-  sourceRevisionRef: string | null;
-  createdAt: string | null;
+export type DenAppVersionMetadata = {
+  minAppVersion: string;
+  latestAppVersion: string;
+  publishedDesktopVersions: string[];
+  /**
+   * This deployment's web app base URL, as advertised by `GET /v1/app-version`.
+   * Null when talking to a den-api that predates the field.
+   */
+  webUrl: string | null;
 };
 
-export type DenPluginConfigObject = {
+export type DenConnectionReadinessFailure =
+  | "sign_in_required"
+  | "sign_in_rejected"
+  | "setup_required"
+  | "provider_setup_required"
+  | "unavailable"
+  | "timed_out"
+  | "settings_changed"
+  | "tools_unreadable";
+
+export type DenExternalMcpConnection = {
+  readiness?: {
+    status: "ready" | "could_not_verify";
+    checkedAt: string;
+    lastSuccessfulAt: string | null;
+    reason: string | null;
+    failure?: DenConnectionReadinessFailure | null;
+    /** Support reference for a failed sign-in; newer Den only. */
+    referenceId?: string;
+    /** Den-validated link to the service's settings page, only with provider_setup_required; newer Den only. */
+    providerSettingsUrl?: string;
+  } | null;
+  setupRequired?: boolean;
+  credentialHealth?: "unknown" | "ready" | "reconnect_required";
   id: string;
-  objectType: DenPluginConfigObjectType;
-  title: string;
-  description: string | null;
-  currentFileName: string | null;
-  currentFileExtension: string | null;
-  currentRelativePath: string | null;
-  status: string;
-  updatedAt: string | null;
-  latestVersion: DenPluginConfigObjectVersion | null;
-};
-
-export type DenPluginMembership = {
-  id: string;
-  pluginId: string;
-  configObjectId: string;
-  configObject?: DenPluginConfigObject;
-};
-
-export type DenOrgExtensionProjection = {
-  id: string;
-  name: string;
-  description: string | null;
-  sourceFormat: OpenWorkExtensionSourceFormat;
-  manifest: OpenWorkExtensionManifest | null;
-};
-
-export type DenPluginCloudReadinessState = "ready" | "needs_signin" | "needs_admin_setup" | "desktop_only" | "not_synced";
-
-export type DenPluginCloudReadinessConnection = {
-  id: string | null;
   name: string;
   url: string;
-  configObjectId?: string;
-  serverName?: string;
-  credentialMode?: "shared" | "per_member";
-  connectedForMe?: boolean;
-};
-
-export type DenPluginCloudReadiness = {
-  state: DenPluginCloudReadinessState;
-  hasInstructional: boolean;
-  connections: DenPluginCloudReadinessConnection[];
-};
-
-export type DenOrgPlugin = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  memberCount: number;
-  updatedAt: string | null;
-  componentCounts: Record<string, number>;
-  /** Preferred Den surface: plugins are normalized into Get3W extensions. */
-  extension?: DenOrgExtensionProjection | null;
-  cloudReadiness?: DenPluginCloudReadiness;
-};
-
-export type DenOrgMarketplace = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  pluginCount: number;
-  updatedAt: string | null;
-};
-
-export type DenOrgPluginResolved = {
-  plugin: DenOrgPlugin;
-  memberships: DenPluginMembership[];
-  /** Future Den extension manifest; absent while Claude plugin imports are resource-only. */
-  extension?: DenOrgExtensionProjection | null;
-};
-
-export type DenAssignedMarketplaceCapability = {
-  configObjectId: string;
-  marketplaceId: string | null;
-  objectType: DenPluginConfigObjectType;
-  pluginId: string;
-};
-
-export type DenMeLibraryPlugin = {
-  id: string;
-  name: string;
-  description: string | null;
-};
-
-export type DenResourceSnapshotConfigItem = {
-  configItemId: string;
-  lastUpdatedAt: string;
-};
-
-export type DenResourceSnapshotPlugin = {
-  pluginId: string;
-  lastUpdatedAt: string;
-  configItems: DenResourceSnapshotConfigItem[];
-};
-
-export type DenResourceSnapshotMarketplace = {
-  lastUpdatedAt: string;
-  plugins: DenResourceSnapshotPlugin[];
-};
-
-export type DenResourceSnapshot = {
-  organizationId: string;
-  orgMemberId: string;
-  teamIds: string[];
-  resources: {
-    llmProviders: Record<string, string>;
-    marketplaces: Record<string, DenResourceSnapshotMarketplace>;
-  };
+  authType: "oauth" | "apikey" | "none";
+  credentialMode: "shared" | "per_member";
+  /** True when the connection is exposed to the agent as a standard MCP server with its own tools. */
+  exposeDirectly: boolean;
+  connected: boolean;
+  connectedAt: string | null;
+  /** For per_member connections: whether the signed-in user has connected their own account. */
+  connectedForMe: boolean;
+  needsReconnect?: boolean;
+  issuerReviewRequired?: boolean;
+  reconnectActionOwner?: "member" | "organization_admin" | null;
+  missingFeatures?: string[];
+  externalAccountId?: string | null;
+  grantedScopes?: string[];
+  tenantId?: string | null;
+  /** Which service a native connector fronts (e.g. "google-workspace"); null/absent for external MCP connections. */
+  nativeProviderKey?: string | null;
 };

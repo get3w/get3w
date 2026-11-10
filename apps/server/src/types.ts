@@ -71,13 +71,6 @@ export interface ApprovalConfig {
 
 export type LocalManagedMcpVaultKeyProvider = () => Promise<Uint8Array>;
 
-/** What Get3W Desktop tells the free Auto relay about this installation. */
-export type DesktopFreeHost = {
-  currentVersion: string;
-  /** Whether this build and its bootstrap may offer signed-out Auto (the public app on hosted Get3W Cloud). */
-  eligible: () => boolean;
-};
-
 export interface ServerConfig {
   host: string;
   port: number;
@@ -113,7 +106,6 @@ export interface ServerConfig {
   /** In-process Desktop confirmation; never configured through HTTP, files or the engine environment. */
   /** Desktop-owned managed engines only; never enabled by remote clients. */
   resumeInterruptedTasks?: boolean;
-  anonymousInference?: { desktop: DesktopFreeHost };
   /**
    * Set by Get3W Desktop or a hosted web bootstrap for a brand-new install (no earlier
    * Get3W state on disk). The server then starts on this engine unless an
@@ -231,6 +223,7 @@ export interface Actor {
 }
 
 export interface ApprovalRequest {
+  modelTask?: { quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number };
   id: string;
   workspaceId: string;
   action: string;

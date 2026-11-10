@@ -75,7 +75,7 @@ const env = {
   XDG_DATA_HOME: join(home, ".local", "share"),
   XDG_CONFIG_HOME: join(home, ".config"),
   XDG_CACHE_HOME: join(home, ".cache"),
-  OPENWORK_PACKAGE_ROOT: "",
+  GET3W_PACKAGE_ROOT: "",
 };
 
 const version = spawnSync(process.execPath, [launcher, "--version"], { encoding: "utf8", env });

@@ -1,3 +1,6 @@
+import { generationModelId } from "../../../cloud/generation-models";
+import { parseModelMention, modelMentionValue } from "./model-token";
+import { encodeComposerMentionValue, decodeComposerMentionValue } from "./mention-encoding";
 import type { TextPartInput } from "@opencode-ai/sdk/v2/client";
 
 import type { ComposerPart } from "@/app/types";
@@ -27,6 +30,7 @@ import {
  * transcript and its instruction never expands into the user's text.
  */
 export type ComposerPill =
+  | {kind:"model";slug:string;runType?:string;name:string}
   | { kind: "skill"; name: string }
   | { kind: "connect-skill"; slug: string; name: string; marketplace: string; capability: string }
   | { kind: "connector"; name: string }
@@ -48,6 +52,8 @@ export const COMPOSER_TOKEN_CLASS = "inline-flex items-center rounded-md bg-gray
 
 /** The pill a `[skill …]`, `[connect-skill …]` or `[connector …]` draft segment stands for. */
 export function parseComposerPillToken(segment: string): ComposerPill | null {
+  const model=segment.startsWith("@")?parseModelMention(decodeComposerMentionValue(segment.slice(1))):null;
+  if(model)return {kind:"model",...model};
   const connectSkill = parseConnectSkillToken(segment);
   if (connectSkill) return { kind: "connect-skill", ...connectSkill };
   const connector = parseConnectorToken(segment);
@@ -76,6 +82,7 @@ export function composerPillFromPart(part: ComposerPillPart): ComposerPill {
 /** The draft token the composer stores for this pill. */
 export function composerPillToken(pill: ComposerPill): string {
   switch (pill.kind) {
+    case "model": return `@${encodeComposerMentionValue(modelMentionValue(pill))}`;
     case "skill":
       return `[skill ${pill.name}]`;
     case "connect-skill":
@@ -97,6 +104,7 @@ export function composerPillToken(pill: ComposerPill): string {
  */
 export function composerPillText(pill: ComposerPill): string {
   switch (pill.kind) {
+    case "model": return composerPillToken(pill);
     case "connect-skill":
       return `/${pill.slug}`;
     case "session":
@@ -108,6 +116,7 @@ export function composerPillText(pill: ComposerPill): string {
 
 export function composerPillTitle(pill: ComposerPill): string {
   switch (pill.kind) {
+    case "model": return pill.name;
     case "skill":
       return `Skill: ${pill.name}`;
     case "connect-skill":
@@ -124,6 +133,7 @@ export function composerPillTitle(pill: ComposerPill): string {
 /** Model-facing steering text. Only ever sent as a synthetic part. */
 export function composerPillInstruction(pill: ComposerPill): string {
   switch (pill.kind) {
+    case "model": return `Use the explicitly selected generation model ${JSON.stringify({model:generationModelId({model_id:pill.slug,type:pill.runType??""})})} Choose the task type from the user request, attachments and context, then discover the matching task variant of this model. Do not bind the selection to a task type. If the model does not support the requested task, ask the user to select again; do not substitute.`;
     case "skill":
       return skillInstruction(pill.name);
     case "connect-skill":
@@ -179,6 +189,7 @@ export function readComposerPill(value: unknown): ComposerPill | null {
     const name = stringField(value, "name");
     return name ? { kind, name } : null;
   }
+  if(kind === "model"){const slug=stringField(value,"slug"),runType=stringField(value,"runType"),name=stringField(value,"name");return slug&&name?{kind,slug,...(runType?{runType}:{}),name}:null;}
   if (kind === "computer") {
     const target = stringField(value, "target");
     return target && isComputerTarget(target) ? { kind, target } : null;
@@ -229,6 +240,7 @@ function getPillMatchers(): PillMatcher[] {
   if (pillMatchers) return pillMatchers;
   pillMatchers = [
     // Draft tokens that reached the transcript as text.
+    {re:/@model:[^\s@]+/g,toPill:match=>parseComposerPillToken(match[0])},
     { re: /\[connect-skill [^\]]+\]/g, toPill: (match) => parseComposerPillToken(match[0]) },
     { re: /\[connector [^\]\n]+\]/g, toPill: (match) => parseComposerPillToken(match[0]) },
     { re: /\[skill [^\]\n]+\]/g, toPill: (match) => parseComposerPillToken(match[0]) },

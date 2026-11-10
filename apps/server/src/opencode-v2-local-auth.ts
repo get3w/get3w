@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { opencodeDataDirs, resolveGlobalOpencodeConfigPath } from "@openwork/paths";
 import { readJsoncFile } from "./jsonc.js";
-import { ORGANIZATION_PROVIDER_ID } from "./organization-provider-gate.js";
+import { RESERVED_PROVIDER_ID } from "./reserved-provider-id.js";
 import { loopbackFetch } from "./server-fetch.js";
 import type { ServerConfig } from "./types.js";
 
@@ -228,7 +228,7 @@ export async function resolveLocalProviders(
   configured: Record<string, unknown>,
   options: LocalProviderOptions = {},
 ): Promise<LocalProvider[]> {
-  const local = (id: string) => !(id in configured) && !ORGANIZATION_PROVIDER_ID.test(id);
+  const local = (id: string) => !(id in configured) && !RESERVED_PROVIDER_ID.test(id);
   const native = options.native ?? new Map<string, EngineV2NativeProvider>();
   // Keys from the environment only count for catalog providers nothing else
   // on this computer connected, and are not "connected" providers: one the

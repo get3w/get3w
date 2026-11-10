@@ -157,25 +157,25 @@ try {
 
 contextBridge.exposeInMainWorld("__OPENWORK_I18N__", { setLanguage: language => ipcRenderer.invoke("openwork:set-language", language) });
 
-contextBridge.exposeInMainWorld("__OPENWORK_ACCOUNT__", {
-  createOrganization: (input) => ipcRenderer.invoke("openwork:auth", "createOrganization", input),
-  managedMcp: (input) => ipcRenderer.invoke("openwork:auth", "managedMcp", input),
-  managedModels: (input) => ipcRenderer.invoke("openwork:auth", "managedModels", input),
-  models: (input) => ipcRenderer.invoke("openwork:auth", "models", input),
-  modelUsage: (input) => ipcRenderer.invoke("openwork:auth", "modelUsage", input),
-  balance: (input) => ipcRenderer.invoke("openwork:auth", "balance", input),
-  organizations: (input) => ipcRenderer.invoke("openwork:auth", "organizations", input),
-  updateMember: (input) => ipcRenderer.invoke("openwork:auth", "updateMember", input),
-  membership: (input) => ipcRenderer.invoke("openwork:auth", "membership", input),
-  connectors: (input) => ipcRenderer.invoke("openwork:auth", "connectors", input),
-  toolAccess: (input) => ipcRenderer.invoke("openwork:auth", "toolAccess", input),
-  members: (input) => ipcRenderer.invoke("openwork:auth", "members", input),
-  settings: (input) => ipcRenderer.invoke("openwork:auth", "settings", input),
-  status: () => ipcRenderer.invoke("openwork:auth", "status"),
-  begin: () => ipcRenderer.invoke("openwork:auth", "begin"),
-  poll: () => ipcRenderer.invoke("openwork:auth", "poll"),
-  cancel: () => ipcRenderer.invoke("openwork:auth", "cancel"),
-  logout: () => ipcRenderer.invoke("openwork:auth", "logout"),
+contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {
+  modelTasks: (input) => ipcRenderer.invoke("get3w:auth", "modelTasks", input),
+  outputs: (input) => ipcRenderer.invoke("get3w:auth", "outputs", input),
+  modelApprovals: (input) => ipcRenderer.invoke("get3w:auth", "modelApprovals", input),
+  managedMcp: (input) => ipcRenderer.invoke("get3w:auth", "managedMcp", input),
+  managedModels: (input) => ipcRenderer.invoke("get3w:auth", "managedModels", input),
+  automations: (input) => ipcRenderer.invoke("get3w:auth", "automations", input),
+  artifacts: (input) => ipcRenderer.invoke("get3w:auth", "artifacts", input),
+  taskCatalog: (input) => ipcRenderer.invoke("get3w:auth", "taskCatalog", input),
+  models: (input) => ipcRenderer.invoke("get3w:auth", "models", input),
+  modelUsage: (input) => ipcRenderer.invoke("get3w:auth", "modelUsage", input),
+  balance: (input) => ipcRenderer.invoke("get3w:auth", "balance", input),
+  connectors: (input) => ipcRenderer.invoke("get3w:auth", "connectors", input),
+  settings: (input) => ipcRenderer.invoke("get3w:auth", "settings", input),
+  status: () => ipcRenderer.invoke("get3w:auth", "status"),
+  begin: () => ipcRenderer.invoke("get3w:auth", "begin"),
+  poll: () => ipcRenderer.invoke("get3w:auth", "poll"),
+  cancel: () => ipcRenderer.invoke("get3w:auth", "cancel"),
+  logout: () => ipcRenderer.invoke("get3w:auth", "logout"),
 });
 
 contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
@@ -347,7 +347,7 @@ contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
     },
   },
   // Development-only observation of native popup menus; main registers no handler otherwise.
-  ...(process.env.OPENWORK_DEV_MODE === "1" ? {
+  ...(process.env.GET3W_DEV_MODE === "1" ? {
     contextMenu: {
       inspect() { return ipcRenderer.invoke("openwork:context-menu:inspect"); },
       choose(id) { return ipcRenderer.invoke("openwork:context-menu:choose", id); },
@@ -376,13 +376,13 @@ contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
     initialDeepLinks: [],
     platform: normalizePlatform(process.platform),
     version: process.versions.electron,
-    evalFatalBootstrapFailure: process.env.OPENWORK_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE ?? null,
+    evalFatalBootstrapFailure: process.env.GET3W_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE ?? null,
   },
 });
 
 if (
-  process.env.OPENWORK_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE
-  && (process.env.OPENWORK_EVAL_RECOVERY_CANDIDATES || process.env.OPENWORK_EVAL_RECOVERY_RELEASES)
+  process.env.GET3W_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE
+  && (process.env.GET3W_EVAL_RECOVERY_CANDIDATES || process.env.GET3W_EVAL_RECOVERY_RELEASES)
 ) {
   contextBridge.exposeInMainWorld("__openworkRecoveryControl", {
     snapshot() {

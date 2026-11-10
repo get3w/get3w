@@ -3,7 +3,7 @@ import {
   agentPermissionEngineV2Decision,
   parseAgentPermissionRules,
 } from "../agent-permission-engine.js";
-import { parseOrganizationMcpServers } from "../organization-mcp-names.js";
+import { parseOrganizationMcpServers } from "../reserved-mcp-names.js";
 
 type Registration = { dispose(): Promise<void> };
 type PermissionEvent = {

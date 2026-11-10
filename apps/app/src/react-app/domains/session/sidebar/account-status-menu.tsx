@@ -1,4 +1,4 @@
-import { Get3wAccount, openGet3wSignIn, useGet3wAccount } from "../../cloud/get3w-account";
+import { openGet3wSignIn, useGet3wAccount } from "../../cloud/get3w-account";
 /** @jsxImportSource react */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -185,7 +185,6 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
     initializing: false, reloadBusy: props.reloadBusy, reloadError: props.reloadError,
   }) : null;
   return <div className="flex w-full items-center gap-1">
-    <Get3wAccount />
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" className="min-w-0 flex-1 justify-start" data-testid="account-status-menu" data-runtime-state={status?.variant} />}>
         <UserRound className="size-4 shrink-0" />

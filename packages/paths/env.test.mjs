@@ -52,9 +52,9 @@ test("other platforms write and delete exact names", () => {
 
 test("path resolvers read copied Windows environments under any spelling", () => {
   const store = "C:\\Profiles\\openwork\\env.json";
-  assert.equal(openworkEnvStorePath({ env: { openwork_env_store: store }, ...windows }), path.win32.resolve(store));
+  assert.equal(openworkEnvStorePath({ env: { get3w_env_store: store }, ...windows }), path.win32.resolve(store));
   assert.equal(
-    openworkEnvStorePath({ env: { openwork_env_store: "/tmp/env.json" }, homeDir: "/home/me", ...mac }),
+    openworkEnvStorePath({ env: { get3w_env_store: "/tmp/env.json" }, homeDir: "/home/me", ...mac }),
     "/home/me/.config/openwork/env.json",
   );
 });

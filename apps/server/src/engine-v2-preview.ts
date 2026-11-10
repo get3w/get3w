@@ -5,7 +5,6 @@ import { engineAutoUpgradeRetry, historyRevision, runEngineAutoUpgrade, waitForE
 import { createV2ContextBridge } from "./opencode-v2-context-bridge.js";
 import { ApiError } from "./errors.js";
 import { hasV1Chat, hasV1ChatsSince, opencodeV1DatabasePath, readMigrationSessions, runOpencodeV1HistoryMigration, snapshotV1Database, type EngineV2MigrationStatus } from "./opencode-v2-migration.js";
-import { executionRules } from "./managed-policy-rules.js";
 import { agentPermissionEngineMcpDenial, agentPermissionRulesOf } from "./agent-permission-engine.js";
 import { registeredOrganizationMcpServers } from "./connect-mcp-server-catalog.js";
 import { waitForEngineSkillChanges } from "./opencode-v2-skill-settle.js";
@@ -51,7 +50,7 @@ import { readOpenworkWorkspaceConfig } from "./openwork-workspace-config-store.j
  * engine config. A server without one keeps the shared layout.
  */
 export function engineInstanceId(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const key = env.OPENWORK_SERVER_STATE_PATH?.trim() || env.OPENWORK_ELECTRON_APP_IDENTIFIER?.trim();
+  const key = env.GET3W_SERVER_STATE_PATH?.trim() || env.GET3W_ELECTRON_APP_IDENTIFIER?.trim();
   return key ? createHash("sha256").update(key).digest("hex").slice(0, 12) : undefined;
 }
 import { findManagedEngineWorkspace, hasExternalOpencode } from "./workspaces.js";
@@ -67,7 +66,7 @@ import {
   type EngineV2SkippedProvider,
   type EngineV2SkippedProviderReason,
 } from "./opencode-v2-local-auth.js";
-import { ORGANIZATION_PROVIDER_ID, organizationProviderGate } from "./organization-provider-gate.js";
+import { RESERVED_PROVIDER_ID } from "./reserved-provider-id.js";
 
 export type { EngineV2SkippedProvider, EngineV2SkippedProviderReason } from "./opencode-v2-local-auth.js";
 
@@ -204,7 +203,7 @@ export function resolveInitialEngineV2PreviewState(
   env: NodeJS.ProcessEnv,
   persisted: EngineV2PreviewState,
 ): EngineV2PreviewState {
-  const override = env.OPENWORK_ENGINE_V2_PREVIEW;
+  const override = env.GET3W_ENGINE_V2_PREVIEW;
   if (override === "1" || override === "chat") return { ...persisted, enabled: true, chatRouting: true };
   if (override === "sidecar") return { ...persisted, enabled: true, chatRouting: false };
   return persisted;
@@ -294,7 +293,7 @@ export function readEngineV2PreviewState(config: Pick<ServerConfig, "configPath"
  * The engine a brand-new install starts on. Desktop and the hosted web
  * bootstrap request it without overriding earlier Get3W state. Updated installs, a
  * saved engine choice, OpenCode v1 history, or an explicit
- * OPENWORK_ENGINE_V2_PREVIEW all keep today's behavior.
+ * GET3W_ENGINE_V2_PREVIEW all keep today's behavior.
  */
 export function freshInstallEngineState(input: {
   requested: ServerConfig["freshInstallEngine"];
@@ -303,7 +302,7 @@ export function freshInstallEngineState(input: {
   v1HistoryExists: boolean;
 }): EngineV2PreviewState | undefined {
   if (input.requested !== "v2") return undefined;
-  if (input.env.OPENWORK_ENGINE_V2_PREVIEW?.trim()) return undefined;
+  if (input.env.GET3W_ENGINE_V2_PREVIEW?.trim()) return undefined;
   if (input.stateFileExists || input.v1HistoryExists) return undefined;
   return { enabled: true, chatRouting: true };
 }
@@ -365,7 +364,7 @@ async function resolveBinary(config: ServerConfig): Promise<ResolvedBinary> {
 }
 
 async function resolveBinaryInner(config: ServerConfig): Promise<ResolvedBinary> {
-  const override = process.env.OPENWORK_OPENCODE2_BIN?.trim();
+  const override = process.env.GET3W_OPENCODE2_BIN?.trim();
   if (override) return { bin: override, source: "env" };
 
   let pathError = "not found";
@@ -381,7 +380,7 @@ async function resolveBinaryInner(config: ServerConfig): Promise<ResolvedBinary>
     return { bin: binary, source: "cache" };
   } catch (error) {
     throw new Error(
-      `Unable to resolve OpenCode v2 (${pathError}; verified download: ${errorMessage(error)}). Set OPENWORK_OPENCODE2_BIN to a working opencode2 binary.`,
+      `Unable to resolve OpenCode v2 (${pathError}; verified download: ${errorMessage(error)}). Set GET3W_OPENCODE2_BIN to a working opencode2 binary.`,
     );
   }
 }
@@ -544,7 +543,7 @@ export async function userConfigProviders(
 }> {
   const file = await read();
   const claimed = Object.fromEntries(Object.entries(file.providers)
-    .filter(([id]) => !(id in configured) && !ORGANIZATION_PROVIDER_ID.test(id)));
+    .filter(([id]) => !(id in configured) && !RESERVED_PROVIDER_ID.test(id)));
   const skipped: EngineV2SkippedProvider[] = [];
   const allowed: Record<string, unknown> = {};
   for (const [id, provider] of Object.entries(claimed)) {
@@ -735,7 +734,7 @@ export function createEngineV2Preview(options: {
   // Only engines using this host's history can be migrated automatically. The
   // bootstrap ownership snapshot survives managed global/workspace URL hydration.
   // An explicit saved/pinned engine still wins; legacy policy cannot undo it.
-  const autoUpgradeEnabled = !hasExternalOpencode(config) && config.engineAutoUpgrade !== false && !process.env.OPENWORK_ENGINE_V2_PREVIEW?.trim();
+  const autoUpgradeEnabled = !hasExternalOpencode(config) && config.engineAutoUpgrade !== false && !process.env.GET3W_ENGINE_V2_PREVIEW?.trim();
   let autoUpgradeRetry = initialState.autoUpgradeRetry;
   const autoUpgradeAbort = new AbortController();
   let autoUpgradeJob: Promise<void> | undefined;
@@ -999,25 +998,18 @@ export function createEngineV2Preview(options: {
     // OpenCode Zen). Re-enabling removes the entry and this mirror restores it.
     const disabledProviderIds = runtimeDisabledProviderList(globalRuntime);
     const disabled = new Set(disabledProviderIds);
-    // "Only models you provide": the providers v1 omits from `enabled_providers`
-    // never reach v2 either, whether configured or connected on this computer.
-    const allowsProvider = organizationProviderGate(globalRuntime.managedPolicy);
     const localAuth = await readLocalProviderAuth();
-    const localKeys = allowsProvider
-      ? new Map([...localAuth.apiKeys].filter(([id]) => allowsProvider(id)))
-      : localAuth.apiKeys;
+    const localKeys = localAuth.apiKeys;
     const credentials = new Map((await options.env?.list() ?? []).map((entry) => [entry.key, entry.value]));
     // Providers the engine's own catalog knows need only a key from us.
     const native = await readEngineV2NativeProviders(active);
     // v1 reads catalog keys from its environment: the server's, plus Settings › Environment.
     const environment: NodeJS.ProcessEnv = { ...process.env, ...Object.fromEntries(credentials) };
-    const userFile = await userConfigProviders(configured, allowsProvider, native, localKeys, credentials, undefined, environment);
+    const userFile = await userConfigProviders(configured, null, native, localKeys, credentials, undefined, environment);
     const local = await localProviderDefinitions(config, localAuth, { ...configured, ...userFile.claimed }, {
-      allows: allowsProvider, native, environment,
+      native, environment,
     });
-    const blockedConfigured = Object.keys(configured).filter(id => allowsProvider && !allowsProvider(id));
-    const combinedProviders = { ...local.providers, ...Object.fromEntries(Object.entries(configured)
-      .filter(([id]) => !allowsProvider || allowsProvider(id))) };
+    const combinedProviders = { ...local.providers, ...configured };
     // Native plugin is the sole Gateway owner. Local and legacy providers still
     // use the old mirror, including their normal readiness/catalog checks.
     const providerMap = Object.fromEntries(Object.entries(combinedProviders)
@@ -1056,7 +1048,6 @@ export function createEngineV2Preview(options: {
     mirroredProviderIds = nextMirroredProviderIds.filter(id => !ownsGateway() || !/^ipr_/i.test(id));
     const skipped = mergeSkippedProviders(
       local.skipped,
-      blockedConfigured.map((id): EngineV2SkippedProvider => ({ id, reason: "policy" })),
       userFile.skipped,
       [...templates.errors, ...userFile.errors].map((error): EngineV2SkippedProvider => ({ id: error.providerId, reason: "metadata" })),
       mapped.skippedProviders,
@@ -1140,14 +1131,11 @@ export function createEngineV2Preview(options: {
       rootDir,
       instanceId: engineInstanceId(),
       env: { OPENCODE_MODELS_URL: opencodeModelsUrl },
-      permissions: async () => {
-        const runtime = await readGlobalRuntimeOpencodeConfig(config);
-        return executionRules(runtime.managedPolicy?.execution);
-      },
-      // The engine reads ~/.claude/skills and ~/.agents/skills itself, but its
-      // config folder is Get3W's own, so it never sees these two global
-      // folders the skill picker lists, and a picked skill there can't be sent.
-      skills: [globalSkills.openwork, globalSkills.agentLegacy],
+      // Keep media work inside the signed-in Get3W account boundary. Third
+      // party global skills (for example an Xianchou CLI skill) can ask for
+      // provider credentials and must never become a fallback for a Get3W
+      // model task. Built-in OpenWork skills remain available.
+      skills: [globalSkills.openwork],
       agentPermissions: async () => {
         const rules = agentPermissionRulesOf((await readGlobalRuntimeOpencodeConfig(config)).managedPolicy);
         if (rules.length === 0) return { rules, organizationMcp: {} };
@@ -1219,7 +1207,7 @@ export function createEngineV2Preview(options: {
   let startFailureJob: Promise<void> | undefined;
   function recordStartError(error: unknown): void {
     running = false;
-    lastError = `${errorMessage(error)} Set OPENWORK_OPENCODE2_BIN to a working opencode2 binary to override resolution.`;
+    lastError = `${errorMessage(error)} Set GET3W_OPENCODE2_BIN to a working opencode2 binary to override resolution.`;
     // One report per incident: retries of an engine that keeps failing stay local.
     if (restartAttempts === 0) reportEngineFailure("start", error);
     if (!engineForced || engineOrigin !== "fresh") {

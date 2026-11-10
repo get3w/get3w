@@ -1,6 +1,17 @@
 import type { ProviderCredentialHealth } from "./credential-health";
 import type { CloudProviderSyncError } from "./store";
-import type { CloudProviderRowStatus } from "../../settings/cloud/sections";
+
+export type CloudProviderRowStatus =
+  | "connected"
+  | "credential_unverified"
+  | "credential_rejected"
+  | "syncing"
+  | "error"
+  | "conflict"
+  | "blocked"
+  | "needs_credential"
+  | "needs_server"
+  | "unavailable";
 
 export type CloudProviderRowStateInput = {
   imported: boolean;

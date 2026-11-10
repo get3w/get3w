@@ -1,9 +1,6 @@
-import { legacyExecutionPermissions } from "./managed-policy-rules.js";
-import { DESKTOP_POLICY_ENFORCEMENT_ENABLED, desktopCapabilityConfig } from "@openwork/types/den/desktop-policies-runtime";
 import { materializeLegacyFastProviders } from "@openwork/types/cloud-model-fast";
-import { isManagedPolicyPlugin } from "./managed-policy-plugin.js";
+import { fileURLToPath } from "node:url";
 import { isLegacyBrowserPlugin } from "./workspace-init.js";
-import { ORGANIZATION_PROVIDER_ID, organizationProviderGate } from "./organization-provider-gate.js";
 /**
  * Runtime OpenCode configuration injected via a server-managed config file
  * passed to the engine as OPENCODE_CONFIG.
@@ -32,6 +29,7 @@ import {
   openworkChromeDevtoolsPluginPath,
   openworkComputerUsePluginPath,
   openworkPdfAttachmentsPluginPath,
+  openworkPluginPath,
 } from "./openwork-extensions-plugin-path.js";
 import type { ServerConfig } from "./types.js";
 import { runtimeStorageDir } from "./runtime-db.js";
@@ -46,7 +44,7 @@ import {
   type RuntimeOpencodeConfig,
 } from "./runtime-opencode-config-store.js";
 import { CONNECT_MCP_SERVER_NAME_PREFIX } from "./connect-mcp-server-catalog.js";
-import { appendOrganizationPrompts, OPENWORK_AGENT_PROMPT } from "./openwork-agent-prompt.js";
+import { OPENWORK_AGENT_PROMPT } from "./openwork-agent-prompt.js";
 
 export async function buildOpenworkRuntimeConfigObject(
   config?: ServerConfig,
@@ -60,36 +58,33 @@ export async function buildOpenworkRuntimeConfigObject(
   return buildOpenworkRuntimeConfigObjectFromSnapshot(runtimeConfig);
 }
 
+// Older runtime configs may still list Get3W's retired policy plugins (as
+// paths or file URLs). Drop only those registrations; a third-party plugin
+// with the same basename stays.
+function isRetiredPolicyPlugin(value: string): boolean {
+  let path = value;
+  if (value.startsWith("file:")) {
+    try { path = fileURLToPath(value); } catch { return false; }
+  }
+  return path === openworkPluginPath("managed-policy") || path === openworkPluginPath("managed-policy-next");
+}
+
 export function buildOpenworkRuntimeConfigObjectFromSnapshot(
   runtimeConfig: RuntimeOpencodeConfig,
 ): Record<string, unknown> {
-  if (!DESKTOP_POLICY_ENFORCEMENT_ENABLED) {
-    // Only model access (the AI Gateway's "Who can use models") is enforced: keep allowCustomProviders from the verified
-    // policy (cleared on sign-out) and drop execution rules and every other desktop policy.
-    const { managedPolicy, ...localConfig } = runtimeConfig;
-    runtimeConfig = managedPolicy ? { ...localConfig, managedPolicy: desktopCapabilityConfig(managedPolicy) } : localConfig;
-  }
   const disabledProviders = runtimeDisabledProviderList(runtimeConfig);
-  const permissions = legacyExecutionPermissions(runtimeConfig.managedPolicy?.execution);
-  const { managedPolicy: _managedPolicy, managedPrompt, ...engineConfig } = runtimeConfig;
+  const { managedPolicy: _managedPolicy, managedPrompt: _managedPrompt, ...engineConfig } = runtimeConfig;
   const provider = materializeLegacyFastProviders(runtimeProviderMap(runtimeConfig));
-  const allowsProvider = organizationProviderGate(runtimeConfig.managedPolicy);
   return {
     ...engineConfig,
-    ...(allowsProvider ? { enabled_providers: [
-      ...Object.keys(provider).filter((id) => ORGANIZATION_PROVIDER_ID.test(id)),
-      ...(allowsProvider("opencode") ? ["opencode"] : []),
-    ] } : {}),
-    permission: { ...engineConfig.permission, ...permissions },
     default_agent: runtimeConfig.default_agent ?? "openwork",
     agent: {
       openwork: {
         description: "Get3W default agent",
         mode: "primary",
         temperature: 0.2,
-        prompt: appendOrganizationPrompts(OPENWORK_AGENT_PROMPT, managedPrompt),
+        prompt: OPENWORK_AGENT_PROMPT,
         permission: {
-          ...permissions,
           skill: {
             // Get3W supplies its own current skill routing and no longer
             // supports these engine or legacy workspace skills.
@@ -117,7 +112,7 @@ export function buildOpenworkRuntimeConfigObjectFromSnapshot(
       openworkAnthropicAdaptiveThinkingPluginPath(),
       openworkAnthropicToolSchemaPluginPath(),
       openworkTitleRecoveryPluginPath(),
-      ...runtimePluginList(runtimeConfig).filter((plugin) => !isManagedPolicyPlugin(plugin) && !isLegacyBrowserPlugin(plugin)),
+      ...runtimePluginList(runtimeConfig).filter((plugin) => !isRetiredPolicyPlugin(plugin) && !isLegacyBrowserPlugin(plugin)),
     ],
     ...(disabledProviders.length ? { disabled_providers: disabledProviders } : {}),
     mcp: Object.fromEntries(Object.entries(runtimeMcpMap(runtimeConfig))

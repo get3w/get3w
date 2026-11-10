@@ -11,7 +11,7 @@ const ownedDom = typeof window === "undefined";
 if (ownedDom) GlobalRegistrator.register({ url: "http://localhost/" });
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
-const { createDenClient } = await import("../src/app/lib/den");
+const { createArtifactsClient } = await import("../src/app/lib/get3w-artifacts");
 const appsClient = await import("../src/react-app/domains/apps/use-apps");
 const { BuiltAppPinButton } = await import("../src/react-app/domains/apps/built-app-pin-button");
 const { BuiltAppCatalogSync } = await import("../src/react-app/domains/apps/built-app-catalog-sync");
@@ -38,11 +38,11 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-  const client = createDenClient({ baseUrl: "https://den.example.test", token: "fixture" });
+  const client = createArtifactsClient({ userId: "user_artifacts" });
   spyOn(client, "listBuiltMcpApps").mockResolvedValue([{ ...entry, toolName: "open_app" }]);
   context = {
-    identityVerified: true, canManage: false, client, orgId: "org_artifacts", orgName: "Artifacts",
-    scope: ["https://den.example.test", "member_1", "org_artifacts", "https://api.example.test"],
+    identityVerified: true, canManage: false, client, userId: "user_artifacts",
+    scope: ["get3w-native-artifacts", "user_artifacts", "user_artifacts"],
   };
   queryClient.setQueryData(["built-dashboard-apps", ...context.scope], [entry]);
   spyOn(appsClient, "useAppsClient").mockImplementation(() => context);
@@ -120,14 +120,14 @@ test("pinning requires verified identity and member-catalog access, not admin pr
   expect(host.querySelector("button")?.title).toContain("Sign in");
 });
 
-test("member, organization and server scope switches never carry placements into the new scope", async () => {
+test("account and service scope switches never carry placements into the new scope", async () => {
   const original = context.scope;
   const originalKey = builtDashboardScope(original);
   writeBuiltDashboardApps(originalKey, [appId]);
   const view = <><Placement name="dashboard" /><BuiltAppPinButton appId={appId} /></>;
   await render(view);
   expect(placements()).toEqual([appId]);
-  for (const index of [0, 1, 2, 3]) {
+  for (const index of [0, 1, 2]) {
     const scope = original.map((value, position) => position === index ? `${value}-other` : value);
     context = { ...context, scope };
     queryClient.setQueryData(["built-dashboard-apps", ...scope], [entry]);

@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter ./apps/desktop dev",
+    "dev:local": "node scripts/dev-local.mjs",
     "build": "pnpm --filter ./apps/desktop build:electron",
     "build:ui": "pnpm --filter ./apps/app build",
     "typecheck": "pnpm --filter ./apps/app typecheck && pnpm --filter ./apps/server typecheck",

@@ -83,7 +83,7 @@ export function observeEngineMigrationAnalytics(baseUrl: string, status: EngineM
   observer ??= createEngineMigrationAnalyticsObserver({
     capture: captureAnalyticsEvent,
     surface: isDesktopRuntime() ? "desktop" : "web",
-    appVersion: String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim() || "unknown",
+    appVersion: String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim() || "unknown",
     storage: localStorageAccess(),
     engineChanged: () => {
       if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("openwork-engine-changed"));

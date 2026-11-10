@@ -46,7 +46,6 @@ type ComposerPlusMenuProps = Omit<PlusMenuInput, "view" | "query" | "recentIds">
   attachmentsDisabledReason: string | null;
   onAttach: () => void;
   onPick: (item: ComposerPlusMenuPick) => void;
-  onConnect: (connector: PlusMenuConnector) => void;
   onManage: (section: PlusMenuSection) => void;
   onQueryChange?: (query: string) => void;
   /** Where focus returns when the menu closes. */
@@ -317,29 +316,6 @@ export function ComposerPlusMenu(props: ComposerPlusMenuProps) {
         return item.agent.selected ? <Check className="size-3.5 shrink-0 text-gray-10" aria-label={t("composer.plus_selected")} /> : enterHint;
       case "connector": {
         const { connector } = item;
-        if (connector.signIn) {
-          return (
-            <Button
-              size="xs"
-              variant="outline"
-              className="shrink-0"
-              disabled={connector.connecting}
-              aria-label={t("composer.plus_connect_named", { name: connector.name })}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                props.onConnect(connector);
-              }}
-            >
-              {connector.connecting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}
-              {connector.signIn.reconnect ? t("mcp.org_connection_reconnect_action") : t("composer.plus_connect")}
-            </Button>
-          );
-        }
         if (connector.note) return <span className="shrink-0 text-xs text-gray-9">{connector.note}</span>;
         return enterHint;
       }

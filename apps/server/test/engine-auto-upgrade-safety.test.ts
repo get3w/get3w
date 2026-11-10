@@ -11,11 +11,11 @@ import type { ServerConfig } from "../src/types.js";
 
 async function profile(run: (directory: string, config: ServerConfig) => Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "openwork-upgrade-safety-"));
-  const previous = { OPENWORK_RUNTIME_DB: process.env.OPENWORK_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB,
-    OPENWORK_ENGINE_V2_PREVIEW: process.env.OPENWORK_ENGINE_V2_PREVIEW };
-  process.env.OPENWORK_RUNTIME_DB = join(directory, "runtime.db");
+  const previous = { GET3W_RUNTIME_DB: process.env.GET3W_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB,
+    GET3W_ENGINE_V2_PREVIEW: process.env.GET3W_ENGINE_V2_PREVIEW };
+  process.env.GET3W_RUNTIME_DB = join(directory, "runtime.db");
   process.env.OPENCODE_DB = join(directory, "v1.db");
-  delete process.env.OPENWORK_ENGINE_V2_PREVIEW;
+  delete process.env.GET3W_ENGINE_V2_PREVIEW;
   const config: ServerConfig = {
     host: "127.0.0.1", port: 0, token: "test", hostToken: "test", configPath: join(directory, "server.json"),
     approval: { mode: "auto", timeoutMs: 1000 }, corsOrigins: [], workspaces: [], authorizedRoots: [], readOnly: false,

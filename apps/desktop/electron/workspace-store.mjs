@@ -14,6 +14,7 @@ import {
 } from "@openwork/paths";
 
 import { exportWorkspaceConfig, importWorkspaceConfig } from "./workspace-archive.mjs";
+import { GET3W_SERVICES } from "./get3w-services.mjs";
 
 const EMPTY_WORKSPACE_LIST = Object.freeze({
   selectedId: "",
@@ -115,8 +116,7 @@ const DEFAULT_DESKTOP_BOOTSTRAP_PATH = resolveDesktopBootstrapPath({ homeDir: os
 // LOCALAPPDATA and XDG_CONFIG_HOME. Keep reading that file when the canonical one
 // is missing so existing installs keep their deployment config.
 const LEGACY_DESKTOP_BOOTSTRAP_PATH = resolveLegacyDesktopBootstrapPath({ homeDir: os.homedir() });
-const HOSTED_DESKTOP_WEB_URL = "https://app.get3w.com";
-const HOSTED_DESKTOP_API_URL = "https://api.get3w.com";
+const HOSTED_DESKTOP_API_URL = GET3W_SERVICES.denBase;
 
 function bootstrapUrlOrigin(value) {
   if (typeof value !== "string" || !value.trim()) return "";
@@ -129,7 +129,7 @@ function bootstrapUrlOrigin(value) {
 
 function isHostedDesktopBootstrapConfig(config) {
   const baseUrlOrigin = bootstrapUrlOrigin(config?.baseUrl);
-  return baseUrlOrigin === HOSTED_DESKTOP_WEB_URL || baseUrlOrigin === HOSTED_DESKTOP_API_URL;
+  return baseUrlOrigin === HOSTED_DESKTOP_API_URL;
 }
 
 export function createWorkspaceStore({
@@ -139,14 +139,14 @@ export function createWorkspaceStore({
   forceRequireSignin,
 }) {
   function desktopBootstrapPath() {
-    if (process.env.OPENWORK_DESKTOP_BOOTSTRAP_PATH?.trim()) {
+    if (process.env.GET3W_DESKTOP_BOOTSTRAP_PATH?.trim()) {
       return resolveDesktopBootstrapPath({ env: process.env, homeDir: os.homedir(), userDataDir: app.getPath("userData") });
     }
     // Dev mode swaps process.env.HOME to the sandboxed dev-data home midway
     // through startup (runtime.mjs buildChildEnv -> Object.assign(process.env)),
     // which changes what os.homedir() returns. Resolve the dev-data home
     // deterministically so early and late IPC reads target the same file.
-    if (process.env.OPENWORK_DEV_MODE === "1") {
+    if (process.env.GET3W_DEV_MODE === "1") {
       return resolveDesktopBootstrapPath({ env: process.env, homeDir: os.homedir(), userDataDir: app.getPath("userData") });
     }
     return DEFAULT_DESKTOP_BOOTSTRAP_PATH;
@@ -156,7 +156,7 @@ export function createWorkspaceStore({
     // An explicit bootstrap path defines an isolated installation boundary.
     // Never let a legacy global config cross that boundary: it may contain a
     // completed activation from another distribution or deployment.
-    if (process.env.OPENWORK_DESKTOP_BOOTSTRAP_PATH?.trim()) return null;
+    if (process.env.GET3W_DESKTOP_BOOTSTRAP_PATH?.trim()) return null;
     const primary = desktopBootstrapPath();
     if (primary === DEFAULT_DESKTOP_BOOTSTRAP_PATH && LEGACY_DESKTOP_BOOTSTRAP_PATH !== primary) {
       return LEGACY_DESKTOP_BOOTSTRAP_PATH;
@@ -165,13 +165,13 @@ export function createWorkspaceStore({
   }
 
   function workspaceStatePath() {
-    const override = process.env.OPENWORK_DESKTOP_WORKSPACE_STATE_PATH?.trim();
+    const override = process.env.GET3W_DESKTOP_WORKSPACE_STATE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(app.getPath("userData"), "openwork-workspaces.json");
   }
 
   function openworkServerTokenStorePath() {
-    const override = process.env.OPENWORK_SERVER_TOKEN_STORE_PATH?.trim();
+    const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(app.getPath("userData"), "openwork-server-tokens.json");
   }
@@ -211,73 +211,13 @@ export function createWorkspaceStore({
       throw new Error("baseUrl is required");
     }
 
-    // The handoff grant is a one-time, short-lived (~5 min) desktop sign-in
-    // token written to this machine-local config by the bootstrap CLI. The app
-    // exchanges it once on boot and then rewrites this file with `handoff: null`
-    // (see den-auth-provider) so it is never reusable. It is intentionally kept
-    // in plaintext here because it is single-use and local-only; do not persist
-    // long-lived secrets in this file.
-    const handoffInput = input?.handoff;
-    const handoff = handoffInput && typeof handoffInput === "object"
-      ? {
-          grant: typeof handoffInput.grant === "string" ? handoffInput.grant.trim() : "",
-          denBaseUrl: typeof handoffInput.denBaseUrl === "string" ? handoffInput.denBaseUrl.trim() : "",
-          orgId: typeof handoffInput.orgId === "string" ? handoffInput.orgId.trim() : "",
-          orgName: typeof handoffInput.orgName === "string" ? handoffInput.orgName.trim() : "",
-          orgSlug: typeof handoffInput.orgSlug === "string" ? handoffInput.orgSlug.trim() : "",
-          skillId: typeof handoffInput.skillId === "string" ? handoffInput.skillId.trim() : "",
-          skillTitle: typeof handoffInput.skillTitle === "string" ? handoffInput.skillTitle.trim() : "",
-          createdAt: typeof handoffInput.createdAt === "string" ? handoffInput.createdAt.trim() : "",
-        }
-      : null;
-    const normalizedHandoff = handoff?.grant && handoff.denBaseUrl && handoff.orgId && handoff.orgName && handoff.skillId && handoff.skillTitle
-      ? handoff
-      : null;
-    const preparedInput = input?.prepared;
-    const prepared = preparedInput && typeof preparedInput === "object"
-      ? {
-          orgId: typeof preparedInput.orgId === "string" ? preparedInput.orgId.trim() : "",
-          orgName: typeof preparedInput.orgName === "string" ? preparedInput.orgName.trim() : "",
-          orgSlug: typeof preparedInput.orgSlug === "string" ? preparedInput.orgSlug.trim() : "",
-          skillId: typeof preparedInput.skillId === "string" ? preparedInput.skillId.trim() : "",
-          skillTitle: typeof preparedInput.skillTitle === "string" ? preparedInput.skillTitle.trim() : "",
-          skillsDir: typeof preparedInput.skillsDir === "string" ? preparedInput.skillsDir.trim() : "",
-          skillPath: typeof preparedInput.skillPath === "string" ? preparedInput.skillPath.trim() : "",
-          preparedAt: typeof preparedInput.preparedAt === "string" ? preparedInput.preparedAt.trim() : "",
-        }
-      : null;
-    const normalizedPrepared = prepared?.orgId && prepared.orgName && prepared.skillId && prepared.skillTitle && prepared.skillPath
-      ? prepared
-      : null;
-    const claimLinksInput = Array.isArray(input?.claimLinks) ? input.claimLinks : [];
-    const claimLinks = claimLinksInput.flatMap((link) => {
-      if (!link || typeof link !== "object") return [];
-      const id = typeof link.id === "string" ? link.id.trim() : "";
-      const role = typeof link.role === "string" ? link.role.trim() : "";
-      const token = typeof link.token === "string" ? link.token.trim() : "";
-      const url = typeof link.url === "string" ? link.url.trim() : "";
-      const expiresAt = typeof link.expiresAt === "string" ? link.expiresAt.trim() : "";
-      return id && role && url && expiresAt ? [{ id, role, ...(token ? { token } : {}), url, expiresAt }] : [];
-    });
+    // Older files may still carry organization handoff, prepared-skill, claim-link
+    // and enterprise-activation records. They are read and dropped here.
     const writtenAt = typeof input?.writtenAt === "string" ? input.writtenAt.trim() : "";
     const apiBaseUrl = typeof input?.apiBaseUrl === "string" ? input.apiBaseUrl.trim() : "";
     const brandAppName = typeof input?.brandAppName === "string" ? input.brandAppName.trim().slice(0, 64) : "";
     const brandLogoUrl = typeof input?.brandLogoUrl === "string" ? input.brandLogoUrl.trim() : "";
     const brandIconUrl = typeof input?.brandIconUrl === "string" ? input.brandIconUrl.trim() : "";
-    const enterpriseActivationInput = input?.enterpriseActivation;
-    const enterpriseActivation = enterpriseActivationInput && typeof enterpriseActivationInput === "object"
-      ? {
-          activatedAt: typeof enterpriseActivationInput.activatedAt === "string"
-            ? enterpriseActivationInput.activatedAt.trim()
-            : "",
-          denBaseUrl: typeof enterpriseActivationInput.denBaseUrl === "string"
-            ? enterpriseActivationInput.denBaseUrl.trim()
-            : "",
-        }
-      : null;
-    const normalizedEnterpriseActivation = enterpriseActivation?.activatedAt && enterpriseActivation.denBaseUrl
-      ? enterpriseActivation
-      : null;
     return {
       baseUrl,
       ...(apiBaseUrl ? { apiBaseUrl } : {}),
@@ -295,10 +235,6 @@ export function createWorkspaceStore({
       ...(brandLogoUrl ? { brandLogoUrl } : {}),
       ...(brandIconUrl ? { brandIconUrl } : {}),
       ...(writtenAt ? { writtenAt } : {}),
-      ...(claimLinks.length > 0 ? { claimLinks } : {}),
-      ...(normalizedHandoff ? { handoff: normalizedHandoff } : {}),
-      ...(normalizedPrepared ? { prepared: normalizedPrepared } : {}),
-      ...(normalizedEnterpriseActivation ? { enterpriseActivation: normalizedEnterpriseActivation } : {}),
     };
   }
 
@@ -466,7 +402,7 @@ export function createWorkspaceStore({
       legacyExists: legacyPath ? existsSync(legacyPath) : false,
       home: os.homedir(),
       envHome: process.env.HOME ?? null,
-      envOverride: process.env.OPENWORK_DESKTOP_BOOTSTRAP_PATH ?? null,
+      envOverride: process.env.GET3W_DESKTOP_BOOTSTRAP_PATH ?? null,
       exists: existsSync(configPath),
       raw: null,
       parsed: null,
@@ -731,7 +667,7 @@ export function createWorkspaceStore({
     let activeId = typeof state?.activeId === "string" ? state.activeId : null;
     let workspaces = Array.isArray(state?.workspaces) ? state.workspaces : [];
     let changed = false;
-    if (!workspaceStateExists && process.env.OPENWORK_DESKTOP_DISABLE_WORKSPACE_RECOVERY !== "1") {
+    if (!workspaceStateExists && process.env.GET3W_DESKTOP_DISABLE_WORKSPACE_RECOVERY !== "1") {
       const recoveredWorkspaces = await recoverWorkspacesFromKnownState();
       if (recoveredWorkspaces.length > 0) {
         const selectedWorkspace = recoveredWorkspaces[0];
@@ -785,7 +721,7 @@ export function createWorkspaceStore({
     const state = await readWorkspaceState();
     // Recovery and an explicitly saved empty list both take precedence.
     if (state.workspaces.length > 0 || existsSync(workspaceStatePath())) return null;
-    const home = process.env.OPENWORK_DEV_MODE === "1" && process.env.OPENWORK_DEV_SHARED_STATE !== "1"
+    const home = process.env.GET3W_DEV_MODE === "1" && process.env.GET3W_DEV_SHARED_STATE !== "1"
       ? path.join(app.getPath("userData"), "openwork-dev-data", "home")
       : os.homedir();
     const folderPath = await normalizeLocalWorkspacePath(path.join(home, "Get3W Chat"));

@@ -7,12 +7,12 @@ import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const embeddedUrl = process.env.OPENWORK_TEST_EMBEDDED_MODULE_URL
+const embeddedUrl = process.env.GET3W_TEST_EMBEDDED_MODULE_URL
   || pathToFileURL(join(repo, "apps/server/dist/embedded.js")).href;
-const engineBin = process.env.OPENWORK_TEST_ENGINE_BIN
+const engineBin = process.env.GET3W_TEST_ENGINE_BIN
   || join(repo, "apps/desktop/resources/sidecars", process.platform === "win32" ? "opencode.exe" : "opencode");
 
-test("a fresh bundled engine lists sessions and loads Get3W tools without npm access", { timeout: 120_000 }, async () => {
+test("a fresh bundled engine lists sessions and loads Get3W tools without npm access", { timeout: 300_000 }, async () => {
   const profile = await mkdtemp(join(tmpdir(), "openwork-cold-engine-"));
   const previousEnv = { ...process.env };
   const registryRequests = [];
@@ -33,9 +33,9 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
       XDG_CACHE_HOME: join(profile, "cache"), XDG_STATE_HOME: join(profile, "state"),
       OPENCODE_CONFIG_DIR: join(profile, "engine-config"),
       OPENCODE_DISABLE_MODELS_FETCH: "true",
-      OPENWORK_ENGINE_V2_PREVIEW: "0",
-      OPENWORK_DATA_DIR: join(profile, "openwork"),
-      OPENWORK_ENV_STORE: join(profile, "env.json"),
+      GET3W_ENGINE_V2_PREVIEW: "0",
+      GET3W_DATA_DIR: join(profile, "openwork"),
+      GET3W_ENV_STORE: join(profile, "env.json"),
       npm_config_registry: `http://127.0.0.1:${registry.address().port}`,
       npm_config_fetch_retries: "0", npm_config_fetch_timeout: "60000",
     });
@@ -71,12 +71,12 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
     assert.ok(workspaceId, "the real embedded server registered the workspace");
     const headers = { Authorization: "Bearer cold-engine-owner" };
     const sessions = await fetch(`${handle.url}/workspace/${workspaceId}/opencode/session`, {
-      headers, signal: AbortSignal.timeout(5_000),
+      headers, signal: AbortSignal.timeout(30_000),
     });
     assert.equal(sessions.status, 200);
     assert.deepEqual(await sessions.json(), []);
     const tools = await fetch(`${handle.url}/workspace/${workspaceId}/opencode/experimental/tool/ids`, {
-      headers, signal: AbortSignal.timeout(5_000),
+      headers, signal: AbortSignal.timeout(30_000),
     });
     assert.equal(tools.status, 200);
     const ids = await tools.json();

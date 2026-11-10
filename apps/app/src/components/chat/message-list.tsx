@@ -37,13 +37,10 @@ import { presentOpencodeSessionError, sessionErrorPresentationFromUIMessage } fr
 import { TaskRecovery } from "./task-recovery"
 import { BackgroundTaskNotice, BackgroundTasksLabel, BackgroundTasksMessage, SubagentNoticeRow, backgroundShellNoticeFromMessage, subagentNoticeFromMessage } from "./background-tasks"
 import { sessionBackgroundShells, useBackgroundShellStore, type BackgroundShell } from "@/react-app/domains/session/status/background-shell-store"
-import { messageAutoAccessWall } from "@/app/lib/inference-access"
-import { AutoAccessNotice } from "@/react-app/domains/cloud/auto-access-ui"
 import type { OpenWorkModelsLimit } from "@/react-app/domains/cloud/usage-limit-state"
-import { rejectedRecoveryFromMessage } from "@/react-app/domains/session/sync/rejected-turn"
 import { replyModelLabel, replyModelProvider } from "@/react-app/domains/session/sync/reply-model"
 import { ProviderIcon } from "@/react-app/design-system/provider-icon"
-import { openAlternativeModelPicker } from "@/app/lib/inference-access"
+import { openAlternativeModelPicker } from "@/app/lib/model-picker-events"
 import { ApplyPatchTool } from "@/components/tools/apply-patch"
 import { BashTool } from "@/components/tools/bash"
 import { EditTool } from "@/components/tools/edit"
@@ -982,8 +979,6 @@ const UserMessage = React.memo(
   ({ message, isStreaming }: UserMessageProps) => {
     const { onRevertToUserMessage, onEditUserMessage, highlightQuery, readOnly } = useMessageList()
     const references = useSessionReferencesMaybe()
-    const wall = messageAutoAccessWall(message.metadata)
-    const { sessionId, workspaceId } = useMessageList()
     const { onOpenTarget } = useOpenTargets()
     const openLink = (event: React.MouseEvent) => {
       if (event.defaultPrevented || !onOpenTarget || !(event.target instanceof Element)) return
@@ -1003,9 +998,9 @@ const UserMessage = React.memo(
     const menuActions: MenuAction[] = []
     if (messageText) menuActions.push(
       { type: "item", id: "copy", get label() { return t("ui.e21f935f11d7"); }, icon: <Copy className="size-4" />, onSelect: () => navigator.clipboard.writeText(messageText) },
-      { type: "item", id: "edit", label: t("ui.9757ccd5ef12"), icon: <Pencil className="size-4" />, disabled: readOnly || Boolean(wall), onSelect: () => onEditUserMessage(message.id, messageText) },
+      { type: "item", id: "edit", label: t("ui.9757ccd5ef12"), icon: <Pencil className="size-4" />, disabled: readOnly, onSelect: () => onEditUserMessage(message.id, messageText) },
     )
-    if (!wall) menuActions.push(
+    menuActions.push(
       { type: "item", id: "revert", get label() { return t("ui.0026c5053478"); }, icon: <Undo2 className="size-4" />, disabled: readOnly, onSelect: () => onRevertToUserMessage(message.id) },
     )
 
@@ -1023,8 +1018,7 @@ const UserMessage = React.memo(
             className="!select-text"
             render={
               <div
-                className={cn("group flex w-full flex-col items-end gap-1 !select-text", wall && "opacity-50")}
-                data-unprocessed={wall ? "true" : undefined}
+                className="group flex w-full flex-col items-end gap-1 !select-text"
                 style={{ userSelect: "text" }}
               >
                 {hasContent ? (
@@ -1067,7 +1061,7 @@ const UserMessage = React.memo(
                     })}
                   </MessageContent>
                 ) : null}
-                {!isStreaming && !wall && (
+                {!isStreaming && (
                   <MessageActions
                     className="flex items-center gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 max-lg:opacity-100 pointer-coarse:opacity-100"
                   >
@@ -1102,7 +1096,6 @@ const UserMessage = React.memo(
               </div>
             }
           />
-          {wall ? <div className="w-full"><AutoAccessNotice wall={wall} sessionId={sessionId} workspaceId={workspaceId} recovery={rejectedRecoveryFromMessage(message)} /></div> : null}
       </Message>
     )
   }
@@ -1122,7 +1115,6 @@ const MessageComponent = React.memo(
   ({ message, isLastMessage, isStreaming, isLastStep, hideReasoning }: MessageComponentProps) => {
     if (isSessionErrorMessage(message)) {
       const presentation = sessionErrorPresentationFromUIMessage(message)
-      if (presentation?.autoAccessWall) return <TranscriptAutoAccessNotice wall={presentation.autoAccessWall} />
       const errorMessage = (
         <ErrorMessage
           error={getMessagesText([message]) || t("ui.2c6c1d390615")}
@@ -1174,11 +1166,6 @@ const MessageComponent = React.memo(
 function TranscriptOpenWorkModelsLimit({ limit }: { limit: OpenWorkModelsLimit }) {
   const { sessionId } = useMessageList()
   return <div className="mx-auto w-full max-w-3xl px-2 py-2 md:px-10"><p role="status">{t("extensions.cloud_unavailable")}</p></div>
-}
-
-function TranscriptAutoAccessNotice({ wall }: { wall: NonNullable<ReturnType<typeof messageAutoAccessWall>> }) {
-  const { sessionId, workspaceId } = useMessageList()
-  return <div className="mx-auto w-full max-w-3xl px-2 md:px-10"><AutoAccessNotice wall={wall} sessionId={sessionId} workspaceId={workspaceId} /></div>
 }
 
 MessageComponent.displayName = "MessageComponent"

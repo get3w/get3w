@@ -43,10 +43,10 @@ async function profile(failFirstStart: boolean, run: (config: ServerConfig, capt
     XDG_DATA_HOME: join(root, "data"),
     XDG_STATE_HOME: join(root, "state"),
     XDG_CACHE_HOME: join(root, "cache"),
-    OPENWORK_RUNTIME_DB: join(root, "runtime.sqlite"),
-    OPENWORK_OPENCODE2_BIN: binary,
+    GET3W_RUNTIME_DB: join(root, "runtime.sqlite"),
+    GET3W_OPENCODE2_BIN: binary,
     // Chats run on v2, the case where a missing engine strands the app.
-    OPENWORK_ENGINE_V2_PREVIEW: "chat",
+    GET3W_ENGINE_V2_PREVIEW: "chat",
   };
   const previous = new Map(Object.keys(environment).map(key => [key, process.env[key]]));
   const previousTelemetry = globalThis.__openworkDesktopTelemetry;

@@ -30,14 +30,6 @@
       "bun": "./src/microsoft-drive-transfer.ts",
       "default": "./dist/microsoft-drive-transfer.js"
     },
-    "./den/managed-deployments": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/managed-deployments.d.ts",
-        "default": "./src/den/managed-deployments.ts"
-      },
-      "development": "./src/den/managed-deployments.ts",
-      "default": "./src/den/managed-deployments.ts"
-    },
     "./cloud-model-fast": {
       "types": {
         "openwork-build": "./dist/types/src/cloud-model-fast.d.ts",
@@ -156,22 +148,6 @@
       "browser": "./src/connection-action-app.ts",
       "default": "./dist/connection-action-app.js"
     },
-    "./den/desktop-app-restrictions": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/desktop-app-restrictions.d.ts",
-        "default": "./src/den/desktop-app-restrictions.ts"
-      },
-      "development": "./src/den/desktop-app-restrictions.ts",
-      "default": "./src/den/desktop-app-restrictions.ts"
-    },
-    "./den/permissions": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/permissions.d.ts",
-        "default": "./src/den/permissions.ts"
-      },
-      "development": "./src/den/permissions.ts",
-      "default": "./src/den/permissions.ts"
-    },
     "./den/agent-permissions": {
       "types": {
         "openwork-build": "./dist/types/src/den/agent-permissions.d.ts",
@@ -204,14 +180,6 @@
       "development": "./src/den/egress-diagnostics.ts",
       "default": "./src/den/egress-diagnostics.ts"
     },
-    "./den/managed-models-policy": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/managed-models-policy.d.ts",
-        "default": "./src/den/managed-models-policy.ts"
-      },
-      "development": "./src/den/managed-models-policy.ts",
-      "default": "./src/den/managed-models-policy.ts"
-    },
     "./den/diagnostics": {
       "types": {
         "openwork-build": "./dist/types/src/den/diagnostics.d.ts",
@@ -219,22 +187,6 @@
       },
       "development": "./src/den/diagnostics.ts",
       "default": "./src/den/diagnostics.ts"
-    },
-    "./den/deployment-capabilities": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/deployment-capabilities.d.ts",
-        "default": "./src/den/deployment-capabilities.ts"
-      },
-      "development": "./src/den/deployment-capabilities.ts",
-      "default": "./src/den/deployment-capabilities.ts"
-    },
-    "./den/audit": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/audit.d.ts",
-        "default": "./src/den/audit.ts"
-      },
-      "development": "./src/den/audit.ts",
-      "default": "./src/den/audit.ts"
     },
     "./den/gateway": {
       "types": {
@@ -279,46 +231,6 @@
       "development": "./src/den/microsoft-365.ts",
       "default": "./src/den/microsoft-365.ts"
     },
-    "./den/organization-web-origins": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/organization-web-origins.d.ts",
-        "default": "./src/den/organization-web-origins.ts"
-      },
-      "development": "./src/den/organization-web-origins.ts",
-      "default": "./src/den/organization-web-origins.ts"
-    },
-    "./den/workbot-settings": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/workbot-settings.d.ts",
-        "default": "./src/den/workbot-settings.ts"
-      },
-      "development": "./src/den/workbot-settings.ts",
-      "default": "./src/den/workbot-settings.ts"
-    },
-    "./den/mcp-registration": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/mcp-registration.d.ts",
-        "default": "./src/den/mcp-registration.ts"
-      },
-      "development": "./src/den/mcp-registration.ts",
-      "default": "./src/den/mcp-registration.ts"
-    },
-    "./den/workbot-proactive": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/workbot-proactive.d.ts",
-        "default": "./src/den/workbot-proactive.ts"
-      },
-      "development": "./src/den/workbot-proactive.ts",
-      "default": "./src/den/workbot-proactive.ts"
-    },
-    "./den/default-model": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/default-model.d.ts",
-        "default": "./src/den/default-model.ts"
-      },
-      "development": "./src/den/default-model.ts",
-      "default": "./src/den/default-model.ts"
-    },
     "./den/auto-router": {
       "types": {
         "openwork-build": "./dist/types/src/den/auto-router.d.ts",
@@ -328,16 +240,6 @@
       "bun": "./src/den/auto-router.ts",
       "browser": "./src/den/auto-router.ts",
       "default": "./dist/den/auto-router.js"
-    },
-    "./den/prompts": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/prompts.d.ts",
-        "default": "./src/den/prompts.ts"
-      },
-      "development": "./src/den/prompts.ts",
-      "bun": "./src/den/prompts.ts",
-      "browser": "./src/den/prompts.ts",
-      "default": "./dist/den/prompts.js"
     },
     "./den/credential-prompt": {
       "types": {
@@ -370,14 +272,6 @@
       },
       "development": "./src/desktop-ipc.ts",
       "default": "./src/desktop-ipc.ts"
-    },
-    "./connect-link": {
-      "types": {
-        "openwork-build": "./dist/types/src/connect-link.d.ts",
-        "default": "./src/connect-link.ts"
-      },
-      "development": "./src/connect-link.ts",
-      "default": "./src/connect-link.ts"
     },
     "./opencode-config-error": {
       "types": {
@@ -415,14 +309,6 @@
       "bun": "./src/den/agent-permissions.ts",
       "default": "./dist/den/agent-permissions.js"
     },
-    "./den/service-health": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/service-health.d.ts",
-        "default": "./src/den/service-health.ts"
-      },
-      "development": "./src/den/service-health.ts",
-      "default": "./src/den/service-health.ts"
-    },
     "./den/service-readiness": {
       "types": {
         "openwork-build": "./dist/types/src/den/service-readiness.d.ts",
@@ -430,62 +316,6 @@
       },
       "development": "./src/den/service-readiness.ts",
       "default": "./src/den/service-readiness.ts"
-    },
-    "./den/billing-plans": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/billing-plans.d.ts",
-        "default": "./src/den/billing-plans.ts"
-      },
-      "development": "./src/den/billing-plans.ts",
-      "default": "./src/den/billing-plans.ts"
-    },
-    "./den/organization-grants": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/organization-grants.d.ts",
-        "default": "./src/den/organization-grants.ts"
-      },
-      "development": "./src/den/organization-grants.ts",
-      "default": "./src/den/organization-grants.ts"
-    },
-    "./den/sandbox-organizations": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/sandbox-organizations.d.ts",
-        "default": "./src/den/sandbox-organizations.ts"
-      },
-      "development": "./src/den/sandbox-organizations.ts",
-      "default": "./src/den/sandbox-organizations.ts"
-    },
-    "./den/automation-settings": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/automation-settings.d.ts",
-        "default": "./src/den/automation-settings.ts"
-      },
-      "development": "./src/den/automation-settings.ts",
-      "default": "./src/den/automation-settings.ts"
-    },
-    "./den/admin-organization": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/admin-organization.d.ts",
-        "default": "./src/den/admin-organization.ts"
-      },
-      "development": "./src/den/admin-organization.ts",
-      "default": "./src/den/admin-organization.ts"
-    },
-    "./den/admin-control-center": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/admin-control-center.d.ts",
-        "default": "./src/den/admin-control-center.ts"
-      },
-      "development": "./src/den/admin-control-center.ts",
-      "default": "./src/den/admin-control-center.ts"
-    },
-    "./den/admin-free-auto": {
-      "types": {
-        "openwork-build": "./dist/types/src/den/admin-free-auto.d.ts",
-        "default": "./src/den/admin-free-auto.ts"
-      },
-      "development": "./src/den/admin-free-auto.ts",
-      "default": "./src/den/admin-free-auto.ts"
     },
     "./den/connection-state": {
       "types": {

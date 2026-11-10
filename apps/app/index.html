@@ -34,13 +34,13 @@
       // Pre-boot error beacon for web deployments: reports a web instance
       // that fails to load (entry bundle error, early exception) to Sentry
       // before the app's own error monitoring can start. Inert unless the
-      // build sets VITE_OPENWORK_DEPLOYMENT=web and VITE_OPENWORK_SENTRY_DSN.
+      // build sets VITE_GET3W_DEPLOYMENT=web and VITE_GET3W_SENTRY_DSN.
       // Once src/app/lib/error-monitoring.ts starts, it takes over via
       // window.__openworkWebErrorMonitorActive.
       (function () {
         try {
-          var dsn = "%VITE_OPENWORK_SENTRY_DSN%";
-          var deployment = "%VITE_OPENWORK_DEPLOYMENT%";
+          var dsn = "%VITE_GET3W_SENTRY_DSN%";
+          var deployment = "%VITE_GET3W_DEPLOYMENT%";
           if (deployment !== "web" || !dsn || dsn.charAt(0) === "%") return;
           var match = dsn.match(/^https:\/\/([\w.-]+)@([\w.-]+(?::\d+)?)\/(\d+)$/);
           if (!match) return;

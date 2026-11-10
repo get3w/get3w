@@ -14,7 +14,7 @@ function userAppDataDir(): string {
 }
 
 function uiControlDiscoveryPaths(): string[] {
-  const explicit = process.env.OPENWORK_UI_CONTROL_DISCOVERY?.trim();
+  const explicit = process.env.GET3W_UI_CONTROL_DISCOVERY?.trim();
   if (explicit) return [explicit];
   return [
     join(userAppDataDir(), "com.get3w.desktop", "openwork-ui-control.json"),
@@ -25,7 +25,7 @@ function uiControlDiscoveryPaths(): string[] {
 async function discoverUiBridge(): Promise<UiBridge | null> {
   // A changed discovery override points at a different desktop; never reuse
   // the bridge cached for the previous one.
-  const discovery = process.env.OPENWORK_UI_CONTROL_DISCOVERY?.trim();
+  const discovery = process.env.GET3W_UI_CONTROL_DISCOVERY?.trim();
   if (cachedBridge && cachedBridgeDiscovery === discovery && Date.now() - cachedBridgeAt < BRIDGE_CACHE_MS) return cachedBridge;
   cachedBridge = null;
   for (const candidate of uiControlDiscoveryPaths()) {

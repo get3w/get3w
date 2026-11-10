@@ -8,11 +8,15 @@ import { buildOpenWorkV2Instructions, readConfiguredInstructions } from "../src/
 
 test("personal instructions do not advertise organization tools or a cloud runner", () => {
   for (const ready of [true, false]) {
-    const instructions = buildOpenWorkV2Instructions(ready, "untrusted organization prompt");
+    const instructions = buildOpenWorkV2Instructions(ready);
     assert.match(instructions.operatingInstructions, /Get3W/);
-    assert.match(instructions.connect, /personal MCP/);
-    assert.match(instructions.automations, /unavailable/);
-    assert.doesNotMatch(JSON.stringify(instructions), /search_capabilities|execute_capability|untrusted organization prompt|signed-in desktop runner/);
+    assert.match(instructions.operatingInstructions, /Call one outer tool at a time/);
+    assert.match(instructions.operatingInstructions, /read needs path, shell needs command, and execute needs code/);
+    assert.match(instructions.connect, /Get3W model gateway/);
+    assert.match(instructions.automations, /automation.propose/);
+    assert.match(instructions.automations, /must be open/);
+    assert.match(instructions.automations, /Cloud execution and meeting-triggered schedules are not available/);
+    assert.doesNotMatch(JSON.stringify(instructions), /search_capabilities|execute_capability|signed-in desktop runner/);
   }
 });
 
@@ -68,4 +72,32 @@ test("configured instructions never send local or secret files", async () => {
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }
+});
+
+
+test("connected model gateway guides native generation and image editing without advertising it offline", () => {
+  const connected = buildOpenWorkV2Instructions(false, true);
+  assert.match(connected.connect, /get3w-account/);
+  assert.match(connected.connect, /search_capabilities/);
+  assert.match(connected.connect, /previous generated image URL/);
+  assert.match(connected.connect, /native approval card/);
+  assert.match(connected.connect, /never call execute with \{\} or omit code/);
+  assert.match(connected.connect, /non-empty string field code/);
+  assert.match(connected.connect, /Never use a centered crop that clips the product/);
+  assert.match(connected.connect, /all label text inside safe margins/);
+  assert.match(connected.connect, /Preserve the original subject pixels with a foreground mask/);
+  assert.match(connected.connect, /also preserve the cup from the original scene/);
+  assert.match(connected.connect, /Code Mode does not provide setTimeout/);
+  assert.match(connected.connect, /continuous scene content across the entire canvas/);
+  assert.match(connected.connect, /reopen every final output after the last write/);
+  assert.match(connected.connect, /pass both URLs to a model that supports multiple image references/);
+  assert.match(connected.connect, /same inner and outer idempotency_key/);
+  assert.doesNotMatch(buildOpenWorkV2Instructions(false).connect, /gateway is connected|search_capabilities/);
+});
+
+
+test("deliverables use the user workspace rather than engine scratch space", () => {
+  const instructions=buildOpenWorkV2Instructions(false,true,"/user/workspace");
+  assert.match(instructions.context,/\/user\/workspace/);
+  assert.match(instructions.context,/absolute Markdown file links/);
 });

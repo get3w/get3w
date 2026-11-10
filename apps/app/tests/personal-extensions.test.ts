@@ -35,7 +35,6 @@ test("personal skills and plugins work while legacy organization resources never
   });
   try {
     localStorage.setItem("openwork.den.authToken", "legacy-fixture");
-    await store.refreshCloudOrgMarketplaces({ force: true });
     expect((await store.removeCloudOrgPlugin("legacy")).ok).toBe(false);
     await expect(store.createLibraryItem("plugin", { name: "fixture", description: "", instructions: "" })).rejects.toThrow();
     expect(requests).toEqual([]);

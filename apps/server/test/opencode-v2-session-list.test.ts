@@ -49,9 +49,9 @@ function startEngine(sessions: NativeSession[], options: { undecodable?: Set<str
 
 async function profile(run: (paths: { root: string; v1: string; a: string; b: string; config: ServerConfig }) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), "openwork-v2-session-list-"));
-  const previous = { runtime: process.env.OPENWORK_RUNTIME_DB, v1: process.env.OPENCODE_DB };
+  const previous = { runtime: process.env.GET3W_RUNTIME_DB, v1: process.env.OPENCODE_DB };
   const v1 = join(root, "opencode-v1.db");
-  process.env.OPENWORK_RUNTIME_DB = join(root, "runtime.sqlite");
+  process.env.GET3W_RUNTIME_DB = join(root, "runtime.sqlite");
   process.env.OPENCODE_DB = v1;
   const a = join(root, "workspace-a");
   const b = join(root, "workspace-b");
@@ -64,7 +64,7 @@ async function profile(run: (paths: { root: string; v1: string; a: string; b: st
   };
   try { await run({ root, v1, a, b, config }); }
   finally {
-    if (previous.runtime === undefined) delete process.env.OPENWORK_RUNTIME_DB; else process.env.OPENWORK_RUNTIME_DB = previous.runtime;
+    if (previous.runtime === undefined) delete process.env.GET3W_RUNTIME_DB; else process.env.GET3W_RUNTIME_DB = previous.runtime;
     if (previous.v1 === undefined) delete process.env.OPENCODE_DB; else process.env.OPENCODE_DB = previous.v1;
     await rm(root, { recursive: true, force: true });
   }

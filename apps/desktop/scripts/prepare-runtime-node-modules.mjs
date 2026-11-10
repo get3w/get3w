@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -14,6 +14,8 @@ const requiredRoots = [{
   // Imported by Electron's feature-gated session adapter; ensure plain-node
   // ESM is included even when pnpm's workspace collector skips a symlink.
   name: "@openwork/remote-sessions",
+}, {
+  name: "@openwork/headless-threads",
 }];
 
 function packageRoot(name, fromPackageJson, resolveTarget = name) {
@@ -28,7 +30,9 @@ function packageRoot(name, fromPackageJson, resolveTarget = name) {
       const linkedPackageRoot = resolve(searchDirectory, name);
       try {
         const linkedPackageJson = JSON.parse(readFileSync(join(linkedPackageRoot, "package.json"), "utf8"));
-        if (linkedPackageJson.name === name) return { root: linkedPackageRoot, packageJson: linkedPackageJson };
+        // Resolve pnpm's symlink before resolving this package's dependencies;
+        // their siblings live in the virtual store, not the workspace folder.
+        if (linkedPackageJson.name === name) return { root: realpathSync(linkedPackageRoot), packageJson: linkedPackageJson };
       } catch {
         // Preserve the original module-resolution error if no package matches.
       }
@@ -78,7 +82,7 @@ export function stageRuntimeNodeModules(outdir) {
         if (parts.includes("node_modules")) return false;
         // The core's published entrypoints are dist (Node) and src (Bun/dev).
         // Do not ship checkout-only tests, tooling or incidental local links.
-        if (name === "@openwork/remote-sessions") return ["dist", "src", "package.json"].includes(parts[0]);
+        if (["@openwork/remote-sessions", "@openwork/headless-threads"].includes(name)) return ["dist", "src", "package.json"].includes(parts[0]);
         // Native builds ship as a separate helper. Copying this workspace's
         // Swift .build cache into asar would duplicate the compiler artifacts.
         if (name === "@openwork/computer-use") return ["dist", "package.json"].includes(parts[0]) || parts.length === 1 && /\.(?:mjs|d\.mts|py)$/.test(parts[0]) && !parts[0].endsWith(".test.mjs");

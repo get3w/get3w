@@ -1,7 +1,7 @@
+import { rememberGenerationPolicy, generationPolicyFor } from "./generation-policies.js";
+import { GET3W_CHAT_TOOLS } from "./get3w-chat-tools.js";
 import { createV2SessionHomes, nativeSession, nativeSessionDirectory } from "./opencode-v2-session-home.js";
-import { managedDesktopPolicy } from "./managed-desktop-policy.js";
 import { createTaskRecovery, setTaskRecovery } from "./task-recovery.js";
-import { managedPolicyActionSchema } from "./managed-policy-rules.js";
 import { enterEngineMutation } from "./engine-switch-fence.js";
 import { beginOpencodeStop, opencodeSessionIsStopping } from "./opencode-stop-fence.js";
 import { readFile, realpath, writeFile, rm, stat } from "node:fs/promises";
@@ -12,6 +12,7 @@ import { resolveGlobalOpencodeConfigPath } from "@openwork/paths";
 import type { ApprovalRequest, Capabilities, ServerConfig, WorkspaceInfo, Actor, ReloadReason, ReloadTrigger, TokenScope } from "./types.js";
 import { agentContextDiagnosticsRequestSchema } from "./agent-context-diagnostics-schema.js";
 import { ApprovalService } from "./approvals.js";
+import { persistModelApprovalCommitments, restoreModelApprovalCommitments } from "./model-approval-commitments.js";
 import {
   BoundedSseFrameBuffer,
   EnginePool,
@@ -87,7 +88,6 @@ import { sanitizeCommandName, validateMcpName, validateUserMcpName, validateUser
 import { TokenService } from "./tokens.js";
 import { resetManagedProviderAuthCache, syncManagedProviderAuth } from "./managed-provider-auth.js";
 import { EnvService } from "./env-file.js";
-import { AnonymousInferenceService } from "./anonymous-inference.js";
 import { resolveWorkspaceOpencodeConnection } from "./opencode-connection.js";
 import { listPortableFiles } from "./portable-files.js";
 import {
@@ -201,7 +201,7 @@ function agentDiagnosticsActorWorkspaceKey(actor: Actor | undefined, workspaceId
 
 function requireAgentDiagnosticsRateLimit(config: ServerConfig, actor: Actor | undefined, workspaceId: string): void {
   const now = Date.now();
-  const configured = Number(process.env.OPENWORK_AGENT_DIAGNOSTICS_COOLDOWN_MS ?? "3000");
+  const configured = Number(process.env.GET3W_AGENT_DIAGNOSTICS_COOLDOWN_MS ?? "3000");
   const cooldownMs = Number.isFinite(configured) && configured >= 0 ? configured : 3_000;
   const key = agentDiagnosticsActorWorkspaceKey(actor, workspaceId);
   const agentDiagnosticsLastRun = agentDiagnosticsLastRunByServer.get(config) ?? new Map<string, number>();
@@ -439,7 +439,7 @@ export function createServerLogger(
   writeLine: ServerLogWriter = writeStdoutLogLine,
   fileSink: ServerLogFileSink | null = resolveServerLogFileSink(),
 ): ServerLogger {
-  const runId = process.env.OPENWORK_RUN_ID ?? shortId();
+  const runId = process.env.GET3W_RUN_ID ?? shortId();
   const host = hostname().trim();
   const resource: Record<string, string> = {
     "service.name": "openwork-server",
@@ -696,7 +696,7 @@ export function assertOpencodeProxyAllowed(actor: Actor, method: string, proxyPa
   // Prevent viewers from self-approving OpenCode permission requests via the
   // proxy. OpenCode uses /permission/:requestId/reply (and historically also
   // a session-scoped variant). Collaborators must be allowed: the SPA's only
-  // credential is the collaborator-scoped client token (OPENWORK_TOKEN), so
+  // credential is the collaborator-scoped client token (GET3W_TOKEN), so
   // an owner-only gate made every interactive permission dialog un-answerable
   // (403 "Only owner tokens can reply") and left tool calls stuck in
   // "running" forever (#1918).
@@ -765,13 +765,23 @@ export async function startServer(
   let managedEngineReady = options.deferManagedEngineStartup !== true;
   let stopped = false;
   let taskRecovery: Awaited<ReturnType<typeof createTaskRecovery>> | undefined;
-  const approvals = new ApprovalService(config.approval);
+  let approvals!: ApprovalService;
+  approvals = new ApprovalService(config.approval, {
+    persistModelCommitments: () => persistModelApprovalCommitments(config, approvals),
+  });
   const uiControl = new UiControlMailbox();
   const reloadEvents = new ReloadEventStore();
   const tokens = new TokenService(config);
   const env = new EnvService();
   envServicesByConfig.set(config, env);
   const logger = createServerLogger(config);
+  try {
+    await restoreModelApprovalCommitments(config, approvals);
+  } catch (error) {
+    logger.log("warn", "Failed to restore model approval commitments; refusing to grant restored spend.", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
   try {
     await reconcileLocalManagedMcpRuntimeEntries(config);
   } catch (error) {
@@ -809,7 +819,7 @@ export async function startServer(
       // Internal dispatch retains the host credential in this process. The
       // native plugin receives only the context bridge's restricted token.
       const response = await serverOptions.fetch(new Request(`http://127.0.0.1${path}`, {
-        ...init, headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" },
+        ...init, headers: { Authorization: `Bearer ${config.token}`, "X-Get3W-Host-Token": config.hostToken, "Content-Type": "application/json" },
       }));
       const payload: unknown = await response.json();
       if (!response.ok) {
@@ -837,17 +847,6 @@ export async function startServer(
     },
     logger: toManagedProviderAuthLogger(logger),
   });
-  const anonymousInference = new AnonymousInferenceService(config, logger);
-  anonymousInference.onEngineConfigChanged = () => { if (config.workspaces.length > 0 || enginePoolForConfig(config)) localEngineReload.markReloadPending(); };
-  managedDesktopPolicy(config).onChange = () => {
-    void anonymousInference.initialize(config.port).then((changed) => {
-      if (changed && config.workspaces.length > 0) localEngineReload.markReloadPending();
-    }).catch(() => undefined);
-    // Sign-in can precede the first workspace. A managed engine is already
-    // running then and must pick up the policy; an attached server with no
-    // workspace has no engine to reload.
-    if (config.workspaces.length > 0 || enginePoolForConfig(config)) localEngineReload.markReloadPending();
-  };
   const routes = createRoutes(
     config,
     approvals,
@@ -859,7 +858,6 @@ export async function startServer(
     localEngineReload,
     engineV2Preview,
     () => managedEngineReady,
-    anonymousInference,
   );
 
   const serverOptions: {
@@ -930,8 +928,6 @@ export async function startServer(
           const actor = await requireClient(request, config, tokens);
           assertOpencodeProxyAllowed(actor, request.method, mount.restPath);
           await validateEngineRequestBody(request);
-          await managedDesktopPolicy(config).assertRequest(request, mount.restPath, true);
-          await anonymousInference.assertTaskAccess(request, mount.restPath);
           const workspace = await resolveWorkspaceWithoutBootstrap(config, mount.workspaceId);
           const ownership = assertWorkspaceOwnsProxiedSessionRead(config, workspace, request.method, mount.restPath, false,
             request.method === "GET" || request.method === "HEAD" ? request.signal : undefined);
@@ -986,8 +982,6 @@ export async function startServer(
           const actor = await requireClient(request, config, tokens);
           assertOpencodeProxyAllowed(actor, request.method, mount.restPath);
           await validateEngineRequestBody(request);
-          await managedDesktopPolicy(config).assertRequest(request, mount.restPath, true);
-          await anonymousInference.assertTaskAccess(request, mount.restPath);
           const workspace = await resolveWorkspaceWithoutBootstrap(config, mount.workspaceId);
           const connection = engineV2Preview.connection();
           if (!connection) {
@@ -1020,6 +1014,8 @@ export async function startServer(
             prepareExecution: async (directory) => {
               engineV2Preview.warmWorkspace(workspace.id, directory);
               await engineV2Preview.ensureWorkspaceReady(directory);
+              const mcp = runtimeMcpMap(await readEffectiveRuntimeOpencodeConfig(config, workspace.id));
+              if (mcp["get3w-account"]) await engineV2Preview.settleWorkspaceMcp(workspace.id, directory, "get3w-account");
             },
             // The desktop's silent re-auth sends v1's connect route; restart
             // that one connection through the folder's reconciler instead.
@@ -1047,7 +1043,7 @@ export async function startServer(
 
       if (!isAllowedHost(request, config)) {
         const apiError = new ApiError(403, "host_not_allowed",
-          "This server does not answer to this host name. Add it with --allowed-hosts or OPENWORK_ALLOWED_HOSTS.");
+          "This server does not answer to this host name. Add it with --allowed-hosts or GET3W_ALLOWED_HOSTS.");
         recordApiError(apiError);
         return finalize(jsonResponse(formatError(apiError), apiError.status));
       }
@@ -1095,8 +1091,6 @@ export async function startServer(
           const actor = await requireClient(request, config, tokens);
           assertOpencodeProxyAllowed(actor, request.method, url.pathname);
           await validateEngineRequestBody(request);
-          await managedDesktopPolicy(config).assertRequest(request, url.pathname, true);
-          await anonymousInference.assertTaskAccess(request, url.pathname);
           proxyService = "opencode";
           const workspace = config.workspaces[0];
           const ownership = workspace
@@ -1146,10 +1140,9 @@ export async function startServer(
             ? requireHostToken(request, config)
             : route.auth === "host"
               ? await requireHost(request, config, tokens)
-              : route.auth === "client" || (route.auth === "policy" && !managedDesktopPolicy(config).authenticatesEvaluation(request))
+              : route.auth === "client"
                 ? await requireClient(request, config, tokens)
                 : undefined;
-        await managedDesktopPolicy(config).assertRequest(request, url.pathname);
         const response = await route.handler({
           request,
           url,
@@ -1199,7 +1192,7 @@ export async function startServer(
   try {
     if (config.resumeInterruptedTasks && !config.readOnly) {
       taskRecovery = await createTaskRecovery(config, async (request) => serverOptions.fetch(request),
-        () => managedDesktopPolicy(config).assert("sync"),
+        undefined,
         { engineAvailable: (engine) => engine === "v1" || engineV2Preview.connection() !== undefined });
       setTaskRecovery(config, taskRecovery);
     }
@@ -1210,7 +1203,6 @@ export async function startServer(
   } catch (error) {
     await taskRecovery?.stop().catch(() => undefined);
     captureServerException(error, { method: "START", route: "startServer" });
-    anonymousInference.stop();
     localEngineReload.stop();
     await engineV2Preview.stop().catch(() => undefined);
     engineInstanceReaper.close();
@@ -1230,12 +1222,6 @@ export async function startServer(
         error: error instanceof Error ? error.message : "unknown",
       });
     }
-  }
-  try {
-    if (await anonymousInference.initialize(server.port)) await writeOpenworkRuntimeConfigFile(config);
-  } catch {
-    anonymousInference.stop();
-    logger.log("warn", "Desktop free access could not be initialized.");
   }
   // Policy hooks must receive the listener that actually bound, including
   // ephemeral ports and retries after a port collision.
@@ -1326,8 +1312,6 @@ export async function startServer(
       if (startupAuthRetryTimer) clearTimeout(startupAuthRetryTimer);
       let recoveryError: unknown;
       try { await taskRecovery?.stop(); } catch (error) { recoveryError = error; }
-      managedDesktopPolicy(config).onChange = undefined;
-      anonymousInference.stop();
       localEngineReload.stop();
       await engineV2Preview.stop().catch(() => undefined);
       engineInstanceReaper.close();
@@ -1511,11 +1495,9 @@ async function forwardOpencodeV2Request(input: {
     const mcpPayload: unknown = mcpResponse.ok ? await mcpResponse.json() : null;
     const connectReady = isRecord(mcpPayload) && Array.isArray(mcpPayload.data) && mcpPayload.data.some((entry) =>
       isRecord(entry) && entry.name === "openwork-cloud" && isRecord(entry.status) && entry.status.status === "connected");
-    // Keep organization skill discovery on demand through Connect. The full
-    // catalog can exceed the engine's instruction-entry request limit.
-    // The organization's Prompts arrive with the cloud provider sync.
-    const organizationPrompts = (await readGlobalRuntimeOpencodeConfig(input.config)).managedPrompt;
-    const value = buildOpenWorkV2Instructions(connectReady, organizationPrompts);
+    const modelGatewayReady = isRecord(mcpPayload) && Array.isArray(mcpPayload.data) && mcpPayload.data.some((entry) =>
+      isRecord(entry) && entry.name === "get3w-account" && isRecord(entry.status) && entry.status.status === "connected");
+    const value = buildOpenWorkV2Instructions(connectReady, modelGatewayReady, input.workspace.path);
     // The pinned engine never loads the config's `instructions` files, so send
     // them as their own entry, and clear it once the engine does. Best effort:
     // a failure leaves the entry as it was and never blocks the turn.
@@ -1543,6 +1525,14 @@ async function forwardOpencodeV2Request(input: {
     ? undefined
     : await input.request.arrayBuffer().then((buffer) => buffer.byteLength > 0 ? buffer : undefined);
   let body: string | ArrayBuffer | undefined = requestBody;
+  if(method==="POST"&&sessionId&&forwardedPath.endsWith("/prompt")&&requestBody){
+    const prompt:unknown=JSON.parse(new TextDecoder().decode(requestBody));
+    if(isRecord(prompt)&&typeof prompt.id==="string"){
+      const metadata=isRecord(prompt.metadata)?prompt.metadata:null;
+      const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
+      rememberGenerationPolicy(input.workspace.id,sessionId,prompt.id,openwork?.generationPolicy);
+    }
+  }
   if (method === "POST" && forwardedPath === "/api/session") {
     let sessionInput: unknown = {};
     if (requestBody) {
@@ -1814,7 +1804,7 @@ function opencodeUnreachableError(error: unknown, path: string): ApiError {
 }
 
 function agentDiagnosticsTimeoutMs(): number {
-  const configured = Number(process.env.OPENWORK_AGENT_DIAGNOSTICS_TIMEOUT_MS);
+  const configured = Number(process.env.GET3W_AGENT_DIAGNOSTICS_TIMEOUT_MS);
   return Number.isFinite(configured) && configured > 0 ? configured : 24_000;
 }
 
@@ -2311,7 +2301,7 @@ function mergedEventBody(input: {
 // Read lazily so tests can shrink the deadline at runtime. Matches the 5s
 // bound proxyEngineAggregateRead puts on its per-connection fan-out.
 function engineEventStreamEstablishTimeoutMs(): number {
-  const parsed = Number(process.env.OPENWORK_ENGINE_EVENT_ESTABLISH_TIMEOUT_MS ?? "5000");
+  const parsed = Number(process.env.GET3W_ENGINE_EVENT_ESTABLISH_TIMEOUT_MS ?? "5000");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5_000;
 }
 
@@ -2319,7 +2309,7 @@ function engineEventStreamEstablishTimeoutMs(): number {
 // one lost beat never churns a healthy connection. Read lazily so tests can
 // shrink the interval at runtime.
 function engineEventStreamHeartbeatIntervalMs(): number {
-  const parsed = Number(process.env.OPENWORK_ENGINE_EVENT_HEARTBEAT_MS ?? "15000");
+  const parsed = Number(process.env.GET3W_ENGINE_EVENT_HEARTBEAT_MS ?? "15000");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 15_000;
 }
 
@@ -2536,33 +2526,33 @@ function buildCapabilities(config: ServerConfig): Capabilities {
 }
 
 function resolveSandboxBackend(): Capabilities["sandbox"]["backend"] {
-  const raw = (process.env.OPENWORK_SANDBOX_BACKEND ?? "").trim().toLowerCase();
+  const raw = (process.env.GET3W_SANDBOX_BACKEND ?? "").trim().toLowerCase();
   if (raw === "docker") return "docker";
   if (raw === "container") return "container";
   return "none";
 }
 
 function resolveSandboxEnabled(backend: Capabilities["sandbox"]["backend"]): boolean {
-  const raw = (process.env.OPENWORK_SANDBOX_ENABLED ?? "").trim().toLowerCase();
+  const raw = (process.env.GET3W_SANDBOX_ENABLED ?? "").trim().toLowerCase();
   if (["1", "true", "yes", "on"].includes(raw)) return true;
   if (["0", "false", "no", "off"].includes(raw)) return false;
   return backend !== "none";
 }
 
 function resolveInboxEnabled(): boolean {
-  const raw = (process.env.OPENWORK_INBOX_ENABLED ?? "").trim().toLowerCase();
+  const raw = (process.env.GET3W_INBOX_ENABLED ?? "").trim().toLowerCase();
   if (!raw) return true;
   return ["1", "true", "yes", "on"].includes(raw);
 }
 
 function resolveOutboxEnabled(): boolean {
-  const raw = (process.env.OPENWORK_OUTBOX_ENABLED ?? "").trim().toLowerCase();
+  const raw = (process.env.GET3W_OUTBOX_ENABLED ?? "").trim().toLowerCase();
   if (!raw) return true;
   return ["1", "true", "yes", "on"].includes(raw);
 }
 
 function resolveInboxMaxBytes(): number {
-  const raw = (process.env.OPENWORK_INBOX_MAX_BYTES ?? "").trim();
+  const raw = (process.env.GET3W_INBOX_MAX_BYTES ?? "").trim();
   const parsed = raw ? Number(raw) : NaN;
   if (Number.isFinite(parsed) && parsed > 0) {
     return Math.trunc(parsed);
@@ -2573,17 +2563,17 @@ function resolveInboxMaxBytes(): number {
   return 250_000_000;
 }
 
-// Dev-only log sink target. When OPENWORK_DEV_LOG_FILE is set to a path, the
+// Dev-only log sink target. When GET3W_DEV_LOG_FILE is set to a path, the
 // /dev/log endpoint accepts JSON payloads and appends them to that file so an
 // operator can `tail -f` the file to see live browser activity. Returning null
 // disables the endpoint entirely.
 function resolveDevLogPath(): string | null {
-  const raw = (process.env.OPENWORK_DEV_LOG_FILE ?? "").trim();
+  const raw = (process.env.GET3W_DEV_LOG_FILE ?? "").trim();
   return raw.length > 0 ? raw : null;
 }
 
 function resolveBrowserProvider(): Capabilities["toolProviders"]["browser"] {
-  const raw = (process.env.OPENWORK_BROWSER_PROVIDER ?? "").trim().toLowerCase();
+  const raw = (process.env.GET3W_BROWSER_PROVIDER ?? "").trim().toLowerCase();
   if (raw === "sandbox-interactive") return { enabled: true, placement: "in-sandbox", mode: "interactive" };
   if (raw === "sandbox-headless") {
     return { enabled: true, placement: "in-sandbox", mode: "headless" };
@@ -2762,23 +2752,8 @@ function createRoutes(
   localEngineReload: LocalEngineReload,
   engineV2Preview: EngineV2Preview,
   isReady: () => boolean,
-  anonymousInference: AnonymousInferenceService,
 ): Route[] {
   const routes: Route[] = [];
-  addRoute(routes, "GET", "/anonymous-inference/status", "client", async () =>
-    jsonResponse(await anonymousInference.status()));
-  for (const action of ["preflight", "refresh"]) {
-    addRoute(routes, "POST", `/anonymous-inference/${action}`, "client", async (ctx) => {
-      requireClientScope(ctx, "collaborator");
-      return jsonResponse(await anonymousInference.preflight());
-    });
-  }
-  addRoute(routes, "GET", "/anonymous-inference/v1/models", "none", (ctx) =>
-    anonymousInference.handle(ctx.request, "models"));
-  addRoute(routes, "POST", "/anonymous-inference/v1/chat/completions", "none", (ctx) =>
-    anonymousInference.handle(ctx.request, "chat/completions"));
-  addRoute(routes, "POST", "/anonymous-inference/v1/responses", "none", (ctx) =>
-    anonymousInference.handle(ctx.request, "responses"));
   // A rollover-capable pool can apply this immediately without disposing
   // the generation that owns live sessions. Legacy/external engines keep
   // the established busy deferral.
@@ -2803,32 +2778,6 @@ function createRoutes(
     localEngineReload.markReloadPending();
     return "deferred";
   };
-  const privateProviderResponse = (value: unknown) => {
-    const response = jsonResponse(value);
-    response.headers.set("Cache-Control", "no-store");
-    return response;
-  };
-  addRoute(routes, "GET", "/anonymous-inference/preferences", "host-token", async () =>
-    privateProviderResponse(await anonymousInference.preferences()));
-  addRoute(routes, "PUT", "/anonymous-inference/preferences", "host-token", async (ctx) => {
-    ensureWritable(config);
-    const body = await readJsonBody(ctx.request);
-    if (typeof body.enabled !== "boolean" || Object.keys(body).some((key) => key !== "enabled")) {
-      throw new ApiError(400, "invalid_payload", "Only enabled is accepted.");
-    }
-    const preferences = await anonymousInference.setEnabled(body.enabled);
-    const refresh = await applyManagedProviderReload(resolveEngineRuntimeWorkspace(config));
-    return jsonResponse({ ...preferences, refresh });
-  });
-  // The app's analytics setting. Free Auto sends its analytics journey only after the app reports it is on.
-  // Not gated on writability: turning analytics off must always take effect.
-  addRoute(routes, "PUT", "/anonymous-inference/analytics", "host-token", async (ctx) => {
-    const body = await readJsonBody(ctx.request);
-    if (typeof body.enabled !== "boolean" || Object.keys(body).some((key) => key !== "enabled")) {
-      throw new ApiError(400, "invalid_payload", "Only enabled is accepted.");
-    }
-    return privateProviderResponse(await anonymousInference.setAnalyticsEnabled(body.enabled));
-  });
   registerCoreRoutes({
     routes,
     config,
@@ -3230,28 +3179,57 @@ function createRoutes(
     return response;
   });
 
+  addRoute(routes, "POST", "/experimental/model-call", "client", async (ctx) => {
+    if (ctx.request.headers.get("X-Get3W-Host-Token") !== config.hostToken) throw new ApiError(401,"host_only","Host bridge required");
+    const body = await ctx.request.json();
+    if (!isRecord(body) || !isRecord(body.caller) || !isRecord(body.input)
+      || typeof body.sessionId !== "string" || typeof body.caller.directory !== "string"
+      || typeof body.caller.messageId !== "string"
+      || !GET3W_CHAT_TOOLS.includes(String(body.input.name))) throw new ApiError(400,"invalid_model_call","Invalid model call");
+    const caller = body.caller;
+    const workspace = config.workspaces.find(item => item.path === caller.directory);
+    if (!workspace || !await resolveV2SessionExecutionDirectory(config, engineV2Preview, workspace, body.sessionId)) throw new ApiError(403,"invalid_session","Conversation is unavailable");
+    if (opencodeSessionIsStopping(config,{directory:workspace.path,sessionID:body.sessionId})) throw new ApiError(409,"session_stopped","Conversation stopped");
+    const definition = runtimeMcpMap(await readRuntimeOpencodeConfig(config,workspace.id))["get3w-account"];
+    if (!definition || typeof definition.url !== "string" || !isRecord(definition.headers)) throw new ApiError(503,"model_disconnected","Reconnect model tools");
+    const url = new URL(definition.url);
+    if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || url.pathname !== "/mcp") throw new ApiError(403,"invalid_model_proxy","Invalid model connection");
+    const connection=engineV2Preview.connection();
+    if(!connection)throw new ApiError(503,"engine_unavailable","Conversation engine unavailable");
+    const messageUrl=new URL(`/api/session/${encodeURIComponent(body.sessionId)}/message/${encodeURIComponent(body.caller.messageId)}`,connection.url);
+    messageUrl.searchParams.set("location[directory]",await resolveV2SessionExecutionDirectory(config,engineV2Preview,workspace,body.sessionId)??workspace.path);
+    const nativeMessage=await loopbackFetch(messageUrl.toString(),{headers:{authorization:`Basic ${Buffer.from(`opencode:${connection.password}`).toString("base64")}`},signal:ctx.request.signal});
+    if(!nativeMessage.ok)throw new ApiError(503,"message_context_unavailable","Message context could not be verified. Retry the model call.");
+    const nativePayload:unknown=await nativeMessage.json();
+    const message=isRecord(nativePayload)&&isRecord(nativePayload.data)?nativePayload.data:nativePayload;
+    const info=isRecord(message)&&isRecord(message.info)?message.info:message;
+    const parentId=isRecord(info)&&typeof info.parentID==="string"?info.parentID:body.caller.messageId;
+    let policy=generationPolicyFor(workspace.id,body.sessionId,parentId);
+    if(!policy){
+      messageUrl.pathname=`/api/session/${encodeURIComponent(body.sessionId)}/message/${encodeURIComponent(parentId)}`;
+      const parentResponse=await loopbackFetch(messageUrl.toString(),{headers:{authorization:`Basic ${Buffer.from(`opencode:${connection.password}`).toString("base64")}`},signal:ctx.request.signal});
+      const parentPayload:unknown=parentResponse.ok?await parentResponse.json():null;
+      const parent=isRecord(parentPayload)&&isRecord(parentPayload.data)?parentPayload.data:parentPayload;
+      const parentInfo=isRecord(parent)&&isRecord(parent.info)?parent.info:parent;
+      const metadata=isRecord(parentInfo)&&isRecord(parentInfo.metadata)?parentInfo.metadata:null;
+      const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
+      if(openwork?.generationPolicy){rememberGenerationPolicy(workspace.id,body.sessionId,parentId,openwork.generationPolicy);policy=generationPolicyFor(workspace.id,body.sessionId,parentId);}
+    }
+    const response = await fetch(url,{method:"POST",redirect:"error",signal:ctx.request.signal,
+      headers:{Authorization:String(definition.headers.Authorization),"Content-Type":"application/json",Accept:"application/json, text/event-stream","X-Get3W-Host-Token":config.hostToken},
+      body:JSON.stringify({jsonrpc:"2.0",id:body.caller.messageId,method:"tools/call",params:body.input,
+        hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,generationPolicy:policy}})});
+    const payload: unknown = await response.json();
+    if (!response.ok) throw new ApiError(502,"model_call_failed","Model task could not finish");
+    return jsonResponse(payload);
+  });
+
   addRoute(routes, "POST", "/experimental/session-stop-fence/check", "client", async (ctx) => {
     const body = await readJsonBody(ctx.request);
     if (typeof body.directory !== "string" || !body.directory || typeof body.sessionID !== "string" || !body.sessionID) {
       throw new ApiError(400, "invalid_payload", "A conversation and its workspace are required");
     }
     if (opencodeSessionIsStopping(config, body)) throw new ApiError(409, "session_stopping", "This task was stopped.");
-    return jsonResponse({ allowed: true });
-  });
-
-  addRoute(routes, "GET", "/managed-policy", "client", async () =>
-    jsonResponse({ policy: await managedDesktopPolicy(config).current() }));
-  // Electron verifies remote rollout authority here, independent of renderer state.
-  addRoute(routes, "GET", "/managed-policy/remote-computers", "client", async () =>
-    jsonResponse({ enabled: await managedDesktopPolicy(config).remoteComputersEnabled() }));
-  // The desktop process reads the built-in browser's website rules here itself.
-  addRoute(routes, "GET", "/managed-policy/website-rules", "client", async () =>
-    jsonResponse({ rules: await managedDesktopPolicy(config).websiteRules() }));
-  addRoute(routes, "POST", "/managed-policy/evaluate", "policy", async (ctx) => {
-    const body = await readJsonBody(ctx.request);
-    const action = managedPolicyActionSchema.safeParse(body.action);
-    if (!action.success || !isRecord(body.input)) throw new ApiError(400, "invalid_payload", "A supported policy action and input are required");
-    await managedDesktopPolicy(config).assert(action.data, body.input);
     return jsonResponse({ allowed: true });
   });
 
@@ -3511,7 +3489,6 @@ function createRoutes(
       for (const [name, server] of Object.entries(opencode.mcp)) {
         if (server === null || JSON.stringify(server) === JSON.stringify(saved[name])) continue;
         validateUserMcpName(name);
-        await managedDesktopPolicy(config).assertAgentPermission("mcp", name);
       }
     }
 
@@ -3540,10 +3517,6 @@ function createRoutes(
         ? body.mergeProviderModels.filter((id): id is string => typeof id === "string")
         : []);
       validateUserProviderUpdate(providerUpdate);
-      // Removing a provider is always allowed; adding or changing one must fit the organization's model access.
-      if (Object.keys(providerUpdate).length) await managedDesktopPolicy(config).assert("provider", {
-        providerIDs: Object.entries(providerUpdate).filter(([, value]) => value !== null).map(([id]) => id),
-      });
       if (Object.keys(providerUpdate).length) {
         const providerResult = await writeGlobalRuntimeOpencodeConfig(config, (current) => ({
           ...current,
@@ -3641,6 +3614,33 @@ function createRoutes(
     resolveOutboxEnabled,
     resolveInboxMaxBytes,
     scopeRank,
+    listOutputSessions: async workspace => {
+      const connection=engineV2Preview.connection();
+      if(!connection)return [];
+      const readNative=async (path:string):Promise<unknown>=>{
+        const url=new URL(path,connection.url);url.searchParams.set("location[directory]",workspace.path);
+        const response=await loopbackFetch(url.toString(),{headers:{authorization:`Basic ${Buffer.from(`opencode:${connection.password}`).toString("base64")}`},signal:AbortSignal.timeout(10000)});
+        if(!response.ok)throw new Error("Conversation index unavailable");
+        return response.json();
+      };
+      const homes=createV2SessionHomes(config,readNative),expected=await homes.canonical(workspace.path);
+      const sessions:{sessionId:string;directory:string}[]=[];
+      let cursor:string|undefined;
+      const seen=new Set<string>();
+      for(let page=0;page<10;page++){
+        const value=await readNative(`/api/session?${new URLSearchParams({limit:"200",...(cursor?{cursor}:{})})}`);
+        if(!isRecord(value)||!Array.isArray(value.data))throw new Error("Conversation index unavailable");
+        for(const item of value.data){
+          const session=nativeSession(item),directory=nativeSessionDirectory(item);
+          if(typeof session?.id!=="string"||!directory)continue;
+          if(await homes.resolve(item)===expected)sessions.push({sessionId:session.id,directory});
+        }
+        const next=isRecord(value.cursor)?value.cursor.next:undefined;
+        if(typeof next!=="string"||!next||seen.has(next))break;
+        seen.add(next);cursor=next;
+      }
+      return sessions;
+    },
     resolveSessionDirectory: (workspace, sessionId) => resolveV2SessionExecutionDirectory(config, engineV2Preview, workspace, sessionId),
   });
 
@@ -3748,7 +3748,6 @@ function createRoutes(
     const workspace = await resolveWorkspace(config, ctx.params.id);
     const body = await readJsonBody(ctx.request);
     const name = String(body.name ?? "");
-    await managedDesktopPolicy(config).assertAgentPermission("skill", name);
     const content = String(body.content ?? "");
     const description = body.description ? String(body.description) : undefined;
     await requireApproval(ctx, {
@@ -3994,7 +3993,6 @@ function createRoutes(
     const body = await readJsonBody(ctx.request);
     const name = String(body.name ?? "").trim();
     validateUserMcpName(name);
-    await managedDesktopPolicy(config).assertAgentPermission("mcp", name);
     const serverUrl = typeof body.url === "string" ? body.url.trim() : "";
     const oauth = body.oauth && typeof body.oauth === "object" && !Array.isArray(body.oauth)
       ? body.oauth as Record<string, unknown>
@@ -4106,17 +4104,22 @@ function createRoutes(
     const body = await readJsonBody(ctx.request);
     const name = String(body.name ?? "");
     validateUserMcpName(name);
-    await managedDesktopPolicy(config).assertAgentPermission("mcp", name);
     const configPayload = body.config as Record<string, unknown> | undefined;
     if (!configPayload) {
       throw new ApiError(400, "invalid_payload", "MCP config is required");
     }
-    await requireApproval(ctx, {
-      workspaceId: workspace.id,
-      action: "mcp.add",
-      summary: `Add MCP ${name}`,
-      paths: [openworkConfigPath(workspace.path)],
-    });
+    // The Desktop main process owns the built-in account MCP and authenticates
+    // this write with the loopback host token. Requiring interactive approval
+    // here prevents model submission from registering the account connection.
+    const internalGet3wAccount = name === "get3w-account";
+    if (!internalGet3wAccount) {
+      await requireApproval(ctx, {
+        workspaceId: workspace.id,
+        action: "mcp.add",
+        summary: `Add MCP ${name}`,
+        paths: [openworkConfigPath(workspace.path)],
+      });
+    }
     const result = await addMcp(config, workspace.id, name, configPayload);
     // Hot-add into the running engine so connect/auth works immediately,
     // without waiting for an engine instance rebuild.
@@ -4511,7 +4514,7 @@ async function readAgentDiagnosticsJsonBody(request: Request): Promise<unknown> 
     "agent_diagnostics_request_timeout",
     "Agent diagnostics request body timed out",
   );
-  const configuredDeadlineMs = Number(process.env.OPENWORK_AGENT_DIAGNOSTICS_BODY_TIMEOUT_MS);
+  const configuredDeadlineMs = Number(process.env.GET3W_AGENT_DIAGNOSTICS_BODY_TIMEOUT_MS);
   const deadlineMs = Number.isFinite(configuredDeadlineMs) && configuredDeadlineMs >= 50
     ? Math.min(configuredDeadlineMs, 10_000)
     : AGENT_DIAGNOSTICS_DEFAULT_BODY_DEADLINE_MS;
@@ -4655,8 +4658,8 @@ export function resolveOpencodeConfigFilePath(scope: "project" | "global", works
 }
 
 function getRuntimeControlConfig(): { baseUrl: string; token: string } | null {
-  const baseUrl = process.env.OPENWORK_CONTROL_BASE_URL?.trim() ?? "";
-  const token = process.env.OPENWORK_CONTROL_TOKEN?.trim() ?? "";
+  const baseUrl = process.env.GET3W_CONTROL_BASE_URL?.trim() ?? "";
+  const token = process.env.GET3W_CONTROL_TOKEN?.trim() ?? "";
   if (!baseUrl || !token) return null;
   return { baseUrl: baseUrl.replace(/\/+$/, ""), token };
 }
@@ -4810,7 +4813,7 @@ function parseOpencodeErrorBody(input: string): unknown {
 // dispose froze every later pass and the status it reports). Overridable for
 // tests.
 function opencodeDisposeTimeoutMs(): number {
-  const configured = Number(process.env.OPENWORK_ENGINE_DISPOSE_TIMEOUT_MS ?? "");
+  const configured = Number(process.env.GET3W_ENGINE_DISPOSE_TIMEOUT_MS ?? "");
   return Number.isFinite(configured) && configured > 0 ? configured : 30_000;
 }
 
@@ -5653,12 +5656,12 @@ async function readBoundedEngineMcpRegistrationResponse(response: Response): Pro
 
 // Read lazily so tests can shrink the delay at runtime.
 function engineMcpSyncRetryDelayMs(): number {
-  const parsed = Number(process.env.OPENWORK_MCP_SYNC_RETRY_DELAY_MS ?? "750");
+  const parsed = Number(process.env.GET3W_MCP_SYNC_RETRY_DELAY_MS ?? "750");
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 750;
 }
 
 function engineMcpDeferredSyncDelayMs(): number {
-  const parsed = Number(process.env.OPENWORK_MCP_SYNC_DEFERRED_DELAY_MS ?? "12000");
+  const parsed = Number(process.env.GET3W_MCP_SYNC_DEFERRED_DELAY_MS ?? "12000");
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 12_000;
 }
 
@@ -6032,7 +6035,7 @@ function reconcileEngineMcpWorkspaceIdentity(
 }
 
 function engineMcpRegistrationMaxAgeMs(): number {
-  const configured = Number(process.env.OPENWORK_MCP_REGISTRATION_MAX_AGE_MS);
+  const configured = Number(process.env.GET3W_MCP_REGISTRATION_MAX_AGE_MS);
   if (!Number.isFinite(configured) || configured < 1) return ENGINE_MCP_REGISTRATION_MAX_AGE_MS;
   return Math.min(ENGINE_MCP_REGISTRATION_MAX_AGE_MS, Math.round(configured));
 }

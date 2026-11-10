@@ -14,7 +14,7 @@ export async function resolveOpencodeModelsUrl(
   const env = options.env ?? process.env;
   const override = env.OPENCODE_MODELS_URL?.trim();
   if (override) return override;
-  if (env.OPENWORK_DEV_MODE !== "1") return PRODUCTION_MODELS_URL;
+  if (env.GET3W_DEV_MODE !== "1") return PRODUCTION_MODELS_URL;
 
   try {
     const response = await (options.fetchModels ?? loopbackFetch)(`${LOCAL_MODELS_URL}/api.json`, {

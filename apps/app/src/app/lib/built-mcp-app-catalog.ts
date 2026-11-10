@@ -18,6 +18,7 @@ const entrySchema = z
     requiresApproval: z.boolean(),
     // Older deployments cannot classify provenance; never guess ownership.
     isOwner: z.boolean().optional(),
+    canDelete: z.boolean().optional(),
   })
   .refine(
     (entry) =>

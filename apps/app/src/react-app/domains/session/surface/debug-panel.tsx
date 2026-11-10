@@ -135,7 +135,7 @@ export function SessionDebugPanel(props: {
   const connected = data?.server?.ok === true && data?.opencode?.healthy === true;
   const connectionLabel = !hasRuntime ? t("ui.37ebac210dbd") : diagnostics.isFetching ? "Checking" : !data ? t("ui.d16948e73a68") : connected ? "Connected" : t("ui.ce5ed1e69589");
   const latency = connected && !diagnostics.isFetching ? `${data.latencyMs} ms` : "—";
-  const version = build.data?.version ?? import.meta.env.VITE_OPENWORK_APP_VERSION ?? "Unknown";
+  const version = build.data?.version ?? import.meta.env.VITE_GET3W_APP_VERSION ?? "Unknown";
   const runtimeRows = [
     [isDesktopRuntime() ? "Desktop" : t("ui.f2dc406dd2f3"), version],
     ["OpenCode", data?.opencode?.version ?? "Unavailable"],
@@ -163,7 +163,7 @@ export function SessionDebugPanel(props: {
     ] as const : [["Startup phase", props.workspace?.startupPhase ?? "Unknown"]] as const),
     ["Workspace", props.workspaceId || "None"],
     ["Get3W server", data?.server?.version ?? "Unavailable"],
-    ["Build", build.data?.gitSha ?? import.meta.env.VITE_OPENWORK_BUILD_SHA ?? "Unknown"],
+    ["Build", build.data?.gitSha ?? import.meta.env.VITE_GET3W_BUILD_SHA ?? "Unknown"],
     ["Sync failures", reconcileHealth?.consecutiveFailures ?? 0],
     ["Last checked", data?.checkedAt ?? "—"],
   ];

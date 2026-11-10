@@ -22,8 +22,7 @@ type WelcomePageProps = {
   onManualFolderChange?: (value: string) => void;
   onUseManualFolder?: () => void;
   showManualFolder?: boolean;
-  onTeamSignIn?: () => void;
-  onJoinOrganization: () => void;
+  onSignIn?: () => void;
 };
 
 export function WelcomePage({
@@ -35,8 +34,7 @@ export function WelcomePage({
   onManualFolderChange,
   onUseManualFolder,
   showManualFolder,
-  onTeamSignIn,
-  onJoinOrganization,
+  onSignIn,
 }: WelcomePageProps) {
   const { config: shellConfig } = useShellConfig();
   const appName = shellConfig.appName;
@@ -88,14 +86,14 @@ export function WelcomePage({
               </div>
 
               <div className="mt-11 flex flex-col gap-3">
-                {onTeamSignIn ? (
+                {onSignIn ? (
                   <Button
                     type="button"
                     size="lg"
                     className="h-12 w-full text-[15px] font-semibold"
-                    onClick={onTeamSignIn}
+                    onClick={onSignIn}
                     disabled={busy}
-                    data-testid="welcome-team-signin"
+                    data-testid="welcome-signin"
                   >
                     {t("welcome.sign_in_cloud")}
                   </Button>
@@ -104,7 +102,7 @@ export function WelcomePage({
                 <Button
                   type="button"
                   size="lg"
-                  variant={onTeamSignIn ? "outline" : "default"}
+                  variant={onSignIn ? "outline" : "default"}
                   className="h-12 w-full text-[15px] font-medium"
                   onClick={onGetStarted}
                   disabled={busy}

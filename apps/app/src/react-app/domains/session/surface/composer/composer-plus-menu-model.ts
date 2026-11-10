@@ -21,9 +21,6 @@ export type PlusMenuConnector = {
   key: string;
   name: string;
   serviceUrl?: string;
-  /** Present when the member must sign in before the connector works. */
-  signIn: { connectionId: string; reconnect: boolean } | null;
-  connecting: boolean;
   /** Short reason shown only when the connector cannot be used as is. */
   note: string | null;
 };

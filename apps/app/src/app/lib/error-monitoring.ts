@@ -8,7 +8,7 @@
  *   prompts, or tokens.
  * - Fire-and-forget: monitoring must never break or slow the app.
  * - Off by default: active only when the build is the web deployment
- *   (`VITE_OPENWORK_DEPLOYMENT=web`), `VITE_OPENWORK_SENTRY_DSN` is set, and
+ *   (`VITE_GET3W_DEPLOYMENT=web`), `VITE_GET3W_SENTRY_DSN` is set, and
  *   the page is not running inside Electron (the desktop app keeps its own
  *   consent-gated telemetry in `apps/desktop/electron/sentry.mjs`).
  * - Respects the same `analyticsEnabled` preference as product analytics.
@@ -160,7 +160,7 @@ function resourceUrl(target: EventTarget | null): string | null {
  */
 export function startWebErrorMonitoring() {
   if (monitor || typeof window === "undefined") return;
-  const dsn = String(import.meta.env.VITE_OPENWORK_SENTRY_DSN ?? "").trim();
+  const dsn = String(import.meta.env.VITE_GET3W_SENTRY_DSN ?? "").trim();
   const gate: WebErrorMonitoringGate = {
     dsn,
     deployment: getOpenWorkDeployment(),
@@ -172,8 +172,8 @@ export function startWebErrorMonitoring() {
 
   // Hand off from the pre-boot beacon in index.html.
   window.__openworkWebErrorMonitorActive = true;
-  const release = String(import.meta.env.VITE_OPENWORK_BUILD_SHA ?? "").trim()
-    || String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim();
+  const release = String(import.meta.env.VITE_GET3W_BUILD_SHA ?? "").trim()
+    || String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
   monitor = { target, release };
 
   window.addEventListener(

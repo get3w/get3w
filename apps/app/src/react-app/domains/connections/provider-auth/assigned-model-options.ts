@@ -10,9 +10,9 @@ export function filterCloudManagedModelOptions<T extends Pick<ModelOption, "prov
   options: readonly T[],
   cloudProvidersEnabled: boolean,
 ): T[] {
-  return cloudProvidersEnabled
-    ? [...options]
-    : options.filter((option) => !isCloudManagedProviderKey(option.providerID));
+  return options.filter((option) =>
+    cloudProvidersEnabled || !isCloudManagedProviderKey(option.providerID)
+  );
 }
 
 /**

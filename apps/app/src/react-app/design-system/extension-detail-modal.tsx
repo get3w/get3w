@@ -857,13 +857,13 @@ function UiControlConnectionDetails(props: UiControlConnectionDetailsProps) {
                     <span className="font-mono text-xs break-all">{t("ui.1ce3fc6ee31f")}</span>
                   </TableCell>
                 </TableRow>
-                {props.environment?.OPENWORK_UI_CONTROL_DISCOVERY ? (
+                {props.environment?.GET3W_UI_CONTROL_DISCOVERY ? (
                   <TableRow className="*:border-border hover:bg-transparent [&>:not(:last-child)]:border-r">
                     <TableCell className="bg-muted/50 py-2 text-xs font-medium">
                       {t("ui.0e4a98dc0a98")}
                     </TableCell>
                     <TableCell className="py-2 whitespace-normal">
-                      <span className="font-mono text-xs break-all">{props.environment.OPENWORK_UI_CONTROL_DISCOVERY}</span>
+                      <span className="font-mono text-xs break-all">{props.environment.GET3W_UI_CONTROL_DISCOVERY}</span>
                     </TableCell>
                   </TableRow>
                 ) : null}

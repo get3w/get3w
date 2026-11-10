@@ -30,7 +30,8 @@ def add(folder,scope,declared=None):
   texts.append(data.decode('utf-8',errors='replace'))
  if license.lower()=='unknown' and any('Permission is hereby granted, free of charge' in t for t in texts):license='MIT';row['resolution']='package license text supplies MIT; metadata omitted license'
  if license.lower()=='apache-2.0':license='Apache-2.0'
- choices={'(MPL-2.0 OR Apache-2.0)':'Apache-2.0','(AFL-2.1 OR BSD-3-Clause)':'BSD-3-Clause','(MIT OR CC0-1.0)':'MIT'}
+ choices={'(MPL-2.0 OR Apache-2.0)':'Apache-2.0','(AFL-2.1 OR BSD-3-Clause)':'BSD-3-Clause','(MIT OR CC0-1.0)':'MIT','(MIT OR GPL-3.0-or-later)':'MIT'}
+ if name=='duck' and license=='BSD' and any('1. Redistributions of source code' in t and '2. Redistributions in binary form' in t and '3.' not in t for t in texts):license='BSD-2-Clause'
  row['selectedLicense']=choices.get(license,license)
  row['sourceManifestSha256']=sha((folder/'package.json').read_bytes())
 for license,packages in json.loads(a.pnpm_report.read_text()).items():
@@ -45,7 +46,7 @@ for archive in (root/'apps/server/dist').glob('opencode-plugin-deps-*.tgz'):
    if 'node_modules' in f.parts:add(f.parent,'bundled-engine-plugin-archive')
 # Electron framework is a build dependency but will be redistributed.
 for folder in (root/'node_modules/.pnpm').glob('electron@*/node_modules/electron'):add(folder,'electron-framework')
-allow={'MIT','Apache-2.0','ISC','BSD-2-Clause','BSD-3-Clause','0BSD','BlueOak-1.0.0','Python-2.0','OFL-1.1','CC-BY-4.0','Unlicense'}
+allow={'MIT','Apache-2.0','ISC','BSD-2-Clause','BSD-3-Clause','0BSD','(MIT AND Zlib)','BlueOak-1.0.0','Python-2.0','OFL-1.1','CC-BY-4.0','Unlicense'}
 for row in records.values():
  previous=prior.get(row['name']+'@'+row['version'])
  if previous and previous.get('sourceManifestSha256')==row['sourceManifestSha256']:

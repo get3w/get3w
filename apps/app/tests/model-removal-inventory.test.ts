@@ -1,5 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { createDenClient } from "../src/app/lib/den";
+import { describe, expect, test } from "bun:test";
 import { parseModelRemovalInventory } from "../src/react-app/domains/session/surface/model-removal-inventory";
 
 const emptyLegacy = { llmProviders: [] };
@@ -103,35 +102,5 @@ describe("authoritative member model inventory", () => {
       { inferenceProviders: [{ ...gatewayProvider, modelAssignmentsComplete: undefined }] },
       { inferenceProviders: [{ ...gatewayProvider, modelAssignmentsComplete: "true" }] },
     ]) expect(() => parseModelRemovalInventory(emptyLegacy, payload)).toThrow();
-  });
-
-  test("client requests both member inventories with org scope, never engine state", async () => {
-    const requests: Array<{ path: string; org: string | null; cache?: RequestCache }> = [];
-    const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
-      requests.push({ path: url.pathname + url.search, org: new Headers(init?.headers).get("x-openwork-org-id"), cache: init?.cache });
-      return Response.json(url.pathname.endsWith("/llm-providers") ? emptyLegacy : emptyGateway);
-    });
-    try {
-      const client = createDenClient({ baseUrl: "https://den.example.test", apiBaseUrl: "https://den.example.test", token: "member-token" });
-      expect(await client.getModelRemovalInventory("org-a")).toEqual({ models: [], lockedModels: [] });
-      expect(requests).toEqual([
-        { path: "/v1/llm-providers", org: "org-a", cache: "no-store" },
-        { path: "/v1/inference-providers?scope=usable", org: "org-a", cache: "no-store" },
-      ]);
-    } finally { fetch.mockRestore(); }
-  });
-
-  test("client rejects unsupported endpoints and authorization failures instead of empty inventory", async () => {
-    for (const status of [401, 403, 404, 405, 501]) {
-      const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-        const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
-        return url.pathname.endsWith("/llm-providers") ? Response.json(emptyLegacy) : Response.json({ error: "unavailable" }, { status });
-      });
-      try {
-        const client = createDenClient({ baseUrl: "https://den.example.test", apiBaseUrl: "https://den.example.test", token: "member-token" });
-        await expect(client.getModelRemovalInventory("org-a")).rejects.toThrow();
-      } finally { fetch.mockRestore(); }
-    }
   });
 });

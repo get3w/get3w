@@ -66,34 +66,34 @@ if (args.web) {
   const packageRoot = await resolvePackageRoot({ env: process.env, execPath: process.execPath });
   webRoot = await resolveWebRoot({ env: process.env, packageRoot, sourceDir: import.meta.dirname });
   if (!webRoot) {
-    console.error("The Get3W web UI bundle was not found. Reinstall openwork-server, or set OPENWORK_WEB_ROOT to a built apps/app/dist.");
+    console.error("The Get3W web UI bundle was not found. Reinstall openwork-server, or set GET3W_WEB_ROOT to a built apps/app/dist.");
     process.exit(1);
   }
-  process.env.OPENWORK_WEB_ROOT = webRoot;
-  if (args.bootstrapToken === false) process.env.OPENWORK_WEB_BOOTSTRAP_TOKEN = "0";
-  if (!process.env.OPENWORK_EXTENSIONS_PLUGIN_DIR) {
+  process.env.GET3W_WEB_ROOT = webRoot;
+  if (args.bootstrapToken === false) process.env.GET3W_WEB_BOOTSTRAP_TOKEN = "0";
+  if (!process.env.GET3W_EXTENSIONS_PLUGIN_DIR) {
     const pluginDir = await resolveBundledPluginDir(packageRoot);
-    if (pluginDir) process.env.OPENWORK_EXTENSIONS_PLUGIN_DIR = pluginDir;
+    if (pluginDir) process.env.GET3W_EXTENSIONS_PLUGIN_DIR = pluginDir;
   }
   // The web UI has no approvals responder, so manual mode would time out every gated write.
-  args.approvalMode ??= process.env.OPENWORK_APPROVAL_MODE === "manual" ? "manual" : "auto";
-  if (args.workspaces.length === 0 && !process.env.OPENWORK_WORKSPACES) args.workspaces.push(process.cwd());
+  args.approvalMode ??= process.env.GET3W_APPROVAL_MODE === "manual" ? "manual" : "auto";
+  if (args.workspaces.length === 0 && !process.env.GET3W_WORKSPACES) args.workspaces.push(process.cwd());
   // Stable tokens across restarts: CLI flag, then env, then a file in the data dir.
-  const tokenProvided = Boolean(args.token || process.env.OPENWORK_TOKEN);
-  const hostTokenProvided = Boolean(args.hostToken || process.env.OPENWORK_HOST_TOKEN);
+  const tokenProvided = Boolean(args.token || process.env.GET3W_TOKEN);
+  const hostTokenProvided = Boolean(args.hostToken || process.env.GET3W_HOST_TOKEN);
   if (!tokenProvided || !hostTokenProvided) {
     const tokens = await loadOrCreateWebTokens({ env: process.env });
     if (!tokenProvided) args.token = tokens.token;
     if (!hostTokenProvided) args.hostToken = tokens.hostToken;
     webTokensPath = tokens.path;
   }
-  process.env.OPENWORK_MANAGE_OPENCODE = "1";
+  process.env.GET3W_MANAGE_OPENCODE = "1";
   const engine = await ensureManagedEngine({
     env: process.env,
     expectedVersion: constants.opencodeVersion,
     log: (message) => console.log(message),
   });
-  process.env.OPENWORK_OPENCODE_BIN = engine.bin;
+  process.env.GET3W_OPENCODE_BIN = engine.bin;
   setInstalledOpencodeVersion(engine.installedVersion);
   if (packageRoot && engine.source !== "env") {
     const seed = await seedOpencodePluginDeps({
@@ -121,11 +121,11 @@ if (!config.readOnly) {
 
 // Bind the HTTP server before spawning the engine: serve-node may fall back
 // to an OS-assigned port on EADDRINUSE, and the engine's spawn-time env
-// (OPENWORK_SERVER_URL) must point at the port that actually bound, not the
+// (GET3W_SERVER_URL) must point at the port that actually bound, not the
 // requested one.
 // The engine also starts with no workspace registered yet, so providers load
 // before the first workspace exists.
-const manageEngine = !config.opencodeBaseUrl && process.env.OPENWORK_MANAGE_OPENCODE === "1"
+const manageEngine = !config.opencodeBaseUrl && process.env.GET3W_MANAGE_OPENCODE === "1"
   && shouldStartManagedEngine(config.workspaces);
 const server = await startServer(config, { deferManagedEngineStartup: manageEngine });
 config.port = server.port;
@@ -144,17 +144,17 @@ if (manageEngine) {
   const { path: runtimeConfigPath } = await writeOpenworkRuntimeConfigFile(config);
   stopRuntimeConfigFileRefresh = keepOpenworkRuntimeConfigFileFresh(config);
   const managedOpencodeCwd = resolveManagedEngineCwd({
-    explicit: process.env.OPENWORK_MANAGED_OPENCODE_CWD,
+    explicit: process.env.GET3W_MANAGED_OPENCODE_CWD,
     workspace: findManagedEngineWorkspace(config.workspaces),
     fallbackDir: join(runtimeStorageDir(config), "managed-opencode-workdir"),
   });
   await mkdir(managedOpencodeCwd, { recursive: true });
   const opencodeModelsUrl = await resolveOpencodeModelsUrl();
   const engineEnv: Record<string, string | undefined> = {
-    ...(process.env.OPENWORK_DEV_MODE ? { OPENWORK_DEV_MODE: process.env.OPENWORK_DEV_MODE } : {}),
-    ...(process.env.OPENWORK_UI_CONTROL_DISCOVERY ? { OPENWORK_UI_CONTROL_DISCOVERY: process.env.OPENWORK_UI_CONTROL_DISCOVERY } : {}),
-    OPENWORK_SERVER_URL: serverUrl,
-    OPENWORK_SERVER_TOKEN: config.token,
+    ...(process.env.GET3W_DEV_MODE ? { GET3W_DEV_MODE: process.env.GET3W_DEV_MODE } : {}),
+    ...(process.env.GET3W_UI_CONTROL_DISCOVERY ? { GET3W_UI_CONTROL_DISCOVERY: process.env.GET3W_UI_CONTROL_DISCOVERY } : {}),
+    GET3W_SERVER_URL: serverUrl,
+    GET3W_SERVER_TOKEN: config.token,
     OPENCODE_CONFIG: runtimeConfigPath,
     OPENCODE_MODELS_URL: opencodeModelsUrl,
   };
@@ -162,7 +162,7 @@ if (manageEngine) {
   // standalone OpenCode v2 install owns the shared ones.
   const engineStateDir = join(runtimeStorageDir(config), "opencode-v1", "state");
   const engineSpawnTemplate: EngineSpawnTemplate = {
-    bin: process.env.OPENWORK_OPENCODE_BIN,
+    bin: process.env.GET3W_OPENCODE_BIN,
     cwd: managedOpencodeCwd,
     runtimeConfigPath,
     env: engineEnv,
@@ -173,14 +173,14 @@ if (manageEngine) {
     },
   };
   managedOpencode = await createManagedOpencodeServer({
-    bin: process.env.OPENWORK_OPENCODE_BIN,
+    bin: process.env.GET3W_OPENCODE_BIN,
     cwd: managedOpencodeCwd,
     excludedPorts: [config.port],
     env: engineEnv,
     stateDir: engineStateDir,
   });
   if (!readInstalledOpencodeVersion()) {
-    setInstalledOpencodeVersion(readBinaryVersion(process.env.OPENWORK_OPENCODE_BIN?.trim() || "opencode"));
+    setInstalledOpencodeVersion(readBinaryVersion(process.env.GET3W_OPENCODE_BIN?.trim() || "opencode"));
   }
   config.opencodeBaseUrl = managedOpencode.url;
   config.opencodeUsername = managedOpencode.username;
@@ -215,7 +215,7 @@ if (manageEngine) {
       serverRunId: managedOpencodeIdentity,
       ownerPid: process.pid,
       authProbe: buildEngineAuthProbeHeader(managedOpencode.username, managedOpencode.password),
-      bin: process.env.OPENWORK_OPENCODE_BIN?.trim() || "opencode",
+      bin: process.env.GET3W_OPENCODE_BIN?.trim() || "opencode",
     }).catch(() => undefined);
   }
   enginePool = createEnginePoolForConfig({
@@ -259,9 +259,9 @@ if (args.web) {
   const browserUrl = `http://${browserHost}:${server.port}`;
   logger.log("info", `Get3W web UI: ${browserUrl}`);
   logger.log("info", `Web root: ${webRoot}`);
-  logger.log("info", `Engine: ${process.env.OPENWORK_OPENCODE_BIN} (${installedOpencodeVersionLabel()})`);
+  logger.log("info", `Engine: ${process.env.GET3W_OPENCODE_BIN} (${installedOpencodeVersionLabel()})`);
   if (webTokensPath) logger.log("info", `Tokens: ${webTokensPath}`);
-  if (process.env.OPENWORK_WEB_BOOTSTRAP_TOKEN === "0") {
+  if (process.env.GET3W_WEB_BOOTSTRAP_TOKEN === "0") {
     logger.log("info", `Browser sign-in requires the client token: ${config.token}`);
   } else if (browserHost !== "localhost" && browserHost !== "127.0.0.1") {
     logger.log("info", "Anyone who can reach this URL is signed in automatically. Keep it on a private network or pass --no-bootstrap-token.");

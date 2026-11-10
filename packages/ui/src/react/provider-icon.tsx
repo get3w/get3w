@@ -35,7 +35,7 @@ export function ProviderIcon(props: ProviderIconProps) {
   const isAnthropic = hasProviderFamily("anthropic");
   const isOpenAI = hasProviderFamily("openai");
   const isOpenCode = hasProviderFamily("opencode");
-  const isOpenWork = hasProviderFamily("openwork");
+  const isOpenWork = hasProviderFamily("openwork") || hasProviderFamily("get3w") || normalizedId === "get3w-account";
   const hasInlineMark = isAnthropic || isOpenAI || isOpenCode || isOpenWork;
 
   // Remote logos are walked in order and each failure advances one step, so a

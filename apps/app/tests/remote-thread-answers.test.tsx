@@ -113,7 +113,7 @@ const waiting: RemoteSessionThreadStatus = {
 
 async function row(check: (container: HTMLElement) => void) {
   useRemoteThreadStore.setState({
-    threads: { [start.key]: { start, organizationId: "org_1", version: "v1", status: waiting, stale: false, checkedAt: 1, activeSince: null,
+    threads: { [start.key]: { start, version: "v1", status: waiting, stale: false, checkedAt: 1, activeSince: null,
       firstSeenAt: Date.now(), followedUpAt: null, owners: {}, viewers: 1, lastViewedAt: Date.now() } },
   })
   try {

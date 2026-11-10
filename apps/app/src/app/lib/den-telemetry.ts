@@ -62,7 +62,7 @@ export function resolveDenTelemetryIngestUrl(settings: DenSettings): string | nu
  */
 export function telemetryContextKey(settings: DenSettings): string | null {
   if (isDesktopRuntime() || !settings.authToken) return null;
-  return JSON.stringify([settings.baseUrl, settings.apiBaseUrl ?? null, settings.authToken, settings.activeOrgId ?? null]);
+  return JSON.stringify([settings.baseUrl, settings.apiBaseUrl ?? null, settings.authToken]);
 }
 
 function discardPending(): void {

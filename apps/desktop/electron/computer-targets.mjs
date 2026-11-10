@@ -2,9 +2,9 @@
 // through its `@openwork/sandbox` provider (run a command, read a file) and
 // driven by the X11 driver. Pointing computer use at a VM is configuration:
 //
-//   OPENWORK_COMPUTER_FREESTYLE_VM=<vm id>        with FREESTYLE_API_KEY
-//   OPENWORK_COMPUTER_DAYTONA_SANDBOX=<sandbox id> with DAYTONA_API_KEY (and DAYTONA_API_URL)
-//   OPENWORK_COMPUTER_DISPLAY=:99                  the VM's X display (default :99)
+//   GET3W_COMPUTER_FREESTYLE_VM=<vm id>        with FREESTYLE_API_KEY
+//   GET3W_COMPUTER_DAYTONA_SANDBOX=<sandbox id> with DAYTONA_API_KEY (and DAYTONA_API_URL)
+//   GET3W_COMPUTER_DISPLAY=:99                  the VM's X display (default :99)
 //
 // Another provider only needs a `machine` binding below. Provider packages load
 // lazily, so a desktop without a configured VM never starts their clients.
@@ -62,14 +62,14 @@ function sandboxMachine(load) {
  * @param {NodeJS.ProcessEnv} [env]
  */
 export function remoteComputerAdapters(env = process.env) {
-  const display = env.OPENWORK_COMPUTER_DISPLAY?.trim() || ":99";
+  const display = env.GET3W_COMPUTER_DISPLAY?.trim() || ":99";
   const adapters = [];
-  const freestyleVm = env.OPENWORK_COMPUTER_FREESTYLE_VM?.trim();
+  const freestyleVm = env.GET3W_COMPUTER_FREESTYLE_VM?.trim();
   const freestyleKey = env.FREESTYLE_API_KEY?.trim();
   if (freestyleVm && freestyleKey) {
     adapters.push(createRemoteComputerAdapter({
       id: "freestyle-vm",
-      label: env.OPENWORK_COMPUTER_FREESTYLE_LABEL?.trim() || "Freestyle VM",
+      label: env.GET3W_COMPUTER_FREESTYLE_LABEL?.trim() || "Freestyle VM",
       driver: createX11Driver({
         display,
         machine: sandboxMachine(async () => {
@@ -81,12 +81,12 @@ export function remoteComputerAdapters(env = process.env) {
       }),
     }));
   }
-  const daytonaSandbox = env.OPENWORK_COMPUTER_DAYTONA_SANDBOX?.trim();
+  const daytonaSandbox = env.GET3W_COMPUTER_DAYTONA_SANDBOX?.trim();
   const daytonaKey = env.DAYTONA_API_KEY?.trim();
   if (daytonaSandbox && daytonaKey) {
     adapters.push(createRemoteComputerAdapter({
       id: "daytona-sandbox",
-      label: env.OPENWORK_COMPUTER_DAYTONA_LABEL?.trim() || "Daytona sandbox",
+      label: env.GET3W_COMPUTER_DAYTONA_LABEL?.trim() || "Daytona sandbox",
       driver: createX11Driver({
         display,
         machine: sandboxMachine(async () => {

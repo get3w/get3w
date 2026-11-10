@@ -55,9 +55,9 @@ function slugifyImageArtifactName(value: string) {
 
 async function resolveOpenAiImageApiKey(env: EnvService): Promise<string> {
   const records = await env.list();
-  return records.find((entry) => entry.key === "OPENWORK_OPENAI_IMAGE_API_KEY")?.value.trim() ||
+  return records.find((entry) => entry.key === "GET3W_OPENAI_IMAGE_API_KEY")?.value.trim() ||
     records.find((entry) => entry.key === "OPENAI_API_KEY")?.value.trim() ||
-    process.env.OPENWORK_OPENAI_IMAGE_API_KEY?.trim() ||
+    process.env.GET3W_OPENAI_IMAGE_API_KEY?.trim() ||
     process.env.OPENAI_API_KEY?.trim() ||
     "";
 }

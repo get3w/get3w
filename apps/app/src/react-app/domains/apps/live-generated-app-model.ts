@@ -26,16 +26,16 @@ export function liveGeneratedAppCacheScope(scope: ReadonlyArray<string | null | 
 }
 
 export async function loadSavedAppForDisplay(client: {
-  listSavedApps: (orgId: string) => Promise<{ items: SavedAppSummary[] }>;
-  getSavedApp: (orgId: string, appId: string, options: { revisionId?: string; receiptId?: string; timeZone?: string }) => Promise<SavedAppDetail>;
-}, orgId: string, appId: string, options: { revisionId?: string; receiptId?: string; timeZone?: string }): Promise<SavedAppDetail> {
-  const { items } = await client.listSavedApps(orgId);
+  listSavedApps: () => Promise<{ items: SavedAppSummary[] }>;
+  getSavedApp: (appId: string, options: { revisionId?: string; receiptId?: string; timeZone?: string }) => Promise<SavedAppDetail>;
+}, appId: string, options: { revisionId?: string; receiptId?: string; timeZone?: string }): Promise<SavedAppDetail> {
+  const { items } = await client.listSavedApps();
   const saved = items.find((item) => item.view.id === appId);
   if (saved && isLiveGeneratedApp(saved.view) && (!options.revisionId || options.revisionId === saved.view.activeRevisionId)) {
     return { ...saved, revision: saved.view.revisions.find((revision) => revision.id === saved.view.activeRevisionId) ?? null,
       html: null, payload: null, previewNotice: null };
   }
-  return client.getSavedApp(orgId, appId, options);
+  return client.getSavedApp(appId, options);
 }
 
 export function viewerLocalDate(timeZone: string, now: number) {

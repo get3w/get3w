@@ -15,21 +15,21 @@ test("updates, saved choices, v1 history and explicit overrides keep today's eng
   assert.equal(freshInstallEngineState({ ...fresh, requested: undefined }), undefined);
   assert.equal(freshInstallEngineState({ ...fresh, stateFileExists: true }), undefined);
   assert.equal(freshInstallEngineState({ ...fresh, v1HistoryExists: true }), undefined);
-  assert.equal(freshInstallEngineState({ ...fresh, env: { OPENWORK_ENGINE_V2_PREVIEW: "0" } }), undefined);
+  assert.equal(freshInstallEngineState({ ...fresh, env: { GET3W_ENGINE_V2_PREVIEW: "0" } }), undefined);
 });
 
 type Profile = { configPath: string; freshInstallEngine: "v2" };
 
 function withProfile(run: (config: Profile, env: NodeJS.ProcessEnv, dir: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), "openwork-fresh-engine-"));
-  const previous = process.env.OPENWORK_RUNTIME_DB;
-  process.env.OPENWORK_RUNTIME_DB = join(dir, "openwork", "runtime.sqlite");
+  const previous = process.env.GET3W_RUNTIME_DB;
+  process.env.GET3W_RUNTIME_DB = join(dir, "openwork", "runtime.sqlite");
   try {
     const config: Profile = { configPath: join(dir, "openwork", "server.json"), freshInstallEngine: "v2" };
     run(config, { OPENCODE_DB: join(dir, "opencode", "opencode.db") }, dir);
   } finally {
-    if (previous === undefined) delete process.env.OPENWORK_RUNTIME_DB;
-    else process.env.OPENWORK_RUNTIME_DB = previous;
+    if (previous === undefined) delete process.env.GET3W_RUNTIME_DB;
+    else process.env.GET3W_RUNTIME_DB = previous;
     rmSync(dir, { recursive: true, force: true });
   }
 }

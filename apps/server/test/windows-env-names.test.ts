@@ -40,8 +40,8 @@ test("on Windows reserved names cannot be saved in another case", async () => {
   await withStore("win32", async (env) => {
     await assert.rejects(env.upsertMany([{ key: "opencode_config", value: "x" }]), InvalidEnvKeyError);
   });
-  assert.equal(isReservedEnvKey("OpenWork_Server_Token", "win32"), true);
-  assert.equal(isReservedEnvKey("openwork_api_key", "win32"), false);
+  assert.equal(isReservedEnvKey("get3w_Server_Token", "win32"), true);
+  assert.equal(isReservedEnvKey("get3w_api_key", "win32"), false);
   assert.equal(isReservedEnvKey("opencode_config", "darwin"), false);
 });
 

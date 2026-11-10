@@ -52,10 +52,10 @@ describe("MCP App launch sessions", () => {
     dir = mkdtempSync(join(tmpdir(), "openwork-mcp-app-launch-"));
     workspaceRoot = join(dir, "workspace");
     app = startAppServer();
-    process.env.OPENWORK_RUNTIME_DB = join(dir, "runtime.sqlite");
+    process.env.GET3W_RUNTIME_DB = join(dir, "runtime.sqlite");
     process.env.OPENCODE_CONFIG_DIR = join(dir, "opencode-global");
     process.env.XDG_CONFIG_HOME = join(dir, "xdg");
-    process.env.OPENWORK_ALLOW_PRIVATE_MCP_URLS = "1";
+    process.env.GET3W_ALLOW_PRIVATE_MCP_URLS = "1";
     mkdirSync(workspaceRoot);
     writeFileSync(join(workspaceRoot, "opencode.json"), JSON.stringify({ mcp: { board: { type: "remote", url: app.url } } }));
     config = {

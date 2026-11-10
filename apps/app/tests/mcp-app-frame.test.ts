@@ -1,7 +1,11 @@
-import { afterAll, describe, expect, jest, spyOn, test } from "bun:test"
+import { notifyManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { setLocale } from "../src/i18n"
+setLocale("en")
+notifyManager.setScheduler(queueMicrotask)
+import { afterAll, describe, expect, jest, mock, spyOn, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
-import { act, createElement } from "react"
-import { createRoot } from "react-dom/client"
+import { act, createElement, type ReactNode } from "react"
+import { createRoot as createReactRoot } from "react-dom/client"
 import { AppBridge } from "@modelcontextprotocol/ext-apps/app-bridge"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js"
@@ -20,9 +24,47 @@ import type { McpAppSandboxViewProps } from "../src/components/chat/mcp-app-fram
 import * as mcpAppOrigin from "../src/components/chat/mcp-app-origin"
 import { markCloudCredentialRefreshed } from "../src/react-app/domains/connections/cloud-credential-revision"
 
+let artifactReadAllowed = true
+let latestQueryClient: QueryClient | undefined
+mock.module("../src/react-app/domains/apps/use-apps", () => ({
+  useAppsClient: () => ({ client: { getSavedApp: async () => { if (!artifactReadAllowed) throw Error("Access revoked"); return {} } }, orgId: "test", scope: ["test"] }),
+}))
+function createRoot(container: Element) {
+  const root = createReactRoot(container)
+  const client = new QueryClient({defaultOptions: {queries: {retry: false, gcTime: Infinity}}})
+  latestQueryClient = client
+  return {
+    render: (node: ReactNode) => root.render(createElement(QueryClientProvider, {client}, node)),
+    unmount: () => { root.unmount(); client.clear() },
+  }
+}
+
 // happy-dom 21 loads no iframe page by default, so frames would have no window to talk to.
 GlobalRegistrator.register({ url: "https://web.example/", settings: { enableIframePageLoading: true } })
-afterAll(() => GlobalRegistrator.unregister())
+// happy-dom has no layout/intersection delivery. These bridge tests model visible
+// frames; production still waits for the real observer before starting chat apps.
+const originalIntersectionObserver = globalThis.IntersectionObserver
+class VisibleIntersectionObserver implements IntersectionObserver {
+  readonly root = null
+  readonly rootMargin = "0px"
+  readonly thresholds = [0]
+  private targets = new Set<Element>()
+  constructor(private callback: IntersectionObserverCallback) {}
+  observe(target: Element) {
+    this.targets.add(target)
+    queueMicrotask(() => {
+      if (!this.targets.has(target)) return
+      const rect = target.getBoundingClientRect()
+      this.callback([{target, time: 0, isIntersecting: true, intersectionRatio: 1,
+        boundingClientRect: rect, intersectionRect: rect, rootBounds: null}], this)
+    })
+  }
+  unobserve(target: Element) { this.targets.delete(target) }
+  disconnect() { this.targets.clear() }
+  takeRecords(): IntersectionObserverEntry[] { return [] }
+}
+Reflect.set(globalThis, "IntersectionObserver", VisibleIntersectionObserver)
+afterAll(() => { notifyManager.setScheduler(callback => setTimeout(callback, 0)); Reflect.set(globalThis, "IntersectionObserver", originalIntersectionObserver); GlobalRegistrator.unregister() })
 const { MessageListProvider } = await import("../src/components/chat/message-list-provider")
 const { WorkspaceProvider } = await import("../src/react-app/shell/workspace-provider")
 const { useUiStateStore } = await import("../src/react-app/shell/ui-state-store")
@@ -1250,7 +1292,7 @@ describe("MCP App resolution", () => {
       let settled = false
       const resolution = client.resolveMcpApp("fixture", "fixture_render")
         .then(value => { settled = true; return value }, (cause: unknown) => { settled = true; return cause })
-      const config = client.getConnectState().catch((cause: unknown) => cause)
+      const config = client.getConfig("fixture").catch((cause: unknown) => cause)
       expect(requests).toHaveLength(2)
       jest.advanceTimersByTime(10_000)
       expect(await config).toMatchObject({ message: "Request timed out." })
@@ -2130,19 +2172,19 @@ describe("MCP App iframe policy", () => {
   })
 
   test("names the sandbox page version so the browser can keep that page", () => {
-    const previous = process.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION
+    const previous = process.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION
     try {
       const client = createOpenworkServerClient({ baseUrl: "http://localhost:61856" })
-      process.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION = "0123456789abcdef"
+      process.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION = "0123456789abcdef"
       const url = new URL(client.mcpAppSandbox(fixture(), "file://").url)
       expect(url.pathname).toBe("/mcp-apps/sandbox.html")
       expect(url.searchParams.get("v")).toBe("0123456789abcdef")
       expect(url.searchParams.get("csp")).toBe(JSON.stringify(fixture().csp))
-      delete process.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION
+      delete process.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION
       expect(new URL(client.mcpAppSandbox(fixture(), "file://").url).searchParams.has("v")).toBe(false)
     } finally {
-      if (previous === undefined) delete process.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION
-      else process.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION = previous
+      if (previous === undefined) delete process.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION
+      else process.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION = previous
     }
   })
 
@@ -2263,3 +2305,20 @@ test.each(["mcpResult", "mcpApp"])("preserves the generic %s metadata alias with
   expect(hasPreservedMcpAppResult(part)).toBe(true);
   expect(hasPreservedMcpAppResult({ ...part, callProviderMetadata: { openwork: { [alias]: { content: [null] } } } })).toBe(false);
 });
+
+
+test("native authored App unmounts its sandbox when live access is revoked", async () => {
+  const host = await startupFixture()
+  const queryClient = latestQueryClient
+  const appId = `cob_0${"0".repeat(25)}`
+  const resourceUri = mcpAppResourceUri(appId, `cov_0${"0".repeat(25)}`)
+  try {
+    await host.renderView({app: fixture({resourceUri})})
+    for (let i=0; i<10 && !host.container.querySelector("iframe"); i++) await act(async()=>{await new Promise(resolve=>setImmediate(resolve))})
+    expect(host.container.querySelector("iframe")).not.toBeNull()
+    artifactReadAllowed = false
+    await act(async()=>{await queryClient?.invalidateQueries({queryKey:["authored-app-access"]})})
+    expect(host.container.querySelector("iframe")).toBeNull()
+    expect(host.container.textContent).toContain("Artifact access is unavailable")
+  } finally { artifactReadAllowed = true; await host.dispose() }
+})

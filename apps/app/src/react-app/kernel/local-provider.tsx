@@ -1,3 +1,4 @@
+import { get3wProviderId } from "@/app/lib/get3w-provider-id";
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import {
@@ -167,7 +168,7 @@ export function LocalProvider({ children }: LocalProviderProps) {
     } catch {
       // Retain the preferences migration when storage is unavailable.
     }
-    if (persisted.defaultModel) return persisted;
+    if (persisted.defaultModel) return { ...persisted, defaultModel: { ...persisted.defaultModel, providerID: get3wProviderId(persisted.defaultModel.providerID) } };
     return {
       ...persisted,
       defaultModel: readStoredDefaultModel(),

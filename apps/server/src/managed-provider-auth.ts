@@ -108,7 +108,7 @@ const fingerprint = (value: string) => createHash("sha256").update(value).digest
  * flip forever.
  */
 function authRequestTimeoutMs(): number {
-  const raw = Number(process.env.OPENWORK_PROVIDER_AUTH_TIMEOUT_MS ?? "");
+  const raw = Number(process.env.GET3W_PROVIDER_AUTH_TIMEOUT_MS ?? "");
   return Number.isFinite(raw) && raw > 0 ? raw : 10_000;
 }
 

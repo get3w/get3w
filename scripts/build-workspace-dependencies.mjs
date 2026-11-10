@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-export const workspaceBuildEnvFlag = "OPENWORK_WORKSPACE_BUILD"
+export const workspaceBuildEnvFlag = "GET3W_WORKSPACE_BUILD"
 
 export function buildWorkspaceDependencies(packageName, cwd = process.cwd()) {
   const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm"

@@ -196,26 +196,26 @@ function nonNegativeIntFromEnv(name: string, fallback: number): number {
  * deadline out, so this bounds inactivity, not total drain time.
  */
 function drainTimeoutMs(): number {
-  return positiveIntFromEnv("OPENWORK_ENGINE_DRAIN_TIMEOUT_MS", 15 * 60_000);
+  return positiveIntFromEnv("GET3W_ENGINE_DRAIN_TIMEOUT_MS", 15 * 60_000);
 }
 
 /** Delay before the drain activity watch reconnects to a lost engine event stream. */
 function drainActivityReconnectMs(): number {
-  return positiveIntFromEnv("OPENWORK_ENGINE_DRAIN_ACTIVITY_RECONNECT_MS", 1_000);
+  return positiveIntFromEnv("GET3W_ENGINE_DRAIN_ACTIVITY_RECONNECT_MS", 1_000);
 }
 
 /** Floor between automatic spawns, so a burst of triggers cannot thrash. 0 disables it. */
 function minSpawnIntervalMs(): number {
-  return nonNegativeIntFromEnv("OPENWORK_ENGINE_MIN_SPAWN_INTERVAL_MS", 30_000);
+  return nonNegativeIntFromEnv("GET3W_ENGINE_MIN_SPAWN_INTERVAL_MS", 30_000);
 }
 
 function drainPollIntervalMs(): number {
-  return positiveIntFromEnv("OPENWORK_ENGINE_DRAIN_POLL_MS", 5_000);
+  return positiveIntFromEnv("GET3W_ENGINE_DRAIN_POLL_MS", 5_000);
 }
 
 /** Grace given to aborted sessions to unwind before the engine is closed. */
 function abortSettleMs(): number {
-  return nonNegativeIntFromEnv("OPENWORK_ENGINE_ABORT_SETTLE_MS", 5_000);
+  return nonNegativeIntFromEnv("GET3W_ENGINE_ABORT_SETTLE_MS", 5_000);
 }
 
 /**
@@ -224,7 +224,7 @@ function abortSettleMs(): number {
  * never a silent flip onto an engine without keys.
  */
 function standbyPrepareTimeoutMs(): number {
-  return positiveIntFromEnv("OPENWORK_ENGINE_STANDBY_PREPARE_TIMEOUT_MS", 30_000);
+  return positiveIntFromEnv("GET3W_ENGINE_STANDBY_PREPARE_TIMEOUT_MS", 30_000);
 }
 
 function portOf(url: string): number {

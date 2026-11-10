@@ -11,7 +11,7 @@ export type DenAuthStatus =
 export type DenAuthStore = {
   status: DenAuthStatus;
   user: DenUser | null;
-  verifiedIdentity: { principalId: string; organizationId: string } | null;
+  verifiedIdentity: { principalId: string } | null;
   error: string | null;
   isSignedIn: boolean;
   refresh: () => Promise<void>;

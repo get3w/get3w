@@ -29,7 +29,6 @@ import {
 } from "@openwork/types/den/diagnostics";
 import { z } from "zod";
 
-import { createDenClient, readDenSettings } from "./den";
 import { appBuildInfo, startupTimings, type DesktopStartupTimings } from "./desktop";
 import { isDesktopRuntime } from "./runtime-env";
 
@@ -37,7 +36,6 @@ export const STARTUP_PENDING_STORAGE_KEY = "openwork.startup.pending";
 /** A launch that is not connected this long after process start is reported as timed out. */
 export const STARTUP_DEADLINE_MS = 120_000;
 export const STARTUP_PENDING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const STARTUP_SEND_TIMEOUT_MS = 5_000;
 const STARTUP_TIMINGS_TIMEOUT_MS = 3_000;
 const MAX_STEP_MS = 3_600_000;
 
@@ -46,12 +44,10 @@ export type StartupRendererStep = Exclude<DesktopStartupStep, "window">;
 
 export type StartupDenSession = {
   baseUrl: string;
-  organizationId: string | null;
 };
 
 export type StartupReportTarget = {
   denBaseUrl: string;
-  organizationId: string | null;
 };
 
 /** sent: delivered. drop: Den refused it for good (e.g. a Den without the endpoint). retry: keep it for a later launch. */
@@ -76,7 +72,7 @@ export type StartupDiagnosticsDeps = {
 export type StartupDiagnostics = {
   /** The Den session found when the app checked it; null when there is no session token. */
   denSession: (session: StartupDenSession | null) => void;
-  markStep: (step: StartupRendererStep, context?: { organizationId?: string | null }) => void;
+  markStep: (step: StartupRendererStep) => void;
   fail: (step: DesktopStartupStep, reason: DesktopStartupFailureReason) => void;
   /** A load of the organization's tools failed; reported if none succeeds before the deadline. */
   orgToolsFailed: () => void;
@@ -96,7 +92,6 @@ const pendingStartupRecordSchema = z.object({
   /** Main-process start of the launch (epoch ms); identifies it across renderer reloads. */
   launchStartedAt: z.number(),
   denBaseUrl: z.string().min(1),
-  organizationId: z.string().nullable(),
   savedAt: z.number(),
   finished: z.boolean(),
   /** False when the main process had no timings, so a missing window step is not a failure. */
@@ -224,7 +219,6 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
   let measuring = false;
   let session: "unknown" | "present" | "absent" = "unknown";
   let denBaseUrl: string | null = null;
-  let organizationId: string | null = null;
   let attemptId = "";
   const reached: Record<StartupRendererStep, number | null> = { engine: null, signed_in: null, org_tools: null };
   let outcome: "success" | { failedStep: DesktopStartupStep; reason: DesktopStartupFailureReason } | null = null;
@@ -353,7 +347,6 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
       version: 1,
       launchStartedAt: launch.startedAt,
       denBaseUrl,
-      organizationId,
       savedAt: deps.now(),
       finished: outcome !== null,
       measuresWindow: launch.fromMain,
@@ -397,10 +390,7 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
     const record = currentRecord();
     if (!record) return;
     persist(record);
-    const result = await send(reportFromRecord(record), {
-      denBaseUrl: record.denBaseUrl,
-      organizationId: record.organizationId,
-    });
+    const result = await send(reportFromRecord(record), { denBaseUrl: record.denBaseUrl });
     if (result !== "retry") clearRecordFor(record.report.attemptId);
   };
 
@@ -444,10 +434,7 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
     leftoverOffered = true;
     try {
       if (!sameDenBaseUrl(record.denBaseUrl, denBaseUrl)) return;
-      const result = await send(reportFromRecord(record), {
-        denBaseUrl: record.denBaseUrl,
-        organizationId: record.organizationId,
-      });
+      const result = await send(reportFromRecord(record), { denBaseUrl: record.denBaseUrl });
       if (result !== "retry") clearRecordFor(record.report.attemptId);
     } finally {
       leftover = null;
@@ -531,18 +518,14 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
         if (session !== "unknown") return;
         session = "present";
         denBaseUrl = next.baseUrl;
-        organizationId = next.organizationId;
         launchLoading = resolveLaunch().catch(() => undefined);
         track(launchLoading);
       });
     },
 
-    markStep(step, context) {
+    markStep(step) {
       guard(() => {
-        if (step === "signed_in") {
-          signedIn = true;
-          if (context?.organizationId) organizationId = context.organizationId;
-        }
+        if (step === "signed_in") signedIn = true;
         if (!outcome && reached[step] === null) reached[step] = deps.now();
         if (step === "signed_in") track(offerLeftover());
         if (launch?.fromMain && measuring && !outcome) {
@@ -579,23 +562,15 @@ export function createStartupDiagnostics(deps: StartupDiagnosticsDeps): StartupD
 
 // ── App wiring ─────────────────────────────────────────────────────────────
 
-async function sendStartupReport(
-  report: DesktopStartupReport,
-  target: StartupReportTarget,
-): Promise<StartupSendOutcome> {
-  const settings = readDenSettings();
-  const token = settings.authToken?.trim() ?? "";
-  // Only the session of the Den the launch belongs to may send it.
-  if (!token || !sameDenBaseUrl(settings.baseUrl, target.denBaseUrl)) return "retry";
-  const status = await createDenClient({ baseUrl: settings.baseUrl, token })
-    .reportDesktopStartup(report, { organizationId: target.organizationId, timeoutMs: STARTUP_SEND_TIMEOUT_MS });
-  return startupSendOutcomeForStatus(status);
+/** Get3W has no startup-report endpoint, so finished reports are dropped instead of retried. */
+async function sendStartupReport(): Promise<StartupSendOutcome> {
+  return "drop";
 }
 
 async function readAppVersion(): Promise<string | null> {
   const build = await appBuildInfo().catch(() => null);
   const version = build?.version?.trim()
-    || String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim()
+    || String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim()
     || (typeof window === "undefined" ? "" : window.__OPENWORK_ELECTRON__?.meta?.version?.trim() ?? "");
   return version || null;
 }
@@ -632,8 +607,8 @@ export function noteStartupDenSession(session: StartupDenSession | null): void {
   startupDiagnostics().denSession(session);
 }
 
-export function markStartupStep(step: StartupRendererStep, context?: { organizationId?: string | null }): void {
-  startupDiagnostics().markStep(step, context);
+export function markStartupStep(step: StartupRendererStep): void {
+  startupDiagnostics().markStep(step);
 }
 
 export function failStartup(step: DesktopStartupStep, reason: DesktopStartupFailureReason): void {

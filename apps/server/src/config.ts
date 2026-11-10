@@ -245,7 +245,7 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
   const fileConfig = await loadFileConfig(configPath);
   const configDir = dirname(configPath);
 
-  const envWorkspaces = parseList(process.env.OPENWORK_WORKSPACES);
+  const envWorkspaces = parseList(process.env.GET3W_WORKSPACES);
   let workspaceConfigs: WorkspaceConfig[] =
     cli.workspaces.length > 0
       ? cli.workspaces.map((path) => ({ path }))
@@ -253,10 +253,10 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
         ? envWorkspaces.map((path) => ({ path }))
         : fileConfig.workspaces ?? [];
 
-  const envOpencodeBaseUrl = process.env.OPENWORK_OPENCODE_BASE_URL;
-  const envOpencodeDirectory = process.env.OPENWORK_OPENCODE_DIRECTORY;
-  const envOpencodeUsername = process.env.OPENWORK_OPENCODE_USERNAME;
-  const envOpencodePassword = process.env.OPENWORK_OPENCODE_PASSWORD;
+  const envOpencodeBaseUrl = process.env.GET3W_OPENCODE_BASE_URL;
+  const envOpencodeDirectory = process.env.GET3W_OPENCODE_DIRECTORY;
+  const envOpencodeUsername = process.env.GET3W_OPENCODE_USERNAME;
+  const envOpencodePassword = process.env.GET3W_OPENCODE_PASSWORD;
   const opencodeBaseUrl = cli.opencodeBaseUrl ?? envOpencodeBaseUrl ?? fileConfig.opencodeBaseUrl;
   const opencodeDirectory = cli.opencodeDirectory ?? envOpencodeDirectory ?? fileConfig.opencodeDirectory;
   const opencodeUsername = cli.opencodeUsername ?? envOpencodeUsername ?? fileConfig.opencodeUsername;
@@ -279,8 +279,8 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
 
   const workspaces = buildWorkspaceInfos(workspaceConfigs, configDir);
 
-  const tokenFromEnv = process.env.OPENWORK_TOKEN;
-  const hostTokenFromEnv = process.env.OPENWORK_HOST_TOKEN;
+  const tokenFromEnv = process.env.GET3W_TOKEN;
+  const hostTokenFromEnv = process.env.GET3W_HOST_TOKEN;
 
   const token = cli.token ?? tokenFromEnv ?? fileConfig.token ?? shortId();
   const hostToken = cli.hostToken ?? hostTokenFromEnv ?? fileConfig.hostToken ?? shortId();
@@ -303,13 +303,13 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
 
   const approvalMode =
     cli.approvalMode ??
-    (process.env.OPENWORK_APPROVAL_MODE as ApprovalMode | undefined) ??
+    (process.env.GET3W_APPROVAL_MODE as ApprovalMode | undefined) ??
     fileConfig.approval?.mode ??
     "manual";
 
   const approvalTimeoutMs =
     cli.approvalTimeoutMs ??
-    (process.env.OPENWORK_APPROVAL_TIMEOUT_MS ? Number(process.env.OPENWORK_APPROVAL_TIMEOUT_MS) : undefined) ??
+    (process.env.GET3W_APPROVAL_TIMEOUT_MS ? Number(process.env.GET3W_APPROVAL_TIMEOUT_MS) : undefined) ??
     fileConfig.approval?.timeoutMs ??
     DEFAULT_TIMEOUT_MS;
 
@@ -318,28 +318,28 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
     timeoutMs: Number.isNaN(approvalTimeoutMs) ? DEFAULT_TIMEOUT_MS : approvalTimeoutMs,
   };
 
-  const envCorsOrigins = process.env.OPENWORK_CORS_ORIGINS;
+  const envCorsOrigins = process.env.GET3W_CORS_ORIGINS;
   const parsedEnvCors = envCorsOrigins ? parseList(envCorsOrigins) : null;
   const corsOrigins = cli.corsOrigins ?? parsedEnvCors ?? fileConfig.corsOrigins ?? ["*"];
   // `web` serves the signed-in UI, so it answers only loopback, IP and configured host names.
-  const envAllowedHosts = process.env.OPENWORK_ALLOWED_HOSTS;
+  const envAllowedHosts = process.env.GET3W_ALLOWED_HOSTS;
   const parsedEnvAllowedHosts = envAllowedHosts ? parseList(envAllowedHosts) : null;
   const allowedHosts = cli.allowedHosts ?? parsedEnvAllowedHosts ?? fileConfig.allowedHosts ?? (cli.web ? [] : undefined);
 
-  const envReadOnly = process.env.OPENWORK_READONLY;
+  const envReadOnly = process.env.GET3W_READONLY;
   const parsedReadOnly = envReadOnly
     ? ["true", "1", "yes"].includes(envReadOnly.toLowerCase())
     : undefined;
   const readOnly = cli.readOnly ?? parsedReadOnly ?? fileConfig.readOnly ?? false;
 
-  const envLogFormat = process.env.OPENWORK_LOG_FORMAT;
+  const envLogFormat = process.env.GET3W_LOG_FORMAT;
   const logFormat =
     cli.logFormat ??
     normalizeLogFormat(envLogFormat) ??
     normalizeLogFormat(fileConfig.logFormat) ??
     DEFAULT_LOG_FORMAT;
 
-  const envLogRequests = parseBoolean(process.env.OPENWORK_LOG_REQUESTS);
+  const envLogRequests = parseBoolean(process.env.GET3W_LOG_REQUESTS);
   const logRequests = cli.logRequests ?? envLogRequests ?? fileConfig.logRequests ?? DEFAULT_LOG_REQUESTS;
 
   const authorizedRoots =
@@ -347,8 +347,8 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
       ? fileConfig.authorizedRoots.map((root) => resolve(configDir, root))
       : workspaces.map((workspace) => workspace.path);
 
-  const host = cli.host ?? process.env.OPENWORK_HOST ?? fileConfig.host ?? DEFAULT_HOST;
-  const port = cli.port ?? (process.env.OPENWORK_PORT ? Number(process.env.OPENWORK_PORT) : undefined) ?? fileConfig.port ?? DEFAULT_PORT;
+  const host = cli.host ?? process.env.GET3W_HOST ?? fileConfig.host ?? DEFAULT_HOST;
+  const port = cli.port ?? (process.env.GET3W_PORT ? Number(process.env.GET3W_PORT) : undefined) ?? fileConfig.port ?? DEFAULT_PORT;
 
   return {
     host,
@@ -374,7 +374,7 @@ export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
     hostTokenSource,
     logFormat,
     logRequests,
-    ...(process.env.OPENWORK_FRESH_INSTALL_ENGINE === "v2" ? { freshInstallEngine: "v2" } : {}),
-    engineAutoUpgrade: process.env.OPENWORK_ENGINE_AUTO_UPGRADE !== "0",
+    ...(process.env.GET3W_FRESH_INSTALL_ENGINE === "v2" ? { freshInstallEngine: "v2" } : {}),
+    engineAutoUpgrade: process.env.GET3W_ENGINE_AUTO_UPGRADE !== "0",
   };
 }

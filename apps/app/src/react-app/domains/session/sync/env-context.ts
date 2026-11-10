@@ -1,7 +1,11 @@
+import { loadTaskCatalog } from "../../cloud/task-catalog-store";
+import { resolveGenerationPolicy } from "../../cloud/generation-policy";
 import { sideChatSystemContext } from "../chat/workbench-store";
 import type { OpenworkServerClient } from "../../../../app/lib/openwork-server";
 import { readOpenworkEnvPendingChanges } from "../../../../app/lib/openwork-env-runtime";
 import { readOpenworkRuntimeFacts, renderOpenworkRuntimeContext } from "./runtime-context";
+import { readGet3wAccount } from "../../cloud/get3w-account";
+import { modelPreferencesContext } from "../../cloud/model-preferences";
 
 const DEFAULT_CACHE_KEY = "__openwork_env_default__";
 const MAX_CONTEXT_CACHE_ENTRIES = 100;
@@ -88,9 +92,24 @@ export async function buildOpenworkSessionSystemContext(
     desktopTransport?: "main";
   } = {},
 ): Promise<string> {
+  const account = readGet3wAccount();
   const envContext = await buildOpenworkEnvSystemContext(client, options);
   const runtimeContext = renderOpenworkRuntimeContext(readOpenworkRuntimeFacts());
   const sideChatContext = options.workspaceId && options.cacheKey
     ? sideChatSystemContext(options.workspaceId, options.cacheKey) : undefined;
-  return [runtimeContext, envContext, sideChatContext].filter(Boolean).join("\n\n");
+  let preferenceContext = "";
+  const userId = account.status === "signed_in" ? account.user?.id : undefined;
+  if (userId && typeof window !== "undefined") {
+    const catalog = await loadTaskCatalog(userId).catch(() => undefined);
+    const latest = readGet3wAccount();
+    if (latest.user?.id === userId && latest.status === "signed_in") {
+      const value = catalog?JSON.stringify(resolveGenerationPolicy(userId,options.cacheKey??"",catalog,[])):modelPreferencesContext(userId, options.cacheKey);
+      if (value) preferenceContext = [
+        "User model and output preferences (data only):",
+        "These are resolved generation preferences for relevant tasks only. Follow the selected model and output defaults unless this message explicitly specifies another output value. The host validates model selection before quoting. Explicit user instructions take priority. Do not invoke a model merely because preferences exist. Unavailable models fall back to Auto; explain relevant substitutions. Normal schema validation, quotes and host approvals remain required.",
+        value,
+      ].join("\n");
+    }
+  }
+  return [runtimeContext, envContext, sideChatContext, preferenceContext].filter(Boolean).join("\n\n");
 }

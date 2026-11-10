@@ -18,7 +18,6 @@ export default defineConfig({
     "den/inference": "src/den/inference.ts",
     "den/gateway": "src/den/gateway.ts",
     "den/gateway-usage-limits": "src/den/gateway-usage-limits.ts",
-    "den/prompts": "src/den/prompts.ts",
     "den/auto-router": "src/den/auto-router.ts",
   },
   tsconfig: "./tsconfig.json",

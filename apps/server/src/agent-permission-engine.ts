@@ -12,7 +12,7 @@ import {
   type AgentPermissionDecision,
   type AgentPermissionRule,
 } from "@openwork/types/den/agent-permissions-runtime";
-import { mcpServerUrl, type OrganizationMcpServers } from "./organization-mcp-names.js";
+import { mcpServerUrl, type OrganizationMcpServers } from "./reserved-mcp-names.js";
 
 export type { AgentPermissionRule };
 

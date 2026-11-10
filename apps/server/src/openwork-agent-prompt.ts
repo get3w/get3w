@@ -7,4 +7,3 @@ Never claim organization services, cloud automations or remote tasks are availab
 Do not disclose credentials or send local data to external services without authorization.
 Use native session queries for conversation history and native browser tools for browser work.
 Keep technical details out of user flows unless they help the user decide.`;
-export function appendOrganizationPrompts(prompt: string, _organizationPrompts: string | undefined) { return prompt; }

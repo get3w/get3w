@@ -30,8 +30,7 @@ import { isDesktopRuntime } from "@/app/utils";
 import { compareProviders } from "@/app/utils/providers";
 import { Button } from "@/components/ui/button";
 import { ProviderIcon } from "../../../design-system/provider-icon";
-import { OrganizationMark, ProviderSectionLabel, ProviderStatus, ProviderTile } from "../../settings/pages/provider-rows";
-import { autoProviderSubtitle } from "../../models/model-catalog";
+import { ProviderSectionLabel, ProviderStatus, ProviderTile } from "../../settings/pages/provider-rows";
 import { showsRetiredOpencodeZen } from "@/app/cloud/desktop-app-restrictions";
 import type { SecretFieldHandle } from "@/components/secret-field";
 import { SecretTextInput } from "../../../design-system/secret-text-input";
@@ -86,10 +85,6 @@ export type ProviderAuthModalProps = {
     code?: string,
   ) => Promise<{ connected: boolean; pending?: boolean; message?: string }>;
   onRefreshProviders?: () => Promise<unknown>;
-  openWorkModelsState?: "included" | "off" | "unavailable";
-  organizationName?: string;
-  organizationProviderIds?: ReadonlySet<string>;
-  organizationProviderCount?: number;
   onOpenDen?: () => void;
   onClose: () => void;
 };
@@ -211,7 +206,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
       })
       .sort(compareProviders);
 
-    return nextEntries.filter((entry) => entry.id !== OPENWORK_MODELS_PROVIDER_ID && entry.id !== "openwork-free");
+    return nextEntries.filter((entry) => entry.id !== OPENWORK_MODELS_PROVIDER_ID);
   }, [props.authMethods, props.connectedProviderIds, props.gatewayProviderIds, props.keylessProviderIds, props.providers]);
 
   const selectedEntry = useMemo(
@@ -680,8 +675,8 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
   };
 
   const searchText = searchQuery.trim().toLowerCase();
-  const showIncludedAuto = Boolean(props.openWorkModelsState || props.connectedProviderIds.includes("openwork-free"))
-    && (!searchText || "openwork models auto free".includes(searchText));
+  const showIncludedAuto = props.connectedProviderIds.includes("get3w-account")
+    && (!searchText || "get3w models".includes(searchText));
   const showRetiredZen = showsRetiredOpencodeZen({ providerIds: entries.map((entry) => entry.id), query: searchText });
 
   const entrySubtitle = (entry: ProviderAuthEntry) => {
@@ -690,7 +685,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
     const apiKey = entry.methods.some((method) => method.type === "api");
     const signIn = isOpenAiProvider(entry.id, entry.name) ? t("ui.f6de648021fd") : isAnthropicProvider(entry.id, entry.name) ? t("ui.e3de59560d4e") : t("ui.bfd402b2f6f3");
     const how = oauth && apiKey ? `${signIn} or paste an API key` : oauth ? `${signIn} in the browser` : t("ui.494b247e810a");
-    return props.organizationProviderIds?.has(entry.id) ? `${how} · also available from ${props.organizationName || "your organization"}` : how;
+    return how;
   };
 
   const renderEntry = (entry: ProviderAuthEntry, index: number) => {
@@ -738,7 +733,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
         <DialogHeader className="pr-8">
           <DialogTitle ref={titleRef} tabIndex={-1}>{t("ui.a002b3f35f99")}</DialogTitle>
           <DialogDescription className="text-pretty">
-            {t("ui.92857b5c84d3")}{props.organizationName ? ` Providers from ${props.organizationName} are already included and managed in Den.` : ""}
+            {t("ui.92857b5c84d3")}
           </DialogDescription>
         </DialogHeader>
 
@@ -785,11 +780,8 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
                           <ProviderTile providerId="openwork" size="sm" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-dls-text">{t("ui.5246148b3097")}</div>
-                            <div className="line-clamp-2 text-xs text-muted-foreground">{autoProviderSubtitle()}</div>
+                            <div className="line-clamp-2 text-xs text-muted-foreground">{t("models.account_provider_subtitle")}</div>
                           </div>
-                          {props.openWorkModelsState === "off" || props.openWorkModelsState === "unavailable" ? (
-                            <ProviderStatus tone="neutral">{props.openWorkModelsState === "off" ? t("ui.462e3498d66f") : t("ui.ca1844969742")}</ProviderStatus>
-                          ) : null}
                         </div>
                       ) : null}
                       {filteredEntries.slice(0, connectedCount).map((entry, index) => renderEntry(entry, index))}
@@ -1040,13 +1032,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
 
         {resolvedView === "list" ? (
           <DialogFooter className="shrink-0 flex-row items-center justify-between gap-3 sm:flex-row sm:justify-between">
-            {props.organizationProviderCount !== undefined ? (
-              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                {props.organizationName ? <OrganizationMark name={props.organizationName} size="sm" /> : null}
-                <span className="truncate" title={`${props.organizationProviderCount === 1 ? t("ui.384ae4ab1a28") : `${props.organizationProviderCount} providers`} already included by ${props.organizationName || "your organization"}`}>{props.organizationProviderCount} {t("ui.70f3ba4eda29")} {props.organizationName || t("ui.bb0bdf0a41b5")}</span>
-                {props.onOpenDen ? <><span aria-hidden>·</span><button type="button" className="shrink-0 font-medium text-dls-text underline-offset-2 hover:underline" onClick={props.onOpenDen}>{t("ui.028506de3228")}</button></> : null}
-              </div>
-            ) : <span className="text-xs text-muted-foreground">{props.submitting ? submittingLabel() : t("ui.ef40d6cb89da")}</span>}
+            <span className="text-xs text-muted-foreground">{props.submitting ? submittingLabel() : t("ui.ef40d6cb89da")}</span>
             <div className="hidden shrink-0 items-center gap-1 sm:flex" aria-hidden>
               {["↑↓", "↵", "esc"].map((key) => <kbd key={key} className="rounded-md border border-dls-border bg-dls-surface px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground">{key}</kbd>)}
             </div>

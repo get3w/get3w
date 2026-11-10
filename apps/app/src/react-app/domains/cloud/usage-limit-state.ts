@@ -97,8 +97,7 @@ export function openWorkModelsLimitCopy(limit: OpenWorkModelsLimit, workspaceNam
   };
 }
 
-export type UsageLimitKind = "free_auto" | "models_allowance";
-export type UsageLimitActionId = "sign_in" | "get_models" | "add_team_provider" | "upgrade_plan" | "ask_admin" | "use_another_model";
+export type UsageLimitActionId = "add_team_provider" | "upgrade_plan" | "ask_admin" | "use_another_model";
 export type UsageLimitAction = {
   id: UsageLimitActionId;
   label: string;
@@ -124,20 +123,7 @@ const useAnotherModel: UsageLimitAction = { id: "use_another_model", get label()
  * One primary action for the person's role, always a paid path for someone who can buy, and always a way to keep
  * working. The order is fixed: primary, secondary, tertiary.
  */
-export function usageLimitActions(kind: UsageLimitKind, viewer: UsageLimitViewer): UsageLimitAction[] {
-  if (kind === "free_auto") {
-    if (!viewer.signedIn) {
-      return [
-        { id: "sign_in", label: t("ui.c82384beef47"), emphasis: "primary" },
-        ...(viewer.modelsOffered ? [{ id: "get_models", label: t("ui.f913981c254a"), emphasis: "secondary" } satisfies UsageLimitAction] : []),
-        useAnotherModel,
-      ];
-    }
-    if (!viewer.modelsOffered) return [{ ...useAnotherModel, emphasis: "primary" }];
-    return viewer.canBuy
-      ? [{ id: "get_models", label: t("ui.f913981c254a"), emphasis: "primary" }, useAnotherModel]
-      : [{ id: "ask_admin", label: t("ui.a6b865d6887c"), emphasis: "primary", lockedReason: "Only owners and admins can get Get3W Models" }, useAnotherModel];
-  }
+export function usageLimitActions(viewer: UsageLimitViewer): UsageLimitAction[] {
   if (!viewer.canBuy) {
     return [{ id: "ask_admin", label: t("ui.bcbf8191425a"), emphasis: "primary", lockedReason: "Owners and admins can add a team provider or upgrade the plan" }, useAnotherModel];
   }

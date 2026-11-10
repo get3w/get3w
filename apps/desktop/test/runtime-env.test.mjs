@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isReservedUserEnvKey, mergeSystemCaChildEnv, reconcileInjectedUserEnv } from "../electron/runtime.mjs";
+import { applyEmbeddedServerEnv, isReservedUserEnvKey, mergeSystemCaChildEnv, reconcileInjectedUserEnv } from "../electron/runtime.mjs";
+
+test("embedded macOS server preserves native HOME and keeps engine stores isolated on restart", () => {
+  const env = { HOME: "/Users/test" };
+  const child = { HOME: "/isolated/home", XDG_CONFIG_HOME: "/isolated/config", OPENCODE_TEST_HOME: "/isolated/home" };
+  applyEmbeddedServerEnv(env, child, "darwin");
+  applyEmbeddedServerEnv(env, child, "darwin");
+  assert.deepEqual(env, { ...child, HOME: "/Users/test" });
+  assert.equal(child.HOME, "/isolated/home");
+  const absent = {};
+  applyEmbeddedServerEnv(absent, child, "darwin");
+  assert.equal(Object.hasOwn(absent, "HOME"), false);
+  const linux = { HOME: "/home/test" };
+  applyEmbeddedServerEnv(linux, child, "linux");
+  assert.deepEqual(linux, child);
+});
 
 const gitPath = "C:\\Program Files\\Git\\cmd;C:\\Windows\\System32";
 
@@ -50,7 +65,7 @@ test("on Windows a child environment has one entry per name", () => {
 
 test("on Windows reserved Get3W and OpenCode names cannot be saved in another case", () => {
   assert.equal(isReservedUserEnvKey("opencode_config", "win32"), true);
-  assert.equal(isReservedUserEnvKey("OpenWork_Server_Token", "win32"), true);
+  assert.equal(isReservedUserEnvKey("get3w_Server_Token", "win32"), true);
   assert.equal(isReservedUserEnvKey("OPENCODE_CONFIG", "darwin"), true);
   assert.equal(isReservedUserEnvKey("opencode_config", "darwin"), false);
   assert.equal(isReservedUserEnvKey("ANTHROPIC_API_KEY", "win32"), false);

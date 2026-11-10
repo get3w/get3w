@@ -25,6 +25,7 @@ async function fixture() {
       return Response.json(approved ? {status:"authorized",access_token:"access-secret",refresh_token:"refresh-secret",expires_in:600} : {status:"pending"});
     }
     if (op === "refresh") { refreshes++; return revoked ? Response.json({}, {status:401}) : Response.json({access_token:"new-access",refresh_token:"new-refresh",expires_in:600}); }
+    if (op === "capabilities") return Response.json({contract_version:"personal-account-v1"});
     if (op === "me") return revoked ? Response.json({}, {status:401}) : Response.json({user:{id:"u",name:"Test"}});
     return Response.json({ok:true});
   }};
@@ -36,6 +37,16 @@ async function fixture() {
     if ("time" in values) time=values.time;
   }, refreshes:()=>refreshes, cleanup:()=>rm(userData,{recursive:true,force:true}) };
 }
+
+test("a server missing desktop auth reports HTTP 404 before opening a browser", async () => {
+  const h = await fixture();
+  try {
+    const auth = createGet3wAuth({ ...h.deps, fetchImpl: async () => Response.json({ message: "private server details" }, { status: 404 }) });
+    await assert.rejects(auth.begin(), /desktop account endpoint \(HTTP 404\)/);
+    assert.equal(h.urls.length, 0);
+    assert.equal((await readdir(h.userData)).length, 0);
+  } finally { await h.cleanup(); }
+});
 
 test("PKCE stays in main, ciphertext persists, restart and concurrent refresh serialize, logout revokes", async()=>{
   const h=await fixture();
@@ -50,7 +61,7 @@ test("PKCE stays in main, ciphertext persists, restart and concurrent refresh se
     const result=await auth.poll();
     assert.equal(result.user.id,"u");
     assert.ok(!JSON.stringify(result).includes("secret"));
-    const data=await readFile(path.join(h.userData,"openwork-session.enc"));
+    const data=await readFile(path.join(h.userData,"get3w-session.enc"));
     assert.ok(!data.toString().includes("refresh-secret"));
     h.set({time:600_001});
     const restarted=createGet3wAuth(h.deps);
@@ -82,7 +93,7 @@ test("offline retains session, revoked clears it, secure-storage failure never f
 test("cancel and expiry cannot promote a late response; untrusted service origins rejected",async()=>{
   const h=await fixture();
   try {
-    assert.throws(()=>createGet3wAuth({...h.deps,apiBase:"http://evil.invalid"}),/origin/);
+    assert.throws(()=>createGet3wAuth({...h.deps,cloudBase:"http://evil.invalid"}),/origin/);
     const auth=createGet3wAuth(h.deps);await auth.begin();await auth.cancel();
     h.set({approved:true});assert.equal((await auth.poll()).status,"signed_out");
     await auth.begin();h.set({time:301_000});
@@ -92,17 +103,16 @@ test("cancel and expiry cannot promote a late response; untrusted service origin
 });
 
 
-test("switching accounts clears identity; keychain restoration can retry", async()=>{
+test("stale keychain sessions are cleared quietly and require a new sign-in", async()=>{
   const h=await fixture();
   try {
     const first=createGet3wAuth(h.deps);
     h.set({approved:true}); await first.begin(); await first.poll();
     h.set({available:false});
     const restarted=createGet3wAuth(h.deps);
-    assert.equal((await restarted.status()).status,"unavailable");
+    assert.equal((await restarted.status()).status,"signed_out");
     h.set({available:true});
-    assert.equal((await restarted.status()).user.id,"u");
-    assert.equal((await restarted.logout()).user,null);
+    assert.equal((await restarted.status()).status,"signed_out");
     const second=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
       if(url.endsWith("/me")) return Response.json({user:{id:"other",name:"Other test"}});
       return h.deps.fetchImpl(url,options);
@@ -154,43 +164,6 @@ test("settings require current native identity, reject secrets, refresh and surf
   }finally {await h.cleanup();}
 });
 
-test("organization selection checks live membership, role changes and logout",async()=>{
-  const h=await fixture();let role='admin',exists=true;
-  try {
-    const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
-      if(url.endsWith('/organizations'))return Response.json({organizations:exists?[{organization_id:'org',name:'Test',role}]:[]});
-      if(url.endsWith('/members'))return role==='admin'?Response.json({organization_id:"org",members:[]}):Response.json({}, {status:403});
-      return h.deps.fetchImpl(url,options);
-    }});
-    h.set({approved:true});await auth.begin();await auth.poll();
-    await assert.rejects(auth.organizations({userId:'other'}),/Account changed/);
-    assert.equal((await auth.organizations({userId:'u',organizationId:'org'})).selectedOrganization.role,'admin');
-    assert.deepEqual((await auth.members({userId:'u'})).members,[]);
-    role='viewer';assert.equal((await auth.organizations({userId:'u'})).selectedOrganization,null);
-    exists=false;await assert.rejects(auth.organizations({userId:'u',organizationId:'org'}),/access changed/);
-    await auth.logout();assert.equal((await auth.status()).organization,null);
-  }finally{await h.cleanup();}
-});
-
-test("organization payloads are projected and member reads reject changed permissions",async()=>{
-  const h=await fixture();let payload={organizations:[{organization_id:'org',name:'Test',role:'admin',secret:'private'}]};
-  try {
-    const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
-      if(url.endsWith('/organizations'))return Response.json(payload);
-      if(url.endsWith('/members'))throw Error('must not execute after downgrade');
-      return h.deps.fetchImpl(url,options);
-    }});
-    h.set({approved:true});await auth.begin();await auth.poll();
-    const value=await auth.organizations({userId:'u',organizationId:'org'});
-    assert.ok(!JSON.stringify(value).includes('private'));
-    payload.organizations[0].role='viewer';
-    await assert.rejects(auth.members({userId:'u'}),/access changed/);
-    payload={organizations:[{organization_id:'org',name:'Test',role:'invalid'}]};
-    await assert.rejects(auth.organizations({userId:'u'}),/Invalid organization/);
-    assert.equal((await auth.status()).organization,null);
-  }finally{await h.cleanup();}
-});
-
 test("balance checks account identity and preserves exact values without forwarding extra fields",async()=>{
   const h=await fixture();let amount='123.456789',calls=0;
   try {
@@ -212,7 +185,7 @@ test("model discovery stays on native endpoint and exposes only catalog metadata
   try {
     const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
       if(url.endsWith('/models')) {
-        assert.equal(new URL(url).pathname,'/desktop/v1/inference/models');
+        assert.equal(new URL(url).pathname,'/v1/inference/models');
         assert.equal(options.headers.Authorization,'Bearer access-secret');calls++;
         return Response.json({object:'list',data:[{id:'qwen3.6-flash',owned_by:'alibaba',protocols:[invalid?'unknown':'openai'],secret:'private'}]});
       }
@@ -221,7 +194,7 @@ test("model discovery stays on native endpoint and exposes only catalog metadata
     await assert.rejects(auth.models({userId:'u'}),/Sign in/);
     h.set({approved:true});await auth.begin();await auth.poll();
     await assert.rejects(auth.models({userId:'other'}),/current/);assert.equal(calls,0);
-    assert.deepEqual(await auth.models({userId:'u'}),{models:[{id:'qwen3.6-flash',owned_by:'alibaba',protocols:['openai']}]});
+    assert.deepEqual(await auth.models({userId:'u'}),{models:[{id:'qwen3.6-flash',owned_by:'alibaba',protocols:['openai'],input_modalities:['text']}]});
     invalid=true;await assert.rejects(auth.models({userId:'u'}),/verified/);
     await auth.logout();await assert.rejects(auth.models({userId:'u'}),/Sign in/);
   }finally{await h.cleanup();}
@@ -234,7 +207,7 @@ test("main-only inference is scoped, never retries completions, and aborts on lo
       if(url.endsWith('/chat/completions')) {
         calls++;signal=options.signal;
         assert.equal(options.headers.Authorization,'Bearer access-secret');
-        assert.equal(new URL(url).pathname,'/desktop/v1/inference/chat/completions');
+        assert.equal(new URL(url).pathname,'/v1/inference/chat/completions');
         return new Response('quota',{status:402});
       }
       return h.deps.fetchImpl(url,options);
@@ -251,172 +224,152 @@ test("main-only inference is scoped, never retries completions, and aborts on lo
   }finally{await h.cleanup();}
 });
 
-test("member changes bind the visible organization and preserve server role denials",async()=>{
- const h=await fixture();let role='owner',status=200,writes=0;
- try {
-  const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
-   if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'org',name:'Test',role}]});
-   if(options.method==='PATCH'){writes++;return Response.json({ok:status===200},{status});}
-   return h.deps.fetchImpl(url,options);
-  }});
-  h.set({approved:true});await auth.begin();await auth.poll();
-  await auth.organizations({userId:'u',organizationId:'org'});
-  const input={userId:'u',organizationId:'org',memberId:'member',role:'viewer',active:true};
-  await assert.rejects(auth.updateMember({...input,organizationId:'other'}),/Organization changed/);assert.equal(writes,0);
-  status=409;await assert.rejects(auth.updateMember(input),/at least one/);
-  status=403;await assert.rejects(auth.updateMember(input),/does not allow/);
-  role='viewer';await assert.rejects(auth.updateMember(input),/access changed/);assert.equal(writes,2);
- }finally{await h.cleanup();}
-});
-
-test("main-only MCP binds identity and selected organization, filters headers and aborts on change",async()=>{
- const h=await fixture();let org='a',options,calls=0;
+test("main-only MCP binds identity, filters headers and aborts on logout",async()=>{
+ const h=await fixture();let options,calls=0;
  const original=h.deps.fetchImpl;
- h.deps.gatewayBase='http://127.0.0.1:6605';
+ h.deps.cloudBase='http://127.0.0.1:6605';
  h.deps.fetchImpl=async(url,input)=>{
-  if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:org,name:'Test',role:'member'}]});
-  if(url.endsWith('/desktop-gateway/mcp')){calls++;options=input;assert.equal(url,'http://127.0.0.1:6605/desktop-gateway/mcp');return Response.json({ok:true});}
+  if(url.endsWith('/v1/gateway/mcp')){calls++;options=input;assert.equal(url,'http://127.0.0.1:6605/v1/gateway/mcp');return Response.json({ok:true});}
   return original(url,input);
  };
  try {
   h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();
-  await assert.rejects(auth.mcp({userId:'u',organizationId:'a',method:'POST'}),/Select/);
-  await auth.organizations({userId:'u',organizationId:'a'});
-  const response=await auth.mcp({userId:'u',organizationId:'a',method:'POST',body:Buffer.from('{}'),headers:{authorization:'evil','x-openwork-organization':'evil',accept:'application/json, text/event-stream','mcp-protocol-version':'2025-03-26'}});
+  const response=await auth.mcp({userId:'u',sessionId:'host-session-123456',method:'POST',body:Buffer.from('{}'),headers:{authorization:'evil','x-openwork-organization':'evil','x-get3w-session-id':'agent-forged','accept':'application/json, text/event-stream','mcp-protocol-version':'2025-03-26'}});
   assert.equal(options.headers.Authorization,'Bearer access-secret');
-  assert.equal(options.headers['X-Get3W-Organization'],'a');assert.equal(options.headers.authorization,undefined);
+  assert.equal(options.headers['X-Get3W-Organization'],undefined);assert.equal(options.headers.authorization,undefined);
   assert.equal(options.headers['mcp-protocol-version'],'2025-03-26');assert.equal(options.redirect,'error');
-  await auth.organizations({userId:'u',organizationId:null});assert.equal(options.signal.aborted,true);
+  await auth.logout();assert.equal(options.signal.aborted,true);
   response.release();
-  await assert.rejects(auth.mcp({userId:'wrong',organizationId:'a',method:'POST'}),/account changed/);
+  await assert.rejects(auth.mcp({userId:'wrong',method:'POST'}),/account changed/);
   assert.equal(calls,1);
+  assert.equal(options.headers['X-Get3W-Session-Id'],'host-session-123456');
   assert.ok(!JSON.stringify(await auth.status()).includes('access-secret'));
  }finally{await h.cleanup();}
 });
 
-test('organization creation derives identity in main and selects only a verified response',async()=>{
- const h=await fixture();const original=h.deps.fetchImpl;let created=false,body;
- h.deps.fetchImpl=async(url,input)=>{
-  if(url.endsWith('/organizations')) {
-   if(input.method==='POST'){body=JSON.parse(input.body);created=true;return Response.json({organization_id:'new',name:body.name,role:'owner',token:'must-not-expose'});}
-   return Response.json({organizations:created?[{organization_id:'new',name:'Team',role:'owner'}]:[]});
-  }
-  return original(url,input);
- };
- try {
-  h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();
-  await assert.rejects(auth.createOrganization({userId:'other',name:'Team'}),/Account changed/);
-  await assert.rejects(auth.createOrganization({userId:'u',name:'  '}),/organization name/);
-  const result=await auth.createOrganization({userId:'u',name:' Team ',owner:'other'});
-  assert.deepEqual(body,{name:'Team'});assert.equal(result.selectedOrganization.organization_id,'new');
-  assert.ok(!JSON.stringify(result).includes('must-not-expose'));
- }finally{await h.cleanup();}
-});
-
-test('tool access uses selected admin identity, fixed publication and response allowlists',async()=>{
- const h=await fixture(),original=h.deps.fetchImpl;let role='owner',writes=[],malformed=false;
- h.deps.fetchImpl=async(url,input)=>{
-  if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'a',name:'Test',role}]});
-  if(url.endsWith('/model-catalog')||input.method==='PUT'){writes.push({url,body:JSON.parse(input.body)});return Response.json({ok:true,token:'private'});}
-  if(url.includes('/tool-access/'))return Response.json({organization_id:malformed?'b':'a',member_id:'u',capabilities:[{name:'models',description:'Models',granted:true,token:'private'}],next_cursor:null,token:'private'});
-  return original(url,input);
- };
- try {
-  h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();await auth.organizations({userId:'u',organizationId:'a'});
-  const identity={userId:'u',organizationId:'a'};
-  await assert.rejects(auth.toolAccess({...identity,organizationId:'b',action:'publish'}),/changed/);
-  assert.deepEqual(await auth.toolAccess({...identity,action:'publish',handler:'evil'}),{ok:true});assert.deepEqual(writes[0].body,{});
-  const result=await auth.toolAccess({...identity,action:'read',memberId:'u'});assert.ok(!JSON.stringify(result).includes('private'));
-  await auth.toolAccess({...identity,action:'grant',memberId:'u',capability:'models',enabled:false,actor:'other'});assert.deepEqual(writes[1].body,{enabled:false});
-  malformed=true;await assert.rejects(auth.toolAccess({...identity,action:'read',memberId:'u'}),/Invalid tool/);
-  role='viewer';await assert.rejects(auth.toolAccess({...identity,action:'publish'}),/administrator/);assert.equal(writes.length,2);
- }finally{await h.cleanup();}
-});
-
-for (const provider of ['google','microsoft']) test(`connector ${provider} controls bind identity and reject unsafe authorization URLs`,async()=>{
- const h=await fixture(),original=h.deps.fetchImpl;let role='member',tamper='',calls=0;
- h.deps.gatewayBase='https://api.get3w.com';
- h.deps.fetchImpl=async(url,input)=>{
-  if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'a',name:'Test',role}]});
-  if(url.includes('/connectors/v1/')){
-   calls++;assert.equal(input.headers.Authorization,'Bearer access-secret');assert.equal(input.redirect,'error');
-   if(input.method==='POST') {
-    assert.equal(input.body,'{}');
-    const target=new URL(provider==='google'?'https://accounts.google.com/o/oauth2/v2/auth':'https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize');
-    target.search=new URLSearchParams({client_id:'test',redirect_uri:`https://api.get3w.com/connectors/oauth/${provider}/callback`,response_type:'code',scope:provider==='google'?'openid https://www.googleapis.com/auth/drive.metadata.readonly':'openid offline_access User.Read Files.Read',state:'s'.repeat(43),code_challenge:'c'.repeat(43),code_challenge_method:'S256',...(provider==='google'?{access_type:'offline',prompt:'consent'}:{})}).toString();
-    if(tamper==='origin')target.hostname='evil.invalid';
-    if(tamper==='callback')target.searchParams.set('redirect_uri','https://evil.invalid/callback');
-    if(tamper==='duplicate')target.searchParams.append('client_id','evil');
-    if(tamper==='scope')target.searchParams.set('scope','mail.read');
-    if(tamper==='extra')target.searchParams.set('login_hint','private');
-    return Response.json({authorization_url:target.href,token:'private'});
-   }
-   if(input.method==='DELETE')return Response.json({provider,connected:false,provider_consent_revoked:false,token:'private'});
-   return Response.json({connectors:['google','microsoft'].map(provider=>({provider,configured:true,connected:false,token:'private'}))});
-  }
-  return original(url,input);
- };
- try {
-  h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();await auth.organizations({userId:'u',organizationId:'a'});
-  const identity={userId:'u',organizationId:'a'};
-  await assert.rejects(auth.connectors({...identity,userId:'other',action:'status'}),/changed/);
-  await assert.rejects(auth.connectors({...identity,action:'authorize',provider:'__proto__'}),/Invalid/);
-  assert.equal(calls,0);
-  assert.ok(!JSON.stringify(await auth.connectors({...identity,action:'status'})).includes('private'));
-  assert.deepEqual(await auth.connectors({...identity,action:'authorize',provider}),{ok:true});
-  const opened=h.urls.length;
-  for(tamper of ['origin','callback','duplicate','scope','extra'])await assert.rejects(auth.connectors({...identity,action:'authorize',provider}),/verified connection/);
-  assert.equal(h.urls.length,opened);
-  assert.deepEqual(await auth.connectors({...identity,action:'disconnect',provider}),{ok:true});
-  role='viewer';const before=calls;await assert.rejects(auth.connectors({...identity,action:'status'}),/membership/);assert.equal(calls,before);
- }finally{await h.cleanup();}
-});
-
-test('membership binds recipient/account/organization, projects rows and never forwards actor fields',async()=>{
- const h=await fixture(),original=h.deps.fetchImpl;let role='owner',malformed=false;const writes=[];
- const row={invitation_id:'inv_test',organization_id:'a',recipient_id:'recipient',role:'member',status:'pending',created_at:1000,expires_at:2000,token:'private'};
- h.deps.fetchImpl=async(url,input)=>{
-  if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'a',name:'Test',role}]});
-  if(url.includes('/invitations')||url.endsWith('/leave')||input.method==='DELETE') {
-   if(input.method==='GET')return Response.json({organization_id:'a',invitations:[{...row,recipient_id:url.includes('/organizations/')?'recipient':malformed?'wrong':'u',organization_name:'Test'}],next_cursor:null});
-   writes.push({url,body:input.body?JSON.parse(input.body):null});
-   return Response.json(input.method==='POST'&&url.endsWith('/organizations/a/invitations')?row:{ok:true,token:'private'});
-  }
-  return original(url,input);
- };
- try {
-  h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();
-  assert.ok(!JSON.stringify(await auth.membership({userId:'u',action:'inbox'})).includes('private'));
-  malformed=true;await assert.rejects(auth.membership({userId:'u',action:'inbox'}),/recipient/);malformed=false;
-  await assert.rejects(auth.membership({userId:'other',action:'accept',invitationId:'inv_test'}),/Account changed/);
-  await auth.organizations({userId:'u',organizationId:'a'});const identity={userId:'u',organizationId:'a'};
-  await assert.rejects(auth.membership({...identity,organizationId:'b',action:'invite',recipientId:'recipient',role:'member'}),/Organization changed/);
-  assert.deepEqual(await auth.membership({...identity,action:'invite',recipientId:'recipient',role:'member',actor:'evil'}),{ok:true});
-  assert.deepEqual(writes[0].body,{recipient_id:'recipient',role:'member'});
-  await auth.membership({...identity,action:'accept',invitationId:'inv_test',recipientId:'evil'});assert.deepEqual(writes[1].body,{action:'accept'});
-  role='member';await assert.rejects(auth.membership({...identity,action:'remove',memberId:'someone'}),/administrator|access changed/);
-  await auth.organizations({userId:'u',organizationId:'a'});
-  await auth.membership({...identity,action:'leave'});assert.equal((await auth.status()).organization,null);
- }finally{await h.cleanup();}
-});
-
-test('model usage binds current organization and strips private billing fields',async()=>{
- const h=await fixture();let role='admin',malformed=false;const writes=[];
+test('personal usage rejects limit actions and derives billing identity from bearer',async()=>{
+ const h=await fixture();
  try{
+  h.set({approved:true});
+  const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>url.endsWith('/personal/usage')?Response.json({billing:'personal',items:[],next_cursor:null}):h.deps.fetchImpl(url,options)});
+  await auth.begin();await auth.poll();
+  assert.deepEqual(await auth.modelUsage({userId:'u',action:'read'}),{billing:'personal',items:[],next_cursor:null});
+  await assert.rejects(auth.modelUsage({userId:'u',action:'limit'}),/Invalid personal/);
+ }finally{await h.cleanup();}
+});
+
+test("inference reuses unexpired identity while server revocation remains authoritative",async()=>{
+ const h=await fixture();let identityCalls=0,inferenceCalls=0;
+ try {
   const auth=createGet3wAuth({...h.deps,fetchImpl:async(url,options)=>{
-   if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'a',name:'Quota test',role}]});
-   if(url.includes('/model-limits/')){writes.push(JSON.parse(options.body));return Response.json({ok:true});}
-   if(url.includes('/model-usage'))return Response.json({organization_id:malformed?'foreign':'a',billing:'personal',quota:{unit:'requests',period:'2026-11',organization:{limit:10,used:1,remaining:9},member:{limit:null,used:1,remaining:null}},entries:[{request_id:'r',requested_model:'openwork-auto',actual_model:'qwen3.6-flash',billing_model:null,task_id:'t',created_at:1,status:'completed',charge:null,balance_after:null,secret:'private'}],next_cursor:null,secret:'private'});
+   if(url.endsWith('/me'))identityCalls++;
+   if(url.endsWith('/inference/chat/completions')){inferenceCalls++;return new Response('revoked',{status:401});}
    return h.deps.fetchImpl(url,options);
   }});
-  h.set({approved:true});await auth.begin();await auth.poll();await auth.organizations({userId:'u',organizationId:'a'});
-  const input={userId:'u',organizationId:'a',action:'read'};
-  await assert.rejects(auth.inference({userId:'u',route:'chat/completions',body:'{}'}),/Organization changed/);
-  assert.ok(!JSON.stringify(await auth.modelUsage(input)).includes('private'));
-  h.set({offline:true});await assert.rejects(auth.modelUsage(input),/unavailable/);h.set({offline:false});
-  await assert.rejects(auth.modelUsage({...input,organizationId:'b'}),/changed/);
-  await auth.modelUsage({...input,action:'limit',memberId:'*',limit:10,actor:'spoof'});assert.deepEqual(writes,[{monthly_requests:10}]);
-  malformed=true;await assert.rejects(auth.modelUsage(input),/verified/);
-  role='member';await assert.rejects(auth.modelUsage({...input,action:'limit',memberId:'*',limit:10}),/access changed|Administrator/);
+  h.set({approved:true});await auth.begin();await auth.poll();
+  const before=identityCalls;
+  const result=await auth.inference({userId:'u',route:'chat/completions',body:'{}'});
+  assert.equal(identityCalls,before);assert.equal(inferenceCalls,1);
+  assert.equal(result.response.status,401);result.release();
+ }finally{await h.cleanup();}
+});
+
+test('offline task catalog requires verified personal identity and never makes requests', async()=>{
+ const h=await fixture();
+ let denied=false, calls=0;
+ const fetchImpl=async(url,options)=>{
+  if(url.endsWith('/organizations'))return Response.json({organizations:[{organization_id:'a',name:'A',role:'owner'}]});
+  if(url.endsWith('/personal/models')){
+   calls++;
+   if(denied)return new Response(null,{status:403});
+   return Response.json({catalog_version:'v1',models:[{model_id:'p/m/new',type:'new',category:'other',run_type_title:'New',catalog_version:'v1',api_schema:{}}]}, {headers:{etag:'"v1"'}});
+  }
+  return h.deps.fetchImpl(url,options);
+ };
+ try{
+  h.set({approved:true});const auth=createGet3wAuth({...h.deps,fetchImpl});
+  await assert.rejects(auth.taskCatalog({userId:'u',offline:true}),/Verify/);
+  await auth.begin();await auth.poll();
+
+  await auth.taskCatalog({userId:'u'});
+  h.set({offline:true});const before=h.calls.length;
+  const result=await auth.taskCatalog({userId:'u',offline:true});
+  assert.equal(result.offline,true);assert.equal(result.executionAllowed,false);
+  assert.equal(h.calls.length,before);assert.equal(calls,1);
+  await assert.rejects(auth.taskCatalog({userId:'other',offline:true}),/Verify/);
+  await assert.rejects(auth.taskCatalog({userId:'u',organizationId:'other',offline:true}),/Invalid/);
+  const restarted=createGet3wAuth({...h.deps,fetchImpl});
+  await assert.rejects(restarted.taskCatalog({userId:'u',offline:true}),/Verify/);
+  h.set({offline:false});denied=true;
+  await assert.rejects(auth.taskCatalog({userId:'u',refresh:true}),/unavailable/);
+  await assert.rejects(auth.taskCatalog({userId:'u',offline:true}));
+ }finally{await h.cleanup();}
+});
+
+test('task catalog IPC rejects malformed input before network or cache access', async()=>{
+ const h=await fixture();
+ try{
+  const auth=createGet3wAuth(h.deps);
+  for(const input of [null,[],{}, {userId:'u',organizationId:'a',offline:'true'},
+   {userId:'u',organizationId:'a',token:'injected'}, {userId:'u',organizationId:''}]){
+   await assert.rejects(auth.taskCatalog(input),/Invalid personal model catalog request/);
+  }
+  assert.equal(h.calls.length,0);
+ }finally{await h.cleanup();}
+});
+
+test('artifact bridge keeps native credentials in main and requires a personal identity',async()=>{
+ const h=await fixture();let active=true;const forwarded=[];
+ const fetchImpl=async(url,options)=>{
+  if(url.endsWith('/organizations'))return Response.json({organizations:active?[{organization_id:'a',name:'A',role:'owner'}]:[]});
+  if(url.endsWith('/personal/apps')){forwarded.push({url,options});return Response.json({enabled:true,items:[]});}
+  return h.deps.fetchImpl(url,options);
+ };
+ try{
+  h.set({approved:true});const auth=createGet3wAuth({...h.deps,fetchImpl});
+  await auth.begin();await auth.poll();
+  const input={userId:'u',method:'GET',path:'/v1/apps'};
+  const identityReads = h.calls.filter(call => call.op === 'me').length;
+  assert.deepEqual(await auth.artifacts(input),{ok:true,status:200,json:{enabled:true,items:[]}});
+  assert.equal(h.calls.filter(call => call.op === 'me').length - identityReads, 1);
+  assert.match(forwarded[0].url,/\/v1\/personal\/apps$/);
+  assert.equal(forwarded[0].options.headers.Authorization,'Bearer access-secret');
+  assert.equal(forwarded[0].options.redirect,'error');
+  await assert.rejects(auth.artifacts({...input,userId:'other'}),/changed/);
+  await assert.rejects(auth.artifacts({...input,path:'/v1/me'}),/Invalid/);
+  await auth.logout();await assert.rejects(auth.artifacts(input),/changed/);
+  assert.equal(forwarded.length,1);
+ }finally{await h.cleanup();}
+});
+
+
+test('personal capability outages remain retryable and do not imply a server upgrade', async () => {
+ const h = await fixture();
+ let status = 503, version = 'personal-account-v1';
+ try {
+  h.set({approved:true});
+  const auth = createGet3wAuth({...h.deps, fetchImpl:async (url, options) => {
+   if (url.endsWith('/personal/capabilities')) return Response.json({contract_version:version}, {status});
+   if (url.endsWith('/personal/usage')) return Response.json({billing:'personal',items:[],next_cursor:null});
+   return h.deps.fetchImpl(url, options);
+  }});
+  await auth.begin(); await auth.poll();
+  await assert.rejects(auth.modelUsage({userId:'u',action:'read'}), /service is unavailable. Try again/);
+  status = 401;
+  await assert.rejects(auth.modelUsage({userId:'u',action:'read'}), /Session expired/);
+  status = 200; version = 'unsupported';
+  await assert.rejects(auth.modelUsage({userId:'u',action:'read'}), /Update the Get3W server/);
+  version = 'personal-account-v1';
+  assert.equal((await auth.modelUsage({userId:'u',action:'read'})).billing, 'personal');
+ } finally { await h.cleanup(); }
+});
+
+test("definitive submission conflicts preserve a correction instead of a connection error",async()=>{
+ const h=await fixture();
+ try {
+  const auth=createGet3wAuth({...h.deps,fetchImpl:(url,options)=>url.endsWith('/tasks')
+   ? Promise.resolve(Response.json({error:{code:'idempotency_conflict'}},{status:409})) : h.deps.fetchImpl(url,options)});
+  await auth.begin();h.set({approved:true});await auth.poll();
+  await assert.rejects(auth.submitPersonal({userId:'u',arguments:{slug:'p/m/run',inputs:{},quote_id:'q',idempotency_key:'k',session_id:'session'}}),error=>error.definitive===true && error.code==='idempotency_conflict' && /new key unique/.test(error.message));
  }finally{await h.cleanup();}
 });

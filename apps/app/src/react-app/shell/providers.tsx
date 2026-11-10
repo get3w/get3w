@@ -6,10 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { isWebDeployment } from "@/app/lib/openwork-deployment";
 import { hydrateOpenworkServerSettingsFromEnv } from "@/app/lib/openwork-server";
 import { isDesktopRuntime } from "@/app/utils";
-import { ConnectLinkProvider } from "@/react-app/domains/cloud/connect-link-provider";
 import { DenAuthProvider } from "@/react-app/domains/cloud/den-auth-provider";
-import { AutoRejectedTurnRecoveryBridge } from "@/react-app/domains/cloud/auto-access-ui";
-import { FreeAutoAnalyticsBridge } from "@/react-app/domains/cloud/free-auto-analytics-bridge";
 import { GlobalQueueDrainerBridge } from "@/react-app/domains/session/sync/global-queue-drainer-bridge";
 import { BrandThemeProvider } from "@/react-app/domains/cloud/brand-theme";
 import { DesktopConfigProvider } from "@/react-app/domains/cloud/desktop-config-provider";
@@ -29,8 +26,8 @@ export function resolveDefaultServerUrl(): string {
   if (isDesktopRuntime()) return "http://127.0.0.1:4096";
 
   const openworkUrl =
-    typeof import.meta.env?.VITE_OPENWORK_URL === "string"
-      ? import.meta.env.VITE_OPENWORK_URL.trim()
+    typeof import.meta.env?.VITE_GET3W_URL === "string"
+      ? import.meta.env.VITE_GET3W_URL.trim()
       : "";
   if (openworkUrl) {
     const baseUrl = openworkUrl === "/api/openwork" && typeof window !== "undefined"
@@ -59,14 +56,11 @@ export function DesktopAppProviders({ children }: AppProvidersProps) {
   return (
     <>
       <DesktopRuntimeBoot />
-      <ConnectLinkProvider>
         <DesktopConfigProvider>
           <BrandThemeProvider>
             <RestrictionNoticeProvider>
               <LocalProvider>
                 <GlobalQueueDrainerBridge />
-                <AutoRejectedTurnRecoveryBridge />
-                <FreeAutoAnalyticsBridge />
                 <KeepAwakeBridge />
                 <ReloadCoordinatorProvider>{children}</ReloadCoordinatorProvider>
                 <LinkOpenDialog />
@@ -75,7 +69,6 @@ export function DesktopAppProviders({ children }: AppProvidersProps) {
             </RestrictionNoticeProvider>
           </BrandThemeProvider>
         </DesktopConfigProvider>
-      </ConnectLinkProvider>
     </>
   );
 }

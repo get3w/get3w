@@ -241,7 +241,7 @@ async function startManagedOpencodeServer(
   ]);
   // The managed engine needs its own provider environment, but never the key
   // that decrypts Get3W-owned OAuth credentials, under any Windows spelling.
-  deleteEnv(env, "OPENWORK_ENCRYPTION_KEY");
+  deleteEnv(env, "GET3W_ENCRYPTION_KEY");
   const injectedEnv = Object.entries({
     ...engineEnvDefaults,
     ...(options.env ?? {}),

@@ -34,8 +34,8 @@ function run(command, args, cwd, env) {
 }
 
 function writeSentryBuildConfig() {
-  const dsn = process.env.OPENWORK_DESKTOP_SENTRY_DSN?.trim() ?? "";
-  const tracesSampleRateRaw = process.env.OPENWORK_DESKTOP_SENTRY_TRACES_SAMPLE_RATE?.trim() ?? "";
+  const dsn = process.env.GET3W_DESKTOP_SENTRY_DSN?.trim() ?? "";
+  const tracesSampleRateRaw = process.env.GET3W_DESKTOP_SENTRY_TRACES_SAMPLE_RATE?.trim() ?? "";
   const tracesSampleRate = tracesSampleRateRaw ? Number(tracesSampleRateRaw) : 0.01;
   const config = {
     dsn: dsn || null,
@@ -51,15 +51,12 @@ run(nodeCmd, [resolve(__dirname, "prepare-computer-use-helper.mjs"), "--force", 
 run(nodeCmd, [resolve(__dirname, "prepare-dictation-helper.mjs"), "--outdir", electronHelperDir], desktopRoot);
 // Build before staging: the runtime copy must contain this checkout's ESM.
 run(pnpmCmd, ["--filter", "@openwork/remote-sessions", "build"], repoRoot);
+run(pnpmCmd, ["--filter", "@openwork/headless-threads", "build"], repoRoot);
 run(pnpmCmd, ["--filter", "@openwork/computer-use", "build"], repoRoot);
 // Remote computers for computer use load these lazily from their builds.
 run(pnpmCmd, ["--filter", "@openwork/sandbox", "--filter", "@openwork/sandbox-freestyle", "--filter", "@openwork/sandbox-daytona", "build"], repoRoot);
 run(nodeCmd, [resolve(__dirname, "prepare-runtime-node-modules.mjs"), "--outdir", packagedRuntimeRoot], desktopRoot);
 writeSentryBuildConfig();
-// Records an explicit build-time Auto opt-out, if any.
-run(nodeCmd, [resolve(__dirname, "prepare-desktop-free-release.mjs")], desktopRoot);
-// The packaged server imports @openwork/free-auto, which plain node loads from its dist build.
-run(pnpmCmd, ["--filter", "@openwork/free-auto", "build"], repoRoot);
 // Build the server TS → JS so Electron can import it in-process
 // CI already compiles this exact checkout in the required build job.
 if (!process.argv.includes("--server-built")) {
@@ -68,11 +65,11 @@ if (!process.argv.includes("--server-built")) {
 // Resolve the pinned v1 engine's plugin dependencies at build time. Fresh
 // desktops unpack this install instead of requiring npm access to open a folder.
 run(nodeCmd, [resolve(repoRoot, "apps/server/scripts/build-opencode-plugin-deps.mjs")], repoRoot);
-// OPENWORK_ELECTRON_BUILD tells Vite to emit relative asset paths so
+// GET3W_ELECTRON_BUILD tells Vite to emit relative asset paths so
 // index.html resolves /assets/* correctly when loaded via file:// from
 // inside the packaged .app bundle.
 run(pnpmCmd, ["--filter", "@openwork/app", "build"], repoRoot, {
-  OPENWORK_ELECTRON_BUILD: "1",
+  GET3W_ELECTRON_BUILD: "1",
 });
 // Relocate repository constants for every compiled server module, including v2.
 const serverDistDir = resolve(repoRoot, "apps", "server", "dist");

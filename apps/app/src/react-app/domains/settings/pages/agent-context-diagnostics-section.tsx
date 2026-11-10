@@ -36,7 +36,6 @@ export type DiagnosticsScopeIdentitySignals = {
   denBaseUrl: string;
   denCredential: string;
   denSignedIn: boolean;
-  organizationId: string;
   principalId: string;
 };
 

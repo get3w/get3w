@@ -9,8 +9,8 @@ import { resolveServerConfig } from "../src/config.js";
 
 async function profile(run: (config: ServerConfig, dir: string) => Promise<void>): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), "openwork-auto-upgrade-"));
-  const previous = { OPENWORK_RUNTIME_DB: process.env.OPENWORK_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB };
-  process.env.OPENWORK_RUNTIME_DB = join(dir, "runtime.sqlite");
+  const previous = { GET3W_RUNTIME_DB: process.env.GET3W_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB };
+  process.env.GET3W_RUNTIME_DB = join(dir, "runtime.sqlite");
   process.env.OPENCODE_DB = join(dir, "v1.db");
   const config: ServerConfig = {
     host: "127.0.0.1", port: 0, token: "test", hostToken: "host-test", configPath: join(dir, "server.json"),
@@ -28,18 +28,18 @@ async function profile(run: (config: ServerConfig, dir: string) => Promise<void>
 
 test("server configuration defaults migration on without any rollout flag", async () => {
   await profile(async (_config, dir) => {
-    const previous = process.env.OPENWORK_ENGINE_AUTO_UPGRADE;
+    const previous = process.env.GET3W_ENGINE_AUTO_UPGRADE;
     try {
-      delete process.env.OPENWORK_ENGINE_AUTO_UPGRADE;
+      delete process.env.GET3W_ENGINE_AUTO_UPGRADE;
       const defaults = await resolveServerConfig({ configPath: join(dir, "server.json"), workspaces: [] });
       assert.equal(defaults.engineAutoUpgrade, true);
       assert.equal(defaults.engineForcePolicy, undefined);
-      process.env.OPENWORK_ENGINE_AUTO_UPGRADE = "0";
+      process.env.GET3W_ENGINE_AUTO_UPGRADE = "0";
       const optOut = await resolveServerConfig({ configPath: join(dir, "server.json"), workspaces: [] });
       assert.equal(optOut.engineAutoUpgrade, false);
     } finally {
-      if (previous === undefined) delete process.env.OPENWORK_ENGINE_AUTO_UPGRADE;
-      else process.env.OPENWORK_ENGINE_AUTO_UPGRADE = previous;
+      if (previous === undefined) delete process.env.GET3W_ENGINE_AUTO_UPGRADE;
+      else process.env.GET3W_ENGINE_AUTO_UPGRADE = previous;
     }
   });
 });
@@ -49,10 +49,10 @@ for (const source of ["global-cli", "global-env", "global-file", "workspace-file
     await profile(async (_config, dir) => {
       const configPath = join(dir, "server.json");
       const baseUrl = "http://127.0.0.1:49001";
-      const previous = process.env.OPENWORK_OPENCODE_BASE_URL;
+      const previous = process.env.GET3W_OPENCODE_BASE_URL;
       try {
-        delete process.env.OPENWORK_OPENCODE_BASE_URL;
-        if (source === "global-env") process.env.OPENWORK_OPENCODE_BASE_URL = baseUrl;
+        delete process.env.GET3W_OPENCODE_BASE_URL;
+        if (source === "global-env") process.env.GET3W_OPENCODE_BASE_URL = baseUrl;
         if (source === "global-file") writeFileSync(configPath, JSON.stringify({ opencodeBaseUrl: baseUrl }));
         if (source === "workspace-file") writeFileSync(configPath, JSON.stringify({ workspaces: [{ path: dir, baseUrl }, { path: join(dir, "local") }] }));
         const config = await resolveServerConfig({ configPath,
@@ -81,8 +81,8 @@ for (const source of ["global-cli", "global-env", "global-file", "workspace-file
           assert.equal(existsSync(join(dir, "engine-v2-preview.json")), false, "no automatic engine choice is persisted");
         } finally { await engine.stop(); }
       } finally {
-        if (previous === undefined) delete process.env.OPENWORK_OPENCODE_BASE_URL;
-        else process.env.OPENWORK_OPENCODE_BASE_URL = previous;
+        if (previous === undefined) delete process.env.GET3W_OPENCODE_BASE_URL;
+        else process.env.GET3W_OPENCODE_BASE_URL = previous;
       }
     });
   });
@@ -136,14 +136,14 @@ test("external engine ownership does not overwrite an explicitly saved or pinned
       assert.equal(engine.status().engineOrigin, "manual");
     } finally { await engine.stop(); }
     writeFileSync(join(dir, "engine-v2-preview.json"), JSON.stringify({ enabled: false, chatRouting: false }));
-    const previous = process.env.OPENWORK_ENGINE_V2_PREVIEW;
-    process.env.OPENWORK_ENGINE_V2_PREVIEW = "chat";
+    const previous = process.env.GET3W_ENGINE_V2_PREVIEW;
+    process.env.GET3W_ENGINE_V2_PREVIEW = "chat";
     const pinned = createEngineV2Preview({ config, deferStart: true });
     try { assert.equal(pinned.status().chatRouting, true); }
     finally {
       await pinned.stop();
-      if (previous === undefined) delete process.env.OPENWORK_ENGINE_V2_PREVIEW;
-      else process.env.OPENWORK_ENGINE_V2_PREVIEW = previous;
+      if (previous === undefined) delete process.env.GET3W_ENGINE_V2_PREVIEW;
+      else process.env.GET3W_ENGINE_V2_PREVIEW = previous;
     }
   });
 });
@@ -292,8 +292,8 @@ test("legacy upgrade:true cannot override an explicit local opt-out", async () =
 
 test("an explicit engine environment override prevents automatic migration", async () => {
   await profile(async (config, dir) => {
-    const previous = process.env.OPENWORK_ENGINE_V2_PREVIEW;
-    process.env.OPENWORK_ENGINE_V2_PREVIEW = "0";
+    const previous = process.env.GET3W_ENGINE_V2_PREVIEW;
+    process.env.GET3W_ENGINE_V2_PREVIEW = "0";
     writeFileSync(join(dir, "v1.db"), "not a SQLite database");
     const engine = createEngineV2Preview({ config, autoUpgradeError: () => assert.fail("pinned engine must win") });
     try {
@@ -304,8 +304,8 @@ test("an explicit engine environment override prevents automatic migration", asy
       assert.equal(engine.status().chatRouting, false);
     } finally {
       await engine.stop();
-      if (previous === undefined) delete process.env.OPENWORK_ENGINE_V2_PREVIEW;
-      else process.env.OPENWORK_ENGINE_V2_PREVIEW = previous;
+      if (previous === undefined) delete process.env.GET3W_ENGINE_V2_PREVIEW;
+      else process.env.GET3W_ENGINE_V2_PREVIEW = previous;
     }
   });
 });

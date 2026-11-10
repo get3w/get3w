@@ -43,17 +43,17 @@ test("an updated install with a server config stays on its engine", () => {
   });
 });
 
-test("an explicit OPENWORK_ENGINE_V2_PREVIEW always wins over the new-install default", () => {
+test("an explicit GET3W_ENGINE_V2_PREVIEW always wins over the new-install default", () => {
   withProfile(({ markerPaths }) => {
-    assert.equal(resolveFreshInstallEngine({ markerPaths, env: { OPENWORK_ENGINE_V2_PREVIEW: "0" } }), undefined);
+    assert.equal(resolveFreshInstallEngine({ markerPaths, env: { GET3W_ENGINE_V2_PREVIEW: "0" } }), undefined);
   });
 });
 
 test("new desktop versions move existing v1 installs to v2 in the background unless the engine is pinned", () => {
   assert.equal(resolveDesktopEngineAutoUpgrade({}), true);
   // Test harnesses and support pin an engine explicitly; that keeps today's behavior.
-  assert.equal(resolveDesktopEngineAutoUpgrade({ OPENWORK_ENGINE_V2_PREVIEW: "0" }), undefined);
-  assert.equal(resolveDesktopEngineAutoUpgrade({ OPENWORK_ENGINE_V2_PREVIEW: "1" }), undefined);
-  assert.equal(resolveDesktopEngineAutoUpgrade({ OPENWORK_ENGINE_AUTO_UPGRADE: "0" }), undefined);
-  assert.equal(resolveDesktopEngineAutoUpgrade({ OPENWORK_ENGINE_AUTO_UPGRADE: "1" }), undefined);
+  assert.equal(resolveDesktopEngineAutoUpgrade({ GET3W_ENGINE_V2_PREVIEW: "0" }), undefined);
+  assert.equal(resolveDesktopEngineAutoUpgrade({ GET3W_ENGINE_V2_PREVIEW: "1" }), undefined);
+  assert.equal(resolveDesktopEngineAutoUpgrade({ GET3W_ENGINE_AUTO_UPGRADE: "0" }), undefined);
+  assert.equal(resolveDesktopEngineAutoUpgrade({ GET3W_ENGINE_AUTO_UPGRADE: "1" }), undefined);
 });

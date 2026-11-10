@@ -4,12 +4,7 @@
 // so they're reusable from any React feature site once the updater flow
 // gets wired.
 
-import {
-  createDenClient,
-  readDenSettings,
-  type DenAppVersionMetadata,
-  type DenDesktopConfig,
-} from "./den";
+import { DenApiError, type DenAppVersionMetadata, type DenDesktopConfig } from "./den";
 import type { ReleaseChannel } from "../types";
 
 declare global {
@@ -232,12 +227,8 @@ export async function readFreshDenAppVersionMetadata(): Promise<DenAppVersionMet
   if (import.meta.env.DEV && typeof window !== "undefined" && window.__openworkReadDesktopVersionMetadataEval) {
     return window.__openworkReadDesktopVersionMetadataEval();
   }
-  const settings = readDenSettings();
-  const token = settings.authToken?.trim() ?? "";
-  return createDenClient({
-    baseUrl: settings.baseUrl,
-    ...(token ? { token } : {}),
-  }).getAppVersionMetadata();
+  // Get3W publishes no version inventory, so Den-gated update checks fail closed.
+  throw new DenApiError(410, "app_version_unavailable", "Desktop version metadata is unavailable.");
 }
 
 export type StableDesktopUpdateSelection =

@@ -168,7 +168,7 @@ export function openworkConfigDir(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
-  const override = envValue(env, "OPENWORK_SERVER_CONFIG", opts);
+  const override = envValue(env, "GET3W_SERVER_CONFIG", opts);
   if (override) return paths.dirname(paths.resolve(override));
   return defaultOpenworkConfigDir(opts);
 }
@@ -177,7 +177,7 @@ export function openworkServerConfigPath(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
-  const override = envValue(env, "OPENWORK_SERVER_CONFIG", opts);
+  const override = envValue(env, "GET3W_SERVER_CONFIG", opts);
   if (override) return paths.resolve(override);
   return paths.join(defaultOpenworkConfigDir(opts), "server.json");
 }
@@ -186,7 +186,7 @@ export function openworkEnvStorePath(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
-  const override = envValue(env, "OPENWORK_ENV_STORE", opts);
+  const override = envValue(env, "GET3W_ENV_STORE", opts);
   if (override) return paths.resolve(override);
   return paths.join(defaultOpenworkConfigDir(opts), "env.json");
 }
@@ -257,9 +257,9 @@ export function desktopBootstrapPath(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
-  const override = envValue(env, "OPENWORK_DESKTOP_BOOTSTRAP_PATH", opts);
+  const override = envValue(env, "GET3W_DESKTOP_BOOTSTRAP_PATH", opts);
   if (override) return override;
-  if (envValue(env, "OPENWORK_DEV_MODE", opts) === "1" && opts?.userDataDir) {
+  if (envValue(env, "GET3W_DEV_MODE", opts) === "1" && opts?.userDataDir) {
     return paths.join(opts.userDataDir, "openwork-dev-data", "home", ".config", "openwork", "desktop-bootstrap.json");
   }
   return paths.join(desktopConfigDir(opts), "openwork", "desktop-bootstrap.json");
@@ -287,7 +287,7 @@ export function openworkServerDataDir(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
-  const override = envValue(env, "OPENWORK_DATA_DIR", opts);
+  const override = envValue(env, "GET3W_DATA_DIR", opts);
   if (override) return expandHomePath(override, opts);
   return paths.join(optionHomeDir(opts), ".openwork", "openwork-server");
 }

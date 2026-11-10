@@ -30,6 +30,7 @@ import { DesktopUpdaterProvider } from "../domains/settings/state/desktop-update
 import { SettingsRoute } from "./settings-route";
 import { ShellConfigProvider } from "./shell-config";
 import { WelcomeRoute } from "./welcome-route";
+import { DesktopAccountGate } from "../domains/cloud/get3w-account";
 
 
 /**
@@ -132,6 +133,7 @@ export function AppRoot() {
         <ShellConfigProvider>
         <AppMenuProvider>
         <OpenworkControlProvider>
+          <DesktopAccountGate>
           <OpenworkRouteControlActions />
           <ChatDeepLinkListener />
           <OpenworkContextPublisher />
@@ -140,6 +142,10 @@ export function AppRoot() {
                   {/* Settings unmounts the chat; computer use stays connected on every route. */}
                   {isElectronRuntime() ? <ComputerBridge /> : null}
                   <Routes>
+              <Route path="/join-org" element={<Navigate to="/settings/account" replace />} />
+              <Route path="/organizations/*" element={<Navigate to="/settings/account" replace />} />
+              <Route path="/settings/organizations/*" element={<Navigate to="/settings/account" replace />} />
+              <Route path="/workspace/:workspaceId/settings/organizations/*" element={<Navigate to="/settings/account" replace />} />
               <Route path="/signin" element={<Navigate to="/settings/account" replace />} />
               <Route path="/onboarding" element={<Navigate to="/session" replace />} />
               <Route
@@ -192,6 +198,7 @@ export function AppRoot() {
                 }
               />
               <Route path="/activity" element={<DevProfiler id="ActivityRoute"><SessionRoute /></DevProfiler>} />
+              <Route path="/outputs" element={<DevProfiler id="OutputsRoute"><SessionRoute /></DevProfiler>} />
               <Route path="/apps" element={<DevProfiler id="AppsRoute"><SessionRoute /></DevProfiler>} />
               <Route path="/dashboard/apps/:appId" element={<DevProfiler id="DashboardAppRoute"><SessionRoute /></DevProfiler>} />
               <Route path="/apps/:appId" element={<DevProfiler id="AppPreviewRoute"><SessionRoute /></DevProfiler>} />
@@ -243,6 +250,7 @@ export function AppRoot() {
                   <LoadingOverlay />
                   <EngineMigrationOverlay />
 
+          </DesktopAccountGate>
         </OpenworkControlProvider>
         </AppMenuProvider>
         </ShellConfigProvider>

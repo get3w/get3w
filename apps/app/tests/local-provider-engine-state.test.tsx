@@ -61,16 +61,14 @@ test("nothing changes on v1, while v2 is not chat's engine, or when the server d
 test("rows read Ready to use, the organization's lock, or not available on the new engine", () => {
   const ready = renderToStaticMarkup(<LocalProviderStatus />);
   const mirrored = renderToStaticMarkup(<LocalProviderStatus state="ready" />);
-  const managed = renderToStaticMarkup(<LocalProviderStatus state="managed_by_organization" organizationName="Acme" />);
-  const unnamed = renderToStaticMarkup(<LocalProviderStatus state="managed_by_organization" />);
+  const managed = renderToStaticMarkup(<LocalProviderStatus state="managed_by_organization" />);
   const unavailable = renderToStaticMarkup(<LocalProviderStatus state="not_on_engine" />);
 
   expect(ready).toContain("Ready to use");
   expect(mirrored).toContain("Ready to use");
-  expect(managed).toContain("Acme manages AI providers");
+  expect(managed).toContain("Your organization manages AI providers");
   expect(managed).toContain("lucide-lock");
   expect(managed).not.toContain("text-red");
-  expect(unnamed).toContain("Your organization manages AI providers");
   expect(unavailable).toContain("Not available on the new engine yet");
   expect(unavailable).not.toContain("Ready to use");
 });

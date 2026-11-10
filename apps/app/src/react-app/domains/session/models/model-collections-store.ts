@@ -1,3 +1,4 @@
+import { get3wProviderId } from "@/app/lib/get3w-provider-id";
 import { create } from "zustand";
 
 import type { ModelOption, ModelRef } from "@/app/types";
@@ -48,7 +49,7 @@ function isModelRef(value: unknown): value is ModelRef {
 
 function uniqueModels(models: readonly ModelRef[]) {
   const seen = new Set<string>();
-  return models.filter((model) => {
+  return models.map(model => ({ ...model, providerID: get3wProviderId(model.providerID) })).filter((model) => {
     const key = modelRefKey(model);
     if (seen.has(key)) return false;
     seen.add(key);

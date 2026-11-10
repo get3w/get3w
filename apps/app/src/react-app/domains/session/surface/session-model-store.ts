@@ -1,3 +1,4 @@
+import { get3wProviderId } from "@/app/lib/get3w-provider-id";
 // Per-conversation model memory. Each session can pick its own model (and
 // reasoning variant) from the composer; the choice is remembered in
 // localStorage so returning to a conversation restores the model it last
@@ -38,7 +39,7 @@ function readStoredSelections(): Record<string, SessionModelSelection> {
       const modelID: unknown = Reflect.get(model, "modelID");
       if (typeof providerID !== "string" || typeof modelID !== "string" || !providerID || !modelID) continue;
       entries[sessionId] = {
-        model: { providerID, modelID },
+        model: { providerID: get3wProviderId(providerID), modelID },
         variant: typeof variant === "string" ? variant : null,
       };
     }

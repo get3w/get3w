@@ -12,7 +12,7 @@ async function registeredTools() {
   const registration = { dispose: async () => {} };
   const dispose = await contextPlugin.setup({
     options: { url: "http://127.0.0.1:9/context", token: "context", browser: { url: "http://127.0.0.1:9/browser", token: "browser" } },
-    tool: { transform: async (callback: (editor: { add(tool: Registered): void }) => void) => { callback({ add: tool => tools.push(tool) }); return registration; } },
+    tool: { transform: async (callback: (editor: { add(tool: Registered): void }) => void) => { callback({ get: () => undefined, update() {}, add: tool => tools.push(tool) }); return registration; } },
     skill: { transform: async () => registration, reload: async () => {} },
   } as unknown as Parameters<typeof contextPlugin.setup>[0]);
   await dispose();

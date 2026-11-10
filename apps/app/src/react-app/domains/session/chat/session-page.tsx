@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import { useGet3wAccount } from "../../cloud/get3w-account";
+import { openGet3wSignIn, useGet3wAccount } from "../../cloud/get3w-account";
 import { focusPaneComposerSoon } from "./workbench-pane-focus";
 import { isOpencodeConfigErrorMessage } from "@openwork/types/opencode-config-error";
 import { childOrigin, prepareChildReturn } from "@/lib/child-navigation";
@@ -14,7 +14,6 @@ import { ArrowLeft, CheckCheck, Cloud, FileText, Globe, Maximize2, MoreHorizonta
 
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
 import { t } from "../../../../i18n";
-import { useCloudSignIn } from "../../cloud/sign-in-return";
 import { type OpenworkServerClient, type OpenworkServerStatus } from "../../../../app/lib/openwork-server";
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
 import type { BootPhase } from "../../../../app/lib/startup-boot";
@@ -203,6 +202,8 @@ export type SessionPageSidebarProps = {
   dashboardActive?: boolean;
   dashboardLabel?: string;
   onOpenDashboard?: () => void;
+  onOpenOutputs?: () => void;
+  outputsActive?: boolean;
   /** Opens the cross-session message search dialog (Cmd/Ctrl+Shift+F). */
   onOpenSessionSearch?: () => void;
   onReorderWorkspaces?: (workspaceIds: string[]) => void;
@@ -504,13 +505,22 @@ export function SessionPage(props: SessionPageProps) {
   const browserRailActive = panelRailActive && activePanelTab?.type === "browser";
   const filesRailActive = panelRailActive && activePanelTab?.type !== "browser";
   const openworkAccount = useGet3wAccount();
+  const chatSessionId = props.selectedSessionId ?? undefined;
   const showCloudSignIn = shellConfig.cloudSignin && !openworkAccount.user && !denAuth.isSignedIn && denAuth.status !== "checking";
-  const cloudSignIn = useCloudSignIn();
-  // The browser opens on Den's sign-up tab (label stays "Sign in").
-  // This conversation stays on screen and sign-in returns to it.
-  const openCloudSignIn = useCallback(() => {
-    cloudSignIn({ workspaceId: props.selectedWorkspaceId, sessionId: props.selectedSessionId });
-  }, [cloudSignIn, props.selectedSessionId, props.selectedWorkspaceId]);
+  useEffect(() => {
+    const bridge = window.__GET3W_ACCOUNT__;
+    if (!bridge || !openworkAccount.user?.id || !props.selectedWorkspaceId || !chatSessionId) return;
+    void bridge.managedMcp({
+      userId: openworkAccount.user.id,
+      workspaceId: props.selectedWorkspaceId,
+      sessionId: chatSessionId,
+      action: "enable",
+    }).catch((error) => {
+      console.warn("[get3w-managed-mcp] enable failed", error instanceof Error ? error.message : String(error));
+    });
+  }, [chatSessionId, openworkAccount.user?.id, props.selectedWorkspaceId]);
+  // The Get3W account dialog opens in place; this conversation stays on screen.
+  const openCloudSignIn = useCallback(() => { openGet3wSignIn(); }, []);
 
   useReactRenderWatchdog("SessionPage", {
     selectedSessionId: props.selectedSessionId,
@@ -1505,6 +1515,8 @@ export function SessionPage(props: SessionPageProps) {
           dashboardActive={props.sidebar.dashboardActive}
           dashboardLabel={props.sidebar.dashboardLabel}
           onOpenDashboard={props.sidebar.onOpenDashboard}
+          onOpenOutputs={props.sidebar.onOpenOutputs}
+          outputsActive={props.sidebar.outputsActive}
           conversationHistory={{
             canGoBack: canGoBackInConversationHistory,
             canGoForward: canGoForwardInConversationHistory,

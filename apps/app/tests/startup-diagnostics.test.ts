@@ -18,7 +18,7 @@ import {
 
 const T0 = Date.parse("2026-10-20T09:00:00.000Z");
 const DEN = "https://den.example.test";
-const SESSION = { baseUrl: DEN, organizationId: "org_a" };
+const SESSION = { baseUrl: DEN };
 
 type Sent = { report: DesktopStartupReport; target: StartupReportTarget };
 
@@ -114,7 +114,7 @@ describe("startup report", () => {
     launch.diagnostics.markStep("org_tools");
     await launch.at(2_500);
     expect(launch.sent).toEqual([]);
-    launch.diagnostics.markStep("signed_in", { organizationId: "org_a" });
+    launch.diagnostics.markStep("signed_in");
     await launch.at(3_000);
     launch.diagnostics.markStep("org_tools");
     await launch.at(STARTUP_DEADLINE_MS + 1_000);
@@ -122,7 +122,7 @@ describe("startup report", () => {
     expect(launch.sent).toHaveLength(1);
     const [{ report, target }] = launch.sent;
     expectValidReport(report);
-    expect(target).toEqual({ denBaseUrl: DEN, organizationId: "org_a" });
+    expect(target).toEqual({ denBaseUrl: DEN });
     expect(report).toMatchObject({
       appVersion: "0.18.3",
       platform: "darwin",
@@ -220,7 +220,7 @@ describe("startup report", () => {
     first.diagnostics.denSession(SESSION);
     first.diagnostics.markStep("engine");
     await first.at(2_000);
-    first.diagnostics.markStep("signed_in", { organizationId: "org_a" });
+    first.diagnostics.markStep("signed_in");
     await first.at(2_500);
     // The app quits before the tools load.
     expect(first.sent).toEqual([]);
@@ -228,7 +228,6 @@ describe("startup report", () => {
       version: 1,
       launchStartedAt: T0,
       denBaseUrl: DEN,
-      organizationId: "org_a",
       finished: false,
       report: { steps: { window: 800, engine: 1_000, signed_in: 2_000, org_tools: null } },
     });
@@ -241,13 +240,13 @@ describe("startup report", () => {
     await second.at(1_200);
     // The slot keeps the old record until it has been offered.
     expect(storage.get(STARTUP_PENDING_STORAGE_KEY)).toBe(firstRecord);
-    second.diagnostics.markStep("signed_in", { organizationId: "org_a" });
+    second.diagnostics.markStep("signed_in");
     await second.at(1_500);
 
     expect(second.sent).toHaveLength(1);
     const [{ report, target }] = second.sent;
     expectValidReport(report);
-    expect(target).toEqual({ denBaseUrl: DEN, organizationId: "org_a" });
+    expect(target).toEqual({ denBaseUrl: DEN });
     expect(report).toMatchObject({
       observedAt: new Date(T0).toISOString(),
       success: false,
@@ -288,7 +287,7 @@ describe("startup report", () => {
   test("a record from another Den is not sent to this one", async () => {
     const storage = new Map<string, string>();
     const first = createLaunch({ storage });
-    first.diagnostics.denSession({ baseUrl: "https://other-den.example.test", organizationId: "org_b" });
+    first.diagnostics.denSession({ baseUrl: "https://other-den.example.test" });
     await first.at(2_000);
 
     const second = createLaunch({ storage, startedAt: T0 + 60_000 });

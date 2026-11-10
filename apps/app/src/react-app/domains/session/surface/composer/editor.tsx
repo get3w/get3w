@@ -1,3 +1,4 @@
+import { parseModelMention } from "./model-token";
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, type ForwardedRef } from "react";
@@ -141,6 +142,7 @@ type SerializedComposerSkillNode = Spread<
 
 function mentionBadge(value: string, kind: ComposerMentionKind): ComposerBadge {
   switch (kind) {
+    case "model": { const model=parseModelMention(value);return model?composerPillBadge({kind:"model",...model}):agentBadge(value); }
     case "agent":
       return agentBadge(value);
     case "file":
@@ -986,7 +988,7 @@ function setPrompt(
     }
     if (segment.startsWith("@")) {
       const token = decodeComposerMentionValue(segment.slice(1));
-      const kind = mentions[token];
+      const kind = parseModelMention(token)?"model":mentions[token];
       if (kind) {
         paragraph.append($createComposerMentionNode(token, kind));
         continue;

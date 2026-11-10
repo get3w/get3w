@@ -29,6 +29,16 @@ import {
 
 const __runtimeDir = path.dirname(fileURLToPath(import.meta.url));
 
+/** Keep macOS native services on the real home when embedding a child runtime. */
+export function applyEmbeddedServerEnv(target, serverEnv, platform = process.platform) {
+  const home = target.HOME;
+  Object.assign(target, serverEnv);
+  if (platform === "darwin") {
+    if (home === undefined) delete target.HOME;
+    else target.HOME = home;
+  }
+}
+
 const DIRECT_RUNTIME = "direct";
 const OPENWORK_SERVER_PORT_RANGE_START = 48_000;
 const OPENWORK_SERVER_PORT_RANGE_END = 51_000;
@@ -272,13 +282,13 @@ export function resolveOpenworkServerConfigPath(env = process.env) {
  */
 export function openworkInstallMarkerPaths({ userDataDir, serverConfigPath, env = process.env }) {
   const serverDir = path.dirname(serverConfigPath);
-  const runtimeDb = env.OPENWORK_RUNTIME_DB?.trim() ? path.resolve(env.OPENWORK_RUNTIME_DB.trim()) : path.join(serverDir, "runtime.sqlite");
+  const runtimeDb = env.GET3W_RUNTIME_DB?.trim() ? path.resolve(env.GET3W_RUNTIME_DB.trim()) : path.join(serverDir, "runtime.sqlite");
   return [
     serverConfigPath,
     runtimeDb,
     path.join(path.dirname(runtimeDb), "engine-v2-preview.json"),
-    env.OPENWORK_SERVER_TOKEN_STORE_PATH?.trim() ? path.resolve(env.OPENWORK_SERVER_TOKEN_STORE_PATH.trim()) : path.join(userDataDir, "openwork-server-tokens.json"),
-    env.OPENWORK_SERVER_STATE_PATH?.trim() ? path.resolve(env.OPENWORK_SERVER_STATE_PATH.trim()) : path.join(userDataDir, "openwork-server-state.json"),
+    env.GET3W_SERVER_TOKEN_STORE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_TOKEN_STORE_PATH.trim()) : path.join(userDataDir, "openwork-server-tokens.json"),
+    env.GET3W_SERVER_STATE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_STATE_PATH.trim()) : path.join(userDataDir, "openwork-server-state.json"),
     path.join(userDataDir, "openwork-workspaces.json"),
     path.join(userDataDir, "workspace-state.json"),
     path.join(userDataDir, "app-recovery.v1.json"),
@@ -291,7 +301,7 @@ export function openworkInstallMarkerPaths({ userDataDir, serverConfigPath, env 
  * @returns {boolean | undefined}
  */
 export function resolveDesktopEngineAutoUpgrade(env = process.env) {
-  if (env.OPENWORK_ENGINE_V2_PREVIEW?.trim() || env.OPENWORK_ENGINE_AUTO_UPGRADE !== undefined) return undefined;
+  if (env.GET3W_ENGINE_V2_PREVIEW?.trim() || env.GET3W_ENGINE_AUTO_UPGRADE !== undefined) return undefined;
   return true;
 }
 
@@ -301,7 +311,7 @@ export function resolveDesktopEngineAutoUpgrade(env = process.env) {
  * @returns {"v2" | undefined}
  */
 export function resolveFreshInstallEngine({ markerPaths, exists = existsSync, env = process.env }) {
-  if (env.OPENWORK_ENGINE_V2_PREVIEW?.trim()) return undefined;
+  if (env.GET3W_ENGINE_V2_PREVIEW?.trim()) return undefined;
   return markerPaths.some((filePath) => exists(filePath)) ? undefined : "v2";
 }
 
@@ -318,7 +328,7 @@ export function selectStickyOpenworkPortWorkspace(requestedWorkspacePaths = [], 
 }
 
 export function resolveEvalLocalServerDelayMs(env = process.env) {
-  const delayMs = Number(env.OPENWORK_EVAL_LOCAL_SERVER_DELAY_MS);
+  const delayMs = Number(env.GET3W_EVAL_LOCAL_SERVER_DELAY_MS);
   return Number.isFinite(delayMs) && delayMs > 0 ? delayMs : 0;
 }
 
@@ -452,10 +462,10 @@ export function snapshotEngineState(state) {
 /**
  * Where the in-process openwork-server persists its structured log. Packaged
  * apps have no visible stdout, so without this file every engine rollover
- * reason and reload trigger is lost. An explicit OPENWORK_SERVER_LOG_FILE wins.
+ * reason and reload trigger is lost. An explicit GET3W_SERVER_LOG_FILE wins.
  */
 export function resolveOpenworkServerLogFile(userDataDir, env = process.env) {
-  const explicit = String(env.OPENWORK_SERVER_LOG_FILE ?? "").trim();
+  const explicit = String(env.GET3W_SERVER_LOG_FILE ?? "").trim();
   if (explicit) return explicit;
   return path.join(userDataDir, "logs", "openwork-server.log");
 }
@@ -612,7 +622,7 @@ function binaryFileNames(baseName, platform = process.platform, arch = process.a
 export function bundledEngineEnv(sidecarDirs, { required = false, platform = process.platform, arch = process.arch } = {}) {
   /** @type {NodeJS.ProcessEnv} */
   const env = {};
-  for (const [base, key] of [["opencode", "OPENWORK_OPENCODE_BIN"], ["opencode2", "OPENWORK_OPENCODE2_BIN"]]) {
+  for (const [base, key] of [["opencode", "GET3W_OPENCODE_BIN"], ["opencode2", "GET3W_OPENCODE2_BIN"]]) {
     const candidates = sidecarDirs.flatMap((directory) =>
       binaryFileNames(base, platform, arch).map((name) => path.resolve(directory, name)));
     const binary = candidates.find((candidate) => {
@@ -775,7 +785,7 @@ export function resolveUserEnvFilePath(env = process.env) {
 }
 
 const USER_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const USER_ENV_RESERVED_PREFIXES = ["OPENWORK_", "OPENCODE_"];
+const USER_ENV_RESERVED_PREFIXES = ["GET3W_", "OPENWORK_", "OPENCODE_"];
 
 // Windows reads `opencode_config` as OPENCODE_CONFIG, so reserved prefixes
 // match case-insensitively there.
@@ -1184,7 +1194,7 @@ async function resolveChainRepairOrigins(options) {
   const env = options.parentEnv ?? {};
   const chainRepair = options.chainRepair ?? {};
   if (chainRepair.origins) return normalizeRepairOrigins(chainRepair.origins);
-  const envOrigins = typeof env.OPENWORK_CHAIN_REPAIR_ORIGINS === "string" ? env.OPENWORK_CHAIN_REPAIR_ORIGINS : "";
+  const envOrigins = typeof env.GET3W_CHAIN_REPAIR_ORIGINS === "string" ? env.GET3W_CHAIN_REPAIR_ORIGINS : "";
   if (envOrigins.trim()) return normalizeRepairOrigins(envOrigins.split(","));
   // Legacy bootstrap activation cannot grant network trust in public builds.
   return [];
@@ -1198,14 +1208,14 @@ async function repairIncompleteChains(options) {
   const env = options.parentEnv ?? {};
   const chainRepair = options.chainRepair ?? {};
   const logInfo = options.logInfo;
-  if (chainRepair.disabled === true || String(env.OPENWORK_DISABLE_CHAIN_REPAIR ?? "").trim() === "1") {
-    if (typeof logInfo === "function") logInfo("Get3W runtime: chain repair disabled by OPENWORK_DISABLE_CHAIN_REPAIR.");
+  if (chainRepair.disabled === true || String(env.GET3W_DISABLE_CHAIN_REPAIR ?? "").trim() === "1") {
+    if (typeof logInfo === "function") logInfo("Get3W runtime: chain repair disabled by GET3W_DISABLE_CHAIN_REPAIR.");
     return { pems: [], timedOut: false };
   }
 
   const origins = await resolveChainRepairOrigins(options);
   if (origins.length === 0) {
-    if (!chainRepair.origins && !String(env.OPENWORK_CHAIN_REPAIR_ORIGINS ?? "").trim() && typeof logInfo === "function") {
+    if (!chainRepair.origins && !String(env.GET3W_CHAIN_REPAIR_ORIGINS ?? "").trim() && typeof logInfo === "function") {
       logInfo("Get3W runtime: chain repair skipped: no activation record.");
     }
     return { pems: [], timedOut: false };
@@ -1214,7 +1224,7 @@ async function repairIncompleteChains(options) {
   const fetchImpl = chainRepair.fetchImpl ?? globalThis.fetch;
   const tlsModule = options.tlsModule ?? tls;
   const tlsConnectImpl = chainRepair.tlsConnectImpl ?? tls.connect;
-  const totalTimeoutValue = Number(env.OPENWORK_CHAIN_REPAIR_TIMEOUT_MS);
+  const totalTimeoutValue = Number(env.GET3W_CHAIN_REPAIR_TIMEOUT_MS);
   const totalTimeoutMs =
     Number.isFinite(totalTimeoutValue) && totalTimeoutValue >= 1000 && totalTimeoutValue <= 120000
       ? totalTimeoutValue
@@ -1411,7 +1421,6 @@ export function createRuntimeManager({
   desktopRoot,
   listLocalWorkspacePaths,
   localManagedMcpVaultKey,
-  anonymousInference = undefined,
   workspaceMkdir = mkdir,
   workspacePlatform = process.platform,
 }) {
@@ -1468,13 +1477,13 @@ export function createRuntimeManager({
   }
 
   function openworkServerTokenStorePath() {
-    const override = process.env.OPENWORK_SERVER_TOKEN_STORE_PATH?.trim();
+    const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(userDataDir, "openwork-server-tokens.json");
   }
 
   function openworkServerStatePath() {
-    const override = process.env.OPENWORK_SERVER_STATE_PATH?.trim();
+    const override = process.env.GET3W_SERVER_STATE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(userDataDir, "openwork-server-state.json");
   }
@@ -1590,7 +1599,7 @@ export function createRuntimeManager({
     // User env is layered first so process.env + any caller overrides always
     // win. See apps/server/src/env-file.ts — all loaders must agree on path +
     // reserved-keys policy.
-    const devPaths = process.env.OPENWORK_DEV_MODE === "1" && process.env.OPENWORK_DEV_SHARED_STATE !== "1"
+    const devPaths = process.env.GET3W_DEV_MODE === "1" && process.env.GET3W_DEV_SHARED_STATE !== "1"
       ? await ensureDevModePaths()
       : null;
     const userEnvPathEnv = devPaths
@@ -1621,7 +1630,7 @@ export function createRuntimeManager({
     }
     if (!devPaths) return env;
     return mergeEnv([env, {
-      OPENWORK_DEV_MODE: "1",
+      GET3W_DEV_MODE: "1",
       HOME: devPaths.homeDir,
       USERPROFILE: devPaths.homeDir,
       XDG_CONFIG_HOME: devPaths.xdgConfigHome,
@@ -1690,7 +1699,7 @@ export function createRuntimeManager({
     const candidates = [];
     const seen = new Set();
 
-    for (const key of ["OPENWORK_DOCKER_BIN", "OPENWRK_DOCKER_BIN", "DOCKER_BIN"]) {
+    for (const key of ["GET3W_DOCKER_BIN", "OPENWRK_DOCKER_BIN", "DOCKER_BIN"]) {
       const value = process.env[key]?.trim();
       if (value && !seen.has(value)) {
         seen.add(value);
@@ -1743,7 +1752,7 @@ export function createRuntimeManager({
     }
 
     throw new Error(
-      `Failed to run docker: ${errors.join("; ")} (Set OPENWORK_DOCKER_BIN to your docker binary if needed)`,
+      `Failed to run docker: ${errors.join("; ")} (Set GET3W_DOCKER_BIN to your docker binary if needed)`,
     );
   }
 
@@ -1907,9 +1916,9 @@ export function createRuntimeManager({
     // absolute bundled paths before loading it, never a PATH/cache download.
     // Keep triple-name support for dev and older packaged layouts.
     const engineEnv = bundledEngineEnv(sidecarDirs, { required: app.isPackaged });
-    if (managedOpencode) engineEnv.OPENWORK_OPENCODE_BIN = managedOpencode.path;
+    if (managedOpencode) engineEnv.GET3W_OPENCODE_BIN = managedOpencode.path;
     const serverEnv = await buildChildEnv(engineEnv);
-    Object.assign(process.env, serverEnv);
+    applyEmbeddedServerEnv(process.env, serverEnv);
 
     // Once the embedded server has a persisted registry, it is the source of
     // truth. Do not pass Electron's legacy workspace list as CLI workspaces or
@@ -1935,7 +1944,7 @@ export function createRuntimeManager({
       path.resolve(__runtimeDir, "..", "server", "dist", "embedded.js"),
       ...(process.resourcesPath ? [path.resolve(process.resourcesPath, "server", "dist", "embedded.js")] : []),
     ];
-    const candidates = process.env.OPENWORK_DEV_MODE === "1"
+    const candidates = process.env.GET3W_DEV_MODE === "1"
       ? [devPath, ...packagedPaths]
       : [...packagedPaths, devPath];
     const embeddedPath = candidates.find((candidate) => existsSync(candidate));
@@ -1945,7 +1954,7 @@ export function createRuntimeManager({
     // Must be set before the bundle loads: the server memoizes its file sink
     // from process.env the first time it creates a logger.
     const logFilePath = resolveOpenworkServerLogFile(userDataDir);
-    process.env.OPENWORK_SERVER_LOG_FILE = logFilePath;
+    process.env.GET3W_SERVER_LOG_FILE = logFilePath;
     openworkServerState.logFilePath = logFilePath;
     const { startEmbeddedServer } = await import(embeddedServerImportUrl(embeddedPath));
     // startEmbeddedServer falls back to an OS-assigned port if `port` races
@@ -1967,7 +1976,6 @@ export function createRuntimeManager({
       opencodeBin: managedOpencode?.path ?? undefined,
       opencodeCwd: managedOpencodeWorkdir(),
       localManagedMcpVaultKey,
-      anonymousInference,
       freshInstallEngine,
       engineAutoUpgrade: resolveDesktopEngineAutoUpgrade(),
     });

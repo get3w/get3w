@@ -15,7 +15,7 @@ function resourcesPathFromAppAsarPath(path: string): string | null {
 }
 
 export function openworkPluginPath(name: string, here?: string): string {
-  const pluginDir = process.env.OPENWORK_EXTENSIONS_PLUGIN_DIR;
+  const pluginDir = process.env.GET3W_EXTENSIONS_PLUGIN_DIR;
   if (pluginDir) {
     return join(pluginDir, `${name}.js`);
   }

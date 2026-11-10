@@ -186,7 +186,7 @@ function secureVaultStorageUnavailable(): ApiError {
   return new ApiError(
     503,
     "managed_mcp_secure_storage_unavailable",
-    "Secure storage for Get3W-managed MCP credentials is unavailable. Start through Get3W Desktop or set OPENWORK_ENCRYPTION_KEY.",
+    "Secure storage for Get3W-managed MCP credentials is unavailable. Start through Get3W Desktop or set GET3W_ENCRYPTION_KEY.",
   );
 }
 
@@ -200,7 +200,7 @@ async function resolveVaultKey(config: ServerConfig): Promise<Buffer> {
       throw secureVaultStorageUnavailable();
     }
   }
-  const configured = process.env.OPENWORK_ENCRYPTION_KEY?.trim();
+  const configured = process.env.GET3W_ENCRYPTION_KEY?.trim();
   if (configured) return createHash("sha256").update(configured).digest();
   throw secureVaultStorageUnavailable();
 }

@@ -152,12 +152,11 @@ function remoteEntryListed(entry: RemoteThreadEntry, followUps: readonly RemoteT
 export function selectComposerRemoteTasks(
   tasks: ConversationRemoteTasks,
   threads: Readonly<Record<string, RemoteThreadEntry>>,
-  organizationId: string | null,
   now: number,
   owner?: RemoteThreadOwner,
 ): RemoteTrackerTask[] {
   const listable = (entry: RemoteThreadEntry | undefined): entry is RemoteThreadEntry =>
-    Boolean(entry && organizationId && entry.organizationId === organizationId && remoteEntryListed(entry, tasks.followUps, now))
+    Boolean(entry && remoteEntryListed(entry, tasks.followUps, now))
   const listed = tasks.earlier.filter((task) => listable(threads[task.start.key]))
   // A task this window already follows for this conversation, whose start is
   // outside the loaded history (a long chat opens on its newest page): the
@@ -180,18 +179,17 @@ export function useComposerRemoteTasks(messages: readonly UIMessage[], owner: Re
     () => conversationRemoteTasks(messages),
     [messages],
   )
-  const organizationId = readDenSettings().activeOrgId?.trim() || null
   const { workspaceId, sessionId } = owner
   const earlierSignature = tasks.earlier.map((task) => task.start.key).join("\n")
   const latestTasks = useRef(tasks)
   latestTasks.current = tasks
   // Follow earlier tasks while the conversation is open, so their state is known before they are listed.
   useEffect(() => {
-    if (!earlierSignature || !organizationId) return
+    if (!earlierSignature) return
     const store = useRemoteThreadStore.getState()
-    const stops = latestTasks.current.earlier.map((task) => store.watch(task.start, { owner: { workspaceId, sessionId }, organizationId, startedAt: task.startedAt }))
+    const stops = latestTasks.current.earlier.map((task) => store.watch(task.start, { owner: { workspaceId, sessionId }, startedAt: task.startedAt }))
     return () => { for (const stop of stops) stop() }
-  }, [earlierSignature, organizationId, workspaceId, sessionId])
+  }, [earlierSignature, workspaceId, sessionId])
   // The current turn's accepted follow-ups revive their task once its entry can be matched (a registered task's sessionId arrives with its status).
   const followUps = tasks.followUps.length > 0 ? tasks.followUps : NO_FOLLOW_UPS
   const matchSignature = useRemoteThreadStore((state) => followUps.length === 0 ? ""
@@ -201,14 +199,14 @@ export function useComposerRemoteTasks(messages: readonly UIMessage[], owner: Re
   }, [followUps, matchSignature])
   // A string that changes only when the listed set does: status updates that change nothing here never re-render the chat.
   const listedSignature = useRemoteThreadStore((state) =>
-    selectComposerRemoteTasks(tasks, state.threads, organizationId, Date.now(), owner).map((task) => task.start.key).join("\n"))
+    selectComposerRemoteTasks(tasks, state.threads, Date.now(), owner).map((task) => task.start.key).join("\n"))
   return useMemo(() => {
     if (!listedSignature) return []
     const keys = new Set(listedSignature.split("\n"))
     const threads = useRemoteThreadStore.getState().threads
-    return selectComposerRemoteTasks(tasks, threads, organizationId, Date.now(), { workspaceId, sessionId })
+    return selectComposerRemoteTasks(tasks, threads, Date.now(), { workspaceId, sessionId })
       .filter((task) => keys.has(task.start.key))
-  }, [tasks, listedSignature, organizationId, workspaceId, sessionId])
+  }, [tasks, listedSignature, workspaceId, sessionId])
 }
 
 /** The header's counts, attention first; empty groups are left out. */

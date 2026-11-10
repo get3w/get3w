@@ -91,7 +91,7 @@ export function createLocalComputerAdapter({
   let inspectPending = null;
 
   function helperCandidates() {
-    const explicit = process.env.OPENWORK_COMPUTER_USE_BINARY?.trim();
+    const explicit = process.env.GET3W_COMPUTER_USE_BINARY?.trim();
     const candidates = [
       explicit || null,
       resourcesPath ? path.join(resourcesPath, "helpers", helperName, helperExecutable) : null,
@@ -266,7 +266,7 @@ export function createLocalComputerAdapter({
       if (!state.binary) throw new Error(state.detail);
       // The guide names the exact System Settings entry macOS will list.
       const entry = await permissionEntry().catch(() => "");
-      const guideEnv = typeof entry === "string" && entry && entry.length <= 64 ? { ...env, OPENWORK_COMPUTER_USE_ENTRY: entry } : env;
+      const guideEnv = typeof entry === "string" && entry && entry.length <= 64 ? { ...env, GET3W_COMPUTER_USE_ENTRY: entry } : env;
       const child = spawnChild(state.binary, ["permissions-guide", permission], { env: guideEnv, stdio: ["pipe", "pipe", "ignore"] });
       record.child = child;
       record.terminated = new Promise((resolve) => {
@@ -404,9 +404,9 @@ export function createLocalComputerAdapter({
       // Name and color for the on-desktop cursor; display only, never authority.
       const hex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
       const shown = typeof presence?.name === "string" && presence.name.trim() && hex(presence.color)
-        ? { OPENWORK_COMPUTER_USE_PRESENCE: JSON.stringify({ name: presence.name.trim().slice(0, 32), color: presence.color }) } : {};
+        ? { GET3W_COMPUTER_USE_PRESENCE: JSON.stringify({ name: presence.name.trim().slice(0, 32), color: presence.color }) } : {};
       // Parallel local sessions work behind other windows; the helper chooses foreground when an app needs it.
-      const delivery = background ? { OPENWORK_COMPUTER_USE_DELIVERY: "background" } : {};
+      const delivery = background ? { GET3W_COMPUTER_USE_DELIVERY: "background" } : {};
       const transport = new StdioClientTransport({ command: state.binary, args: ["mcp-embedded"], env: { ...env, ...shown, ...delivery }, stderr: "ignore" });
       let closed = false;
       let terminationConfirmed = false;

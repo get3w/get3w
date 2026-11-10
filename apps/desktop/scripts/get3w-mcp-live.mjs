@@ -21,16 +21,17 @@ const port=state.preferredPort||(ports.length===1?ports[0]:null);if(!port)throw 
 const server={...credentials,running:true,pid:1,baseUrl:`http://127.0.0.1:${port}`};
 const headers={'X-Get3W-Host-Token':server.hostToken,Authorization:`Bearer ${server.ownerToken||server.clientToken}`,'Content-Type':'application/json'};
 let workspaceId,userId,manager,client,stage='start',offline=false;const result={};
-const outageSeconds=Number(process.env.OPENWORK_MCP_OUTAGE_SECONDS||0);
+const outageSeconds=Number(process.env.GET3W_MCP_OUTAGE_SECONDS||0);
 if(!Number.isInteger(outageSeconds)||outageSeconds<0||outageSeconds>600)throw Error('invalid outage duration');
 let blockedRequests=0;
-const cloudFetch=async(...args)=>{if(process.env.OPENWORK_MCP_CONNECTORS==='1'&&String(args[0]).endsWith('/organizations'))await new Promise(resolve=>setTimeout(resolve,2500));if(offline){blockedRequests++;throw new TypeError('Simulated test-only cloud network outage');}return fetch(...args);};
+const cloudBase=process.env.GET3W_CLOUD_ORIGIN?.trim()||'http://127.0.0.1:6605';
+const cloudFetch=async(...args)=>{if(process.env.GET3W_MCP_CONNECTORS==='1'&&String(args[0]).endsWith('/organizations'))await new Promise(resolve=>setTimeout(resolve,2500));if(offline){blockedRequests++;throw new TypeError('Simulated test-only cloud network outage');}return fetch(...args);};
 try {
- await writeFile(path.join(root,'openwork-session.enc'),await storage.encryptStringAsync(JSON.stringify({...input.session,apiBase:'http://127.0.0.1:6604',expiresAt:Date.now()+input.session.expires_in*1000})),{mode:0o600});
- const auth=createGet3wAuth({userData:root,safeStorage:storage,openExternal:async()=>{},apiBase:'http://127.0.0.1:6604',gatewayBase:'http://127.0.0.1:6605',fetchImpl:cloudFetch});
+ await writeFile(path.join(root,'get3w-session.enc'),await storage.encryptStringAsync(JSON.stringify({...input.session,cloudBase,expiresAt:Date.now()+input.session.expires_in*1000})),{mode:0o600});
+ const auth=createGet3wAuth({userData:root,safeStorage:storage,openExternal:async()=>{},cloudBase,fetchImpl:cloudFetch});
  stage='native_identity';const identity=await auth.status();if(identity.status!=='signed_in')throw Error('identity');userId=identity.user.id;
  await auth.organizations({userId:identity.user.id,organizationId:input.org});
- if(process.env.OPENWORK_MCP_MANAGE_ACCESS==='1'){
+ if(process.env.GET3W_MCP_MANAGE_ACCESS==='1'){
   stage='native_tool_access';const scope={userId,organizationId:input.org};
   const before=await auth.toolAccess({...scope,action:'read',memberId:userId});
   if(before.capabilities.length)throw Error('expected isolated empty catalog');
@@ -45,7 +46,7 @@ try {
  manager=createGet3wManagedMcp({auth,userData:root,getServerInfo:async()=>server});
  stage='install_connection';await manager.run({userId:identity.user.id,organizationId:input.org,workspaceId,action:'enable'});
  const listing=await fetch(`${server.baseUrl}/workspace/${workspaceId}/mcp`,{headers});
- const item=(await listing.json()).items.find(item=>item.name==='openwork-account');
+ const item=(await listing.json()).items.find(item=>item.name==='get3w-account');
  if(!item||item.config.headers.Authorization.includes(input.session.access_token))throw Error('configuration');
  result.runtime_only_local_bearer=true;
  stage='sdk_handshake';client=new Client({name:'Get3W acceptance',version:'1.0'});
@@ -55,14 +56,14 @@ try {
  const first=await client.callTool({name:'execute_capability',arguments:args});if(first.isError)throw Error('execute');
  result.model_count=first.structuredContent.result.models.length;
  result.idempotent_replay=JSON.stringify(first)===JSON.stringify(await client.callTool({name:'execute_capability',arguments:args}));
- if(process.env.OPENWORK_MCP_MANAGE_ACCESS==='1'){
+ if(process.env.GET3W_MCP_MANAGE_ACCESS==='1'){
   stage='native_revoke';
   await auth.toolAccess({userId,organizationId:input.org,action:'grant',memberId:userId,capability:'models',enabled:false});
   const denied=await client.callTool({name:'execute_capability',arguments:args});
   if(!denied.isError)throw Error('revoked cached result allowed');
   result.revoked_replay_denied=true;
  }
- if(process.env.OPENWORK_MCP_CONNECTORS==='1'){
+ if(process.env.GET3W_MCP_CONNECTORS==='1'){
   stage='connector_status';const scope={userId,organizationId:input.org};
   const snapshot=await auth.connectors({...scope,action:'status'});
   if(snapshot.connectors.length!==2||snapshot.connectors.some(row=>row.configured||row.connected))throw Error('expected unconfigured local connectors');
@@ -108,7 +109,7 @@ try {
   stage='explicit_reconnect';
   await manager.run({userId,organizationId:input.org,workspaceId,action:'enable'});
   const restored=await (await fetch(`${server.baseUrl}/workspace/${workspaceId}/mcp`,{headers})).json();
-  const connection=restored.items.find(i=>i.name==='openwork-account');
+  const connection=restored.items.find(i=>i.name==='get3w-account');
   result.local_bearer_rotated=connection.config.headers.Authorization!==item.config.headers.Authorization;
   client=new Client({name:'Get3W recovery acceptance',version:'1.0'});
   await client.connect(new StreamableHTTPClientTransport(new URL(connection.config.url),{requestInit:{headers:connection.config.headers}}));
@@ -117,7 +118,7 @@ try {
  await client.close();client=null;
  stage='disconnect';await manager.run({userId:identity.user.id,organizationId:input.org,workspaceId,action:'disable'});
  const remaining=await (await fetch(`${server.baseUrl}/workspace/${workspaceId}/mcp`,{headers})).json();
- result.connection_removed=!remaining.items.some(i=>i.name==='openwork-account');
+ result.connection_removed=!remaining.items.some(i=>i.name==='get3w-account');
  stage='done';
 } catch(error) {result.failed_stage=stage;result.error=error.message;process.exitCode=1;}
 finally {

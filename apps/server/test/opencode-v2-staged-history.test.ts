@@ -13,7 +13,7 @@ import { numberField, openHistoryDatabase, stringField } from "../src/opencode-v
 import { createEngineV2Preview, readEngineV2PreviewState } from "../src/engine-v2-preview.js";
 import type { ServerConfig } from "../src/types.js";
 
-const bin = process.env.OPENWORK_OPENCODE2_BIN;
+const bin = process.env.GET3W_OPENCODE2_BIN;
 const id = (prefix: string, n: number) => `${prefix}_${n.toString().padStart(26, "0")}`;
 const sessionId = id("ses", 1);
 const assistantId = id("msg", 2);
@@ -117,7 +117,7 @@ test("a complete large-thread copy resumes committed batches and repeated runs p
     let status: EngineV2MigrationStatus | undefined;
     const request = { bin, source, storageDir: join(directory, "copy"), targetDatabase: join(targetRoot, "opencode.db"),
       progress: (next: EngineV2MigrationStatus) => { status = next; } };
-    const child = spawn(process.execPath, [process.env.OPENWORK_TEST_HISTORY_WORKER ?? fileURLToPath(new URL("./fixtures/staged-history-worker.ts", import.meta.url))],
+    const child = spawn(process.execPath, [process.env.GET3W_TEST_HISTORY_WORKER ?? fileURLToPath(new URL("./fixtures/staged-history-worker.ts", import.meta.url))],
       { stdio: ["ignore", "inherit", "inherit", "ipc"] });
     const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
     try {
@@ -221,8 +221,8 @@ test("active engines block the copy and diverged chats merge without losing nati
 test("default boot copies history and selects healthy v2 despite legacy off policy", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
   const directory = await mkdtemp(join(tmpdir(), "openwork-default-history-"));
-  const overrides = { OPENWORK_RUNTIME_DB: join(directory, "runtime.sqlite"), OPENCODE_DB: join(directory, "v1.db"),
-    OPENWORK_ENGINE_V2_PREVIEW: "", OPENCODE_DISABLE_MODELS_FETCH: "1" };
+  const overrides = { GET3W_RUNTIME_DB: join(directory, "runtime.sqlite"), OPENCODE_DB: join(directory, "v1.db"),
+    GET3W_ENGINE_V2_PREVIEW: "", OPENCODE_DISABLE_MODELS_FETCH: "1" };
   const previous = new Map(Object.keys(overrides).map(key => [key, process.env[key]]));
   let preview: ReturnType<typeof createEngineV2Preview> | undefined;
   try {
@@ -267,13 +267,13 @@ test("default boot copies history and selects healthy v2 despite legacy off poli
 test("closing Get3W pauses a copy and startup resumes it before serving v2", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
   const directory = await mkdtemp(join(tmpdir(), "openwork-history-lifecycle-"));
-  const previous = { db: process.env.OPENWORK_RUNTIME_DB, source: process.env.OPENCODE_DB, preview: process.env.OPENWORK_ENGINE_V2_PREVIEW };
+  const previous = { db: process.env.GET3W_RUNTIME_DB, source: process.env.OPENCODE_DB, preview: process.env.GET3W_ENGINE_V2_PREVIEW };
   let preview: ReturnType<typeof createEngineV2Preview> | undefined;
   try {
     const source = await fixture(directory, 8192);
-    process.env.OPENWORK_RUNTIME_DB = join(directory, "runtime.sqlite");
+    process.env.GET3W_RUNTIME_DB = join(directory, "runtime.sqlite");
     process.env.OPENCODE_DB = source;
-    delete process.env.OPENWORK_ENGINE_V2_PREVIEW;
+    delete process.env.GET3W_ENGINE_V2_PREVIEW;
     const config: ServerConfig = { host: "127.0.0.1", port: 0, token: "test", hostToken: "test", configPath: join(directory, "server.json"),
       approval: { mode: "auto", timeoutMs: 1000 }, corsOrigins: [], workspaces: [], authorizedRoots: [directory], readOnly: false,
       startedAt: Date.now(), tokenSource: "generated", hostTokenSource: "generated", logFormat: "json", logRequests: false };
@@ -308,7 +308,7 @@ test("closing Get3W pauses a copy and startup resumes it before serving v2", { s
     assert.equal(readEngineV2PreviewState(config).historyCopyResult?.state, "completed");
   } finally {
     await preview?.stop();
-    for (const [key, value] of [["OPENWORK_RUNTIME_DB", previous.db], ["OPENCODE_DB", previous.source], ["OPENWORK_ENGINE_V2_PREVIEW", previous.preview]]) {
+    for (const [key, value] of [["GET3W_RUNTIME_DB", previous.db], ["OPENCODE_DB", previous.source], ["GET3W_ENGINE_V2_PREVIEW", previous.preview]]) {
       if (value === undefined) delete process.env[String(key)]; else process.env[String(key)] = value;
     }
     await rm(directory, { recursive: true, force: true });

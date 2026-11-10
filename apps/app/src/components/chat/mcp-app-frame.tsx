@@ -1,5 +1,7 @@
 "use client"
 
+import { useQuery } from "@tanstack/react-query"
+import { useAppsClient } from "@/react-app/domains/apps/use-apps"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { DynamicToolUIPart } from "ai"
 import { AppBridge, PostMessageTransport } from "@modelcontextprotocol/ext-apps/app-bridge"
@@ -390,7 +392,31 @@ export type McpAppSandboxViewProps = {
  * bridges it to the workspace MCP App host. Chat messages and dashboard tiles
  * share this exact pipeline so rendering and diagnostics stay identical.
  */
-export function McpAppSandboxView({ origin, app, resolveLiveActions, goesLiveInPlace = false, liveReady = false, renewsLease = true, toolName, inputArguments, result, connectionController, updateMode = "replace", onReady, unavailableNotice, onRequestTeardown, initialHeight, onHeightChange, presentation = "inline", onError, onRetry, onAppToolResult, openKey }: McpAppSandboxViewProps) {
+export function McpAppSandboxView(props: McpAppSandboxViewProps) {
+  const identity = parseMcpAppResourceUri(props.app.resourceUri)
+  return identity ? <AuthorizedAppSandbox {...props} appId={identity.appId} revisionId={identity.revisionId} /> : <McpAppSandboxContent {...props} />
+}
+
+function AuthorizedAppSandbox({ appId, revisionId, ...props }: McpAppSandboxViewProps & { appId: string; revisionId: string }) {
+  const { client, scope } = useAppsClient()
+  const access = useQuery({
+    queryKey: ["authored-app-access", ...scope, appId, revisionId],
+    enabled: Boolean(client),
+    queryFn: () => {
+      if (!client) throw Error("Sign in to open this artifact.")
+      return client.getSavedApp(appId, { revisionId })
+    },
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
+    retry: false,
+  })
+  if (!client || access.isError) return <p role="alert">Artifact access is unavailable. Reopen it after access is restored.</p>
+  if (!access.isSuccess) return <McpAppLoading />
+  return <McpAppSandboxContent {...props} />
+}
+
+function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace = false, liveReady = false, renewsLease = true, toolName, inputArguments, result, connectionController, updateMode = "replace", onReady, unavailableNotice, onRequestTeardown, initialHeight, onHeightChange, presentation = "inline", onError, onRetry, onAppToolResult, openKey }: McpAppSandboxViewProps) {
   const openworkServerClient = origin.client
   const workspaceId = origin.workspaceId
   const readOnly = origin.readOnly

@@ -1,3 +1,4 @@
+import { ensureGet3wTaskTools } from "@/react-app/domains/cloud/get3w-account";
 import type { SessionStatus } from "@opencode-ai/sdk/v2/client";
 
 import { markTaskRunStart } from "@/app/lib/analytics";
@@ -10,10 +11,6 @@ import { composeNativeSessionSnapshot, getNativeSession, getNativeSessionMessage
 import { hasTerminalSessionReply, sendSessionCommand, sessionHasPendingSubmission, sessionWorkHeld, submitAfterInterruption, submitImmediateSessionTurn } from "@/app/lib/opencode-interruption";
 import { createClientV2, isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
 import type { ComposerDraft, ModelRef } from "@/app/types";
-import { isAutoModel } from "@/react-app/domains/models/model-catalog";
-import { AutoAccessRejected, autoAccessWallFromError, preflightAutoSubmission } from "@/app/lib/inference-access";
-import { rejectedTurnOwnerKey } from "./draft-store";
-import { retainRejectedTurn } from "./rejected-turn";
 import { queuedDraftTexts } from "./queued-draft-persistence";
 import { readStoredDefaultModel } from "@/react-app/kernel/model-config";
 import { useSessionActivityStore } from "../status/session-activity-store";
@@ -75,8 +72,7 @@ function sameContext(left: QueuedSendContext, right: QueuedSendContext) {
     && left.variant === right.variant
     && left.model?.providerID === right.model?.providerID
     && left.model?.modelID === right.model?.modelID
-    && left.environmentRuntimeKey === right.environmentRuntimeKey
-    && (left.rejectedOwner ? rejectedTurnOwnerKey(left.rejectedOwner) : "") === (right.rejectedOwner ? rejectedTurnOwnerKey(right.rejectedOwner) : "");
+    && left.environmentRuntimeKey === right.environmentRuntimeKey;
 }
 
 function serializeSDKError(error: unknown): string {
@@ -133,22 +129,15 @@ async function performQueuedDraftSend(
     return "sent";
   }
 
-  if (sendModel && isAutoModel(sendModel)) {
-    if (!context.rejectedOwner) return "cancelled";
-    const result = await preflightAutoSubmission({ model: sendModel, client: context.client,
-      isCurrent: () => getQueuedSendGeneration(sessionId) === generation && getQueuedSendContext(sessionId) === context && context.isCurrent?.() !== false,
-    });
-    if (result?.outcome === "cancelled") return "cancelled";
-    if (result?.outcome === "blocked") throw new AutoAccessRejected(result.wall);
-  }
-  try {
+  {
+    await ensureGet3wTaskTools(context.workspaceId, sessionId);
+    assertQueuedSendCurrent(sessionId, generation);
     if (draft.command) {
       const result = await sendSessionCommand(context.opencodeBaseUrl, opencodeClient, {
         sessionID: sessionId,
         messageID: draft.messageId,
         command: draft.command.name,
         arguments: draft.command.arguments,
-        ...(sendModel && isAutoModel(sendModel) ? { model: `${sendModel.providerID}/${sendModel.modelID}` } : {}),
       });
       if (result.error) throw new Error(serializeSDKError(result.error));
       return "sent";
@@ -200,10 +189,6 @@ async function performQueuedDraftSend(
       useSessionModelStore.getState().setModel(sessionId, sendModel, sendVariant ?? null);
     }
     return "sent";
-  } catch (error) {
-    const wall = isAutoModel(sendModel) ? autoAccessWallFromError(error, sendModel) : null;
-    if (wall && !isPromptAdmissionUnknown(error)) throw new AutoAccessRejected(wall);
-    throw error;
   }
 }
 
@@ -433,10 +418,6 @@ async function attemptDrain(sessionId: string) {
       const client = createEngineClient(context.opencodeBaseUrl, context.workspaceRoot || undefined, { token: context.openworkToken, mode: "openwork" }, transport);
       return submitImmediateSessionTurn(context.opencodeBaseUrl, client, sessionId, messages, send, { directory: context.workspaceRoot || undefined, messageID: draft.messageId });
     })();
-    if (outcome === "cancelled" && context.rejectedOwner) {
-      dispatchQueuedDrain(sessionId, { type: "send_error", itemId: nextItem.id });
-      return;
-    }
     if (outcome === "sent") useComposerStateStore.getState().removeQueuedDraft(sessionId, nextItem.id);
     dispatchQueuedDrain(sessionId, {
       type: "send_result",
@@ -460,14 +441,7 @@ async function attemptDrain(sessionId: string) {
     );
     markTaskRunStart(sessionId);
   } catch (error) {
-    if (error instanceof AutoAccessRejected && context.rejectedOwner && getQueuedSendGeneration(sessionId) === generation) {
-      await retainRejectedTurn({ owner: context.rejectedOwner, opencodeBaseUrl: context.opencodeBaseUrl, draft, wall: error.wall,
-        afterMessageId: context.afterMessageId?.() ?? null, queuedItemId: nextItem.id,
-        remainingQueued: queuedDraftTexts(getComposerQueuedDrafts(useComposerStateStore.getState(), sessionId).filter((item) => item.id !== nextItem.id)),
-        client: context.client, workspaceRoot: context.workspaceRoot, localRuntime: context.localRuntime === true,
-      });
-      dispatchQueuedDrain(sessionId, { type: "send_result", itemId: nextItem.id, outcome: "blocked", at: Date.now() });
-    } else if (isPromptAdmissionUnknown(error)) {
+    if (isPromptAdmissionUnknown(error)) {
       dispatchQueuedDrain(sessionId, {
         type: "send_unknown", itemId: nextItem.id, messageID: draft.messageId, at: Date.now(), deferred: Boolean(draft.command),
       });

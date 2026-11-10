@@ -8,7 +8,7 @@ import type {
 } from "@opencode-ai/sdk/v2/client";
 
 import { t } from "../../../../i18n";
-import { type DenOrgLlmProvider, type DenOrgUsableGatewayProvider } from "../../../../app/lib/den";
+import { type DenUsableGatewayProvider } from "../../../../app/lib/den";
 
 import { unwrap, waitForHealthy } from "../../../../app/lib/opencode";
 import { readOpencodeConfig, writeOpencodeConfig, engineRestart } from "../../../../app/lib/desktop";
@@ -45,7 +45,7 @@ export type ProviderAuthOpenworkServer = {
 };
 
 import { type CloudImportedProvider } from "../../../../app/cloud/import-state";
-import { getCloudManagedProviderId, getCloudProviderEnv, type GatewayConnectProvider } from "./cloud-provider-config";
+import { type GatewayConnectProvider } from "./cloud-provider-config";
 import { dispatchNewProviders } from "../../../../app/lib/provider-events";
 
 import { readManagedDisabledProviders, updateManagedDisabledProviders } from "../managed-engine-config";
@@ -148,7 +148,6 @@ export type ProviderAuthStoreSnapshot = {
   providerAuthMethods: Record<string, ProviderAuthMethod[]>;
   providerAuthPreferredProviderId: string | null;
   providerAuthProviders: ProviderAuthProvider[];
-  cloudOrgProviders: DenOrgLlmProvider[];
   importedCloudProviders: Record<string, CloudImportedProvider>;
   cloudProviderServerSync: CloudProviderServerSyncState | null;
   /**
@@ -156,7 +155,7 @@ export type ProviderAuthStoreSnapshot = {
    * owns the Gateway catalog (live provider sync). The server sync no longer
    * reports them then, so Settings would otherwise list none. null otherwise.
    */
-  liveGatewayProviders: DenOrgUsableGatewayProvider[] | null;
+  liveGatewayProviders: DenUsableGatewayProvider[] | null;
   lastSyncError: Record<string, CloudProviderSyncError>;
 };
 
@@ -190,7 +189,6 @@ type MutableState = {
   providerAuthMethods: Record<string, ProviderAuthMethod[]>;
   providerAuthPreferredProviderId: string | null;
   providerAuthReturnFocusTarget: ProviderReturnFocusTarget;
-  cloudOrgProviders: DenOrgLlmProvider[];
   importedCloudProviders: Record<string, CloudImportedProvider>;
   cloudProviderServerSync: CloudProviderServerSyncState | null;
   /**
@@ -198,7 +196,7 @@ type MutableState = {
    * owns the Gateway catalog (live provider sync). The server sync no longer
    * reports them then, so Settings would otherwise list none. null otherwise.
    */
-  liveGatewayProviders: DenOrgUsableGatewayProvider[] | null;
+  liveGatewayProviders: DenUsableGatewayProvider[] | null;
   lastSyncError: Record<string, CloudProviderSyncError>;
 };
 
@@ -220,7 +218,6 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     providerAuthMethods: {},
     providerAuthPreferredProviderId: null,
     providerAuthReturnFocusTarget: "none",
-    cloudOrgProviders: [],
     importedCloudProviders: {},
     cloudProviderServerSync: null,
     liveGatewayProviders: null,
@@ -258,24 +255,6 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       });
     }
 
-    for (const provider of state.cloudOrgProviders) {
-      const id = getCloudManagedProviderId(provider);
-      if (!id || merged.has(id)) continue;
-      if (
-        !isProviderAllowedByDesktopPolicy({
-          providerId: id,
-          restrictToCloud,
-          checkRestriction: options.checkDesktopAppRestriction,
-        })
-      ) {
-        continue;
-      }
-      merged.set(id, {
-        id,
-        name: provider.name.trim() || id,
-        env: provider.runtimeEnvKeys ?? getCloudProviderEnv(provider.providerConfig),
-      });
-    }
 
     return Array.from(merged.values()).toSorted(compareProviders);
   };
@@ -311,7 +290,6 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       providerAuthMethods: state.providerAuthMethods,
       providerAuthPreferredProviderId: state.providerAuthPreferredProviderId,
       providerAuthProviders: getProviderAuthProviders(),
-      cloudOrgProviders: state.cloudOrgProviders,
       importedCloudProviders: state.importedCloudProviders,
       cloudProviderServerSync: state.cloudProviderServerSync,
       liveGatewayProviders: state.liveGatewayProviders,
@@ -335,7 +313,6 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
 
   // Retired organization APIs keep empty read results for older consumers.
   // Personal and Get3W-managed credentials use the local engine/native bridge.
-  const refreshCloudOrgProviders = async (_options?: { force?: boolean }): Promise<DenOrgLlmProvider[]> => [];
   const refreshImportedCloudProviders = async (_options?: { strict?: boolean }): Promise<Record<string, CloudImportedProvider>> => ({});
 
   const readProjectConfigFile = async () => {
@@ -1437,7 +1414,6 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     start,
     dispose,
     syncFromOptions,
-    refreshCloudOrgProviders,
     refreshImportedCloudProviders: (input?: { strict?: boolean }) => refreshImportedCloudProviders({ strict: input?.strict }),
     runCloudProviderSync,
     startGatewayProviderOAuth,

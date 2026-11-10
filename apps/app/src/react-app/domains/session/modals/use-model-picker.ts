@@ -8,6 +8,7 @@ import type { CloudImportedProvider } from "@/app/cloud/import-state";
 import { pendingGatewayModelOptions, type GatewayConnectProvider } from "@/react-app/domains/connections/provider-auth/cloud-provider-config";
 import { useModelCatalog } from "@/react-app/domains/models/use-model-catalog";
 import { openModelPickerEvent } from "@/react-app/shell/new-providers-listener";
+import { requireGet3wSignIn } from "@/react-app/domains/cloud/get3w-account";
 
 export type UseModelPickerInput = {
   client: Client | null;
@@ -46,6 +47,7 @@ export function useModelPicker(input: UseModelPickerInput) {
   // they've been marked as seen in localStorage.
   const [recentProviderIds, setRecentProviderIds] = useState<Set<string>>(new Set());
   const setOpen = useCallback((nextOpen: boolean) => {
+    if (nextOpen && !requireGet3wSignIn()) return;
     setOpenState(nextOpen);
     if (nextOpen) onOpen?.();
   }, [onOpen]);

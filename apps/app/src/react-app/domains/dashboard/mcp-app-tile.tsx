@@ -195,9 +195,11 @@ function McpAppTileContent({
   fallbackEndpoints,
   renderActions,
   actionsPlacement,
+  chromeTarget,
 }: {
   renderActions?: DashboardTileActions;
   actionsPlacement?: "header";
+  chromeTarget?: HTMLElement | null;
   entry: DashboardMcpAppEntry;
   /** Per-user and per-organization scope for workspace-bound last-known-good dashboard data. */
   cacheScopeKey: string;
@@ -679,7 +681,7 @@ function McpAppTileContent({
     if (state.phase === "ready" && refreshState === "refreshing") return t("ui.852a49c76011");
     if (state.phase === "ready" && refreshState === "failed") return t("ui.cfaec782b4f6");
     if (state.phase === "ready" && entry.organizationAutoLaunch === true) {
-      return `Organization auto-run · ${freshnessLabel(state, freshnessNow)}`;
+      return `${t("personal.artifacts.automatic_run")} · ${freshnessLabel(state, freshnessNow)}`;
     }
     if (state.phase === "ready" && entry.requiresApproval === true) return t("ui.087301926b22");
     if (state.phase === "ready") return freshnessLabel(state, freshnessNow);
@@ -698,6 +700,7 @@ function McpAppTileContent({
         title={entry.title}
         renderActions={renderActions}
         actionsPlacement={actionsPlacement}
+        chromeTarget={chromeTarget}
         entryId={entry.id}
         subtitle={entry.serverName}
         badge={badge ? (

@@ -25,7 +25,7 @@ const entryId = (scope: Scope, resourceUri: string) => `${scope.key}\n${resource
 export async function mcpAppPresentationScope(origin: McpAppOrigin): Promise<Scope | null> {
   const identity = () => {
     const settings = readDenSettings();
-    return settings.authToken ? JSON.stringify([settings.authToken, settings.activeOrgId, settings.baseUrl,
+    return settings.authToken ? JSON.stringify([settings.authToken, settings.baseUrl,
       settings.apiBaseUrl, origin.client.baseUrl, origin.workspaceId]) : null;
   };
   const snapshot = identity();

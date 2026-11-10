@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { parseMcpAppResourceUri } from "./mcp-app"
 
 const idSchema = z.string().trim().min(1).max(160)
 const digestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/)
@@ -198,7 +199,7 @@ export type GeneratedArtifactViewBuildDiagnostic = z.infer<typeof generatedArtif
 export const generatedArtifactViewRevisionSchema = z.object({
   id: idSchema,
   artifactViewId: idSchema,
-  resourceUri: z.string().startsWith("ui://openwork/artifacts/"),
+  resourceUri: z.string().refine((uri) => uri.startsWith("ui://openwork/artifacts/") || parseMcpAppResourceUri(uri) !== null, "Invalid artifact resource URI"),
   buildStatus: z.enum(["ready", "failed"]),
   sourceDigest: digestSchema,
   resourceDigest: digestSchema.nullable(),

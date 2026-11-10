@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import plugin, { PINNED_CONNECT_TOOL_IDS } from "../src/opencode-plugins/openwork-mcp-results-v2.js";
+import plugin, { PINNED_CONNECT_TOOL_IDS, preservedEntry } from "../src/opencode-plugins/openwork-mcp-results-v2.js";
 import { mcpToolId } from "../src/opencode-v2-mcp-readiness.js";
 
 type Tool = { options?: Record<string, unknown>; execute(input: unknown, call: unknown): Promise<{ output?: unknown }> };
@@ -48,4 +48,17 @@ test("Connect's search, execute, and skill reader stay pinned in the Code Mode c
   assert.equal(native.tools.get(connect("search_capabilities"))?.options?.codemode, true);
   const call = { messageID: "m", id: "c", progress: async () => {} };
   assert.deepEqual(await native.tools.get(connect("search_capabilities"))?.execute({}, call), { output: connect("search_capabilities") });
+});
+
+// Code Mode may print only a short summary; the real MCP envelope must survive reload.
+test("native account app builds preserve launch metadata and failures", () => {
+  const output = { content: [{ type: "text", text: "created" }],
+    structuredContent: { app: { appId: "app1", revisionId: "rev1" } },
+    _meta: { "openwork/appDraft": { appId: "app1", revisionId: "rev1" } } };
+  const base = { tool: "get3w-account.create_app", messageID: "m", id: "c", input: { title: "App" } };
+  assert.deepEqual(preservedEntry({ ...base, status: "completed", result: { output } }),
+    { tool: "get3w-account_create_app", input: base.input, status: "completed", output });
+  assert.equal(preservedEntry({ ...base, tool: "untrusted.create_app", status: "completed", result: { output } }), null);
+  assert.deepEqual(preservedEntry({ ...base, status: "error", error: new Error("denied") }),
+    { tool: "get3w-account_create_app", input: base.input, status: "error", error: "denied" });
 });

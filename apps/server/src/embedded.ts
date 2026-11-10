@@ -47,14 +47,13 @@ import type { LocalManagedMcpVaultKeyProvider, ServerConfig } from "./types.js";
 export type EmbeddedServerOptions = CliArgs & {
   /** When true, spawn a managed OpenCode child process. */
   manageOpencode?: boolean;
-  /** Path to the OpenCode binary. Falls back to OPENWORK_OPENCODE_BIN env. */
+  /** Path to the OpenCode binary. Falls back to GET3W_OPENCODE_BIN env. */
   opencodeBin?: string;
   /** Working directory for the managed OpenCode process. */
   opencodeCwd?: string;
   /** Secure key custody for the local managed MCP credential vault. */
   localManagedMcpVaultKey?: LocalManagedMcpVaultKeyProvider;
   resumeInterruptedTasks?: boolean;
-  anonymousInference?: ServerConfig["anonymousInference"];
   /** Desktop marks a brand-new install so it starts on OpenCode v2. */
   freshInstallEngine?: ServerConfig["freshInstallEngine"];
   /** Copy v1 chats with a backup and switch when idle by default; false is a local opt-out. */
@@ -81,7 +80,6 @@ export type EmbeddedServerHandle = {
 export async function startEmbeddedServer(options: EmbeddedServerOptions): Promise<EmbeddedServerHandle> {
   const config = await resolveServerConfig(options);
   config.localManagedMcpVaultKey = options.localManagedMcpVaultKey;
-  config.anonymousInference = options.anonymousInference;
   config.freshInstallEngine = options.freshInstallEngine;
   if (options.engineAutoUpgrade !== undefined) {
     config.engineAutoUpgrade = options.engineAutoUpgrade;
@@ -197,7 +195,7 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions): Promi
 
   // Bind the HTTP server before spawning the engine: serve-node may fall back
   // to an OS-assigned port on EADDRINUSE, and the engine's spawn-time env
-  // (OPENWORK_SERVER_URL) must point at the port that actually bound, not the
+  // (GET3W_SERVER_URL) must point at the port that actually bound, not the
   // requested one. Proxy requests that land in the short window before the
   // engine is ready fail with opencode_unconfigured and clients retry; the
   // desktop only learns the server URL after this function returns.
@@ -220,14 +218,14 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions): Promi
     const { path: runtimeConfigPath } = await writeOpenworkRuntimeConfigFile(config);
     stopRuntimeConfigFileRefresh = keepOpenworkRuntimeConfigFileFresh(config);
     const cwd = resolveManagedEngineCwd({
-      explicit: options.opencodeCwd || process.env.OPENWORK_MANAGED_OPENCODE_CWD,
+      explicit: options.opencodeCwd || process.env.GET3W_MANAGED_OPENCODE_CWD,
       workspace: findManagedEngineWorkspace(config.workspaces),
       fallbackDir: join(runtimeStorageDir(config), "managed-opencode-workdir"),
     });
     await duringStartup(() => mkdir(cwd, { recursive: true }));
     const opencodeModelsUrl = await duringStartup(() => resolveOpencodeModelsUrl());
 
-    const opencodeBin = options.opencodeBin || process.env.OPENWORK_OPENCODE_BIN;
+    const opencodeBin = options.opencodeBin || process.env.GET3W_OPENCODE_BIN;
     // A listening engine still blocks its first folder request on npm installs
     // for plugin dependencies. Ship the same exact-version install the web CLI
     // already uses, rather than making a fresh desktop wait on the registry.
@@ -258,10 +256,10 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions): Promi
     // Shared by the first spawn and by any later rollover standby, so a
     // replacement engine is identical apart from its port.
     const engineEnv: Record<string, string | undefined> = {
-      ...(process.env.OPENWORK_DEV_MODE ? { OPENWORK_DEV_MODE: process.env.OPENWORK_DEV_MODE } : {}),
-      ...(process.env.OPENWORK_UI_CONTROL_DISCOVERY ? { OPENWORK_UI_CONTROL_DISCOVERY: process.env.OPENWORK_UI_CONTROL_DISCOVERY } : {}),
-      OPENWORK_SERVER_URL: serverUrl,
-      OPENWORK_SERVER_TOKEN: config.token,
+      ...(process.env.GET3W_DEV_MODE ? { GET3W_DEV_MODE: process.env.GET3W_DEV_MODE } : {}),
+      ...(process.env.GET3W_UI_CONTROL_DISCOVERY ? { GET3W_UI_CONTROL_DISCOVERY: process.env.GET3W_UI_CONTROL_DISCOVERY } : {}),
+      GET3W_SERVER_URL: serverUrl,
+      GET3W_SERVER_TOKEN: config.token,
       OPENCODE_CONFIG: runtimeConfigPath,
       OPENCODE_MODELS_URL: opencodeModelsUrl,
     };

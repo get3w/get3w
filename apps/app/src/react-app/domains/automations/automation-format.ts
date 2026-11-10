@@ -34,6 +34,8 @@ export function automationRunNotice(run: RunReceiptState): RunNotice | null {
 }
 
 export function runStatusLabel(run: RunReceiptState) {
+  if (run.status === "claimed") return currentLocale() === "zh" ? "准备运行" : "Starting";
+  if (run.error?.code === "connection_action_required") return currentLocale() === "zh" ? "需要重新连接" : "Connection needed";
   const notice = automationRunNotice(run);
   if (notice && ((run.status === "skipped" && run.error?.code === "runner_unavailable")
     || (run.status === "failed" && run.error?.code === "lease_lost"))) {
@@ -62,4 +64,17 @@ export function formatAutomationSchedule(...args: Parameters<typeof formatSchedu
     .replace(/^As each meeting starts/, "每次会议开始时").replace(/^(\d+) min before each meeting/, "每次会议开始前 $1 分钟")
     .replace(/^(\d+) min into each meeting/, "每次会议开始 $1 分钟后")
     .replace(/with people outside the organization/, "包含组织外部参会者").replace(/titles containing/, "标题包含");
+}
+
+/** Provider details remain in the local task; recovery copy names the action. */
+export function automationErrorMessage(error: {code: string; message: string}) {
+  const zh = currentLocale() === "zh";
+  if (error.code === "model_access_lost") return zh ? "所选模型已不可用。请编辑自动化，选择可用模型后重新启用。" : "The selected model is unavailable. Edit the automation, choose an available model, then resume it.";
+  if (error.code === "provider_unavailable") return zh ? "模型连接不可用。请恢复连接后重新启用自动化。" : "The model connection is unavailable. Reconnect it, then resume the automation.";
+  if (error.code === "runner_unavailable" && error.message.includes("no desktop was connected")) return zh ? "本次运行未能开始：没有桌面在线。请打开并登录 Get3W 后重试。" : "This run never started: no desktop was connected. Open Get3W, sign in, and try again.";
+  if (error.code === "runner_unavailable" && error.message.includes("connected desktop")) return zh ? "本次运行未能开始：在线桌面未及时领取任务。请检查工作区和连接后重试。" : "The connected desktop did not pick up this run. Check its workspace and connection, then try again.";
+  if (error.code === "runner_unavailable") return zh ? "本次运行未能开始。请保持电脑唤醒、联网并打开 Get3W，然后重试。" : "This run never started. Keep your computer awake, connected, and Get3W open, then try again.";
+  if (error.code === "connection_action_required") return zh ? "任务所需的连接不可用。请在设置中重新连接，再运行自动化。" : "A connection required by this task is unavailable. Reconnect it in settings, then run the automation again.";
+  if (error.code === "lease_lost" || error.message === "Automation heartbeat unavailable.") return zh ? "电脑已停止回传运行状态。请先查看本地任务，再决定是否重试。" : "The desktop stopped reporting this run. Review its local task before retrying.";
+  return error.message;
 }

@@ -7,7 +7,7 @@ import { openworkServerInfo, readDesktopDistributionInfo, revealDesktopItemInDir
 import { reportCaughtWebError } from "@/app/lib/error-monitoring";
 import { getOpenWorkDeployment } from "@/app/lib/openwork-deployment";
 
-const APP_VERSION = String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim();
+const APP_VERSION = String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
 
 export type CrashDetails = {
   message: string;

@@ -78,35 +78,17 @@ const viewer = (overrides: Partial<UsageLimitViewer>): UsageLimitViewer => ({ si
 const summary = (actions: ReturnType<typeof usageLimitActions>) => actions.map((action) => `${action.emphasis}:${action.label}${action.lockedReason ? " (locked)" : ""}`);
 
 describe("the usage-limit card's actions", () => {
-  test("free Auto signed out: sign in first, Get3W Models next to it, another model last", () => {
-    expect(summary(usageLimitActions("free_auto", viewer({ signedIn: false })))).toEqual([
-      "primary:Sign in for more free use", "secondary:Get Get3W Models", "tertiary:Use another model",
-    ]);
-  });
-
-  test("free Auto signed in: owners and admins buy Get3W Models, members see who can", () => {
-    expect(summary(usageLimitActions("free_auto", viewer({ canBuy: true })))).toEqual(["primary:Get Get3W Models", "tertiary:Use another model"]);
-    expect(summary(usageLimitActions("free_auto", viewer({ canBuy: false })))).toEqual(["primary:Ask an admin for Get3W Models (locked)", "tertiary:Use another model"]);
-  });
-
-  test("where Get3W Models is not sold (self-hosted), nothing is upsold", () => {
-    expect(summary(usageLimitActions("free_auto", viewer({ signedIn: false, modelsOffered: false })))).toEqual(["primary:Sign in for more free use", "tertiary:Use another model"]);
-    expect(summary(usageLimitActions("free_auto", viewer({ canBuy: true, modelsOffered: false })))).toEqual(["primary:Use another model"]);
-  });
-
   test("paid allowance: admins add a team provider (and upgrade when a plan is sold), members ask an admin", () => {
-    expect(summary(usageLimitActions("models_allowance", viewer({ canBuy: true })))).toEqual(["primary:Add a team provider", "tertiary:Use another model"]);
-    expect(summary(usageLimitActions("models_allowance", viewer({ canBuy: true, planUpgrade: true })))).toEqual(["primary:Add a team provider", "secondary:Upgrade plan", "tertiary:Use another model"]);
-    expect(summary(usageLimitActions("models_allowance", viewer({ canBuy: false })))).toEqual(["primary:Ask an admin for more (locked)", "tertiary:Use another model"]);
+    expect(summary(usageLimitActions(viewer({ canBuy: true })))).toEqual(["primary:Add a team provider", "tertiary:Use another model"]);
+    expect(summary(usageLimitActions(viewer({ canBuy: true, planUpgrade: true })))).toEqual(["primary:Add a team provider", "secondary:Upgrade plan", "tertiary:Use another model"]);
+    expect(summary(usageLimitActions(viewer({ canBuy: false })))).toEqual(["primary:Ask an admin for more (locked)", "tertiary:Use another model"]);
   });
 
   test("every variant has exactly one primary action and a way to keep working", () => {
-    for (const kind of ["free_auto", "models_allowance"] as const) {
-      for (const signedIn of [true, false]) for (const canBuy of [true, false]) for (const modelsOffered of [true, false]) {
-        const actions = usageLimitActions(kind, viewer({ signedIn, canBuy, modelsOffered }));
-        expect(actions.filter((action) => action.emphasis === "primary")).toHaveLength(1);
-        expect(actions.some((action) => action.id === "use_another_model")).toBe(true);
-      }
+    for (const signedIn of [true, false]) for (const canBuy of [true, false]) for (const modelsOffered of [true, false]) {
+      const actions = usageLimitActions(viewer({ signedIn, canBuy, modelsOffered }));
+      expect(actions.filter((action) => action.emphasis === "primary")).toHaveLength(1);
+      expect(actions.some((action) => action.id === "use_another_model")).toBe(true);
     }
   });
 });

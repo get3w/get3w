@@ -84,6 +84,14 @@ const localView: AiSettingsViewProps = {
   autoSwitchedOff: true,
 };
 
+test("Get3W stays listed as the built-in default even with no connected providers", () => {
+  const html = renderToStaticMarkup(<AiSettingsView {...localView} connectedProviders={[]} onSetAutoEnabled={() => { throw new Error("must not be offered"); }} />);
+  expect(html).toContain("Get3W Models");
+  expect(html).toContain("Built-in · Default");
+  expect(html).not.toContain("Turn off");
+  expect(html).not.toContain("No providers connected");
+});
+
 test("local rejected key recovery is scoped to this runtime workspace", () => {
   const initialState = useProviderCredentialHealth.getInitialState();
   const key = credentialHealthKey("workspace-test", "provider-test");
@@ -113,7 +121,7 @@ test("retired team provider section does not reappear for inherited managed cred
   initialState.entries[key] = { status: "rejected", revision: 0, observedAt: 0 };
   try {
     const markup = renderToStaticMarkup(<AiSettingsView {...localView}
-      signedIn organizationName="Acme"
+      signedIn
       connectedProviders={[{ id: "ipr_fixture", name: "Team provider" }]}
       gatewayProviderIds={new Set(["ipr_fixture"])}
     />);
@@ -125,4 +133,16 @@ test("retired team provider section does not reappear for inherited managed cred
     if (previous) initialState.entries[key] = previous;
     else delete initialState.entries[key];
   }
+});
+
+
+test("signed-in account uses the single built-in Get3W row without disconnect controls", () => {
+  const html = renderToStaticMarkup(<AiSettingsView {...localView}
+    connectedProviders={[{ id: "get3w-account", name: "Get3W account", source: "api" }]}
+    autoError="Free fallback unavailable" />);
+  expect(html).toContain("Get3W Models");
+  expect(html).toContain("Built-in · Default");
+  expect(html).not.toContain("Get3W account");
+  expect(html).not.toContain('data-testid="local-provider-get3w-account"');
+  expect(html).not.toContain("Disconnect");
 });

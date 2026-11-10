@@ -15,11 +15,9 @@ afterEach(() => setLocale(savedLocale));
 const ownedDom = typeof window === "undefined";
 if (ownedDom) GlobalRegistrator.register({ url: "http://localhost/" });
 // Base UI chooses its layout-effect shim at import time; portals need the DOM first.
-const { createDenClient } = await import("../src/app/lib/den");
 const server = await import("../src/app/lib/openwork-server");
 const { isDesktopRuntime } = await import("../src/app/lib/runtime-env");
 const connection = await import("../src/react-app/shell/openwork-connection");
-const den = await import("../src/app/lib/den");
 const { EngineMigrationOverlay, observeEngineMigration, requestEngineMigration, resetEngineMigrationForTest, useEngineMigrationStore } = await import("../src/react-app/shell/engine-migration");
 const { useOpencodeEngineControls } = await import("../src/react-app/shell/opencode-engine-controls");
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
@@ -27,7 +25,6 @@ Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
 let root: Root | null = null;
 let queryClient: QueryClient;
 let previousBridge: unknown;
-let denClient: ReturnType<typeof createDenClient>;
 
 const status: EngineV2PreviewStatus = {
   enabled: false, running: false, chatRouting: false, v1HistoryAvailable: true,
@@ -43,9 +40,6 @@ beforeEach(() => {
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   // This is the same cache entry populated by Calendar and other org-feature consumers.
   queryClient.setQueryData(["den", "org-features", orgId], { engineV2ForceUpgrade: true });
-  denClient = createDenClient({ baseUrl: "https://den.example.test", token: "test-token" });
-  spyOn(denClient, "getOrgFeatures").mockRejectedValue(new Error("Den offline"));
-  spyOn(den, "createDenClient").mockReturnValue(denClient);
   spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network offline"));
   spyOn(connection, "resolveOpenworkConnection").mockResolvedValue({
     normalizedBaseUrl: "http://localhost:8787", resolvedToken: "test-token", resolvedHostToken: "test-host",
@@ -232,8 +226,6 @@ async function setFeatures(upgrade: boolean) {
 }
 
 function expectReadOnlyDiscovery(client: ReturnType<typeof engineClient>) {
-  expect(den.createDenClient).not.toHaveBeenCalled();
-  expect(denClient.getOrgFeatures).not.toHaveBeenCalled();
   expect(globalThis.fetch).not.toHaveBeenCalled();
   expect(client.setEngineV2ForcePolicy).not.toHaveBeenCalled();
   expect(client.migrateOpencodeHistory).not.toHaveBeenCalled();

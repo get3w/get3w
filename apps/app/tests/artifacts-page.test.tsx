@@ -39,7 +39,6 @@ mock.module("../src/react-app/domains/dashboard/mcp-app-tile", () => ({
   },
 }));
 mock.module("../src/react-app/domains/dashboard/dashboard-apps", () => ({ SavedDashboardApp: ({ app }: { app: SavedAppSummary }) => <div data-saved-artifact={app.view.id}>Saved artifact</div> }));
-mock.module("../src/react-app/domains/apps/built-app-share-button", () => ({ BuiltAppShareDialog: ({ open }: { open: boolean }) => open ? createPortal(<div data-artifact-share-dialog>Share artifact</div>, document.body) : null }));
 mock.module("../src/app/lib/den", () => ({ markFeatureUsed: () => {} }));
 const { ArtifactsPage } = await import("../src/react-app/domains/dashboard/artifacts-page");
 const { rememberArtifactSelection } = await import("../src/react-app/domains/dashboard/artifacts-workspace");
@@ -100,16 +99,6 @@ test("returning to the narrow list keeps the selected live view mounted", async 
   expect(launches).toHaveLength(1);
 });
 
-test("navigation closes a portalled Share dialog without resetting the selected artifact", async () => {
-  await render(); await click("Open Overview"); await click("Share");
-  expect(document.querySelector("[data-artifact-share-dialog]")).not.toBeNull();
-  pageActive = false; await render();
-  expect(document.querySelector("[data-artifact-share-dialog]")).toBeNull();
-  expect(mounts).toBe(1);
-  pageActive = true; await render();
-  expect(document.querySelector("[data-artifact-share-dialog]")).toBeNull();
-  expect(launches).toHaveLength(1);
-});
 
 test("Open in chat references the same artifact without creating another view", async () => {
   await render(); await click("Open Overview");

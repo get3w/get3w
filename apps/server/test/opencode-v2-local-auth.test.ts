@@ -6,7 +6,6 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { mapRuntimeProvidersToV2Specs, nativeProviderSpec, userConfigProviders } from "../src/engine-v2-preview.js";
 import { renderOpencodeV2Config } from "../src/managed-opencode-v2.js";
-import { buildOpenworkRuntimeConfigObjectFromSnapshot } from "../src/openwork-runtime-config.js";
 import {
   environmentProviderKey,
   localProviderDefinitions,
@@ -16,7 +15,6 @@ import {
   readUserConfigProviders,
   type LocalProviderAuth,
 } from "../src/opencode-v2-local-auth.js";
-import { organizationProviderGate } from "../src/organization-provider-gate.js";
 
 // Trimmed GET /provider answer from the bundled OpenCode v1.18.30 engine,
 // recorded with an OpenRouter API key and a ChatGPT (OAuth) sign-in in its
@@ -113,8 +111,8 @@ test("without a rollout or sign-in, the real v1.18.30 OpenRouter entry becomes o
   assert.equal(model("bytedance-seed/seed-1.6", "disabled"), true, "a deprecated model stays out of the picker, as in v1");
 });
 
-test("an organization that allows only its own providers mirrors none of the keys added on this computer", async () => {
-  const allows = organizationProviderGate({ allowCustomProviders: false });
+test("a provider filter that refuses every id mirrors none of the keys added on this computer", async () => {
+  const allows = (_providerId: string) => false;
   const reads = providerReads;
   const local = await localProviderDefinitions(connection(), auth({ openrouter: KEY, anthropic: "sk-ant-local" }, ["openai"]), {}, { allows });
 
@@ -125,22 +123,6 @@ test("an organization that allows only its own providers mirrors none of the key
     { id: "openrouter", reason: "policy" },
   ]);
   assert.equal(providerReads, reads, "blocked providers are not even looked up");
-});
-
-test("the organization rule matches the providers v1 keeps in enabled_providers", () => {
-  const provider = Object.fromEntries(["lpr_team", "ipr_gateway", "openwork", "personal-byok", "openrouter"]
-    .map(id => [id, { npm: "@ai-sdk/openai-compatible", models: {} }]));
-  for (const managedPolicy of [{ allowCustomProviders: false }, { allowCustomProviders: false, allowZenModel: false }]) {
-    const v1 = buildOpenworkRuntimeConfigObjectFromSnapshot({ provider, managedPolicy }).enabled_providers;
-    assert.ok(Array.isArray(v1));
-    const allows = organizationProviderGate(managedPolicy);
-    assert.ok(allows);
-    for (const id of [...Object.keys(provider), "opencode", "anthropic"]) {
-      assert.equal(allows(id), v1.includes(id), `${id} with ${JSON.stringify(managedPolicy)}`);
-    }
-  }
-  assert.equal(organizationProviderGate({ allowCustomProviders: true }), null);
-  assert.equal(organizationProviderGate(undefined), null);
 });
 
 test("a ChatGPT-style sign-in is reported as skipped instead of disappearing", async () => {
@@ -297,9 +279,9 @@ test("environment keys reach v2 like v1 reads them, only for providers that need
   ], "a saved key wins; Azure, Bedrock, Copilot and blank values are left out");
   assert.deepEqual(local.skipped, [{ id: "openai", reason: "oauth" }], "an environment key never replaces a ChatGPT sign-in");
 
-  const allows = organizationProviderGate({ allowCustomProviders: false });
+  const allows = (_providerId: string) => false;
   const blocked = await localProviderDefinitions(connection(), auth({}), {}, { native, environment, allows });
-  assert.deepEqual(blocked, { providers: {}, native: [], skipped: [] }, "an environment key the organization refuses is not reported as connected");
+  assert.deepEqual(blocked, { providers: {}, native: [], skipped: [] }, "an environment key the filter refuses is not reported as connected");
   const configured = await localProviderDefinitions(connection(), auth({}), { nvidia: {} }, { native, environment });
   assert.deepEqual(configured.native.map(provider => provider.id), ["groq", "openai"], "a Settings definition owns its own credential");
   const nvidia = native.get("nvidia");
@@ -346,7 +328,7 @@ test("providers written in this computer's OpenCode config file reach v2", async
       ["my-endpoint", "@opencode/ai/providers/openai-compatible", "https://llm.example.test/v1", "file-key", ["model-a"]],
     ], "a hand-written endpoint is trusted like a Settings definition");
 
-    const allows = organizationProviderGate({ allowCustomProviders: false });
+    const allows = (_providerId: string) => false;
     const blocked = await userConfigProviders({}, allows, native, new Map(), new Map(), read, { NV_KEY: "nv-file" });
     assert.deepEqual(blocked.native, []);
     assert.deepEqual(blocked.definitions, {});

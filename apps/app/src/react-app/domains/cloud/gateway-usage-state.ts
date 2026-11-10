@@ -1,3 +1,4 @@
+import { formatMoney } from "@/i18n/money";
 import { z } from "zod";
 import { GATEWAY_USAGE_LIMIT_ERROR_CODE, hasGatewayUsageLimitHttpMarker, gatewayUsageTimeframeSchema, type GatewayUsageBucket, type GatewayUsageStatus } from "@openwork/types/den/gateway-usage-limits";
 
@@ -155,7 +156,7 @@ export function gatewayUsageResetDelay(status: GatewayUsageStatus, receivedAt: n
 }
 
 export function formatGatewayMoney(microUsd: number): string {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(microUsd / 1_000_000);
+  return formatMoney(microUsd / 1_000_000, "USD");
 }
 
 export const gatewayPeriodLabels: Record<GatewayUsageBucket["timeframe"], string> = { day: "Today", week: "This week", month: "This month" };

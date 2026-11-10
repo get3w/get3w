@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
+import { cpSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,7 +43,7 @@ const devPort = rawPort === "0"
 if (rawPort === "0") {
   console.log(`[electron-dev] Vite dev server will use free port ${devPort}`);
 }
-const explicitStartUrl = process.env.OPENWORK_ELECTRON_START_URL?.trim() || "";
+const explicitStartUrl = process.env.GET3W_ELECTRON_START_URL?.trim() || "";
 const startUrl = explicitStartUrl || `http://localhost:${devPort}`;
 const viteProbeUrls = explicitStartUrl
   ? [explicitStartUrl]
@@ -220,20 +221,23 @@ async function stopAll(exitCode = 0) {
 process.once("SIGINT", () => void stopAll(130));
 process.once("SIGTERM", () => void stopAll(143));
 
-if (process.env.OPENWORK_ELECTRON_SKIP_SHARED_PREPARE !== "1") {
+if (process.env.GET3W_ELECTRON_SKIP_SHARED_PREPARE !== "1") {
   runSync(nodeCmd, [resolve(__dirname, "prepare-sidecar.mjs"), "--force", "--outdir", electronSidecarDir], { cwd: desktopRoot });
   runSync(nodeCmd, [resolve(__dirname, "prepare-computer-use-helper.mjs"), "--force", "--outdir", electronHelperDir], { cwd: desktopRoot });
   runSync(nodeCmd, [resolve(__dirname, "prepare-dictation-helper.mjs"), "--outdir", electronHelperDir], { cwd: desktopRoot });
 }
 
 // Build workspace packages that Electron imports from their dist output.
-if (process.env.OPENWORK_ELECTRON_SKIP_WORKSPACE_BUILD !== "1") {
+if (process.env.GET3W_ELECTRON_SKIP_WORKSPACE_BUILD !== "1") {
   console.log("[electron-dev] Building Electron workspace dependencies...");
   runSync(pnpmCmd, ["--filter", "@openwork/remote-sessions", "build"], { cwd: repoRoot });
   runSync(pnpmCmd, ["--filter", "@openwork/computer-use", "build"], { cwd: repoRoot });
   // Remote computers for computer use load these lazily from their builds.
   runSync(pnpmCmd, ["--filter", "@openwork/sandbox", "--filter", "@openwork/sandbox-freestyle", "--filter", "@openwork/sandbox-daytona", "build"], { cwd: repoRoot });
   runSync(pnpmCmd, ["--filter", "openwork-server", "build"], { cwd: repoRoot });
+  const embeddedDist = resolve(desktopRoot, "server/dist");
+  rmSync(embeddedDist, { recursive: true, force: true });
+  cpSync(resolve(repoRoot, "apps/server/dist"), embeddedDist, { recursive: true });
 }
 
 const initialProbeUrls = [startUrl, ...viteProbeUrls].filter(Boolean);
@@ -260,17 +264,25 @@ if (!viteReady) {
     env: {
       ...process.env,
       PORT: String(devPort),
-      OPENWORK_DEV_MODE: process.env.OPENWORK_DEV_MODE ?? "1",
-      OPENWORK_DATA_DIR: process.env.OPENWORK_DATA_DIR ?? defaultDevDataDir,
+      GET3W_DEV_MODE: process.env.GET3W_DEV_MODE ?? "1",
+      GET3W_DATA_DIR: process.env.GET3W_DATA_DIR ?? defaultDevDataDir,
     },
   });
 }
 
 const resolvedStartUrl = await waitForVite(startUrl);
 
+// Development must exercise the local account/model service that ships with
+// this checkout. Falling back to the production origin here silently tests a
+// different API version and makes new local routes look unavailable.
+// Login, inference, personal and MCP traffic all go to the local cloud service.
+const cloudOrigin = process.env.GET3W_CLOUD_ORIGIN?.trim() || "http://127.0.0.1:6605";
+const authWebOrigin = process.env.GET3W_AUTH_WEB_ORIGIN?.trim() || "http://localhost:7700";
+console.log(`[electron-dev] cloud=${cloudOrigin} web=${authWebOrigin}`);
+
 // Native dependencies installed for the host Node ABI must be rebuilt before
 // Electron loads the embedded server and terminal runtime.
-if (process.env.OPENWORK_ELECTRON_SKIP_NATIVE_REBUILD === "1") {
+if (process.env.GET3W_ELECTRON_SKIP_NATIVE_REBUILD === "1") {
   console.log("[electron-dev] Using prebuilt Electron native dependencies.");
 } else {
   console.log("[electron-dev] Rebuilding native dependencies for Electron...");
@@ -279,19 +291,21 @@ if (process.env.OPENWORK_ELECTRON_SKIP_NATIVE_REBUILD === "1") {
 
 // Optional Electron CDP for external debugging / raw CDP clients.
 // NOT required for the built-in browser (uses native webContents APIs).
-// Set OPENWORK_ELECTRON_REMOTE_DEBUG_PORT=9823 to enable.
-const cdpPortRaw = process.env.OPENWORK_ELECTRON_REMOTE_DEBUG_PORT?.trim() ?? "";
+// Set GET3W_ELECTRON_REMOTE_DEBUG_PORT=9823 to enable.
+const cdpPortRaw = process.env.GET3W_ELECTRON_REMOTE_DEBUG_PORT?.trim() ?? "";
 const cdpPort = cdpPortRaw === "" || cdpPortRaw === "0" ? "" : cdpPortRaw;
 
 const blankSlateArgs = process.argv.includes("--blank-slate") ? ["--blank-slate"] : [];
-electronChild = run(pnpmCmd, ["exec", "electron", "./electron/main.mjs", ...blankSlateArgs], {
+electronChild = run(nodeCmd, [resolve(__dirname, "electron-launch.mjs"), "./electron/main.mjs", ...blankSlateArgs], {
   cwd: desktopRoot,
   env: {
     ...process.env,
-    OPENWORK_DEV_MODE: process.env.OPENWORK_DEV_MODE ?? "1",
-    OPENWORK_DATA_DIR: process.env.OPENWORK_DATA_DIR ?? defaultDevDataDir,
-    OPENWORK_ELECTRON_START_URL: resolvedStartUrl,
-    ...(cdpPort ? { OPENWORK_ELECTRON_REMOTE_DEBUG_PORT: cdpPort } : {}),
+    GET3W_DEV_MODE: process.env.GET3W_DEV_MODE ?? "1",
+    GET3W_DATA_DIR: process.env.GET3W_DATA_DIR ?? defaultDevDataDir,
+    GET3W_ELECTRON_START_URL: resolvedStartUrl,
+    GET3W_CLOUD_ORIGIN: cloudOrigin,
+    GET3W_AUTH_WEB_ORIGIN: authWebOrigin,
+    ...(cdpPort ? { GET3W_ELECTRON_REMOTE_DEBUG_PORT: cdpPort } : {}),
   },
 });
 

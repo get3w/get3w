@@ -1,263 +1,72 @@
+import { automationRoute } from "./get3w-automation-route.mjs";
+import { artifactRoute } from "./get3w-artifact-route.mjs";
+import { createTaskCatalogCache } from "./get3w-task-catalog.mjs";
 import { GET3W_SERVICES, validateGet3wOrigin } from "./get3w-services.mjs";
-import { randomBytes, randomUUID, createHash } from "node:crypto";
-import { readFile, writeFile, rename, mkdir, chmod, unlink } from "node:fs/promises";
+import { createGet3wSession } from "./get3w-session.mjs";
+import { randomUUID, createHash } from "node:crypto";
 import path from "node:path";
 
-export function createGet3wAuth({ userData, safeStorage, openExternal, apiBase = GET3W_SERVICES.apiBase, webBase = GET3W_SERVICES.webBase, gatewayBase = apiBase, fetchImpl = fetch, now = Date.now }) {
-  apiBase = validateGet3wOrigin(apiBase);
+/** @param {{userData:string,safeStorage:object,openExternal:Function,cloudBase?:string,webBase?:string,fetchImpl?:typeof fetch,now?:()=>number}} options */
+export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase = GET3W_SERVICES.cloudBase, webBase = GET3W_SERVICES.webBase, fetchImpl = fetch, now = Date.now }) {
+  cloudBase = validateGet3wOrigin(cloudBase);
   webBase = validateGet3wOrigin(webBase);
-  gatewayBase = validateGet3wOrigin(gatewayBase);
+  const taskCatalogCache = createTaskCatalogCache({now, directory: path.join(userData, "task-model-catalog"), namespace: `personal-v1:${cloudBase}`});
   const mcpRequests = new Set();
-  const cancelMcp = () => { for (const c of mcpRequests) c.abort(); mcpRequests.clear(); for (const c of inferenceRequests) c.abort(); inferenceRequests.clear(); };
-  const file = path.join(userData, "openwork-session.enc");
-  let selectedOrganization = null;
   const inferenceRequests = new Set();
-  let session = null, user = null, pending = null, queue = Promise.resolve(), loaded = false;
-  let status = "signed_out", error = null;
-  const serial = (fn) => { const result = queue.then(fn, fn); queue = result.catch(() => {}); return result; };
-  const snapshot = () => ({ status, user, error, pending: Boolean(pending), organization: selectedOrganization });
-  async function request(route, body, access, method, scope = "auth") {
-    let response;
+  const cancelMcp = () => { taskCatalogCache.clear(); for (const c of mcpRequests) c.abort(); mcpRequests.clear(); for (const c of inferenceRequests) c.abort(); inferenceRequests.clear(); };
+  const account = createGet3wSession({ userData, safeStorage, openExternal, cloudBase, webBase, fetchImpl, now, onReset: cancelMcp });
+  const { request, load, refreshIdentity } = account;
+  let queue = Promise.resolve();
+  /** @template T @param {()=>Promise<T>} fn @returns {Promise<T>} */
+  const serial = (fn) => { const result = queue.then(fn, fn); queue = result.then(() => {}, () => {}); return result; };
+  /** @param {string} route
+   * @param {{method?:string,body?:unknown,signal?:AbortSignal,headers?:Record<string,string>}} options */
+  async function personal(route, {method="GET", body, signal, headers={}}={}) {
+    const controller=new AbortController(); mcpRequests.add(controller);
     try {
-      response = await fetchImpl(`${apiBase}/desktop/v1/${scope}/${route}`, {
-        method: method || (body ? "POST" : "GET"), redirect: "error", signal: AbortSignal.timeout(12_000),
-        headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+      const response=await fetchImpl(`${cloudBase}/v1/personal/${route}`, {
+        method, redirect:"error", headers:{Authorization:`Bearer ${account.session.access_token}`,"Content-Type":"application/json",...headers},
+        signal:AbortSignal.any([controller.signal,AbortSignal.timeout(150_000),...(signal?[signal]:[])]),
+        ...(body!==undefined?{body:JSON.stringify(body)}:{}),
       });
-    } catch { throw new Error("Get3W is unavailable. Try again."); }
+      if(response.status===404 && route==="capabilities") { cancelMcp(); throw Error("Personal account API is unavailable. Update the Get3W server."); }
+      return response;
+    } finally {mcpRequests.delete(controller);}
+  }
+  async function requirePersonal(userId) {
+    await refreshIdentity();
+    if(!account.session || account.status!=="signed_in" || userId!==account.user?.id) throw Error("Get3W account changed or is unavailable.");
+    const response=await personal("capabilities");
     if (!response.ok) {
-      const failure = new Error(response.status === 401 ? "Session expired. Sign in again." : "Get3W sign-in failed. Try again.");
-      failure.status = response.status;
-      throw failure;
+      if (response.status === 401) throw Error("Session expired. Sign in again.");
+      throw Error("Personal account service is unavailable. Try again.");
     }
-    return response.json();
+    if ((await response.json()).contract_version !== "personal-account-v1") {
+      cancelMcp(); throw Error("Personal account API is unavailable. Update the Get3W server.");
+    }
   }
-  const roles = new Set(["owner", "admin", "member", "viewer"]);
   const identifier = value => typeof value === "string" && value.length > 0 && value.length <= 255;
-  async function readOrganizations() {
-    const result = await request("organizations", null, session.access_token);
-    if (!Array.isArray(result.organizations) || result.organizations.some(org =>
-      !org || !identifier(org.organization_id) || !identifier(org.name) || !roles.has(org.role)) ||
-      new Set(result.organizations.map(org => org.organization_id)).size !== result.organizations.length) {
-      cancelMcp();
-      selectedOrganization = null;
-      throw new Error("Invalid organization response. Reload organizations.");
-    }
-    const organizations = result.organizations.map(({ organization_id, name, role }) => ({ organization_id, name, role }));
-    if (selectedOrganization) {
-      const current = organizations.find(org => org.organization_id === selectedOrganization.organization_id);
-      if (current?.role !== selectedOrganization.role) cancelMcp();
-      selectedOrganization = current?.role === selectedOrganization.role ? current : null;
-    }
-    return organizations;
-  }
-  async function encryptionAvailable() {
-    return await safeStorage.isAsyncEncryptionAvailable() && safeStorage.getSelectedStorageBackend?.() !== "basic_text";
-  }
-  async function load() {
-    if (loaded) return;
-    loaded = true;
-    try {
-      const bytes = await readFile(file);
-      if (!await encryptionAvailable()) { loaded = false; throw new Error("Secure storage is unavailable. Unlock your keychain and retry."); }
-      const decoded = await safeStorage.decryptStringAsync(bytes);
-      const value = JSON.parse(typeof decoded === "string" ? decoded : decoded.result);
-      if (value.apiBase !== apiBase || typeof value.refresh_token !== "string") throw new Error("Invalid saved session");
-      session = value;
-    } catch (failure) {
-      if (failure.code === "ENOENT") return;
-      loaded = false;
-      throw new Error("Could not restore the secure Get3W session. Unlock your keychain and retry.");
-    }
-  }
-  async function save(next) {
-    if (!await encryptionAvailable()) throw new Error("Secure storage is unavailable. Unlock your keychain and retry.");
-    const value = { ...next, apiBase, expiresAt: now() + next.expires_in * 1000 };
-    let encrypted;
-    try { encrypted = await safeStorage.encryptStringAsync(JSON.stringify(value)); }
-    catch { throw new Error("Could not encrypt the Get3W session. Unlock your keychain and retry."); }
-    await mkdir(userData, { recursive: true });
-    const temp = `${file}.${randomBytes(6).toString("hex")}`;
-    await writeFile(temp, encrypted, { mode: 0o600 });
-    await chmod(temp, 0o600); await rename(temp, file);
-    session = value;
-  }
-  async function clear() {
-    cancelMcp();
-    for (const controller of inferenceRequests) controller.abort();
-    inferenceRequests.clear();
-    session = null; user = null; selectedOrganization = null; status = "signed_out";
-    await unlink(file).catch(e => { if (e.code !== "ENOENT") throw e; });
-  }
-  async function refreshIdentity() {
-    await load();
-    if (!session) return snapshot();
-    try {
-      if (session.expiresAt <= now() + 30_000) await save(await request("refresh", { refresh_token: session.refresh_token }));
-      try { user = (await request("me", null, session.access_token)).user; }
-      catch (failure) {
-        if (failure.status !== 401) throw failure;
-        await save(await request("refresh", { refresh_token: session.refresh_token }));
-        user = (await request("me", null, session.access_token)).user;
-      }
-      status = "signed_in"; error = null;
-    } catch (failure) {
-      if (failure.status === 401) await clear(); else status = "unavailable";
-      error = failure.message;
-    }
-    return snapshot();
-  }
-  async function cancelPending() {
-    const old = pending; pending = null;
-    if (old) await request("cancel", old.body).catch(() => {});
-  }
   return {
+    outputIdentity: () => ({userId:account.session&&account.status==="signed_in"&&account.user?.id}),
     status: () => serial(async () => {
       try { return await refreshIdentity(); }
-      catch (failure) { status = "unavailable"; error = failure.message; return snapshot(); }
+      catch (failure) { return account.markUnavailable(failure.message); }
     }),
-    begin: () => serial(async () => {
-      await cancelPending();
-      if (!await encryptionAvailable()) throw new Error("Secure storage is unavailable. Unlock your keychain and retry.");
-      const verifier = randomBytes(32).toString("base64url"), state = randomBytes(32).toString("base64url");
-      const result = await request("requests", { code_challenge: createHash("sha256").update(verifier).digest("base64url"), state });
-      pending = { body: { request_id: result.request_id, code_verifier: verifier, state }, until: now() + result.expires_in * 1000 };
-      const url = `${webBase}/desktop-connect?request_id=${encodeURIComponent(result.request_id)}`;
-      try { await openExternal(url); } catch { await cancelPending(); throw new Error("Could not open the Get3W sign-in page."); }
-      error = null; return snapshot();
-    }),
-    poll: () => serial(async () => {
-      if (!pending) return snapshot();
-      if (pending.until <= now()) { await cancelPending(); error = "Sign-in expired. Try again."; return snapshot(); }
-      const value = await request("exchange", pending.body);
-      if (value.status === "pending") return snapshot();
-      pending = null;
-      // A new grant must never display the previous account if /me is offline.
-      for (const controller of inferenceRequests) controller.abort();
-      inferenceRequests.clear();
-      cancelMcp();
-      user = null; selectedOrganization = null;
-      try { await save(value); }
-      catch (failure) {
-        await request("logout", { refresh_token: value.refresh_token }).catch(() => {});
-        error = failure.message; return snapshot();
-      }
-      return refreshIdentity();
-    }),
-    cancel: () => serial(async () => { await cancelPending(); return snapshot(); }),
-    createOrganization: input => serial(async () => {
-      await refreshIdentity();
-      if (!session || status !== "signed_in" || input?.userId !== user?.id) throw new Error("Account changed. Reopen account settings.");
-      if (typeof input.name !== "string" || !input.name.trim() || input.name.trim().length > 200 || /[\x00-\x1f]/.test(input.name)) throw new Error("Use an organization name of 1 to 200 characters.");
-      const result = await request("organizations", {name:input.name.trim()}, session.access_token);
-      if (!identifier(result.organization_id) || !identifier(result.name) || result.role !== "owner") throw new Error("Could not confirm the new organization. Reload organizations before retrying.");
-      const organizations = await readOrganizations();
-      const created = organizations.find(org => org.organization_id === result.organization_id);
-      if (!created) throw new Error("Could not confirm the new organization. Reload organizations before retrying.");
-      cancelMcp();selectedOrganization = created;
-      return {organizations, selectedOrganization};
-    }),
-    organizations: (input) => serial(async () => {
-      await refreshIdentity();
-      if (!session || status !== "signed_in") throw new Error("Get3W is unavailable or signed out. Reconnect and retry.");
-      if (!input || input.userId !== user?.id) throw new Error("Account changed. Reload organizations.");
-      const organizations = await readOrganizations();
-      if (input.organizationId !== undefined) {
-        if (input.organizationId !== selectedOrganization?.organization_id) cancelMcp();
-        selectedOrganization = organizations.find(org => org.organization_id === input.organizationId) || null;
-        if (input.organizationId !== null && !selectedOrganization) throw new Error("Organization access changed. Reload organizations.");
-      }
-      return { organizations, selectedOrganization };
-    }),
-    membership: (input) => serial(async () => {
-      if (!input || !["inbox","list","invite","accept","decline","revoke","remove","leave"].includes(input.action)) throw new Error("Invalid membership action.");
-      await refreshIdentity();
-      if (!session || status !== "signed_in" || input.userId !== user?.id) throw new Error("Account changed. Reopen account settings.");
-      const validId = value => typeof value === "string" && /^[^\s\x00-\x1f]{1,50}$/.test(value);
-      const memberAction = ["list","invite","revoke","remove","leave"].includes(input.action);
-      if (memberAction) {
-        if (input.organizationId !== selectedOrganization?.organization_id) throw new Error("Organization changed. Reload organizations.");
-        await readOrganizations();
-        if (!selectedOrganization) throw new Error("Organization access changed. Reload organizations.");
-        if (input.action !== "leave" && !["owner","admin"].includes(selectedOrganization.role)) throw new Error("Organization administrator access required.");
-      }
-      if (input.after !== undefined && !validId(input.after)) throw new Error("Invalid invitation page.");
-      const org = `organizations/${encodeURIComponent(input.organizationId||"")}`;
-      let route, body, method;
-      if (input.action === "inbox" || input.action === "list") {
-        route = (input.action === "inbox" ? "invitations" : `${org}/invitations`) + (input.after ? `?after=${encodeURIComponent(input.after)}` : "");
-      } else if (input.action === "invite") {
-        if (!validId(input.recipientId) || !["admin","member","viewer"].includes(input.role)) throw new Error("Use a Get3W account ID and invitation role.");
-        route=`${org}/invitations`; body={recipient_id:input.recipientId,role:input.role}; method="POST";
-      } else if (["accept","decline","revoke"].includes(input.action)) {
-        if (!validId(input.invitationId)) throw new Error("Invalid invitation.");
-        route = input.action === "revoke" ? `${org}/invitations/${encodeURIComponent(input.invitationId)}` : `invitations/${encodeURIComponent(input.invitationId)}`;
-        method = input.action === "revoke" ? "DELETE" : "POST";
-        if (method === "POST") body={action:input.action};
-      } else if (input.action === "remove") {
-        if (!validId(input.memberId)) throw new Error("Invalid organization member.");
-        route=`${org}/members/${encodeURIComponent(input.memberId)}`;method="DELETE";
-      } else {route=`${org}/leave`;body={};method="POST";}
-      let result;
-      try { result=await request(route,body,session.access_token,method); }
-      catch(failure) {
-        if (failure.status === 409) throw new Error("This membership change is unavailable. Keep an active owner and reload invitations.");
-        if (failure.status === 422) throw new Error("Check the Get3W account ID and invitation role.");
-        if (failure.status === 403) throw new Error("Your organization role no longer allows this action. Reload organizations.");
-        throw failure;
-      }
-      const project = row => {
-        if (!row || !validId(row.invitation_id) || !validId(row.organization_id) || !validId(row.recipient_id) || !["admin","member","viewer"].includes(row.role) || !["pending","accepted","declined","revoked","expired"].includes(row.status) || !Number.isSafeInteger(row.created_at) || !Number.isSafeInteger(row.expires_at)) throw new Error("Invalid invitation response. Reload invitations.");
-        return {invitation_id:row.invitation_id,organization_id:row.organization_id,recipient_id:row.recipient_id,role:row.role,status:row.status,created_at:row.created_at,expires_at:row.expires_at};
-      };
-      if (["inbox","list"].includes(input.action)) {
-        if (!Array.isArray(result.invitations) || result.invitations.length>100 || (result.next_cursor !== null && !validId(result.next_cursor)) || (input.action === "list" && result.organization_id !== input.organizationId)) throw new Error("Invalid invitation page. Reload invitations.");
-        const invitations=result.invitations.map(row=>{
-          const safe=project(row);
-          if (input.action === "inbox") {
-            if (safe.recipient_id !== user.id || !identifier(row.organization_name)) throw new Error("Invalid invitation recipient.");
-            return {...safe,organization_name:row.organization_name};
-          }
-          if(safe.organization_id!==input.organizationId)throw new Error("Invalid invitation organization.");
-          return safe;
-        });
-        return {invitations,next_cursor:result.next_cursor};
-      }
-      if (input.action === "invite") {const row=project(result);if(row.organization_id!==input.organizationId||row.recipient_id!==input.recipientId||row.role!==input.role)throw new Error("Invitation could not be confirmed. Reload invitations.");}
-      else if (result.ok !== true) throw new Error("Membership change could not be confirmed. Reload organizations.");
-      if (input.action === "leave" || (input.action === "remove" && input.memberId === user.id)) {cancelMcp();selectedOrganization=null;}
-      return {ok:true};
-    }),
-    updateMember: (input) => serial(async () => {
-      await refreshIdentity();
-      if (!session || status !== "signed_in" || input?.userId !== user?.id || !selectedOrganization) throw new Error("Select an available organization first.");
-      if (input.organizationId !== selectedOrganization.organization_id) throw new Error("Organization changed. Reload organizations.");
-      if (!identifier(input.memberId) || !roles.has(input.role) || typeof input.active !== "boolean") throw new Error("Invalid member update");
-      await readOrganizations();
-      if (!selectedOrganization || !["owner", "admin"].includes(selectedOrganization.role)) throw new Error("Organization access changed. Reload organizations.");
-      try {
-        return await request(`organizations/${encodeURIComponent(selectedOrganization.organization_id)}/members/${encodeURIComponent(input.memberId)}`,
-          {role:input.role,active:input.active},session.access_token,"PATCH");
-      } catch(failure) {
-        if (failure.status === 409) throw new Error("Keep at least one active organization owner.");
-        if (failure.status === 403) throw new Error("Your current organization role does not allow this change. Reload organizations.");
-        throw failure;
-      }
-    }),
+    begin: () => serial(account.begin),
+    poll: () => serial(account.poll),
+    cancel: () => serial(account.cancel),
     connectors: (input) => serial(async () => {
       const providers = {google:"https://accounts.google.com/o/oauth2/v2/auth",microsoft:"https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"};
       if (!input || !["status","authorize","disconnect"].includes(input.action) ||
           (input.action !== "status" && !Object.hasOwn(providers,input.provider))) throw new Error("Invalid connection action.");
       await refreshIdentity();
-      if (!session || status !== "signed_in" || input.userId !== user?.id || input.organizationId !== selectedOrganization?.organization_id) throw new Error("Account or organization changed. Reload organizations.");
-      await readOrganizations();
-      if (!selectedOrganization || !["owner","admin","member"].includes(selectedOrganization.role)) throw new Error("Organization membership required. Ask your administrator.");
-      const base = `${gatewayBase}/connectors/v1/organizations/${encodeURIComponent(selectedOrganization.organization_id)}`;
+      await requirePersonal(input.userId);
+      const base = `${cloudBase}/v1/personal/connections`;
       let result;
       try {
         const response = await fetchImpl(base + (input.action === "status" ? "" : `/${input.provider}${input.action === "authorize" ? "/authorize" : ""}`), {
           method: input.action === "status" ? "GET" : input.action === "authorize" ? "POST" : "DELETE",
-          headers: {Authorization:`Bearer ${session.access_token}`,"Content-Type":"application/json"},
+          headers: {Authorization:`Bearer ${account.session.access_token}`,"Content-Type":"application/json"},
           ...(input.action === "authorize" ? {body:"{}"} : {}), redirect:"error",signal:AbortSignal.timeout(12_000),
         });
         if (!response.ok) throw new Error();
@@ -279,7 +88,7 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, apiBase =
         const allowed = new Set(["client_id","redirect_uri","response_type","scope","state","code_challenge","code_challenge_method",...(input.provider === "google" ? ["access_type","prompt"] : [])]);
         if (url.origin + url.pathname !== providers[input.provider] || url.username || url.password || url.hash ||
             [...params.keys()].some(key=>!allowed.has(key)||params.getAll(key).length!==1) ||
-            params.get("redirect_uri") !== `${gatewayBase}/connectors/oauth/${input.provider}/callback` ||
+            params.get("redirect_uri") !== `${cloudBase}/v1/personal/oauth/${input.provider}/callback` ||
             params.get("response_type") !== "code" || params.get("code_challenge_method") !== "S256" ||
             !/^[A-Za-z0-9_-]{43}$/.test(params.get("code_challenge")||"") || !/^[A-Za-z0-9_-]{32,256}$/.test(params.get("state")||"") ||
             !params.get("client_id") || params.get("scope") !== scopes.join(" ") ||
@@ -288,133 +97,180 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, apiBase =
       } catch { throw new Error("Could not open the verified connection page. Reload connections and retry."); }
       return {ok:true};
     }),
-    toolAccess: (input) => serial(async () => {
-      if (!input || !["read", "publish", "publishConnector", "grant"].includes(input.action)) throw new Error("Invalid tool access action.");
-      await refreshIdentity();
-      if (!session || status !== "signed_in" || input.userId !== user?.id || input.organizationId !== selectedOrganization?.organization_id) throw new Error("Account or organization changed. Reload organizations.");
-      await readOrganizations();
-      if (!selectedOrganization || !["owner", "admin"].includes(selectedOrganization.role)) throw new Error("Organization administrator access required.");
-      const base = `organizations/${encodeURIComponent(selectedOrganization.organization_id)}`;
-      if (input.action === "publish" || input.action === "publishConnector") {
-        if (input.action === "publishConnector" && !["google","microsoft"].includes(input.provider)) throw new Error("Invalid connector provider.");
-        const result = await request(input.action === "publish" ? `${base}/model-catalog` : `${base}/connector-catalog/${input.provider}`, {}, session.access_token, "POST");
-        if (result.ok !== true) throw new Error("Publication could not be confirmed. Reload tools before retrying.");
-        return {ok:true};
-      }
-      if (!identifier(input.memberId)) throw new Error("Select an organization member.");
-      const route = `${base}/tool-access/${encodeURIComponent(input.memberId)}`;
-      if (input.action === "grant") {
-        if (typeof input.capability !== "string" || !input.capability || input.capability.length > 100 || typeof input.enabled !== "boolean") throw new Error("Invalid tool grant.");
-        const result = await request(`${route}/${encodeURIComponent(input.capability)}`, {enabled:input.enabled}, session.access_token, "PUT");
-        if (result.ok !== true) throw new Error("Grant change could not be confirmed. Reload tools before retrying.");
-        return {ok:true};
-      }
-      if (input.after !== undefined && (typeof input.after !== "string" || !input.after || input.after.length > 100)) throw new Error("Invalid tool page.");
-      const result = await request(route + (input.after ? `?after=${encodeURIComponent(input.after)}` : ""), null, session.access_token);
-      if (result.organization_id !== input.organizationId || result.member_id !== input.memberId || !Array.isArray(result.capabilities) || result.capabilities.length > 100 || result.capabilities.some(row => !row || !identifier(row.name) || row.name.length > 100 || typeof row.description !== "string" || row.description.length > 500 || typeof row.granted !== "boolean") || (result.next_cursor !== null && (typeof result.next_cursor !== "string" || !result.next_cursor || result.next_cursor.length > 100))) throw new Error("Invalid tool access response. Reload tools.");
-      return {organization_id:result.organization_id,member_id:result.member_id,capabilities:result.capabilities.map(({name,description,granted})=>({name,description,granted})),next_cursor:result.next_cursor};
-    }),
-    members: (input) => serial(async () => {
-      await refreshIdentity();
-      if (!session || status !== "signed_in" || input?.userId !== user?.id || !selectedOrganization) throw new Error("Select an available organization first.");
-      await readOrganizations();
-      if (!selectedOrganization || !["owner", "admin"].includes(selectedOrganization.role)) throw new Error("Organization access changed. Reload organizations.");
-      const result = await request(`organizations/${encodeURIComponent(selectedOrganization.organization_id)}/members`, null, session.access_token);
-      if (result.organization_id !== selectedOrganization.organization_id || !Array.isArray(result.members) ||
-        result.members.some(member => !member || !identifier(member.user_id) || !roles.has(member.role))) throw new Error("Invalid member response. Reload organizations.");
-      return { organization_id: result.organization_id, members: result.members.map(({user_id, role}) => ({user_id, role})) };
-    }),
     // Main-process only: never add this streaming method to the renderer IPC allowlist.
     // Main-process only; deliberately absent from the renderer IPC allowlist.
-    mcp: async ({userId, organizationId, method, body, headers = {}, signal}) => {
+    // Main-process only. The guarded proxy/recovery supplies persisted host consent.
+    submitPersonal: input => serial(async()=>{
+      await requirePersonal(input.userId);
+      const args=input.arguments;
+      const payload_json=JSON.stringify(args);
+      const response=await personal("tasks",{method:"POST",signal:input.signal,body:{
+        slug:args.slug,inputs:args.inputs,quote_id:args.quote_id,idempotency_key:args.idempotency_key,
+        conversation_id:args.session_id,approval:{approved:true,quote_id:args.quote_id,payload_json,
+          payload_hash:createHash("sha256").update(payload_json).digest("hex")},
+      }});
+      if(!response.ok) {
+        const failure=await response.json().catch(()=>null);
+        const code=failure?.error?.code;
+        const corrections={
+          idempotency_conflict:"This submission key belongs to a different payload. Retrieve that task; for a new task use a new key unique to this conversation and candidate.",
+          quote_expired:"Quote expired before submission. Request a new quote and approval before submitting.",
+          quote_stale:"Model catalog changed. Request a new quote and approval before submitting.",
+          quote_mismatch:"Quoted inputs do not match. Quote the exact inputs again before submitting.",
+          quote_consumed:"Quote already used. Retrieve the original task before submitting again.",
+        };
+        if(Object.hasOwn(corrections,code)) {
+          const error=Object.assign(new Error(corrections[code]),{code,definitive:true});
+          throw error;
+        }
+        throw Error("Personal task submission could not be confirmed. Retrieve the original task before retrying.");
+      }
+      return response.json();
+    }),
+    mcp: async ({userId, sessionId, appId, method, body, headers = {}, signal}) => {
       if (!["GET","POST","DELETE"].includes(method)) throw new Error("Unsupported MCP method");
+      if (appId !== undefined && !/^cob_[0-7][0-9a-hjkmnp-tv-z]{25}$/.test(appId)) throw new Error("Invalid artifact connection");
       const controller = new AbortController();
       const access = await serial(async () => {
         await refreshIdentity();
-        if (!session || status !== "signed_in" || userId !== user?.id) throw new Error("Get3W account changed or is unavailable.");
-        await readOrganizations();
-        if (!selectedOrganization || selectedOrganization.organization_id !== organizationId) throw new Error("Select the connected Get3W organization first.");
+        // MCP is the source of truth for personal model access, so it does not
+        // wait on the capabilities probe before each request.
+        if (!account.session || account.status !== "signed_in" || userId !== account.user?.id) throw new Error("Get3W account changed or is unavailable.");
         mcpRequests.add(controller);
-        return session.access_token;
+        return account.session.access_token;
       });
       try {
         const forwarded = {};
+        // Session binding is host-owned. Never forward a session header supplied
+        // by the engine/Agent; a future per-call host adapter must inject it.
         for (const name of ["accept","content-type","mcp-protocol-version","mcp-session-id","last-event-id"]) {
           if (typeof headers[name] === "string") forwarded[name] = headers[name];
         }
-        const response = await fetchImpl(`${gatewayBase}/desktop-gateway/mcp`, {
-          method, redirect:"error", headers:{...forwarded, Authorization:`Bearer ${access}`, "X-Get3W-Organization":organizationId},
+        if (appId && typeof headers['x-get3w-app-revision'] === 'string' && /^cov_[0-7][0-9a-hjkmnp-tv-z]{25}$/.test(headers['x-get3w-app-revision'])) forwarded['x-get3w-app-revision']=headers['x-get3w-app-revision'];
+        const mcpPath = `${cloudBase}/v1/gateway${appId ? `/apps/${appId}` : ""}/mcp`;
+        /** @type {RequestInit} */
+        const requestOptions = {
+          method, redirect:"error", headers:{...forwarded, Authorization:`Bearer ${access}`,
+            ...(typeof sessionId === "string" && /^[A-Za-z0-9_-]{16,128}$/.test(sessionId) ? {"X-Get3W-Session-Id":sessionId} : {})},
           ...(method === "POST" ? {body} : {}),
           signal:signal ? AbortSignal.any([controller.signal,signal]) : controller.signal,
-        });
+        };
+        const response = await fetchImpl(mcpPath, requestOptions);
+        if (!response.ok) console.warn("[get3w-account-mcp] upstream", JSON.stringify({status:response.status, method, contentType:response.headers.get("content-type")}));
         return {response,release:()=>{mcpRequests.delete(controller);controller.abort();}};
       } catch {
         mcpRequests.delete(controller);
-        throw new Error("Get3W Gateway is unavailable. Check your account and organization.");
+        throw new Error("Get3W Gateway is unavailable. Check your account.");
       }
     },
-    inference: async ({ userId, organizationId, route, body, signal }) => {
+    inference: async ({ userId, route, body, signal }) => {
+      const startedAt = performance.now();
       if (!["models", "chat/completions"].includes(route)) throw new Error("Unsupported inference route");
       const controller = new AbortController();
       const binding = await serial(async () => {
-        await refreshIdentity();
-        if (!session || status !== "signed_in" || userId !== user?.id) throw new Error("Sign in to the current Get3W account and retry.");
-        if (organizationId!==selectedOrganization?.organization_id) throw new Error("Organization changed. Reconnect models before running a task.");
-        if (selectedOrganization) { await readOrganizations(); if (!selectedOrganization) throw new Error("Organization access changed. Reload organizations."); }
+        await load();
+        // The inference endpoint validates the bearer session and live permissions.
+        // Reuse a verified, unexpired local identity instead of a redundant /me round trip.
+        if (account.status !== "signed_in" || !account.session || account.session.expiresAt <= now() + 30_000) await refreshIdentity();
+        if (!account.session || account.status !== "signed_in" || userId !== account.user?.id) throw new Error("Sign in to the current Get3W account and retry.");
         inferenceRequests.add(controller);
-        return {access:session.access_token,organizationId:selectedOrganization?.organization_id};
+        return {access:account.session.access_token};
       });
+      const identityMs = Math.round(performance.now() - startedAt);
       const combined = AbortSignal.any([controller.signal, ...(signal ? [signal] : []), AbortSignal.timeout(300_000)]);
       try {
         // Never retry a submitted completion: a lost response can already be billed.
-        const response = await fetchImpl(`${apiBase}/desktop/v1/inference/${route}`, {
+        const response = await fetchImpl(`${cloudBase}/v1/inference/${route}`, {
           method: route === "models" ? "GET" : "POST", redirect: "error", signal: combined,
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${binding.access}`, "X-Get3W-Request-Id":randomUUID(), ...(binding.organizationId?{"X-Get3W-Organization":binding.organizationId}:{}) },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${binding.access}`, "X-Get3W-Request-Id":randomUUID() },
           ...(route === "chat/completions" ? {body} : {}),
         });
+        if (route === "chat/completions") console.info("[get3w-inference-auth]", JSON.stringify({
+          identityMs, headersMs: Math.round(performance.now() - startedAt),
+          serverTiming: response.headers.get("server-timing"), status: response.status,
+        }));
         return { response, release: () => { inferenceRequests.delete(controller); controller.abort(); } };
       } catch {
         inferenceRequests.delete(controller);
         throw new Error("Get3W inference is unavailable. Check the session before retrying.");
       }
     },
+    automationWork: (userId, runnerId, workspaceIds) => serial(async () => {
+      await requirePersonal(userId);
+      const response = await personal("automation-runner/work", {method:"POST",signal:AbortSignal.timeout(30000),body:{runnerId,...(workspaceIds ? {workspaceIds} : {})}});
+      if (!response.ok) throw Error("Automation queue is unavailable.");
+      return (await response.json()).assignment;
+    }),
+    automationReport: (userId, runId, runnerId, body) => serial(async () => {
+      await requirePersonal(userId);
+      const response = await personal(`automation-runner/runs/${encodeURIComponent(runId)}`, {method:"POST",signal:AbortSignal.timeout(8000),body:{runnerId,...body}});
+      if (!response.ok) throw Error("Automation receipt was not accepted.");
+      return response.json();
+    }),
+    automations: input => serial(async () => {
+      const route = automationRoute(input);
+      await requirePersonal(input.userId);
+      const response = await personal(route, {method: input.method, ...(input.body === undefined ? {} : {body: input.body})});
+      if (!account.session || account.status !== "signed_in" || account.user?.id !== input.userId) throw Error("Account changed. Reload automations.");
+      const text = await response.text();
+      if (text.length > 16_000_000) throw Error("Automation response is too large.");
+      return {ok: response.ok, status: response.status, json: JSON.parse(text)};
+    }),
+    // Renderer transport. Personal identity is verified in main.
+    artifacts: input => serial(async () => {
+      const route = artifactRoute(input);
+      await requirePersonal(input.userId);
+      const current = () => account.session && account.status === "signed_in" && account.user?.id === input.userId;
+      const response = await fetchImpl(`${cloudBase}/v1/personal${route.replace(/^\/v1/, "")}`, {
+        method: input.method, redirect: "error", signal: AbortSignal.timeout(20_000),
+        headers: {Authorization: `Bearer ${account.session.access_token}`, "Content-Type": "application/json"},
+        ...(input.method === "POST" ? {body: JSON.stringify(input.body ?? {})} : {}),
+      });
+      if (!current()) throw Error("Account changed. Reload artifacts.");
+      const body = await response.text();
+      if (body.length > 4_000_000) throw Error("Artifact response is too large.");
+      let json;
+      try { json = JSON.parse(body); } catch { throw Error("Artifacts are unavailable. Try again."); }
+      return {ok: response.ok, status: response.status, json};
+    }),
+    taskCatalog: input => serial(async()=>{
+      if(!input || (input.offline!==undefined&&typeof input.offline!=="boolean") || (input.refresh!==undefined&&typeof input.refresh!=="boolean") || !identifier(input.userId) || Object.keys(input).some(k=>!["userId","offline","refresh"].includes(k))) throw Error("Invalid personal model catalog request.");
+      if(input.offline) {
+        if(!account.session || account.user?.id!==input.userId) throw Error("Verify your account online before browsing offline models.");
+      } else await requirePersonal(input.userId);
+      return taskCatalogCache.read({userId:input.userId,allowOffline:input.offline===true,forceRefresh:input.refresh===true,
+        load:async etag=>{
+          if(input.offline) throw new TypeError("Offline catalog browsing");
+          return personal("models",{headers:etag?{"If-None-Match":etag}:{}});
+        }});
+    }),
     models: (input) => serial(async () => {
       await refreshIdentity();
-      if (!session || status !== "signed_in" || input?.userId !== user?.id) throw new Error("Sign in to the current Get3W account and retry.");
-      const response = await fetchImpl(`${apiBase}/desktop/v1/inference/models`, {redirect:"error",signal:AbortSignal.timeout(12_000),headers:{Authorization:`Bearer ${session.access_token}`,...(selectedOrganization?{"X-Get3W-Organization":selectedOrganization.organization_id}:{})}});
+      if (!account.session || account.status !== "signed_in" || input?.userId !== account.user?.id) throw new Error("Sign in to the current Get3W account and retry.");
+      const response = await fetchImpl(`${cloudBase}/v1/inference/models`, {redirect:"error",signal:AbortSignal.timeout(12_000),headers:{Authorization:`Bearer ${account.session.access_token}`}});
       if (!response.ok) throw new Error("Models could not be verified. Retry.");
       const result=await response.json();
       if (result.object !== "list" || !Array.isArray(result.data) || result.data.some(model =>
         !model || !identifier(model.id) || !identifier(model.owned_by) || !Array.isArray(model.protocols) ||
         model.protocols.some(protocol => !["openai", "anthropic", "gemini"].includes(protocol))) ||
         new Set(result.data.map(model => model.id)).size !== result.data.length) throw new Error("Models could not be verified. Retry.");
-      return { models: result.data.filter(model=>model.available!==false).map(({id, owned_by, protocols}) => ({id, owned_by, protocols})) };
+      return { models: result.data.filter(model=>model.available!==false).map(({id, owned_by, protocols, input_modalities}) => ({id, owned_by, protocols, input_modalities:Array.isArray(input_modalities) ? input_modalities.filter(value=>["text","image","audio","video","pdf"].includes(value)) : ["text"]})) };
     }),
-    modelUsage: (input) => serial(async () => {
-      await refreshIdentity();
-      if (status==="unavailable") throw new Error("Get3W is unavailable. Retry when online.");
-      if (!session || status!=="signed_in" || input?.userId!==user?.id) throw new Error("Account changed. Reopen account settings.");
-      if (input.organizationId!==undefined) {
-        if (input.organizationId!==selectedOrganization?.organization_id) throw new Error("Organization changed. Reload organizations.");
-        await readOrganizations();
-        if (!selectedOrganization) throw new Error("Organization access changed. Reload organizations.");
-      }
-      const base=input.organizationId?`organizations/${encodeURIComponent(input.organizationId)}/`:"";
-      if (input.action==="limit") {
-        if (!selectedOrganization || !["owner","admin"].includes(selectedOrganization.role) || !Number.isSafeInteger(input.limit) || input.limit<0 || input.limit>1000000 || typeof input.memberId!=="string" || input.memberId.length<1 || input.memberId.length>50) throw new Error("Administrator access and a valid request limit are required.");
-        await request(`${base}model-limits/${encodeURIComponent(input.memberId)}`,{monthly_requests:input.limit},session.access_token,"PUT");return {ok:true};
-      }
-      if (input.action!=="read") throw new Error("Invalid usage action.");
-      const result=await request(`${base}model-usage${input.after?`?after=${encodeURIComponent(input.after)}`:""}`,null,session.access_token);
-      const money=value=>value===null || (value && typeof value.amount==="string" && /^-?\d+\.\d{6}$/.test(value.amount) && ["USD","CNY"].includes(value.currency));
-      const bucket=value=>value===null || (value && Number.isSafeInteger(value.used) && value.used>=0 && (value.limit===null || Number.isSafeInteger(value.limit)) && (value.remaining===null || Number.isSafeInteger(value.remaining)));
-      if (result.organization_id!==(input.organizationId??null) || result.billing!=="personal" || !result.quota || result.quota.unit!=="requests" || !/^\d{4}-\d{2}$/.test(result.quota.period) || !bucket(result.quota.organization) || !bucket(result.quota.member) || !Array.isArray(result.entries) || result.entries.length>100 || result.entries.some(row=>!row || !identifier(row.request_id) || !identifier(row.requested_model) || !identifier(row.actual_model) || !["submitted","completed","failed","cancelled"].includes(row.status) || !Number.isSafeInteger(row.created_at) || !money(row.charge) || !money(row.balance_after))) throw new Error("Usage could not be verified. Reload usage.");
-      return {organization_id:result.organization_id,billing:"personal",quota:{unit:"requests",period:result.quota.period,organization:result.quota.organization?{limit:result.quota.organization.limit,used:result.quota.organization.used,remaining:result.quota.organization.remaining}:null,member:result.quota.member?{limit:result.quota.member.limit,used:result.quota.member.used,remaining:result.quota.member.remaining}:null},entries:result.entries.map(row=>({request_id:row.request_id,requested_model:row.requested_model,actual_model:row.actual_model,task_id:typeof row.task_id==="string"?row.task_id:null,status:row.status,created_at:row.created_at,billing_model:typeof row.billing_model==="string"?row.billing_model:null,charge:row.charge?{amount:row.charge.amount,currency:row.charge.currency}:null,balance_after:row.balance_after?{amount:row.balance_after.amount,currency:row.balance_after.currency}:null})),next_cursor:typeof result.next_cursor==="string"?result.next_cursor:null};
+    modelUsage: input => serial(async()=>{
+      await requirePersonal(input?.userId);
+      if(input.action!=="read") throw Error("Invalid personal usage request.");
+      const response=await personal("usage"+(input.after?`?after=${encodeURIComponent(input.after)}`:""));
+      if(!response.ok)throw Error("Usage is unavailable. Try again.");
+      const value=await response.json();
+      if(value.billing!=="personal" || !Array.isArray(value.items))throw Error("Invalid personal usage response.");
+      return value;
     }),
     balance: (input) => serial(async () => {
       await refreshIdentity();
-      if (!session || status !== "signed_in" || input?.userId !== user?.id) throw new Error("Sign in to the current Get3W account and retry.");
-      const result = await request("balance", null, session.access_token);
+      if (!account.session || account.status !== "signed_in" || input?.userId !== account.user?.id) throw new Error("Sign in to the current Get3W account and retry.");
+      const response=await personal("balance");
+      if(!response.ok)throw Error("Balance is unavailable. Try again.");
+      const result = await response.json();
       if (result.balance === null) return { balance: null };
       const value = result.balance;
       if (!value || typeof value.amount !== "string" || !/^-?\d+\.\d{6}$/.test(value.amount) ||
@@ -423,8 +279,8 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, apiBase =
     }),
     settings: (input) => serial(async () => {
       await refreshIdentity();
-      if (!session || status !== "signed_in") throw new Error(status === "unavailable" ? "Get3W is unavailable. Retry when online." : "Sign in to Get3W before syncing settings.");
-      if (!input || input.userId !== user?.id) throw new Error("Account changed. Reload settings.");
+      if (!account.session || account.status !== "signed_in") throw new Error(account.status === "unavailable" ? "Get3W is unavailable. Retry when online." : "Sign in to Get3W before syncing settings.");
+      if (!input || input.userId !== account.user?.id) throw new Error("Account changed. Reload settings.");
       const body = input.value;
       if (body !== undefined) {
         const keys = ["showThinking", "desktopNotifications", "linkOpenDestination", "keepAwake"];
@@ -432,17 +288,12 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, apiBase =
           !body.preferences || Object.keys(body).some(k => !["schema_version","revision","preferences"].includes(k)) ||
           Object.keys(body.preferences).some(k => !keys.includes(k)) || JSON.stringify(body).length > 2048) throw new Error("Invalid settings.");
       }
-      try { return await request("settings", body, session.access_token, body ? "PUT" : "GET"); }
+      try { return await request("settings", body, account.session.access_token, body ? "PUT" : "GET"); }
       catch (failure) {
         if (failure.status === 409) throw new Error("Settings changed on another device. Reload cloud settings before saving.");
         throw failure;
       }
     }),
-    logout: () => serial(async () => {
-      await cancelPending(); await load();
-      // Do not report a successful logout if server revocation could not finish.
-      if (session) await request("logout", { refresh_token: session.refresh_token });
-      await clear(); error = null; return snapshot();
-    }),
+    logout: () => { cancelMcp(); return serial(account.logout); },
   };
 }

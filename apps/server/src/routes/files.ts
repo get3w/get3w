@@ -1,3 +1,4 @@
+import {saveModelOutput,readOutputFile,indexOutputFiles} from "../model-output-files.js";
 import { createReadStream } from "node:fs";
 import { readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -49,6 +50,7 @@ interface RegisterFileRoutesOptions {
   resolveInboxMaxBytes: () => number;
   scopeRank: (scope: TokenScope) => number;
   /** The folder a conversation of this workspace runs in, or null when unknown. */
+  listOutputSessions?: (workspace: WorkspaceInfo) => Promise<{sessionId:string;directory:string}[]>;
   resolveSessionDirectory?: (workspace: WorkspaceInfo, sessionId: string) => Promise<string | null>;
 }
 
@@ -702,6 +704,39 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
     resolveSessionDirectory,
   } = options;
   const fileSessions = new FileSessionStore();
+  // Host-only: renderer callers go through native account/organization ownership checks.
+  addRoute(routes, "POST", "/workspace/:id/model-outputs", "host-token", async (ctx) => {
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    const body = await readJsonBody(ctx.request);
+    if (body.action === "index") {
+      const result=await indexOutputFiles(workspace.path);
+      const items:{path:string;mimeType:string;sizeBytes:number;updatedAt:number;rootPath:string;sessionId?:string}[]=result.items.map(file=>({...file,rootPath:workspace.path}));
+      const seen=new Set([resolve(workspace.path)]);
+      for(const session of await options.listOutputSessions?.(workspace).catch(()=>[])??[]){
+        if(seen.has(resolve(session.directory)))continue;
+        seen.add(resolve(session.directory));
+        const index=await indexOutputFiles(session.directory).catch(()=>null);
+        if(index){result.truncated ||= index.truncated;items.push(...index.items.map(file=>({...file,rootPath:session.directory,sessionId:session.sessionId})));}
+        if(items.length>=10000){result.truncated=true;break;}
+      }
+      return jsonResponse({items:items.slice(0,10000),truncated:result.truncated});
+    }
+    if (body.action === "read" && typeof body.path === "string") {
+      const directory = typeof body.sessionId === "string" && resolveSessionDirectory
+        ? await resolveSessionDirectory(workspace, body.sessionId) : workspace.path;
+      if(!directory)throw new ApiError(404,"session_unavailable","Conversation directory unavailable");
+      return jsonResponse(await readOutputFile(directory, body.path));
+    }
+    if (body.action === "save" && typeof body.key === "string" && typeof body.url === "string") {
+      ensureWritable(config);
+      const directory = typeof body.sessionId === "string" && resolveSessionDirectory
+        ? await resolveSessionDirectory(workspace, body.sessionId) : workspace.path;
+      if(!directory)throw new ApiError(404,"session_unavailable","Conversation directory unavailable");
+      return jsonResponse({...await saveModelOutput(directory, body.key, body.url),rootPath:directory});
+    }
+    throw new ApiError(400,"invalid_output_request","Invalid output operation");
+  });
+
 
   // A conversation that moved into a worktree writes its files there, and its
   // replies name them relative to that folder.

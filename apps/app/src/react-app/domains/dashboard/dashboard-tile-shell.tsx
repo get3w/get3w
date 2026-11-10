@@ -1,5 +1,6 @@
 import { t } from "@/i18n";
 /** @jsxImportSource react */
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { MoreHorizontal, RefreshCw } from "lucide-react";
 
@@ -12,6 +13,7 @@ export type DashboardTileActions = (props: { onRefresh?: () => void; refreshing:
 type DashboardTileShellProps = {
   renderActions?: DashboardTileActions;
   actionsPlacement?: "header";
+  chromeTarget?: HTMLElement | null;
   title: string;
   entryId?: string;
   subtitle?: string;
@@ -23,7 +25,7 @@ type DashboardTileShellProps = {
   children: ReactNode;
 };
 
-export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh, refreshing = false, compact = false, renderActions, actionsPlacement, children }: DashboardTileShellProps) {
+export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh, refreshing = false, compact = false, renderActions, actionsPlacement, chromeTarget, children }: DashboardTileShellProps) {
   return (
     <section
       className={compact && actionsPlacement !== "header"
@@ -32,7 +34,8 @@ export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh,
       data-dashboard-entry={entryId}
       aria-label={title}
     >
-      {!compact || actionsPlacement === "header" ? (
+      {chromeTarget && renderActions ? createPortal(renderActions({onRefresh, refreshing, badge}), chromeTarget) : null}
+      {chromeTarget === undefined && (!compact || actionsPlacement === "header") ? (
         <header className={cn("flex min-h-10 items-center gap-2 border-b border-border px-3 py-1.5", renderActions && actionsPlacement !== "header" && "pr-12")}>
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
             <span className="truncate text-sm font-medium">{title}</span>
@@ -56,7 +59,7 @@ export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh,
       ) : null}
       {/* Keep this parent stable: changing recovery chrome must not remount a live iframe. */}
       <div className={compact ? "min-w-0" : "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3"}>{children}</div>
-      {actionsPlacement !== "header" && (renderActions || (compact && onRefresh)) ? (
+      {chromeTarget === undefined && actionsPlacement !== "header" && (renderActions || (compact && onRefresh)) ? (
         <div className={cn("absolute right-1 top-1 z-10", compact && "opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/tile:opacity-100 focus-within:opacity-100")}>
           {renderActions ? renderActions({ onRefresh, refreshing, badge }) : <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 bg-background/90" aria-label={`Artifact options for ${title}`} title={`Artifact options for ${title}`} />}>

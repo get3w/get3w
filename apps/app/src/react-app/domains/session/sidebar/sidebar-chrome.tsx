@@ -23,7 +23,7 @@ function SidebarToggle({ surface }: { surface: "sidebar" | "main" }) {
       className="size-8! rounded-lg text-muted-foreground transition-colors hover:bg-muted titlebar-no-drag"
       aria-expanded={isMobile ? openMobile : open}
       aria-keyshortcuts={isMacPlatform() ? "Meta+B" : "Control+B"}
-      title={`Toggle sidebar (${isMacPlatform() ? "⌘B" : "Ctrl+B"})`}
+      title={`${t("ui.041aefc44394")} (${isMacPlatform() ? "⌘B" : "Ctrl+B"})`}
       onClick={() => {
         if (isMobile) return;
         // The clicked control moves with the sidebar. Keep keyboard focus on

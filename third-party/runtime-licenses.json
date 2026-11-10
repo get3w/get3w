@@ -4226,24 +4226,6 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
-      "name": "@planetscale/database",
-      "version": "1.19.0",
-      "declaredLicense": "Apache-2.0",
-      "selectedLicense": "Apache-2.0",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4/LICENSE",
-          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "4d2895ea9a5ff792afa8e51f7cc0f3aa1003e7f7aa7971ccd9988c526c3f3f1f",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
       "name": "@protobufjs/aspromise",
       "version": "1.1.2",
       "declaredLicense": "BSD-3-Clause",
@@ -6607,42 +6589,6 @@
     },
     {
       "name": "@types/node",
-      "version": "22.19.7",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383/LICENSE",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "06e186ae8c798783452616dae0a03c18c6ea5744c7abc2df225fe3eb2559d0f1",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "@types/node",
-      "version": "24.13.3",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383/LICENSE",
-          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "a4d29a0f9a3b45be30a130591091ea1f7707d4193489960ef4ee98f35375a4e9",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "@types/node",
       "version": "25.6.0",
       "declaredLicense": "MIT",
       "selectedLicense": "MIT",
@@ -6819,6 +6765,24 @@
         }
       ],
       "sourceManifestSha256": "7754e4f5e100074550ee8c0cbdb4084622757dae96199e99c1ab1db054c4ff0b",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "@xmldom/xmldom",
+      "version": "0.8.15",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/4da724fc305d81606b245b324d4d2586916b9d248b23d82183df753ace0fdf71/LICENSE",
+          "sha256": "4da724fc305d81606b245b324d4d2586916b9d248b23d82183df753ace0fdf71",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "35aecb16da42bf3843ed197db638dff79d178fc23783bfae77070fcfa4d0ae94",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -7044,6 +7008,24 @@
     },
     {
       "name": "argparse",
+      "version": "1.0.10",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/c8442419dc614089ea022b3da6bfc089b41a58fb7b9030d1e651f2f36189dce2/LICENSE",
+          "sha256": "c8442419dc614089ea022b3da6bfc089b41a58fb7b9030d1e651f2f36189dce2",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "48b848e56c31eda738f76fb8573ae1fe0012c4b1ec9d9cfe8783517a142e9531",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "argparse",
       "version": "2.0.1",
       "declaredLicense": "Python-2.0",
       "selectedLicense": "Python-2.0",
@@ -7112,24 +7094,6 @@
         }
       ],
       "sourceManifestSha256": "63eb9ff63be2e241ee6e80434d4641d6e9b5157d88bd3bbb692fcb2dfc8da4a9",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "aws-ssl-profiles",
-      "version": "1.1.2",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/d56e4f9066438d7528cc00ba09ad572d2b1cef71cf1dcc8c5ad9a8a44d74d9d5/LICENSE",
-          "sha256": "d56e4f9066438d7528cc00ba09ad572d2b1cef71cf1dcc8c5ad9a8a44d74d9d5",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "dd350d0071d35ec3e585cfef9afefb5342f7de13ebe22209110df2fbf77ff726",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -8082,6 +8046,24 @@
         }
       ],
       "sourceManifestSha256": "c07dac3271d2ab772ac105f714c3f44bea5180a9a40bf95c2db8d6cb29bb28be",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "core-util-is",
+      "version": "1.0.3",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/33b734d60042d0fe0c92dd1fc1e874193a1c899ec3e276a2eb935d2d0bf5b710/LICENSE",
+          "sha256": "33b734d60042d0fe0c92dd1fc1e874193a1c899ec3e276a2eb935d2d0bf5b710",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "0067bcd4ef1c86da02a45ad770883b39a9d14aa0b00113071609d5fb3dce0bc0",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -9249,6 +9231,24 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "dingbat-to-unicode",
+      "version": "1.0.2",
+      "declaredLicense": "BSD-2-Clause",
+      "selectedLicense": "BSD-2-Clause",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/1013cef4b629a3c7eaf737c110fb5bebbf3abbc16e154d769468d71c3653fa37/LICENSE",
+          "sha256": "1013cef4b629a3c7eaf737c110fb5bebbf3abbc16e154d769468d71c3653fa37",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "83b29019feaf00315f9c90953a2d10db9dc449a048c5a25462c9e6716d0251a2",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "dom-serializer",
       "version": "2.0.0",
       "declaredLicense": "MIT",
@@ -9381,6 +9381,25 @@
       "noticeStatus": "verbatim license/notice files retained",
       "registryIntegrity": "sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==",
       "noticeRetrievalSource": "https://registry.npmjs.org/drizzle-orm/-/drizzle-orm-0.45.2.tgz"
+    },
+    {
+      "name": "duck",
+      "version": "0.1.12",
+      "declaredLicense": "BSD",
+      "selectedLicense": "BSD-2-Clause",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1/LICENSE",
+          "sha256": "6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "e0f9cf20de14c69ac18db77a34c2c485f6a677e15b2076b997249e70e0b39eae",
+      "noticeStatus": "verbatim license/notice files retained",
+      "resolution": "Verified two-clause BSD text in retained LICENSE"
     },
     {
       "name": "dunder-proto",
@@ -10618,24 +10637,6 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
-      "name": "generate-function",
-      "version": "2.3.1",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6/LICENSE",
-          "sha256": "3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "1726f2afc0c63cf76c6476efd8d2f581c238274dab10bc99137ca5bcde22747b",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
       "name": "gensync",
       "version": "1.0.0-beta.2",
       "declaredLicense": "MIT",
@@ -11222,8 +11223,26 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "immediate",
+      "version": "3.0.6",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/809e66de579fb7d92503848bbe6d1f348f4f6521a71e5d294fe7cc0c87a3b4ff/LICENSE.txt",
+          "sha256": "809e66de579fb7d92503848bbe6d1f348f4f6521a71e5d294fe7cc0c87a3b4ff",
+          "originalFilename": "LICENSE.txt"
+        }
+      ],
+      "sourceManifestSha256": "1e40d711ce5348d237f7a2093d1707ca7c34fc56369f6be10c8e2dc9bcae0a96",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "immer",
-      "version": "11.1.21",
+      "version": "9.0.21",
       "declaredLicense": "MIT",
       "selectedLicense": "MIT",
       "scopes": [
@@ -11236,7 +11255,7 @@
           "originalFilename": "LICENSE"
         }
       ],
-      "sourceManifestSha256": "e42b0669ff71747d998878db1b59307570a7be0af137da3ebc95d5ece5fff0b3",
+      "sourceManifestSha256": "b7e13232fe2645be01aed4578d5fe9b532f5443c49a94e3a40782fde1055cda5",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -11651,24 +11670,6 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
-      "name": "is-property",
-      "version": "1.0.2",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/e67aed7df22dc8031e4fcf5338fe91cb33e3817e5c58a99a2a2802eea9069791/LICENSE",
-          "sha256": "e67aed7df22dc8031e4fcf5338fe91cb33e3817e5c58a99a2a2802eea9069791",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "333f5b8f801c13729b10aa319d5ef3341183ea6966d1b6191c2ae24a50eada22",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
       "name": "is-regexp",
       "version": "3.1.0",
       "declaredLicense": "MIT",
@@ -11775,6 +11776,21 @@
       ],
       "sourceManifestSha256": "d4b5a0df9783c78951de0dbd94832822d0660e553b0b5e2ffc0e19e5721a5af5",
       "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "isarray",
+      "version": "1.0.0",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [],
+      "sourceManifestSha256": "93165ce56e458216c18240cd961a522af5b18e51da06f55d88ac552234455d95",
+      "noticeStatus": "no root license file in installed package; manifest declaration retained",
+      "manifestDeclarationFile": "third-party/manifest-declarations/isarray-1.0.0.json",
+      "manifestDeclarationSha256": "93165ce56e458216c18240cd961a522af5b18e51da06f55d88ac552234455d95",
+      "manifestDeclarationSource": "installed production package manifest"
     },
     {
       "name": "isexe",
@@ -12053,6 +12069,25 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "jszip",
+      "version": "3.10.2",
+      "declaredLicense": "(MIT OR GPL-3.0-or-later)",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4/LICENSE.markdown",
+          "sha256": "566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
+          "originalFilename": "LICENSE.markdown"
+        }
+      ],
+      "sourceManifestSha256": "4138415020992b9a832333c64a13bd7e17faa462f7e0c0dd505f824d397f7281",
+      "noticeStatus": "verbatim license/notice files retained",
+      "resolution": "Choose MIT branch of retained dual license"
+    },
+    {
       "name": "katex",
       "version": "0.18.2",
       "declaredLicense": "MIT",
@@ -12145,24 +12180,6 @@
       "manifestDeclarationSha256": "190a55da9f762a9b5c75e270681e93e56947851783e1678db17bb1c1a08b3ab7"
     },
     {
-      "name": "kysely",
-      "version": "0.28.17",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/f70408a03a6ae16b093ae84757bd813f861124e851efc7a17c3cb29ff247ff54/LICENSE",
-          "sha256": "f70408a03a6ae16b093ae84757bd813f861124e851efc7a17c3cb29ff247ff54",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "b8fcddd06494969cdfedbb5cc4eb9bfa9bf8d3050ad3556c98b6669895e60483",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
       "name": "layout-base",
       "version": "1.0.2",
       "declaredLicense": "MIT",
@@ -12250,6 +12267,24 @@
         }
       ],
       "sourceManifestSha256": "f8505ffc52d8fdb35ebb55e28930d939639c68d1f006f632cfe3b3fbaa00fe56",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "lie",
+      "version": "3.3.0",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/5c81b0caa98593408b03125efa25efe622341ed87ae55561968828cd887d64a4/license.md",
+          "sha256": "5c81b0caa98593408b03125efa25efe622341ed87ae55561968828cd887d64a4",
+          "originalFilename": "license.md"
+        }
+      ],
+      "sourceManifestSha256": "3faafb3b558146534b1849e6d2ed8a9c9c88eff27ef868827d8de17b979cf701",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -12379,6 +12414,24 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "lop",
+      "version": "0.4.2",
+      "declaredLicense": "BSD-2-Clause",
+      "selectedLicense": "BSD-2-Clause",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1/LICENSE",
+          "sha256": "6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "129d48bc9b0e9553cf15c03967f4212511ee6437fad95fa2cac0e4dd13a0639a",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "lru-cache",
       "version": "5.1.1",
       "declaredLicense": "ISC",
@@ -12394,24 +12447,6 @@
         }
       ],
       "sourceManifestSha256": "f5a3379f52a453412f5d8551bf11fa0bef4316cc88645c9d190a017e1c58a4c2",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "lru.min",
-      "version": "1.1.5",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/50c3eddcd1ce10eed9889d4d592c5d2f32907feb16d9141485299cd710ddb917/LICENSE",
-          "sha256": "50c3eddcd1ce10eed9889d4d592c5d2f32907feb16d9141485299cd710ddb917",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "70cddaa1b2a99a5781646019fd39f56c04da4924871d4afcabeafbb685ffb19a",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -12469,6 +12504,24 @@
         }
       ],
       "sourceManifestSha256": "86814aaf7dacba9d31fbf361c3285981f1cbbda0a87108caa4131d297bd9eba2",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "mammoth",
+      "version": "1.13.0",
+      "declaredLicense": "BSD-2-Clause",
+      "selectedLicense": "BSD-2-Clause",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1/LICENSE",
+          "sha256": "6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "6f0646cf64afff35003fef06d3d45bc159f2cef8474e2093ee9d786658dbe73a",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -13198,42 +13251,6 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
-      "name": "mysql2",
-      "version": "3.24.2",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/f17f1be30bce27fe6324513a35fa61f6e6766d3028e42e45bdf668a0db7c8d4f/License",
-          "sha256": "f17f1be30bce27fe6324513a35fa61f6e6766d3028e42e45bdf668a0db7c8d4f",
-          "originalFilename": "License"
-        }
-      ],
-      "sourceManifestSha256": "e7c1f6dfe5d65264110131703a056e21d4eb204f300a8fe204fc2b5e01b3c1c1",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "named-placeholders",
-      "version": "1.1.6",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/d2d9ce3d07931cf6c105b8c70638b768b07d3c21bb682c7ef89ac43caba13043/LICENSE",
-          "sha256": "d2d9ce3d07931cf6c105b8c70638b768b07d3c21bb682c7ef89ac43caba13043",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "0b44a6c87dc2784ab7f3ad4ab5af2cd6a3a46128182cdf0fdc3b930175e14004",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
       "name": "nanoid",
       "version": "3.3.18",
       "declaredLicense": "MIT",
@@ -13581,6 +13598,24 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "option",
+      "version": "0.2.4",
+      "declaredLicense": "BSD-2-Clause",
+      "selectedLicense": "BSD-2-Clause",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1/LICENSE",
+          "sha256": "6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "f0aefa0a0e9a2f74da23f9a3d71ac471a05b0c6b31c29f72b585dfbaa5bbed84",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "ora",
       "version": "8.2.0",
       "declaredLicense": "MIT",
@@ -13632,6 +13667,24 @@
         }
       ],
       "sourceManifestSha256": "d0f0d249f71cfb0563914aa3f98eeb771715f1dfa29b6b899ffa88ab9a7515ca",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "pako",
+      "version": "1.0.11",
+      "declaredLicense": "(MIT AND Zlib)",
+      "selectedLicense": "(MIT AND Zlib)",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539/LICENSE",
+          "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "0014f350a6834ed6a2d1211e0a2e3aa471cb426edf63379c785f9647ea2b4e01",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -14109,6 +14162,24 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "process-nextick-args",
+      "version": "2.0.1",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/ecdccbcf39024f624ded480c01c0b25458e1eca8f26ecf040933865ce56d9a4f/license.md",
+          "sha256": "ecdccbcf39024f624ded480c01c0b25458e1eca8f26ecf040933865ce56d9a4f",
+          "originalFilename": "license.md"
+        }
+      ],
+      "sourceManifestSha256": "6d6d93d057f39bc3173d53e694b61833fd0ce89c1d669156169136d31a968131",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "prompts",
       "version": "2.4.2",
       "declaredLicense": "MIT",
@@ -14381,6 +14452,24 @@
         }
       ],
       "sourceManifestSha256": "4a7239f3262d59c47e5d6c789b99b55bdbd84914d1535c15bbd07a5016bfb6c1",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "readable-stream",
+      "version": "2.3.8",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54/LICENSE",
+          "sha256": "ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "67bde829e31cba3f50c77d14a30fa0f2295223b7ffa07f3b84606a5a79bb97f8",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -14729,6 +14818,24 @@
     },
     {
       "name": "safe-buffer",
+      "version": "5.1.2",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac/LICENSE",
+          "sha256": "c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "3d8b6d944be9e931a178914afbb3d6b79bfa199c032872b687bed41ed996c747",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "safe-buffer",
       "version": "5.2.1",
       "declaredLicense": "MIT",
       "selectedLicense": "MIT",
@@ -14908,6 +15015,24 @@
         }
       ],
       "sourceManifestSha256": "cf8c7fd06286fa37f0f5b37bf6890ad80e96eb08e3a66abad4435ee6b68abfff",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "setimmediate",
+      "version": "1.0.5",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/c4b4ad3a5746f1f5249a6dd90396ec519264e1bb02e01e48a6522c48a3a97cb4/LICENSE.txt",
+          "sha256": "c4b4ad3a5746f1f5249a6dd90396ec519264e1bb02e01e48a6522c48a3a97cb4",
+          "originalFilename": "LICENSE.txt"
+        }
+      ],
+      "sourceManifestSha256": "56c7968c8062ad56e94b8ddb477e514098e0fa34b060aa86b67232fdb12e184d",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -15262,21 +15387,21 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
-      "name": "sql-escaper",
-      "version": "1.5.1",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
+      "name": "sprintf-js",
+      "version": "1.0.3",
+      "declaredLicense": "BSD-3-Clause",
+      "selectedLicense": "BSD-3-Clause",
       "scopes": [
         "installed-production-closure"
       ],
       "notices": [
         {
-          "file": "third-party/license-texts/93277a18ec90d5b72d3bfaaaccc73cec7e735a8a1b154b74e9fec3e529603cbf/LICENSE",
-          "sha256": "93277a18ec90d5b72d3bfaaaccc73cec7e735a8a1b154b74e9fec3e529603cbf",
+          "file": "third-party/license-texts/a4cdda44b5adea4731d53dcae78fb5124f8fd853e994f01e25d8c33a7daf818b/LICENSE",
+          "sha256": "a4cdda44b5adea4731d53dcae78fb5124f8fd853e994f01e25d8c33a7daf818b",
           "originalFilename": "LICENSE"
         }
       ],
-      "sourceManifestSha256": "a34138ba8dd5601e65bf42a3fe4d0aca3df9904c62ee6fd948d39ee1b79b00d8",
+      "sourceManifestSha256": "f7ed5a0dc9b4c939e92be6acdf3bd83abc3d7e5def9c1307f3c9f53bd7cb2f8c",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -15424,6 +15549,24 @@
         }
       ],
       "sourceManifestSha256": "c136bc8e7e23b6de2ad6f083cf99c1c3769fe200224d7575351f29c9f6bed27e",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
+      "name": "string_decoder",
+      "version": "1.1.1",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/11f2aafb37d06b3ee5bdaf06e9811141d0da05263c316f3d627f45c20d43261b/LICENSE",
+          "sha256": "11f2aafb37d06b3ee5bdaf06e9811141d0da05263c316f3d627f45c20d43261b",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "e278ca18803862a6d1b6bedc6a3394159ac86e5c4a162614fef006c79dcda3a2",
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
@@ -16053,6 +16196,24 @@
       "noticeStatus": "verbatim license/notice files retained"
     },
     {
+      "name": "underscore",
+      "version": "1.13.8",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/92905fb54f5d168a27e6d5dc7c2197020add11842be4c70689d084bae3bfe37a/LICENSE",
+          "sha256": "92905fb54f5d168a27e6d5dc7c2197020add11842be4c70689d084bae3bfe37a",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "081688728dc50bbdeca2c3929500194892fd7caaf62679e252da3687064f4522",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "undici",
       "version": "6.29.1",
       "declaredLicense": "MIT",
@@ -16108,42 +16269,6 @@
       "noticeStatus": "verbatim license/notice files retained",
       "registryIntegrity": "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==",
       "noticeRetrievalSource": "https://registry.npmjs.org/undici-types/-/undici-types-5.26.5.tgz"
-    },
-    {
-      "name": "undici-types",
-      "version": "6.21.0",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27/LICENSE",
-          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "11f873b423b96a5ad444a099685ca6b9de1379dcd83fd8d368e757ddb53658e4",
-      "noticeStatus": "verbatim license/notice files retained"
-    },
-    {
-      "name": "undici-types",
-      "version": "7.18.2",
-      "declaredLicense": "MIT",
-      "selectedLicense": "MIT",
-      "scopes": [
-        "installed-production-closure"
-      ],
-      "notices": [
-        {
-          "file": "third-party/license-texts/a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27/LICENSE",
-          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27",
-          "originalFilename": "LICENSE"
-        }
-      ],
-      "sourceManifestSha256": "01701286a0441eddf1cd47d488047d363ce7d75466e7b6c89f1c605fba1c3957",
-      "noticeStatus": "verbatim license/notice files retained"
     },
     {
       "name": "undici-types",
@@ -16677,6 +16802,24 @@
       "noticeRetrievalSource": "https://registry.npmjs.org/xml-naming/-/xml-naming-0.1.0.tgz"
     },
     {
+      "name": "xmlbuilder",
+      "version": "10.1.1",
+      "declaredLicense": "MIT",
+      "selectedLicense": "MIT",
+      "scopes": [
+        "installed-production-closure"
+      ],
+      "notices": [
+        {
+          "file": "third-party/license-texts/8ad16994acb18814fcd2ff6d0b559906b842047b995baf33fd0c55e4d24cbac8/LICENSE",
+          "sha256": "8ad16994acb18814fcd2ff6d0b559906b842047b995baf33fd0c55e4d24cbac8",
+          "originalFilename": "LICENSE"
+        }
+      ],
+      "sourceManifestSha256": "d4b3e78b4745ddaf746ded56d100c96fce674e80195bf0e943480b164583f01c",
+      "noticeStatus": "verbatim license/notice files retained"
+    },
+    {
       "name": "xmlhttprequest-ssl",
       "version": "2.1.2",
       "declaredLicense": "MIT",
@@ -16967,57 +17110,22 @@
       "noticeStatus": "verbatim license/notice files retained"
     }
   ],
-  "count": 928,
+  "count": 936,
   "licenseCounts": {
-    "Apache-2.0": 164,
-    "MIT": 646,
-    "BSD-3-Clause": 27,
+    "Apache-2.0": 163,
+    "MIT": 647,
+    "BSD-3-Clause": 28,
     "OFL-1.1": 2,
     "ISC": 68,
     "BlueOak-1.0.0": 8,
     "Python-2.0": 1,
     "CC-BY-4.0": 1,
-    "BSD-2-Clause": 9,
+    "BSD-2-Clause": 13,
+    "BSD": 1,
+    "(MIT OR GPL-3.0-or-later)": 1,
+    "(MIT AND Zlib)": 1,
     "Unlicense": 1,
     "0BSD": 1
   },
-  "problems": [],
-  "packagesWithoutVerbatimNotice": [
-    {
-      "name": "@apm-js-collab/code-transformer-bundler-plugins",
-      "version": "0.7.4",
-      "selectedLicense": "MIT",
-      "declaration": "third-party/manifest-declarations/apm-js-collab-code-transformer-bundler-plugins-0.7.4.json"
-    },
-    {
-      "name": "freestyle",
-      "version": "0.2.13",
-      "selectedLicense": "MIT",
-      "declaration": "third-party/manifest-declarations/freestyle-0.2.13.json"
-    },
-    {
-      "name": "is-node-process",
-      "version": "1.2.0",
-      "selectedLicense": "MIT",
-      "declaration": "third-party/manifest-declarations/is-node-process-1.2.0.json"
-    },
-    {
-      "name": "kubernetes-types",
-      "version": "1.30.0",
-      "selectedLicense": "Apache-2.0",
-      "declaration": "third-party/manifest-declarations/kubernetes-types-1.30.0.json"
-    },
-    {
-      "name": "lazy-val",
-      "version": "1.0.5",
-      "selectedLicense": "MIT",
-      "declaration": "third-party/manifest-declarations/lazy-val-1.0.5.json"
-    },
-    {
-      "name": "strict-event-emitter",
-      "version": "0.5.1",
-      "selectedLicense": "MIT",
-      "declaration": "third-party/manifest-declarations/strict-event-emitter-0.5.1.json"
-    }
-  ]
+  "problems": []
 }

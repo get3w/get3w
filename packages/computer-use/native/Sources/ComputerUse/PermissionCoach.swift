@@ -273,7 +273,7 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
     private let hostPID = Responsibility.hostPID
     /// The System Settings entry macOS lists for this request, named by the host.
     private let entry: String? = {
-        guard let value = ProcessInfo.processInfo.environment["OPENWORK_COMPUTER_USE_ENTRY"]?
+        guard let value = ProcessInfo.processInfo.environment["GET3W_COMPUTER_USE_ENTRY"]?
             .trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty, value.count <= 64 else { return nil }
         return value
     }()

@@ -15,12 +15,12 @@ import type { RemoteThreadEntry } from "../src/react-app/domains/session/remote-
  * exactly as its status loop would (`apply`); no network is used.
  */
 
-// The active organization, without a token: the status loop never calls out.
+// No token: the status loop never calls out.
 const den = { ...(await import("../src/app/lib/den")) }
 const readSettings = den.readDenSettings
 mock.module("../src/app/lib/den", () => ({
   ...den,
-  readDenSettings: () => ({ ...readSettings(), authToken: null, activeOrgId: "org_fixture" }),
+  readDenSettings: () => ({ ...readSettings(), authToken: null }),
 }))
 
 type TrackerModule = typeof import("../src/react-app/domains/session/surface/composer/composer-subagent-tracker")
@@ -232,7 +232,7 @@ test("a pending or failed follow-up does not count as accepted, and never starts
   expect(tasks.current).toEqual([])
 })
 
-test("a direct follow-up to a Cloud task matches it by sessionId, and the list is scoped to the active organization", () => {
+test("a direct follow-up to a Cloud task matches it by sessionId", () => {
   const now = Date.now()
   const cloudCreate: DynamicToolUIPart = {
     type: "dynamic-tool", toolName: "openwork_execute_capability", toolCallId: "call_cloud", state: "output-available",
@@ -249,14 +249,13 @@ test("a direct follow-up to a Cloud task matches it by sessionId, and the list i
   if (!task) throw new Error("expected the Cloud task")
   expect(task.start.key).toBe("cloud:ses_fixture_cloud")
   expect(task.startedAt).toBe(now)
-  const entry = (organizationId: string, state: RemoteSessionThreadStatus["state"]): RemoteThreadEntry => ({
-    start: task.start, organizationId, version: "v1", status: { ...status(state), ref: "ses_fixture_cloud", target: "cloud", sessionId: "ses_fixture_cloud" }, stale: false,
+  const entry = (state: RemoteSessionThreadStatus["state"]): RemoteThreadEntry => ({
+    start: task.start, version: "v1", status: { ...status(state), ref: "ses_fixture_cloud", target: "cloud", sessionId: "ses_fixture_cloud" }, stale: false,
     checkedAt: now, activeSince: now, firstSeenAt: now, followedUpAt: null, followUpVersion: null, revivedAt: null, owners: {}, viewers: 1, lastViewedAt: now,
   })
   // Followed up this turn: listed even once done (the settled list then goes away on its own).
-  expect(tracker.selectComposerRemoteTasks(tasks, { [task.start.key]: entry("org_fixture", "idle") }, "org_fixture", now)).toHaveLength(1)
-  expect(tracker.selectComposerRemoteTasks(tasks, { [task.start.key]: entry("org_other", "running") }, "org_fixture", now)).toEqual([])
-  expect(tracker.selectComposerRemoteTasks({ ...tasks, followUps: [] }, { [task.start.key]: entry("org_fixture", "idle") }, "org_fixture", now)).toEqual([])
+  expect(tracker.selectComposerRemoteTasks(tasks, { [task.start.key]: entry("idle") }, now)).toHaveLength(1)
+  expect(tracker.selectComposerRemoteTasks({ ...tasks, followUps: [] }, { [task.start.key]: entry("idle") }, now)).toEqual([])
 })
 
 test("only recent earlier tasks are candidates, at most one status call's worth, and the current turn's task is not repeated", () => {
@@ -277,7 +276,7 @@ test("the follow-up a transcript row shows revives its task once, from a script 
   if (!created) throw new Error("expected the task")
   const store = storeModule.useRemoteThreadStore
   store.setState({ threads: { [KEY]: {
-    start: created, organizationId: "org_fixture", version: "v_old", status: status("idle", { version: "v_old" }), stale: false, checkedAt: now,
+    start: created, version: "v_old", status: status("idle", { version: "v_old" }), stale: false, checkedAt: now,
     activeSince: now - 60_000, firstSeenAt: now - 60_000, followedUpAt: null, followUpVersion: null, revivedAt: null, owners: {}, viewers: 1, lastViewedAt: now,
   } } })
   const followUps = starts.remoteThreadFollowUpsInPart(scriptSend("call_script", now - 1_000, accepted()))
@@ -306,7 +305,7 @@ test("a long chat opened on its newest page still lists a task this window follo
   const created = thread.remoteThreadFromToolPart(createPart("call_create", now - 60 * 60_000))
   if (!created) throw new Error("expected the task")
   const owned = (sessionId: string, state: RemoteSessionThreadStatus["state"], key = KEY): RemoteThreadEntry => ({
-    start: { ...created, key }, organizationId: "org_fixture", version: "v1", status: status(state), stale: false, checkedAt: now,
+    start: { ...created, key }, version: "v1", status: status(state), stale: false, checkedAt: now,
     activeSince: now - 60 * 60_000, firstSeenAt: now - 60 * 60_000, followedUpAt: null, followUpVersion: null, revivedAt: null,
     owners: { [`${OWNER.workspaceId}:${sessionId}`]: { workspaceId: OWNER.workspaceId, sessionId } }, viewers: 0, lastViewedAt: now,
   })

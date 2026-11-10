@@ -15,6 +15,7 @@ import {
   Archive,
   ArchiveRestore,
   Blocks,
+  Files,
   CheckCheck,
   Folder,
   Clock3,
@@ -762,6 +763,8 @@ export type AppSidebarProps = {
   dashboardActive?: boolean;
   dashboardLabel?: string;
   onOpenDashboard?: () => void;
+  onOpenOutputs?: () => void;
+  outputsActive?: boolean;
   /** Opens the cross-session message search dialog (Cmd/Ctrl+Shift+F). */
   onOpenSessionSearch?: () => void;
   /** Back/forward across recently viewed conversations, rendered at the top of the sidebar. */
@@ -951,6 +954,7 @@ export function AppSidebar(props: AppSidebarProps) {
                 onSelect={props.onOpenDashboard}
               />
             ) : null}
+            {props.onOpenOutputs ? <SidebarDestination active={props.outputsActive === true} icon={Files} label={t("sidebar.outputs")} onSelect={props.onOpenOutputs} /> : null}
             {props.onOpenAutomations ? (
               <SidebarDestination
                 active={props.automationsActive === true}
@@ -1883,7 +1887,7 @@ function DraftSessionRow({ workspaceId, groupId, title, pending }: { workspaceId
     && location.pathname.endsWith("/session")
     && (new URLSearchParams(location.search).get("pendingConversation") || undefined) === pending?.id
     && (new URLSearchParams(location.search).get("draftGroup") || undefined) === groupId;
-  const metadata = pending ? pending.phase === "creation-failed" ? t("ui.cd5f943d5863") : "" : "Draft";
+  const metadata = pending ? pending.phase === "creation-failed" ? t("ui.cd5f943d5863") : "" : t("workspace_list.new_task_draft");
   return <SidebarMenuSubItem className="flex items-center" data-sidebar-draft-workspace-id={workspaceId} data-sidebar-draft-group-id={groupId ?? ""} data-sidebar-pending-conversation={pending?.id}>
     <div className="relative min-w-0 flex-1 select-none">
       <SidebarMenuSubButton

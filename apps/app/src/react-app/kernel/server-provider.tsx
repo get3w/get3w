@@ -118,8 +118,8 @@ export function ServerProvider({ children, defaultUrl }: ServerProviderProps) {
       (!isDesktopRuntime() &&
         isWebDeployment() &&
         (import.meta.env.PROD ||
-          (typeof import.meta.env?.VITE_OPENWORK_URL === "string" &&
-            import.meta.env.VITE_OPENWORK_URL.trim().length > 0)));
+          (typeof import.meta.env?.VITE_GET3W_URL === "string" &&
+            import.meta.env.VITE_GET3W_URL.trim().length > 0)));
 
     if (forceProxy && fallback) {
       dispatchServer({ type: "ready", list: [fallback], active: fallback });

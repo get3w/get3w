@@ -12,10 +12,10 @@ const dir = mkdtempSync(join(tmpdir(), "openwork-web-origin-"));
 const overrides: Record<string, string | undefined> = {
   HOME: dir, XDG_CONFIG_HOME: join(dir, "config"), XDG_DATA_HOME: join(dir, "data"),
   XDG_CACHE_HOME: join(dir, "cache"), XDG_STATE_HOME: join(dir, "state"),
-  OPENWORK_DATA_DIR: join(dir, "openwork"), OPENWORK_RUNTIME_DB: join(dir, "runtime.sqlite"),
-  OPENCODE_DB: join(dir, "v1.db"), OPENWORK_ENGINE_AUTO_UPGRADE: "0",
-  OPENWORK_WEB_ROOT: join(dir, "web"), OPENWORK_WEB_BOOTSTRAP_TOKEN: undefined,
-  OPENWORK_CORS_ORIGINS: undefined, OPENWORK_ALLOWED_HOSTS: undefined,
+  GET3W_DATA_DIR: join(dir, "openwork"), GET3W_RUNTIME_DB: join(dir, "runtime.sqlite"),
+  OPENCODE_DB: join(dir, "v1.db"), GET3W_ENGINE_AUTO_UPGRADE: "0",
+  GET3W_WEB_ROOT: join(dir, "web"), GET3W_WEB_BOOTSTRAP_TOKEN: undefined,
+  GET3W_CORS_ORIGINS: undefined, GET3W_ALLOWED_HOSTS: undefined,
 };
 const previous = new Map(Object.keys(overrides).map((key) => [key, process.env[key]]));
 let config: ServerConfig;

@@ -60,7 +60,7 @@ export async function initOpenworkSentry({ app, distribution, packageMetadata })
   if (!OPENWORK_DESKTOP_TELEMETRY_SERVICE) return false;
   const buildConfig = readBuildConfig(app);
   const dsn = buildConfig.dsn;
-  if (!dsn || envFlagEnabled("OPENWORK_DESKTOP_SENTRY_DISABLED")) return false;
+  if (!dsn || envFlagEnabled("GET3W_DESKTOP_SENTRY_DISABLED")) return false;
 
   sentry = await import("@sentry/electron/main");
   const appVersion = resolveOpenworkSentryAppVersion({ app, packageMetadata });
@@ -70,7 +70,7 @@ export async function initOpenworkSentry({ app, distribution, packageMetadata })
   sentry.init({
     dsn,
     release,
-    environment: process.env.OPENWORK_DESKTOP_SENTRY_ENVIRONMENT?.trim() || (app.isPackaged ? "production" : "development"),
+    environment: process.env.GET3W_DESKTOP_SENTRY_ENVIRONMENT?.trim() || (app.isPackaged ? "production" : "development"),
     sendDefaultPii: false,
     integrations: (defaultIntegrations) => defaultIntegrations.filter(
       (integration) => !["BrowserWindowSession", "ElectronMinidump", "MainProcessSession", "SentryMinidump"].includes(integration.name),
@@ -106,14 +106,11 @@ export async function initOpenworkSentry({ app, distribution, packageMetadata })
 
 export function setOpenworkSentrySession(input) {
   const userId = normalizeIdentifier(input?.userId);
-  const orgId = normalizeIdentifier(input?.orgId);
-  if (!initialized || !sentry || !userId || !orgId) return false;
+  if (!initialized || !sentry || !userId) return false;
 
   telemetryActive = true;
   sentry.setUser({ id: userId });
-  sentry.setTag("org_id", orgId);
   sentry.setContext("openwork_cloud", {
-    organization_id: orgId,
     user_id: userId,
   });
   return true;

@@ -37,7 +37,7 @@ test("personal v1 and v2 registries offer local context without retired cloud fi
   const plugin = await OpenWorkExtensionsPreview();
   const stop = await nativeContext.setup({
     options: { url: "http://127.0.0.1:9/read", token: "fixture" },
-    tool: { async transform(callback) { callback({ add: tool => { names.push(tool.name); } }); return { async dispose() {} }; } },
+    tool: { async transform(callback) { callback({ get: () => undefined, update() {}, add: tool => { names.push(tool.name); } }); return { async dispose() {} }; } },
   });
   try {
     expect(names).toEqual(["openwork_context", "openwork_query", "openwork_execute"]);

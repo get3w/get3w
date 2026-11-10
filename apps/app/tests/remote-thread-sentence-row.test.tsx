@@ -26,7 +26,7 @@ function status(start: RemoteThreadStart, overrides: Partial<RemoteSessionThread
 }
 
 function entry(start: RemoteThreadStart, value: RemoteSessionThreadStatus, activeSince: number): RemoteThreadEntry {
-  return { start, organizationId: "org_1", version: value.version, status: value, stale: false, checkedAt: Date.now(), activeSince,
+  return { start, version: value.version, status: value, stale: false, checkedAt: Date.now(), activeSince,
     firstSeenAt: activeSince, followedUpAt: null, owners: { "ws_1:session-1": { workspaceId: "ws_1", sessionId: "session-1" } }, viewers: 0, lastViewedAt: Date.now() }
 }
 

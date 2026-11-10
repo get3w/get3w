@@ -235,13 +235,13 @@ test("first-send publication updates the inventory ref before a stale list respo
 });
 
 const unchangedDenSettings = {
-  settings: { baseUrl: "https://den.invalid", authToken: "den-token", activeOrgId: "org_1" },
+  settings: { baseUrl: "https://den.invalid", authToken: "den-token" },
 };
 
 async function returnFromSettings(v2: boolean) {
   denAuth = {
     status: "signed_in", isSignedIn: true,
-    verifiedIdentity: { principalId: "user_1", organizationId: "org_1" },
+    verifiedIdentity: { principalId: "user_1" },
     user: { id: "user_1", email: "user@example.invalid", name: "Test User" },
   };
   workspaces = [defaultWorkspaces[0]];

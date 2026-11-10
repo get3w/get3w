@@ -33,14 +33,7 @@ import { ExtensionCard } from "../../../design-system/extension-card";
 import { ExtensionDetailModal } from "../../../design-system/extension-detail-modal";
 import { LibraryBreadcrumbs, type LibraryBreadcrumb } from "../../../design-system/library-breadcrumbs";
 import { resolveExtensionIconUrl } from "../../../design-system/extension-icon-src";
-import {
-  isOrgMcpConnectionReady,
-  isOrgMcpConnectionItem,
-  orgMcpConnectionActionLabel,
-  resolveExtensionInventoryGroup,
-  type ExtensionInventoryGroup,
-  type ExtensionItem,
-} from "../extension-items";
+import type { ExtensionInventoryGroup } from "../extension-items";
 import {
   extensionFilterLabel,
   extensionInventoryFilters,
@@ -54,7 +47,6 @@ import {
   type ExtensionTaxonomy,
 } from "../extension-taxonomy";
 import { RefreshButton } from "../settings-section";
-import { recordedConnectorState, recordedConnectorNote, recordedConnectorLabel } from "../connector-readiness";
 import { SettingsListSearchInput } from "../settings-list";
 import {
   openDesktopUrl,
@@ -63,11 +55,7 @@ import {
   revealDesktopItemInDir,
   type OpencodeConfigFile,
 } from "../../../../app/lib/desktop";
-import { readDenSettings, type DenExternalMcpPreset } from "../../../../app/lib/den";
-import { providerSetupProblem } from "../../connections/connection-sign-in-problem";
-import type { OrgMcpConnectOptions } from "../../connections/use-org-mcp-connections";
-import { denConnectorSetupUrl } from "../../../../app/lib/den-dashboard-links";
-import type { DenLibraryConnectionItem, DenLibraryPluginItem } from "../../../../app/lib/den-library";
+import type { DenExternalMcpPreset } from "../../../../app/lib/den";
 import {
   getMcpIdentityKey,
   normalizeMcpSlug,
@@ -76,17 +64,12 @@ import type { McpServerEntry, McpStatusMap } from "../../../../app/types";
 import { isDesktopRuntime, isWindowsPlatform } from "../../../../app/utils";
 import { t } from "../../../../i18n";
 import { Button } from "@/components/ui/button";
-import { CloudSignInBanner } from "@/react-app/domains/cloud/cloud-sign-in-banner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmModal } from "../../../design-system/modals/confirm-modal";
 import { isConnectDirectMcpServerName } from "../../connections/cloud-mcp-user-state";
 import { AddMcpModal } from "../../connections/modals/add-mcp-modal";
 import type { McpConnectResult } from "../../connections/store";
-import {
-  canDisconnectMemberConnection,
-  canMemberAuthorizeConnection,
-} from "../../connections/native-provider-connections";
 import {
   isOpenWorkExtensionEnabled,
   isOpenWorkExtensionHidden,
@@ -100,8 +83,6 @@ import {
   type ConfigScope,
   type McpViewLocalState,
 } from "./mcp-view-state";
-import { useCloudSession } from "../cloud/cloud-session-provider";
-import { isConnectAdminRole } from "../connect-cloud-readiness";
 import { useDenAuth } from "../../cloud/den-auth-provider";
 import {
   libraryAddAction,
@@ -123,39 +104,14 @@ import {
   type LibraryCommandItem,
 } from "../library";
 import {
-  emptyLibraryAudience,
-  isLibraryAudienceShared,
-  libraryAudienceName,
-  libraryAudiencePeopleCount,
   libraryCloudItemTaxonomy,
-  libraryConnectionAudience,
-  type LibraryAudience,
   type LibrarySection,
 } from "../library-sharing";
 import { seededConnectorDraft } from "../../session/surface/composer/connector-token";
 import { useStartSeededChat } from "../../../shell/use-start-seeded-chat";
 import { libraryConnectorCues } from "../library-connector-cues";
-import { useLibraryCloud, type LibraryEditableSkill, type LibraryShareTarget } from "../use-library-cloud";
 import { AddLibraryItemPage } from "./add-library-item-page";
 import { LibraryAddControl } from "./library-add-control";
-import {
-  catalogConnectionNeedsSignIn,
-  connectorSummary,
-  LibraryConnectorCatalogPage,
-  type LibraryConnectorCatalogSignIn,
-  LibraryConnectorSetupPage,
-  type LibraryConnectorSetupInput,
-} from "./library-connector-pages";
-import { LibraryDeleteDialog } from "./library-delete-dialog";
-import { LibraryEditSkillPage, type LibrarySkillDraft } from "./library-edit-skill-page";
-import { LibraryRowMenu, type LibraryRowMenuAction } from "./library-row-menu";
-import { kindLabel, LibrarySharePage, targetsFor } from "./library-share-page";
-import {
-  openInDenLibraryUrl,
-  shouldShowOpenInDenAction,
-  type DenLibraryTarget,
-} from "../open-in-den";
-
 export type ReactMcpStatus =
   | "connected"
   | "needs_auth"
@@ -227,20 +183,6 @@ export type McpViewProps = {
   enablementContext?: import("../../../../app/enablement").EnablementContext;
   /** Organization policy restriction for Get3W-provided built-in extensions. */
   builtInExtensionsDisabled?: boolean;
-  /** Connected org-level External MCP Connections rendered in My Extensions. */
-  orgMcpItems?: ExtensionItem[];
-  /**
-   * The signed-in member's own active organization (`cloudSession.activeOrgName`),
-   * shown only to that member so provenance and sign-in captions can say whose
-   * organization shared an item. It is never an outside party's identity.
-   */
-  organizationName?: string | null;
-  orgMcpError?: string | null;
-  orgMcpConnectingId?: string | null;
-  connectOrgMcp?: (connectionId: string, options?: OrgMcpConnectOptions) => void;
-  reconnectOrgMcp?: (connectionId: string, options?: OrgMcpConnectOptions) => void;
-  orgMcpDisconnectingId?: string | null;
-  disconnectOrgMcp?: (connectionId: string) => void;
   initialFilter?: ExtensionInventoryFilter;
   onFilterChange?: (filter: ExtensionInventoryFilter) => void;
   initialState?: ExtensionInventoryState;
@@ -307,8 +249,7 @@ type ExtensionDetailTarget =
   | { kind: "connect-mcp"; entry: McpServerEntry }
   | { kind: "server"; entry: McpServerEntry }
   | { kind: "plugin"; plugin: CloudImportedPlugin }
-  | { kind: "plugin-file"; plugin: CloudImportedPlugin; file: CloudImportedPluginFile }
-  | { kind: "org-mcp"; item: ExtensionItem };
+  | { kind: "plugin-file"; plugin: CloudImportedPlugin; file: CloudImportedPluginFile };
 
 function extensionDetailIdForTarget(target: ExtensionDetailTarget): string {
   switch (target.kind) {
@@ -328,10 +269,6 @@ function extensionDetailIdForTarget(target: ExtensionDetailTarget): string {
       return `plugin:${target.plugin.pluginId}`;
     case "plugin-file":
       return libraryPluginFileFallbackDetailId(target.plugin.pluginId, target.file);
-    case "org-mcp":
-      return target.item.id.startsWith("org-mcp:")
-        ? target.item.id
-        : `org-mcp:${target.item.orgMcpConnection?.id ?? target.item.id}`;
   }
 }
 
@@ -346,7 +283,6 @@ function resolveExtensionDetailTarget(
     servers: McpServerEntry[];
     plugins: CloudImportedPlugin[];
     pendingPlugin?: CloudImportedPlugin | null;
-    orgMcpItems: ExtensionItem[];
   },
 ): ExtensionDetailTarget | null {
   if (detailId.startsWith("skill:")) {
@@ -386,14 +322,6 @@ function resolveExtensionDetailTarget(
       ?? (lists.pendingPlugin?.pluginId === pluginId ? lists.pendingPlugin : undefined);
     return plugin ? { kind: "plugin", plugin } : null;
   }
-  if (detailId.startsWith("org-mcp:")) {
-    const connectionId = detailId.slice("org-mcp:".length);
-    const item = lists.orgMcpItems.find((entry) =>
-      entry.id === detailId
-      || entry.orgMcpConnection?.id === connectionId,
-    );
-    return item ? { kind: "org-mcp", item } : null;
-  }
   const entry = lists.quickConnect.find((item) =>
     getMcpIdentityKey(item) === detailId
     || item.id === detailId
@@ -405,22 +333,16 @@ function resolveExtensionDetailTarget(
 /** Which Library page is showing; the list is home and every other page returns to it. */
 type LibraryScreen =
   | { kind: "list" }
-  | { kind: "create"; addKind: LibraryAuthorableKind }
-  | { kind: "catalog" }
-  | { kind: "connector-setup"; preset: DenExternalMcpPreset }
-  | { kind: "share"; pluginId: string }
-  | { kind: "edit"; skill: LibraryEditableSkill };
+  | { kind: "create"; addKind: LibraryAuthorableKind };
+
 
 export function McpView(props: McpViewProps) {
-  const cloudSession = useCloudSession();
   const denAuth = useDenAuth();
-  const denBaseUrl = readDenSettings().baseUrl;
   const useRoutedDetail = typeof props.onDetailIdChange === "function";
   const [detailParent, setDetailParent] = useState<{ childId: string; plugin: CloudImportedPlugin } | null>(null);
   const [detailTarget, setDetailTarget] = useState<ExtensionDetailTarget | null>(null);
   const [mcpConnectFailure, setMcpConnectFailure] = useState<{ id: string; message: string } | null>(null);
   const [pendingPlugin, setPendingPlugin] = useState<CloudImportedPlugin | null>(null);
-  const [landingConnector, setLandingConnector] = useState<{ pluginId: string; name: string } | null>(null);
   const [detailSkillContent, setDetailSkillContent] = useState<string | null>(null);
   const [openworkUiMcpCommand, setOpenworkUiMcpCommand] = useState<string[] | null>(null);
   const [openworkUiMcpEnvironment, setOpenworkUiMcpEnvironment] = useState<Record<string, string> | null>(null);
@@ -428,7 +350,6 @@ export function McpView(props: McpViewProps) {
   const [filter, setFilter] = useState<ExtensionInventoryFilter>(primaryLibraryFilter(props.initialFilter));
   const [onlyNeedsSignIn, setOnlyNeedsSignIn] = useState(props.initialState === "needs_signin");
   const [screen, setScreen] = useState<LibraryScreen>({ kind: "list" });
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [, setExtensionStateVersion] = useState(0);
 
   const [localState, dispatchLocal] = useReducer(
@@ -473,7 +394,6 @@ export function McpView(props: McpViewProps) {
   const installedAgents = props.installedAgents ?? [];
   const availableConnectMcpServers = props.availableConnectMcpServers ?? [];
   const installedPlugins = props.installedPlugins ?? [];
-  const orgMcpItems = props.orgMcpItems ?? [];
   const libraryDetailLists = {
     quickConnect: quickConnectList,
     skills: installedSkills,
@@ -483,7 +403,6 @@ export function McpView(props: McpViewProps) {
     servers: props.mcpServers,
     plugins: installedPlugins,
     pendingPlugin,
-    orgMcpItems,
   };
   const routedTarget = useRoutedDetail && props.detailId
     ? resolveExtensionDetailTarget(props.detailId, libraryDetailLists)
@@ -497,24 +416,7 @@ export function McpView(props: McpViewProps) {
   const detailServer = activeTarget?.kind === "server" ? activeTarget.entry : null;
   const detailPlugin = activeTarget?.kind === "plugin" ? activeTarget.plugin : null;
   const detailPluginFile = activeTarget?.kind === "plugin-file" ? activeTarget : null;
-  const detailOrgMcpItem = activeTarget?.kind === "org-mcp" ? activeTarget.item : null;
   const detailPresentation = useRoutedDetail ? "page" : "dialog";
-  const openInDenAction = (target: DenLibraryTarget): ReactNode => {
-    if (!shouldShowOpenInDenAction(denBaseUrl, cloudSession.isSignedIn, target)) return null;
-    const url = openInDenLibraryUrl(denBaseUrl, target);
-    if (!url) return null;
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-fit"
-        onClick={() => void openDesktopUrl(url)}
-      >
-        {t("extensions.open_in_den")}
-        <ArrowUpRight size={13} />
-      </Button>
-    );
-  };
   const setInventoryFilter = (nextFilter: ExtensionInventoryFilter) => {
     setFilter(nextFilter);
     props.onFilterChange?.(nextFilter);
@@ -524,36 +426,24 @@ export function McpView(props: McpViewProps) {
     setOnlyNeedsSignIn(next);
     props.onStateChange?.(next ? "needs_signin" : "all", filter);
   };
-  const libraryCloudSignedIn = cloudSession.isSignedIn
-    || (Boolean(cloudSession.authToken.trim()) && denAuth.isSignedIn);
-  const activeOrganizationId = cloudSession.activeOrganization?.id.trim() ?? "";
+  // The shared Cloud library was an organization feature; personal editions have no library account.
+  const libraryCloudSignedIn = false;
   const connectorPresets: DenExternalMcpPreset[] = [];
-  const identity = null;
-  const organizationRole = { data: null };
-  const checkingConnections: ReadonlySet<string> = new Set();
-  async function checkAgain(_connectionId: string) {}
-  const openProviderSettings = (url: string) => {
-    void openDesktopUrl(url);
-  };
   const canManageCloudConnections = false;
   const connectorCues = useMemo(() => libraryConnectorCues(connectorPresets), [connectorPresets]);
   const libraryAddOptions = {
-    cloudSignedIn: libraryCloudSignedIn && Boolean(activeOrganizationId) && denAuth.status !== "unavailable",
+    cloudSignedIn: libraryCloudSignedIn,
     allowManageExtensions: props.allowManageExtensions,
   };
   const libraryAddKinds = libraryAddKindsForFilter(filter).filter((kind) => (
     libraryAddAction(kind, libraryAddOptions) !== null
   ));
-  const inventoryError = props.inventoryError ?? props.orgMcpError ?? null;
+  const inventoryError = props.inventoryError ?? null;
   const cloudIssue = denAuth.status === "checking"
     ? t("den.checking_session")
     : denAuth.status === "unavailable"
       ? t("extensions.cloud_unavailable")
-      : !libraryCloudSignedIn
-        ? t("extensions.add_sign_in_required")
-        : !activeOrganizationId
-          ? t("extensions.cloud_choose_org")
-          : undefined;
+      : t("extensions.add_sign_in_required");
   const addDisabledReason = cloudIssue ?? (!props.createLibraryItem ? t("extensions.cloud_unavailable") : undefined);
   const signedOut = !libraryCloudSignedIn && denAuth.status !== "checking";
   // Signed out, every add kind needs Cloud: the sign-in banner carries the action instead.
@@ -568,13 +458,6 @@ export function McpView(props: McpViewProps) {
       onSelect={(kind) => handleAddKind(kind)}
     />
   );
-  const libraryCloud = useLibraryCloud({
-    client: cloudSession.client,
-    baseUrl: cloudSession.baseUrl,
-    organizationId: activeOrganizationId,
-    enabled: libraryAddOptions.cloudSignedIn,
-  });
-  const libraryDirectory = libraryCloud.directory;
   const startSeededChat = useStartSeededChat();
   const chatWith = (chips: { skills?: string[]; connectors?: string[] }) => {
     const draft = [
@@ -583,14 +466,7 @@ export function McpView(props: McpViewProps) {
     ].join(" ");
     return draft ? () => startSeededChat(`${draft} `) : undefined;
   };
-  const shareOwned = (pluginId: string | undefined) =>
-    pluginId && libraryCloud.ownedPluginIds.has(pluginId) && libraryCloud.pluginById.has(pluginId)
-      ? () => setScreen({ kind: "share", pluginId })
-      : undefined;
-  const audienceNameOrNull = (audience: LibraryAudience) =>
-    isLibraryAudienceShared(audience) ? libraryAudienceName(audience) : null;
   const refreshLibrary = () => {
-    void libraryCloud.refresh();
     void props.onLibraryListsRefresh?.();
     props.onRefresh?.();
   };
@@ -602,10 +478,7 @@ export function McpView(props: McpViewProps) {
       setAddMcpModalOpen(true);
       return;
     }
-    if (action.type === "connector-catalog") {
-      setScreen({ kind: "catalog" });
-      return;
-    }
+    if (action.type === "connector-catalog") return;
     setScreen({ kind: "create", addKind: action.kind });
   };
 
@@ -616,12 +489,7 @@ export function McpView(props: McpViewProps) {
     refreshLibrary();
     if (created.connector) props.onRefresh?.();
     openOwnedPlugin({ id: pluginId, name: created.name, description: created.description || null });
-    if (created.connector) setLandingConnector({ pluginId, name: created.name });
-    toast.undo(t("extensions.toast_added_title"), {
-      detail: t("extensions.toast_added_detail"),
-      undo: { label: t("extensions.toast_share_action"), onClick: () => setScreen({ kind: "share", pluginId }) },
-      closeLabel: t("common.close"),
-    });
+    toast.success(t("extensions.toast_added_title"));
   };
 
   /** OAuth connectors finish in the provider's own window, as they do in Den. */
@@ -647,36 +515,7 @@ export function McpView(props: McpViewProps) {
     }
   };
 
-  const handleConnectorSetup = async (preset: DenExternalMcpPreset, input: LibraryConnectorSetupInput) => {
-    const pluginId = await createLibraryItem("mcp", {
-      name: preset.displayName,
-      description: connectorSummary(preset),
-      instructions: preset.url,
-      connection: canManageCloudConnections
-        ? {
-          authType: preset.authType,
-          credentialMode: "per_member",
-          apiKey: input.apiKey ?? "",
-          useOAuthClient: false,
-          oauthClientId: "",
-          oauthClientSecret: "",
-        }
-        : undefined,
-    });
-    finishCreate(pluginId, { name: preset.displayName, description: connectorSummary(preset), connector: true });
-    if (preset.authType === "oauth") signInToCreatedConnection(preset.displayName, preset.url);
-  };
-
-  const connectionItemForPlugin = (pluginName: string) => orgMcpItems
-    .filter(isOrgMcpConnectionItem)
-    .find((item) => connectionPluginName(item.name) === pluginName.toLowerCase());
-
-  const openOwnedPlugin = (plugin: Pick<DenLibraryPluginItem, "id" | "name" | "description">) => {
-    const connectionItem = connectionItemForPlugin(plugin.name);
-    if (connectionItem) {
-      openDetail({ kind: "org-mcp", item: connectionItem });
-      return;
-    }
+  const openOwnedPlugin = (plugin: { id: string; name: string; description: string | null }) => {
     const installed = installedPlugins.find((entry) => entry.pluginId === plugin.id);
     if (installed) {
       openDetail({ kind: "plugin", plugin: installed });
@@ -694,114 +533,10 @@ export function McpView(props: McpViewProps) {
     props.onDetailIdChange?.(`plugin:${plugin.id}`);
   };
 
-  const shareWith = async (plugin: DenLibraryPluginItem, targets: LibraryShareTarget[], audience: LibraryAudience) => {
-    const previous = libraryCloud.audienceFor(plugin.id);
-    await libraryCloud.setAudience(plugin.id, targets);
-    setScreen({ kind: "list" });
-    const undo = {
-      label: t("common.undo"),
-      onClick: () => void libraryCloud.setAudience(plugin.id, targetsFor(previous)),
-    };
-    if (!isLibraryAudienceShared(audience)) {
-      toast.undo(t("extensions.toast_stopped_title", { name: plugin.name }), {
-        detail: t("extensions.toast_stopped_detail"),
-        undo,
-        closeLabel: t("common.close"),
-      });
-      return;
-    }
-    toast.undo(t("extensions.toast_shared_title", { name: plugin.name, audience: libraryAudienceName(audience) }), {
-      detail: t("extensions.toast_shared_detail", { count: String(libraryAudiencePeopleCount(audience, libraryDirectory)) }),
-      undo,
-      closeLabel: t("common.close"),
-    });
-  };
-
-  const openEdit = async (plugin: DenLibraryPluginItem) => {
-    const skill = await libraryCloud.readSkill(plugin.id);
-    if (!skill) {
-      openOwnedPlugin(plugin);
-      return;
-    }
-    setScreen({ kind: "edit", skill });
-  };
-
-  const saveEdit = async (skill: LibraryEditableSkill, draft: LibrarySkillDraft) => {
-    const audience = libraryCloud.audienceFor(skill.pluginId);
-    await libraryCloud.saveSkill(skill, draft);
-    setScreen({ kind: "list" });
-    const audienceName = audienceNameOrNull(audience);
-    toast.undo(t("extensions.toast_saved_title", { name: skill.name }), {
-      detail: audienceName
-        ? t("extensions.toast_saved_detail_shared", { audience: audienceName })
-        : t("extensions.toast_saved_detail"),
-      undo: {
-        label: t("common.undo"),
-        onClick: () => {
-          void libraryCloud
-            .saveSkill(skill, { name: skill.name, description: skill.description, instructions: skill.instructions });
-        },
-      },
-      closeLabel: t("common.close"),
-    });
-  };
-
-  const duplicateSkill = async (plugin: DenLibraryPluginItem) => {
-    const skill = await libraryCloud.readSkill(plugin.id);
-    if (!skill) return;
-    const name = t("extensions.duplicate_name", { name: skill.name });
-    const pluginId = await createLibraryItem("skill", {
-      name,
-      description: skill.description,
-      instructions: skill.instructions,
-    });
-    finishCreate(pluginId, { name, description: skill.description });
-  };
-
-  const deleteOwned = async (plugin: DenLibraryPluginItem) => {
-    const audienceName = audienceNameOrNull(libraryCloud.audienceFor(plugin.id));
-    setDeleteTargetId(null);
-    await libraryCloud.archive(plugin.id);
-    toast.undo(t("extensions.toast_deleted_title", { name: plugin.name }), {
-      detail: audienceName
-        ? t("extensions.toast_deleted_detail_shared", { audience: audienceName })
-        : t("extensions.toast_deleted_detail"),
-      undo: { label: t("common.undo"), onClick: () => void libraryCloud.restore(plugin.id) },
-      closeLabel: t("common.close"),
-    });
-  };
-
-  const handleRowAction = (plugin: DenLibraryPluginItem, action: LibraryRowMenuAction) => {
-    const report = (cause: unknown) => {
-      toast.error(cause instanceof Error && cause.message.trim() ? cause.message : t("common.something_went_wrong"));
-    };
-    switch (action) {
-      case "open":
-        openOwnedPlugin(plugin);
-        return;
-      case "edit":
-        void openEdit(plugin).catch(report);
-        return;
-      case "share":
-        setScreen({ kind: "share", pluginId: plugin.id });
-        return;
-      case "duplicate":
-        void duplicateSkill(plugin).catch(report);
-        return;
-      case "stop_sharing":
-        void shareWith(plugin, [], emptyLibraryAudience).catch(report);
-        return;
-      case "delete":
-        setDeleteTargetId(plugin.id);
-        return;
-    }
-  };
-
   const closeDetailToFilter = (nextFilter: ExtensionInventoryFilter) => {
     setDetailTarget(null);
     setDetailParent(null);
     setPendingPlugin(null);
-    setLandingConnector(null);
     setDetailSkillContent(null);
     setMcpConnectFailure(null);
     setFilter(nextFilter);
@@ -879,25 +614,7 @@ export function McpView(props: McpViewProps) {
     availableConnectMcpServers,
     installedPlugins,
     pendingPlugin,
-    orgMcpItems,
   ]);
-
-  // A new connector opens on its plugin page at once, then moves to its connection page, where sign-in lives, once that loads.
-  useEffect(() => {
-    if (!landingConnector) return;
-    const elsewhere = activeTarget !== null && !(activeTarget.kind === "plugin" && activeTarget.plugin.pluginId === landingConnector.pluginId);
-    if (elsewhere) {
-      setLandingConnector(null);
-      return;
-    }
-    const item = orgMcpItems
-      .filter(isOrgMcpConnectionItem)
-      .find((entry) => connectionPluginName(entry.name) === landingConnector.name.toLowerCase());
-    if (!item) return;
-    setLandingConnector(null);
-    setPendingPlugin(null);
-    openDetail({ kind: "org-mcp", item });
-  }, [landingConnector, activeTarget, orgMcpItems]);
 
   useEffect(() => {
     if (!pendingPlugin) return;
@@ -1155,7 +872,7 @@ export function McpView(props: McpViewProps) {
   const detailCategory = filter !== "all" ? filter
     : detailSkill || detailCommand || detailAgent ? "skill"
     : detailPlugin ? "plugin"
-    : detailConnectMcp || detailOrgMcpItem || detailServer ? "connection"
+    : detailConnectMcp || detailServer ? "connection"
     : "all";
   const detailBreadcrumbs: LibraryBreadcrumb[] = [
     { label: t("extensions.title"), onClick: () => closeDetailToFilter("all") },
@@ -1263,7 +980,6 @@ export function McpView(props: McpViewProps) {
             triggerHint={t("extensions.detail_triggers_skill_hint")}
             openFileLabel={t("extensions.detail_open_skill")}
             contentPreview={detailSkillContent ?? undefined}
-            configSlot={openInDenAction({ id: detailSkill.path })}
             onReveal={detailSkill.path && detailSkill.origin !== "openwork-connect" ? () => {
               void revealDesktopItemInDir(detailSkill.path);
             } : undefined}
@@ -1358,7 +1074,6 @@ export function McpView(props: McpViewProps) {
           ]}
           showEnablementCard
           onChat={chatWith({ connectors: [detailConnectMcp.name] })}
-          configSlot={openInDenAction({ id: detailConnectMcp.id ?? detailConnectMcp.name })}
         />
       ) : null}
 
@@ -1412,8 +1127,6 @@ export function McpView(props: McpViewProps) {
       {detailPlugin ? (() => {
         const hidden = isOpenWorkExtensionHidden(`plugin:${detailPlugin.pluginId}`);
         const marketplaceName = detailPlugin.files.find((file) => file.marketplaceName)?.marketplaceName;
-        const cloudItem = libraryCloud.pluginById.get(detailPlugin.pluginId);
-        const pluginTaxonomy = cloudItem ? libraryCloudItemTaxonomy(cloudItem.componentKinds, cloudItem.componentCount) : "plugin";
         const filesOfKind = (kind: string) => detailPlugin.files
           .filter((file) => libraryPluginFileKind(file.objectType) === kind)
           .map((file) => libraryPluginFileDisplayName(file));
@@ -1427,8 +1140,8 @@ export function McpView(props: McpViewProps) {
             breadcrumbs={detailBreadcrumbs}
             backLabel={t("extensions.title")}
             name={detailPlugin.name}
-            description={detailPlugin.description ?? kindLabel(pluginTaxonomy)}
-            taxonomy={pluginTaxonomy}
+            description={detailPlugin.description ?? t("extensions.kind_plugin")}
+            taxonomy="plugin"
             connected={true}
             connectedLabel={t("extensions.detail_available_from_org")}
             hidden={hidden}
@@ -1450,12 +1163,10 @@ export function McpView(props: McpViewProps) {
                 onOpen: () => openPluginFile(detailPlugin, file),
               };
             })}
-            configSlot={openInDenAction({ id: `marketplace:installed:${detailPlugin.pluginId}`, pluginId: detailPlugin.pluginId })}
             onChat={chatWith({
-              skills: pluginSkills.length === 0 && pluginTaxonomy === "skill" ? [detailPlugin.name] : pluginSkills,
+              skills: pluginSkills,
               connectors: pluginConnectors,
             })}
-            onShare={shareOwned(detailPlugin.pluginId)}
             onUninstall={props.removeCloudPlugin && props.hasLocalPluginCopy?.(detailPlugin.pluginId) ? () => {
               void props.removeCloudPlugin?.(detailPlugin.pluginId);
               closeDetail();
@@ -1492,7 +1203,6 @@ export function McpView(props: McpViewProps) {
                 ? [{ label: t("extensions.detail_fact_collection"), value: file.marketplaceName }]
                 : []),
             ]}
-            configSlot={openInDenAction({ id: `marketplace:installed:${plugin.pluginId}`, pluginId: plugin.pluginId })}
             onChat={kind === "skill"
               ? chatWith({ skills: [libraryPluginFileDisplayName(file)] })
               : kind === "mcp"
@@ -1502,131 +1212,15 @@ export function McpView(props: McpViewProps) {
         );
       })() : null}
 
-      {detailOrgMcpItem && isOrgMcpConnectionItem(detailOrgMcpItem) ? (() => {
-        const connection = detailOrgMcpItem.orgMcpConnection;
-        const ready = isOrgMcpConnectionReady(connection);
-        const recordedView = { checking: checkingConnections.has(connection.id) };
-        const recordedState = recordedConnectorState(connection, recordedView);
-        const providerSettings = recordedState === "Change setting" ? providerSetupProblem(connection)?.settings ?? null : null;
-        const canAuthorize = canMemberAuthorizeConnection(connection);
-        const canDisconnect = canDisconnectMemberConnection(connection);
-        const connectingBusy = props.orgMcpConnectingId === connection.id;
-        const disconnectingBusy = props.orgMcpDisconnectingId === connection.id;
-        const cloudConnection = libraryCloud.items.find((item) => item.type === "connection" && item.id === connection.id);
-        const addedBy = cloudConnection?.edges.find((edge) => edge.kind === "person");
-        const currentMember = libraryDirectory?.currentMemberId ?? null;
-        const addedByMe = Boolean(cloudConnection?.edges.some((edge) => edge.kind === "mine" || (edge.kind === "person" && edge.sharedById === currentMember)));
-        const ownPlugin = [...libraryCloud.pluginById.values()].find((plugin) =>
-          libraryCloud.ownedPluginIds.has(plugin.id) && plugin.name.toLowerCase() === connectionPluginName(detailOrgMcpItem.name));
-        const displayName = ownPlugin?.name ?? detailOrgMcpItem.name;
-        return (
-          <ExtensionDetailModal
-            open={true}
-            onClose={closeDetail}
-            presentation={detailPresentation}
-            breadcrumbs={detailBreadcrumbs}
-            backLabel={t("extensions.title")}
-            name={displayName}
-            description={recordedState ? recordedConnectorNote(connection, recordedView) : (!ready && addedByMe ? ownPlugin?.description : null) ?? detailOrgMcpItem.description ?? orgMcpConnectionActionLabel(connection)}
-            taxonomy="connection"
-            connected={recordedState ? recordedState === "Ready" : ready}
-            connectedLabel={recordedState ? recordedConnectorLabel(recordedState) : orgMcpConnectionActionLabel(connection)}
-            savedKeyOnly={connection.authType === "apikey" && connection.credentialMode === "per_member"}
-            disconnectedLabel={(recordedState ? recordedConnectorLabel(recordedState) : undefined) ?? (connection.authType === "apikey" && connection.credentialMode === "per_member" ? t("extensions.detail_no_key") : undefined)}
-            connecting={connectingBusy || disconnectingBusy}
-            connectingLabel={disconnectingBusy ? t("mcp.org_connection_disconnecting_action") : t("mcp.org_connection_waiting_browser")}
-            beta
-            errorInfo={props.orgMcpError}
-            url={connection.url}
-            oauth={connection.authType === "oauth"}
-            facts={[
-              {
-                label: t("extensions.detail_fact_who"),
-                value: libraryConnectionAudience(cloudConnection?.edges ?? [], props.organizationName?.trim() || t("extensions.surface_cloud")),
-              },
-              {
-                label: t("extensions.detail_fact_whose_account"),
-                value: connection.credentialMode === "shared" ? t("extensions.detail_account_org") : connection.authType === "apikey" ? t("extensions.detail_account_your_key") : t("extensions.detail_account_yours"),
-              },
-              ...(addedBy?.kind === "person" && addedBy.sharedByName
-                ? [{ label: t("extensions.detail_fact_added_by"), value: addedBy.sharedByName }]
-                : []),
-            ]}
-            connectLabel={orgMcpConnectionActionLabel(connection)}
-            reconnectLabel={connection.authType === "apikey" && connection.credentialMode === "per_member" ? t("ui.548dca59aca6") : t("mcp.org_connection_reconnect_action")}
-            onConnect={!ready && canAuthorize && props.connectOrgMcp ? () => props.connectOrgMcp?.(connection.id) : undefined}
-            onReconnect={ready && canAuthorize && props.reconnectOrgMcp ? () => props.reconnectOrgMcp?.(connection.id) : undefined}
-            onUninstall={canDisconnect && props.disconnectOrgMcp ? () => props.disconnectOrgMcp?.(connection.id) : undefined}
-            uninstallLabel={t("mcp.org_connection_disconnect_action")}
-            onChat={chatWith({ connectors: [displayName] })}
-            onShare={shareOwned(ownPlugin?.id)}
-            closeOnUninstall={false}
-            showEnablementCard={false}
-            configSlot={(
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-dls-border bg-dls-hover px-2 py-1 text-xs text-dls-secondary">{addedByMe ? t("extensions.detail_chip_added_by_you") : t("extensions.detail_chip_shared_by_org")}</span>
-                  <span className="rounded-full border border-dls-border bg-dls-hover px-2 py-1 text-xs text-dls-secondary">{connection.credentialMode === "shared" ? t("ui.6f16fdeee6f2") : t("ui.dbb5f6371b6a")}</span>
-                </div>
-                {providerSettings ? (
-                  <Button variant="outline" size="sm" className="w-fit" onClick={() => openProviderSettings(providerSettings.url)}>
-                    {providerSettings.label}
-                    <ArrowUpRight size={13} />
-                  </Button>
-                ) : null}
-                {openInDenAction({ id: detailOrgMcpItem.id })}
-              </div>
-            )}
-          />
-        );
-      })() : null}
     </>
   );
 
-  const cloudPlugins = [...libraryCloud.pluginById.values()];
-  const ownedPlugins = cloudPlugins.filter((plugin) => libraryCloud.ownedPluginIds.has(plugin.id));
-  const cloudConnections = libraryCloud.items.filter((item): item is DenLibraryConnectionItem => item.type === "connection");
-  const currentMemberId = libraryDirectory?.currentMemberId ?? null;
-  const ownedPluginNames = new Set(ownedPlugins.map((plugin) => plugin.name.toLowerCase()));
-  const pluginRowNames = new Set([...ownedPluginNames, ...installedPlugins.map((plugin) => plugin.name.toLowerCase())]);
-  // Connections the member made arrive with their connector plugin; list them once, under Added by you.
-  const myConnectionIds = new Set(cloudConnections
-    .filter((item) => ownedPluginNames.has(connectionPluginName(item.name))
-      || item.edges.some((edge) => edge.kind === "mine" || (edge.kind === "person" && edge.sharedById === currentMemberId)))
-    .map((item) => item.id));
-  const connectionForPlugin = (name: string) => cloudConnections.find((item) => connectionPluginName(item.name) === name.toLowerCase());
+  const pluginRowNames = new Set(installedPlugins.map((plugin) => plugin.name.toLowerCase()));
   const connectMcpForPlugin = (name: string) => availableConnectMcpServers.find((entry) => entry.pluginName?.toLowerCase() === name.toLowerCase());
   const connectorGroup = (name: string): ExtensionInventoryGroup => {
     const entry = connectMcpForPlugin(name);
-    const connection = connectionForPlugin(name);
-    if (entry) {
-      const group = connectMcpInventoryGroup(entry, props.availableConnectMcpStatuses ?? {});
-      if (group !== "available" || !connection) return group;
-    }
-    if (!connection) return "ready";
-    return connection.state === "connected" ? "ready" : connection.state;
+    return entry ? connectMcpInventoryGroup(entry, props.availableConnectMcpStatuses ?? {}) : "ready";
   };
-  const addedConnectorUrls = new Set([
-    ...cloudConnections.map((item) => item.url),
-    ...orgMcpItems.flatMap((item) => (item.orgMcpConnection ? [item.orgMcpConnection.url] : [])),
-  ]);
-  // The organization already has these; each person signs in to their own account from the catalog too.
-  const connectorSignInsByUrl = new Map<string, LibraryConnectorCatalogSignIn>();
-  for (const item of orgMcpItems.filter(isOrgMcpConnectionItem)) {
-    const connection = item.orgMcpConnection;
-    const connectOrgMcp = props.connectOrgMcp;
-    const problem = providerSetupProblem(connection);
-    if (!connectOrgMcp || connectorSignInsByUrl.has(connection.url)) continue;
-    if (!problem && !catalogConnectionNeedsSignIn(connection)) continue;
-    connectorSignInsByUrl.set(connection.url, {
-      onSignIn: () => {
-        connectOrgMcp(connection.id);
-      },
-      busy: props.orgMcpConnectingId === connection.id,
-      ...(problem ? { problem: { reason: problem.reason, settings: problem.settings } } : {}),
-      onOpenSettings: openProviderSettings,
-    });
-  }
 
   const rows: LibraryRow[] = [];
 
@@ -1697,7 +1291,6 @@ export function McpView(props: McpViewProps) {
   for (const skill of installedSkills) {
     const fromOrg = skill.origin === "openwork-connect";
     if (fromOrg && skill.pluginName && pluginRowNames.has(skill.pluginName.toLowerCase())) continue;
-    if (fromOrg && ownedPluginNames.has(skill.name.toLowerCase())) continue;
     const hidden = isOpenWorkExtensionHidden(getSkillHiddenId(skill));
     rows.push({
       key: `skill:${skill.path}`,
@@ -1717,51 +1310,7 @@ export function McpView(props: McpViewProps) {
     });
   }
 
-  const recordedConnectionFor = (name: string) => orgMcpItems.filter(isOrgMcpConnectionItem).find((item) => connectionPluginName(item.name) === name.toLowerCase() && item.orgMcpConnection.readiness !== undefined);
-
-  for (const plugin of ownedPlugins) {
-    const taxonomy = libraryCloudItemTaxonomy(plugin.componentKinds, plugin.componentCount);
-    if (taxonomy === "connection" && recordedConnectionFor(plugin.name)) continue;
-    const audience = libraryCloud.audienceFor(plugin.id);
-    const shared = isLibraryAudienceShared(audience);
-    const group = taxonomy === "connection" ? connectorGroup(plugin.name) : "ready";
-    const attention = libraryRowAttention(group);
-    const connection = taxonomy === "connection" ? connectionForPlugin(plugin.name) : undefined;
-    rows.push({
-      needsSignIn: group === "needs_signin",
-      key: `mine:${plugin.id}`,
-      section: "mine",
-      taxonomy,
-      searchText: `${plugin.name} ${plugin.description ?? ""}`,
-      node: (
-        <ExtensionCard
-          name={plugin.name}
-          description={plugin.description ?? kindLabel(taxonomy)}
-          url={connection?.url}
-          taxonomy={taxonomy}
-          connected={group === "ready"}
-          statusChip={attention.statusChip}
-          nextActionLabel={group === "needs_signin" ? attention.actionLabel : undefined}
-          onNextAction={group === "needs_signin" && connection
-            ? () => startConnectionSignIn(connection.id)
-            : undefined}
-          onClick={() => openOwnedPlugin(plugin)}
-          trailing={(
-            <LibraryRowMenu
-              name={plugin.name}
-              canEdit={taxonomy === "skill"}
-              canDuplicate={taxonomy === "skill"}
-              shared={shared}
-              onAction={(action) => handleRowAction(plugin, action)}
-            />
-          )}
-        />
-      ),
-    });
-  }
-
   for (const entry of availableConnectMcpServers) {
-    if (recordedConnectionFor(entry.pluginName ?? entry.name)) continue;
     if (entry.pluginName && pluginRowNames.has(entry.pluginName.toLowerCase())) continue;
     const group = connectMcpInventoryGroup(entry, props.availableConnectMcpStatuses ?? {});
     const attention = libraryRowAttention(group);
@@ -1790,14 +1339,7 @@ export function McpView(props: McpViewProps) {
   }
 
   for (const plugin of installedPlugins) {
-    if (libraryCloud.ownedPluginIds.has(plugin.pluginId)) continue;
-    const cloudItem = libraryCloud.pluginById.get(plugin.pluginId);
-    // A local copy outlives a delete or lost access until the next sync; the cloud list decides.
-    if (libraryCloud.ready && !cloudItem) continue;
-    const taxonomy = (cloudItem
-      ? libraryCloudItemTaxonomy(cloudItem.componentKinds, cloudItem.componentCount)
-      : libraryCloudItemTaxonomy(plugin.files.map((file) => file.objectType), plugin.files.length));
-    if (taxonomy === "connection" && recordedConnectionFor(plugin.name)) continue;
+    const taxonomy = libraryCloudItemTaxonomy(plugin.files.map((file) => file.objectType), plugin.files.length);
     const group = taxonomy === "connection" ? connectorGroup(plugin.name) : "ready";
     const attention = libraryRowAttention(group);
     const hidden = isOpenWorkExtensionHidden(`plugin:${plugin.pluginId}`);
@@ -1823,52 +1365,9 @@ export function McpView(props: McpViewProps) {
     });
   }
 
-  for (const item of orgMcpItems.filter(isOrgMcpConnectionItem)) {
-    const connection = item.orgMcpConnection;
-    const recordedView = { checking: checkingConnections.has(connection.id) };
-    const recordedState = recordedConnectorState(connection, recordedView);
-    const personalSignIn = recordedState === "Sign in" && connection.credentialMode === "per_member";
-    // A setting in the service's app blocks sign-in: link to it when Den gave a safe link, otherwise offer to try again.
-    const providerSettings = recordedState === "Change setting" ? providerSetupProblem(connection)?.settings ?? null : null;
-    const retryAfterSetting = recordedState === "Change setting" && !providerSettings && connection.credentialMode === "per_member";
-    if (!recordedState && (myConnectionIds.has(connection.id) || ownedPluginNames.has(connectionPluginName(item.name)))) continue;
-    const group = resolveExtensionInventoryGroup(item);
-    const attention = libraryRowAttention(group);
-    rows.push({
-      needsSignIn: group === "needs_signin",
-      key: item.id,
-      section: myConnectionIds.has(connection.id) ? "mine" : "openwork",
-      taxonomy: "connection",
-      searchText: `${item.name} ${item.description ?? ""} ${connection.url}`,
-      node: (
-        <ExtensionCard
-          name={item.name}
-          description={recordedState ? `${recordedConnectorNote(connection, recordedView)}${!canManageCloudConnections && (recordedState === "Couldn't verify" || recordedState === "Not checked") ? t("ui.73d575880e22") : ""}` : item.description?.trim() || t("extensions.row_shared_connection")}
-          taxonomy="connection"
-          url={connection.url}
-          connected={recordedState ? recordedState === "Ready" : group === "ready"}
-          statusChip={attention.statusChip}
-          nextActionLabel={providerSettings ? providerSettings.label : retryAfterSetting ? t("ui.d8b8392e2c54") : personalSignIn ? t("ui.bfd402b2f6f3") : recordedState === "Set up" ? t("ui.4da10f1fbb17") : recordedState ? undefined : attention.actionLabel}
-          onNextAction={providerSettings
-            ? () => openProviderSettings(providerSettings.url)
-            : personalSignIn || retryAfterSetting ? () => props.connectOrgMcp?.(connection.id) : undefined}
-          trailing={recordedState === "Couldn't verify" || recordedState === "Ready" || recordedState === "Not checked" || recordedState === "Checking…" ? (
-            <Button size="sm" variant="outline" disabled={!canManageCloudConnections || recordedState === "Checking…"} title={!canManageCloudConnections ? t("ui.8f3799403627") : undefined} onClick={() => void checkAgain(connection.id)}>{recordedState === "Checking…" ? t("ui.ec963ffc911b") : recordedState === "Not checked" ? t("ui.2937cffb37ab") : t("ui.fb7099ad8e81")}</Button>
-          ) : undefined}
-          onClick={() => openDetail({ kind: "org-mcp", item })}
-        />
-      ),
-    });
-  }
-
-  const sharedOwned = ownedPlugins.filter((plugin) => isLibraryAudienceShared(libraryCloud.audienceFor(plugin.id)));
-  const firstSharedOwned = sharedOwned[0];
   const openworkRowCount = rows.filter((row) => row.section === "openwork").length;
   const needsSignInCount = rows.filter((row) => row.needsSignIn === true).length;
   const sectionMeta: Partial<Record<LibrarySection, string | null>> = {
-    mine: firstSharedOwned
-      ? t("extensions.section_mine_shared", { count: String(sharedOwned.length), audience: libraryAudienceName(libraryCloud.audienceFor(firstSharedOwned.id)) })
-      : t("extensions.section_mine_just_me", { count: String(ownedPlugins.length) }),
     openwork: openworkRowCount > 0 ? t("extensions.section_openwork_meta", { count: String(openworkRowCount) }) : null,
   };
 
@@ -1889,7 +1388,7 @@ export function McpView(props: McpViewProps) {
           cloudIssue={cloudIssue}
           onAdd={!addDisabledReason && libraryAddKinds[0] ? () => handleAddKind(libraryAddKinds[0]) : undefined}
           onClearSearch={() => setSearch("")}
-          onOpenCloudAccount={!libraryCloudSignedIn || !activeOrganizationId ? props.onOpenCloudAccount : undefined}
+          onOpenCloudAccount={props.onOpenCloudAccount}
           onRefresh={denAuth.status === "unavailable" || inventoryError ? props.onRefresh : undefined}
           error={inventoryError}
         />
@@ -1899,9 +1398,6 @@ export function McpView(props: McpViewProps) {
 
   const libraryIconFor = (taxonomy: ExtensionTaxonomy) =>
     taxonomy === "skill" ? <FileText size={18} /> : taxonomy === "plugin" ? <LayoutGrid size={18} /> : <Plug size={18} />;
-  const sharePlugin = screen.kind === "share" ? libraryCloud.pluginById.get(screen.pluginId) ?? null : null;
-  const deleteTarget = deleteTargetId ? libraryCloud.pluginById.get(deleteTargetId) ?? null : null;
-  const deleteAudience = deleteTarget ? libraryCloud.audienceFor(deleteTarget.id) : emptyLibraryAudience;
   const toList = () => setScreen({ kind: "list" });
 
   if (screen.kind === "create") {
@@ -1910,85 +1406,14 @@ export function McpView(props: McpViewProps) {
       <AddLibraryItemPage
         kind={addKind}
         busy={props.busy}
-        cloud={cloudSession.isSignedIn}
+        cloud={libraryCloudSignedIn}
         canConfigureMcpConnections={canManageCloudConnections}
         connectorPresets={connectorPresets}
-        checkMcpServer={libraryAddOptions.cloudSignedIn
-          ? async (_url) => { throw new Error("Organization connectors are unavailable in this edition."); }
-          : undefined}
-        crumbs={addKind === "mcp" ? [{ label: t("extensions.connector_catalog_title"), onClick: () => setScreen({ kind: "catalog" }) }] : undefined}
         onClose={toList}
         onCreate={(input) => handleCreateLibraryItem(addKind, input)}
       />
     );
   }
-  if (screen.kind === "catalog") {
-    return (
-      <LibraryConnectorCatalogPage
-        presets={connectorPresets}
-        addedUrls={addedConnectorUrls}
-        signInsByUrl={connectorSignInsByUrl}
-        onBack={toList}
-        onPick={(preset) => setScreen({ kind: "connector-setup", preset })}
-        onSomethingElse={() => setScreen({ kind: "create", addKind: "mcp" })}
-      />
-    );
-  }
-  if (screen.kind === "connector-setup") {
-    const preset = screen.preset;
-    const connectorSetupUrl = denConnectorSetupUrl(denBaseUrl, preset.presetId);
-    return (
-      <LibraryConnectorSetupPage
-        preset={preset}
-        canSetUpOrganizationApp={canManageCloudConnections}
-        onSetUpInCloud={connectorSetupUrl ? () => {
-          void openDesktopUrl(connectorSetupUrl);
-        } : undefined}
-        onBack={toList}
-        onCatalog={() => setScreen({ kind: "catalog" })}
-        onSubmit={(input) => handleConnectorSetup(preset, input)}
-      />
-    );
-  }
-  if (screen.kind === "share" && sharePlugin) {
-    const taxonomy = libraryCloudItemTaxonomy(sharePlugin.componentKinds, sharePlugin.componentCount);
-    return (
-      <LibrarySharePage
-        name={sharePlugin.name}
-        description={sharePlugin.description}
-        taxonomy={taxonomy}
-        icon={libraryIconFor(taxonomy)}
-        directory={libraryDirectory}
-        initialAudience={libraryCloud.audienceFor(sharePlugin.id)}
-        canShareOrgWide={canManageCloudConnections}
-        onCancel={toList}
-        onSave={(targets, audience) => shareWith(sharePlugin, targets, audience)}
-      />
-    );
-  }
-  if (screen.kind === "edit") {
-    const skill = screen.skill;
-    const audience = libraryCloud.audienceFor(skill.pluginId);
-    return (
-      <LibraryEditSkillPage
-        skill={skill}
-        audienceName={audienceNameOrNull(audience)}
-        audiencePeople={libraryAudiencePeopleCount(audience, libraryDirectory)}
-        onCancel={toList}
-        onSave={(draft) => saveEdit(skill, draft)}
-        onSaveCopy={async (draft) => {
-          const name = t("extensions.duplicate_name", { name: draft.name });
-          const pluginId = await createLibraryItem("skill", {
-            name,
-            description: draft.description,
-            instructions: draft.instructions,
-          });
-          finishCreate(pluginId, { name, description: draft.description });
-        }}
-      />
-    );
-  }
-
   const mcpActionDialogs = <>
       <ConfirmModal
         open={logoutOpen}
@@ -2174,25 +1599,6 @@ export function McpView(props: McpViewProps) {
         onClose={() => setAddMcpModalOpen(false)}
         onAdd={props.connectMcp}
         busy={props.busy}
-      />
-
-      <LibraryDeleteDialog
-        open={deleteTarget !== null}
-        name={deleteTarget?.name ?? ""}
-        audienceName={audienceNameOrNull(deleteAudience)}
-        audiencePeople={libraryAudiencePeopleCount(deleteAudience, libraryDirectory)}
-        onCancel={() => setDeleteTargetId(null)}
-        onDelete={() => {
-          if (!deleteTarget) return;
-          void deleteOwned(deleteTarget).catch((cause: unknown) => {
-            toast.error(cause instanceof Error && cause.message.trim() ? cause.message : t("common.something_went_wrong"));
-          });
-        }}
-        onStopSharing={() => {
-          if (!deleteTarget) return;
-          setDeleteTargetId(null);
-          void shareWith(deleteTarget, [], emptyLibraryAudience);
-        }}
       />
 
       {detailPanels}

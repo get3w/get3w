@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, jest, mock, spyOn, t
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act, Fragment, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { t } from "../src/i18n";
 import { SESSION_SCROLL_NAVIGATION_EVENT, useSessionScrollController } from "../src/react-app/domains/session/surface/scroll-controller";
 import { SessionScrollOverlay } from "../src/react-app/domains/session/surface/scroll-overlay";
 import { flushSessionScrollState, getSessionScrollState, readPersistedSessionScrollState, sessionScrollKey, useSessionScrollStore } from "../src/react-app/domains/session/surface/scroll-store";
@@ -69,7 +70,7 @@ test("mobile send reserves answer space and keeps the new turn through keyboard 
   expect(view.container.scrollTop).toBe(300);
   expect(view.container.scrollHeight).toBe(500);
   expect(state().mode).toBe("manual");
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   view.layout.viewportHeight = 300;
   await act(async () => {
     for (const observer of observers) observer();
@@ -77,23 +78,23 @@ test("mobile send reserves answer space and keeps the new turn through keyboard 
   });
   expect(view.container.scrollTop).toBe(300);
   expect(view.container.scrollHeight).toBe(600);
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   view.layout.height = 450;
   await view.render("a", true, "sent");
   expect(view.container.scrollTop).toBe(300);
   expect(view.container.scrollHeight).toBe(600);
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   view.layout.viewportHeight = 100;
   await act(async () => { for (const observer of observers) observer(); });
-  expect(view.container.textContent).toContain("Jump to latest");
+  expect(view.container.textContent).toContain(t("ui.867524581f01"));
   view.layout.viewportHeight = 300;
   await act(async () => { for (const observer of observers) observer(); });
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   view.layout.height = 900;
   await view.render("a", true, "sent");
   expect(view.container.scrollTop).toBe(300);
   expect(view.container.scrollHeight).toBe(900);
-  expect(view.container.textContent).toContain("Jump to latest");
+  expect(view.container.textContent).toContain(t("ui.867524581f01"));
   await act(async () => {
     view.controls.markScrollGesture();
     view.container.scrollTop = 150;
@@ -107,7 +108,7 @@ test("mobile send reserves answer space and keeps the new turn through keyboard 
   await view.render("a", true, "next");
   expect(view.container.scrollTop).toBe(950);
   expect(view.container.scrollHeight).toBe(1250);
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   await act(async () => {
     view.controls.jumpToLatest("auto");
     runFrames();
@@ -134,7 +135,7 @@ test("mobile send reserves answer space when the engine gives the sent message i
   await view.render("a", true, "client-draft-id");
   expect(view.container.scrollTop).toBe(300);
   expect(view.container.scrollHeight).toBe(500);
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
 });
 
 test("mobile send keeps its reserved space when the engine replaces the optimistic row with its own ID", async () => {
@@ -160,21 +161,21 @@ test("manual navigation restores jump to latest even when the short mobile turn 
   view.layout.messages = [{ id: "first", top: 0, height: 300 }, { id: "sent", top: 300, height: 48 }];
   view.layout.height = 348;
   await view.render("a", true, "sent");
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   await act(async () => {
     view.controls.markScrollGesture();
     view.container.scrollTop = 290;
     view.container.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
-  expect(view.container.textContent).toContain("Jump to latest");
+  expect(view.container.textContent).toContain(t("ui.867524581f01"));
   expect(state().mode).toBe("manual");
   expect(view.container.textContent).not.toContain("Jump to start");
   const jump = view.container.querySelector<HTMLButtonElement>("button");
   expect(jump?.classList.contains("rounded-full")).toBe(true);
-  expect(jump?.querySelector(".sr-only")?.textContent).toBe("Jump to latest");
+  expect(jump?.querySelector(".sr-only")?.textContent).toBe(t("ui.867524581f01"));
   await act(async () => { jump?.click(); runFrames(); });
   expect(state().mode).toBe("stickyBottom");
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
 });
 
 test("desktop short sends still clamp to the bottom without reserved answer space", async () => {
@@ -188,13 +189,13 @@ test("desktop short sends still clamp to the bottom without reserved answer spac
   expect(view.container.scrollTop).toBe(148);
   expect(view.container.scrollHeight).toBe(348);
   expect(state().mode).toBe("stickyBottom");
-  expect(view.container.textContent).not.toContain("Jump to latest");
+  expect(view.container.textContent).not.toContain(t("ui.867524581f01"));
   await act(async () => {
     view.controls.markScrollGesture();
     view.container.scrollTop = 100;
     view.container.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
-  expect(view.container.textContent).toContain("Jump to latest");
+  expect(view.container.textContent).toContain(t("ui.867524581f01"));
 });
 
 function runFrames() {

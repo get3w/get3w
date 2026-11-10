@@ -6,8 +6,8 @@ interface DevOpenworkProxyOptions {
 }
 
 export function devOpenworkProxy(env: NodeJS.ProcessEnv): Record<string, DevOpenworkProxyOptions> {
-  if (env.OPENWORK_DEV_MODE !== "1" || !env.OPENWORK_DEV_OPENWORK_PROXY_TARGET) return {};
-  const target = new URL(env.OPENWORK_DEV_OPENWORK_PROXY_TARGET);
+  if (env.GET3W_DEV_MODE !== "1" || !env.GET3W_DEV_GET3W_PROXY_TARGET) return {};
+  const target = new URL(env.GET3W_DEV_GET3W_PROXY_TARGET);
   if (target.protocol !== "http:" || target.hostname !== "127.0.0.1" || !target.port
     || target.username || target.password || target.pathname !== "/" || target.search || target.hash) {
     throw new Error("Invalid development-only Get3W proxy configuration.");

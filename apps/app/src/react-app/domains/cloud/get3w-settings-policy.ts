@@ -22,5 +22,11 @@ export function validateSettingsDocument(value: SettingsDocument): SettingsDocum
 }
 export function settingsErrorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : t("ui.82598b92e052");
-  return raw.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, "");
+  const message=raw.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, "");
+  if(/personal account API|Update the Get3W server|desktop account endpoint/i.test(message))return t("personal.errors.upgrade");
+  if(/account.*changed|reopen|reload settings/i.test(message))return t("personal.errors.account_changed");
+  if(/expired|sign in|signed out/i.test(message))return t("personal.errors.sign_in");
+  if(/approval/i.test(message))return t("personal.errors.approval");
+  if(/unavailable|offline|network|could not|couldn't|retry|try again/i.test(message))return t("personal.errors.unavailable");
+  return t("personal.errors.generic");
 }

@@ -1,3 +1,9 @@
+import { generationModelChoices } from "../../../cloud/generation-models";
+import { ProviderIcon } from "@/react-app/design-system/provider-icon";
+import { useGet3wAccount } from "../../../cloud/get3w-account";
+import { useTaskCatalog } from "../../../cloud/task-catalog-store";
+import { modelMentionValue, parseModelMention } from "./model-token";
+import { decodeComposerMentionValue } from "./mention-encoding";
 /** @jsxImportSource react */
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
@@ -37,12 +43,6 @@ import {
 } from "./slash-command";
 import { encodeConnectSkillToken } from "./connect-skill-token";
 import { FILE_URL_RE, HTTP_URL_RE, type PastedTextChip } from "./pasted-text";
-import { loadSessionConnectCapabilities } from "@/react-app/domains/connections/cloud-inventory-cache";
-import { useOrgMcpConnections } from "@/react-app/domains/connections/use-org-mcp-connections";
-import {
-  composerConnectionSignIn,
-  mergeComposerConnectionInventory,
-} from "./composer-connections";
 import { DevProfiler } from "@/react-app/shell/dev-profiler";
 import { encodeConnectorToken } from "./connector-token";
 import { ComposerPlusMenu, type ComposerPlusMenuPick } from "./composer-plus-menu";
@@ -63,6 +63,7 @@ import { useSessionReferencesMaybe, type SessionReferenceCandidate } from "@/com
 import { formatRelativeTime } from "@/app/utils";
 import { filterSessionReferenceCandidates } from "./session-reference-search";
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
+import { ModelPreferencesPanel } from "@/react-app/domains/cloud/model-preferences-panel";
 
 type MentionItem = {
   id: string;
@@ -70,6 +71,7 @@ type MentionItem = {
   value: string;
   label: string;
   description?: string;
+  providerId?: string;
 };
 
 
@@ -231,7 +233,6 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   const latestProps = useRef(props);
   latestProps.current = props;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const orgMcp = useOrgMcpConnections();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const [refreshingOrganizationModels, setRefreshingOrganizationModels] = useState(false);
@@ -245,6 +246,9 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
   const [plusMenuQuery, setPlusMenuQuery] = useState("");
   const [workspaceFileResults, setWorkspaceFileResults] = useState<string[]>([]);
+  const modelAccount=useGet3wAccount();
+  const taskCatalog=useTaskCatalog(modelAccount.status==="signed_in"?modelAccount.user?.id:undefined);
+  const generationMentions=useMemo(()=>generationModelChoices(taskCatalog?.models??[]).map(model=>({id:`model:${model.slug}`,kind:"model" as const,value:modelMentionValue(model),label:model.name,providerId:model.providerId,description:"Get3W Models"})),[taskCatalog]);
   const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
   const [activeMentionQuery, setActiveMentionQuery] = useState<string | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -568,7 +572,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   useEffect(() => {
     if (!mentionOpen) return;
     let cancelled = false;
-    setMentionItems(COMPUTER_MENTIONS);
+    setMentionItems([...COMPUTER_MENTIONS,...generationMentions]);
     void Promise.all([
       props.listAgents().catch(() => []),
       props.searchFiles(mentionQuery).catch(() => []),
@@ -577,18 +581,19 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
       const recent = props.recentFiles.slice(0, 8);
       const next: MentionItem[] = [
         ...COMPUTER_MENTIONS,
+        ...generationMentions,
         ...agentList.map((agent) => ({ id: `agent:${agent.name}`, kind: "agent" as const, value: agent.name, label: agent.name })),
         ...recent.map((file) => ({ id: `file:${file}`, kind: "file" as const, value: file, label: file })),
         ...files.filter((file) => !recent.includes(file)).map((file) => ({ id: `file:${file}`, kind: "file" as const, value: file, label: file })),
       ];
       setMentionItems(next);
     }).catch(() => {
-      if (!cancelled) setMentionItems(COMPUTER_MENTIONS);
+      if (!cancelled) setMentionItems([...COMPUTER_MENTIONS,...generationMentions]);
     });
     return () => {
       cancelled = true;
     };
-  }, [mentionOpen, mentionQuery, props.listAgents, props.recentFiles, props.searchFiles]);
+  }, [mentionOpen, mentionQuery, props.listAgents, props.recentFiles, props.searchFiles,generationMentions]);
 
   useEffect(() => {
     if (!toolMenuOpen) {
@@ -675,26 +680,6 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   }, [toolMenuOpen]);
 
   useEffect(() => {
-    if (!toolMenuOpen) return;
-    void orgMcp.refresh();
-  }, [orgMcp.refresh, toolMenuOpen]);
-
-  const connectingId = orgMcp.connectingId;
-  const connectingIdRef = useRef(connectingId);
-  useEffect(() => {
-    const previous = connectingIdRef.current;
-    connectingIdRef.current = connectingId;
-    if (!previous || connectingId) return;
-    void listMcpRef.current?.();
-    void loadSessionConnectCapabilities();
-  }, [connectingId]);
-
-  useEffect(() => {
-    if (!toolMenuOpen || !orgMcp.error) return;
-    toast.warning(orgMcp.error);
-  }, [orgMcp.error, toolMenuOpen]);
-
-  useEffect(() => {
     if (!slashOpen && !toolMenuOpen) return;
     const openId = toolMenuLoadRef.current.openId;
     if (!toolMenuOpen || !toolMenuLoadRef.current.skills) {
@@ -738,8 +723,8 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   }, [slashItems, slashOpen, slashQuery]);
   const mentionFiltered = useMemo(() => {
     if (!mentionOpen) return [];
-    if (!mentionQuery) return mentionItems.slice(0, 8);
-    return fuzzysort.go(mentionQuery, mentionItems, { keys: ["label"], limit: 8 }).map((entry) => entry.obj);
+    if (!mentionQuery) return [...mentionItems.filter(item=>item.kind==="model").slice(0,4),...mentionItems.filter(item=>item.kind!=="model").slice(0,4)];
+    return fuzzysort.go(mentionQuery, mentionItems, { keys: ["label","description"], limit: 12 }).map((entry) => entry.obj);
   }, [mentionItems, mentionOpen, mentionQuery]);
   // Read on each query so titles and new tasks are current while the list is open.
   const sessionFiltered = useMemo(() => {
@@ -791,30 +776,18 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
       skill.origin === "openwork-connect" || !localCommandSkillNames.has(skill.name)
     ),
   ];
-  const connectionInventory = useMemo(
-    () => mergeComposerConnectionInventory({
-      mcpServers: props.mcpServers ?? [],
-      mcpStatuses: props.mcpStatuses,
-      orgConnections: orgMcp.connections,
-    }),
-    [orgMcp.connections, props.mcpServers, props.mcpStatuses],
-  );
   const plusMenuConnectors = useMemo<PlusMenuConnector[]>(
-    () => connectionInventory.servers.map((server) => {
-      const status = mcpEntryStatus(server, connectionInventory.statuses);
-      const connection = orgMcp.connections.find((entry) => entry.id === server.orgMcpConnectionId);
-      const signIn = composerConnectionSignIn({ server, status, connection });
+    () => (props.mcpServers ?? []).map((server) => {
+      const status = mcpEntryStatus(server, props.mcpStatuses);
       const url = server.config.type === "remote" ? server.config.url : undefined;
       return {
         key: server.id ?? server.name,
         name: server.name,
         serviceUrl: url,
-        signIn,
-        connecting: Boolean(signIn && orgMcp.connectingId === signIn.connectionId),
-        note: signIn ? null : plusMenuConnectorNote(status),
+        note: plusMenuConnectorNote(status),
       };
     }),
-    [connectionInventory, orgMcp.connectingId, orgMcp.connections],
+    [props.mcpServers, props.mcpStatuses],
   );
   const plusMenuAgents = useMemo<PlusMenuAgent[]>(
     () => [
@@ -1021,7 +994,8 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   };
 
   const applyMentionSelection = (item: MentionItem) => {
-    const draft = editorRef.current?.insertMentionAtSelection(item.kind, item.value);
+    let draft = editorRef.current?.insertMentionAtSelection(item.kind, item.value);
+    if(item.kind==="model"&&draft){const selected=parseModelMention(item.value);let kept=false;draft=draft.replace(/@[^\s@]+/g,token=>{const value=decodeComposerMentionValue(token.slice(1)),model=parseModelMention(value);if(!model||!selected)return token;if(value!==item.value||kept)return "";kept=true;return token;});props.onDraftChange(draft);}
     if (draft == null) return false;
     props.onInsertMention(item.kind, item.value, draft);
     setMentionOpen(false);
@@ -1321,15 +1295,16 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
               applyMentionSelection(item);
             }}
           >
+            {item.kind === "model" && (index===0||mentionFiltered[index-1]?.kind!=="model")?<span className="sr-only">{t("personal.copy.preferred_models")}</span>:null}
             {item.kind === "computer" ? (
               item.value === "cloud" ? <Cloud size={14} className="mt-0.5 shrink-0 text-gray-9" /> : <Monitor size={14} className="mt-0.5 shrink-0 text-gray-9" />
-            ) : item.kind === "agent" ? (
+            ) : item.kind === "model" ? (<ProviderIcon providerId={item.providerId} size={16}/>) : item.kind === "agent" ? (
               <Zap size={14} className="mt-0.5 shrink-0 text-gray-9" />
             ) : (
               <FileText size={14} className="mt-0.5 shrink-0 text-gray-9" />
             )}
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold">@{item.label}</span>
+              <span className="block truncate text-xs font-semibold">{item.kind==="model"?item.label:`@${item.label}`}</span>
               <span className="block truncate text-xs text-gray-10">
                 {item.description ? item.description : item.kind === "agent"
                   ? t("composer.agent_label")
@@ -1552,7 +1527,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                     }
                     setToolMenuOpen(open);
                   }}
-                  loading={commandsLoading || skillsLoading || pluginsLoading || mcpLoading || (orgMcp.loading && !orgMcp.loaded)}
+                  loading={commandsLoading || skillsLoading || pluginsLoading || mcpLoading}
                   skills={skillMenuItems}
                   connectors={plusMenuConnectors}
                   plugins={importedPlugins}
@@ -1563,10 +1538,6 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                   attachmentsDisabledReason={props.attachmentsDisabledReason}
                   onAttach={openFilePicker}
                   onPick={handlePlusMenuPick}
-                  onConnect={(connector) => {
-                    if (!connector.signIn) return;
-                    void orgMcp.connect(connector.signIn.connectionId, { forceFreshAuthorization: connector.signIn.reconnect });
-                  }}
                   onManage={handlePlusMenuManage}
                   onQueryChange={setPlusMenuQuery}
                   returnFocus={() => rootRef.current?.querySelector<HTMLElement>("[contenteditable='true']") ?? null}
@@ -1627,6 +1598,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                     if (!props.steering) props.onModelVariantChange(value);
                   }}
                 />
+                <ModelPreferencesPanel sessionId={props.sessionId} />
                 {props.modelUnavailable ? props.onRefreshOrganizationModels ? (
                   <button
                     type="button"

@@ -30,12 +30,11 @@ const PUBLIC_DISTRIBUTION = {
 
 const DEN_BASE_URL = "https://den.example.test";
 
-// The preload snapshot an activated enterprise install boots with.
+// The preload snapshot a configured install boots with.
 const ACTIVATED_BOOTSTRAP = {
   baseUrl: DEN_BASE_URL,
   requireSignin: false,
   requireActivation: false,
-  enterpriseActivation: { activatedAt: "2026-09-10T00:00:00.000Z", denBaseUrl: DEN_BASE_URL },
 };
 
 // Desktop IPC commands only the activation-gated bridges issue: the runtime
@@ -53,7 +52,7 @@ const GATED_DESKTOP_COMMANDS = new Set([
 // Minimal Electron preload stand-in. Every desktop command is recorded and
 // resolves to nothing, so effects run against the bridge without a shell. No
 // gateway marker is installed, so readDenBootstrapConfig falls back to its
-// module default (no enterpriseActivation) — exactly the pre-activation state.
+// module default.
 function installElectronBridge() {
   const commands: string[] = [];
   const meta: { distribution: typeof PUBLIC_DISTRIBUTION; desktopBootstrap?: typeof ACTIVATED_BOOTSTRAP } = {

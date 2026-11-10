@@ -80,8 +80,8 @@ test("env expands before file references and unreadable files never expose subst
 });
 
 test("the server-only encryption key cannot be expanded into a provider", async () => {
-  const result = await resolveProviderConfigTemplates({ local: { options: { apiKey: "{env:OPENWORK_ENCRYPTION_KEY}" } } }, {
-    ...options, inheritedEnvironment: { OPENWORK_ENCRYPTION_KEY: "server-only" },
+  const result = await resolveProviderConfigTemplates({ local: { options: { apiKey: "{env:GET3W_ENCRYPTION_KEY}" } } }, {
+    ...options, inheritedEnvironment: { GET3W_ENCRYPTION_KEY: "server-only" },
   });
   assert.deepEqual(result.providers, {});
   assert.equal(result.errors[0]?.code, "missing_environment_variable");
@@ -108,9 +108,9 @@ test("remote variables resolve only from the stored user values and never fall b
 });
 
 test("remote providers cannot resolve the server encryption key even from a malformed store", async () => {
-  const result = await resolveProviderConfigTemplates({ remote: { options: { apiKey: "{env:OPENWORK_ENCRYPTION_KEY}" } } }, {
-    ...options, environment: new Map([["OPENWORK_ENCRYPTION_KEY", "never-export-this"]]), inheritedEnvironment: { OPENWORK_ENCRYPTION_KEY: "also-private" },
-    remoteEnvironmentNames: new Map([["remote", new Set(["OPENWORK_ENCRYPTION_KEY"])]]),
+  const result = await resolveProviderConfigTemplates({ remote: { options: { apiKey: "{env:GET3W_ENCRYPTION_KEY}" } } }, {
+    ...options, environment: new Map([["GET3W_ENCRYPTION_KEY", "never-export-this"]]), inheritedEnvironment: { GET3W_ENCRYPTION_KEY: "also-private" },
+    remoteEnvironmentNames: new Map([["remote", new Set(["GET3W_ENCRYPTION_KEY"])]]),
   });
   assert.deepEqual(result.providers, {});
   assert.equal(result.errors[0]?.code, "missing_environment_variable");

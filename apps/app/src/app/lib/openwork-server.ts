@@ -20,12 +20,8 @@ import { parseGatewayUsableModel } from "./gateway-usable-model";
 import { isDesktopRuntime } from "./runtime-env";
 import type { ExecResult, OpencodeConfigFile, WorkspaceInfo, WorkspaceList } from "./desktop";
 import type { CloudImportedMarketplace, CloudImportedPlugin, CloudImportedProvider } from "../cloud/import-state";
-import { desktopFreeAccessStatusSchema } from "./inference-access";
 import { claudeImportItemsSchema, claudeImportResultsSchema } from "./claude-import";
 
-const desktopFreePreferencesSchema = z.object({ enabled: z.boolean(), available: z.boolean(), canEnable: z.boolean(), refresh: z.enum(["reloaded", "deferred"]).optional() });
-export type DesktopFreePreferences = z.infer<typeof desktopFreePreferencesSchema>;
-const desktopFreeAnalyticsSchema = z.object({ enabled: z.boolean() });
 
 export type OpenworkServerCapabilities = {
   skills: { read: boolean; write: boolean; source: "openwork" | "opencode" };
@@ -1320,8 +1316,8 @@ export function writeOpenworkServerSettings(next: OpenworkServerSettings): Openw
 
 function readForceEnvSettingsFlag(): boolean {
   const raw =
-    typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_OPENWORK_FORCE_ENV_SETTINGS === "string"
-      ? import.meta.env.VITE_OPENWORK_FORCE_ENV_SETTINGS.trim()
+    typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_GET3W_FORCE_ENV_SETTINGS === "string"
+      ? import.meta.env.VITE_GET3W_FORCE_ENV_SETTINGS.trim()
       : "";
   return /^(1|true|yes|on)$/i.test(raw);
 }
@@ -1330,17 +1326,17 @@ export function hydrateOpenworkServerSettingsFromEnv() {
   if (typeof window === "undefined") return;
   if (isOpenworkGatewayRuntime()) return;
 
-  const envUrl = typeof import.meta.env?.VITE_OPENWORK_URL === "string"
-    ? import.meta.env.VITE_OPENWORK_URL.trim()
+  const envUrl = typeof import.meta.env?.VITE_GET3W_URL === "string"
+    ? import.meta.env.VITE_GET3W_URL.trim()
     : "";
-  const envPort = typeof import.meta.env?.VITE_OPENWORK_PORT === "string"
-    ? import.meta.env.VITE_OPENWORK_PORT.trim()
+  const envPort = typeof import.meta.env?.VITE_GET3W_PORT === "string"
+    ? import.meta.env.VITE_GET3W_PORT.trim()
     : "";
-  const envToken = typeof import.meta.env?.VITE_OPENWORK_TOKEN === "string"
-    ? import.meta.env.VITE_OPENWORK_TOKEN.trim()
+  const envToken = typeof import.meta.env?.VITE_GET3W_TOKEN === "string"
+    ? import.meta.env.VITE_GET3W_TOKEN.trim()
     : "";
-  const envHostToken = typeof import.meta.env?.VITE_OPENWORK_HOST_TOKEN === "string"
-    ? import.meta.env.VITE_OPENWORK_HOST_TOKEN.trim()
+  const envHostToken = typeof import.meta.env?.VITE_GET3W_HOST_TOKEN === "string"
+    ? import.meta.env.VITE_GET3W_HOST_TOKEN.trim()
     : "";
   const bootstrapToken = typeof window.__OPENWORK_BOOTSTRAP__?.token === "string"
     ? window.__OPENWORK_BOOTSTRAP__.token.trim()
@@ -1690,11 +1686,6 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
 
   return {
     baseUrl,
-    desktopFreePreferences: async () => desktopFreePreferencesSchema.parse(await requestJson<unknown>(baseUrl, "/anonymous-inference/preferences", { hostToken, timeoutMs: timeouts.config })),
-    setDesktopFreeEnabled: async (enabled: boolean) => desktopFreePreferencesSchema.parse(await requestJson<unknown>(baseUrl, "/anonymous-inference/preferences", { hostToken, method: "PUT", body: { enabled }, timeoutMs: timeouts.cloudMcpReconcile })),
-    setDesktopFreeAnalytics: async (enabled: boolean) => desktopFreeAnalyticsSchema.parse(await requestJson<unknown>(baseUrl, "/anonymous-inference/analytics", { hostToken, method: "PUT", body: { enabled }, timeoutMs: timeouts.config })),
-    desktopFreeStatus: async () => desktopFreeAccessStatusSchema.parse(await requestJson<unknown>(baseUrl, "/anonymous-inference/status", { token, timeoutMs: 15_000 })),
-    desktopFreePreflight: async () => desktopFreeAccessStatusSchema.parse(await requestJson<unknown>(baseUrl, "/anonymous-inference/preflight", { token, method: "POST", timeoutMs: 15_000 })),
     token,
     health: () =>
       requestJson<{ ok: boolean; version: string; uptimeMs: number }>(baseUrl, "/health", { token, hostToken, timeoutMs: timeouts.health }),
@@ -1702,10 +1693,6 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
       requestJson<OpenworkRuntimeSnapshot>(baseUrl, "/runtime/versions", { token, hostToken, timeoutMs: timeouts.status }),
     status: () => requestJson<OpenworkServerDiagnostics>(baseUrl, "/status", { token, hostToken, timeoutMs: timeouts.status }),
     capabilities: () => requestJson<OpenworkServerCapabilities>(baseUrl, "/capabilities", { token, hostToken, timeoutMs: timeouts.capabilities }),
-    /** Has the server read the member's organization policy from Den again, as it does at sign-in. */
-    refreshManagedPolicy: async () => {
-      await requestJson<unknown>(baseUrl, "/managed-policy", { token, hostToken, timeoutMs: timeouts.config });
-    },
     getEngineV2PreviewStatus: async (): Promise<EngineV2PreviewStatus> =>
       parseEngineV2PreviewStatus(await requestJson<unknown>(baseUrl, "/experimental/engine-v2-preview/status", {
         token,
@@ -2068,7 +2055,7 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
       else if (url.origin === hostOrigin && url.hostname === "127.0.0.1") url.hostname = "localhost";
       // A server with this exact page lets the browser keep it, so later Apps
       // start without fetching it again. Any other server ignores the version.
-      const version = String(import.meta.env.VITE_OPENWORK_MCP_APP_SANDBOX_VERSION ?? "").trim();
+      const version = String(import.meta.env.VITE_GET3W_MCP_APP_SANDBOX_VERSION ?? "").trim();
       if (version) url.searchParams.set("v", version);
       url.searchParams.set("csp", JSON.stringify(app.csp));
       url.searchParams.set("hostOrigin", messageOrigin);

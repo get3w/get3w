@@ -40,7 +40,7 @@ test("gateway requested identities fall back only to a catalog title", () => {
 test("resolved identity wins over the requested catalog title", () => {
   expect(replyModelLabel(reply({ providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true }), () => "Other model")).toBe("GPT-6")
   expect(replyModelLabel(reply({ providerID: "openwork", modelID: AUTO_MODEL_ID, resolved: true }))).toBe("GPT-6 Luna")
-  expect(replyModelLabel(reply({ providerID: "openwork", modelID: AUTO_MODEL_ID }), () => "Get3W Free")).toBeNull()
+  expect(replyModelLabel(reply({ providerID: "openwork", modelID: AUTO_MODEL_ID }), () => "GPT-6 Luna")).toBeNull()
 })
 
 test("an opaque resolved name never leaks even without a gateway provider", () => {

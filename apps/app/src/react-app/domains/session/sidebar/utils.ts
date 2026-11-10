@@ -37,12 +37,12 @@ export function formatSessionRelativeTime(updatedAt: number | null | undefined):
   if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt) || updatedAt <= 0) return null;
   const ms = updatedAt < 1_000_000_000_000 ? updatedAt * 1000 : updatedAt;
   const seconds = Math.max(1, Math.round((Date.now() - ms) / 1000));
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return t("sidebar.relative_seconds", { count: seconds });
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return t("sidebar.relative_minutes", { count: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.round(hours / 24)}d`;
+  if (hours < 24) return t("sidebar.relative_hours", { count: hours });
+  return t("sidebar.relative_days", { count: Math.round(hours / 24) });
 }
 
 const normalizeSessionParentID = (session: { parentID?: string | null }) => {

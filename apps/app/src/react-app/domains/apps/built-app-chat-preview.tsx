@@ -1,5 +1,6 @@
+import { BuiltAppCatalogSync } from "./built-app-catalog-sync";
 import { t } from "@/i18n";
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import type { DynamicToolUIPart, UIMessage } from "ai";
 import { PanelRightOpen } from "lucide-react";
 import { useMessageList } from "@/components/chat/message-list-provider";
@@ -9,7 +10,6 @@ import { useUiStateStore } from "@/react-app/shell/ui-state-store";
 import { appCreationRuns, appRead } from "./app-creation-progress";
 import {
   builtAppSummary,
-  isAppBuilderPart,
   latestBuiltAppParts,
 } from "./built-mcp-app-model";
 
@@ -56,18 +56,7 @@ export function BuiltAppChatPreview({ part, compact = false }: { part: DynamicTo
   );
 }
 
-/**
- * Builds that already opened the pane in this window, so switching sessions
- * and back never reopens one the person closed.
- */
-const autoOpened = new Set<string>();
-
-/**
- * History is a baseline. A new successful builder result opens the pane, as
- * does one from the turn still running when the chat mounts. An App the agent
- * starts changing is marked Updating but never opened for it: opening runs
- * the App, which needs the person's own click.
- */
+/** Updates an already-open preview; new results never open a pane (DESIGN S5). */
 export function BuiltAppPreviewSync({
   messages,
   active,
@@ -77,9 +66,7 @@ export function BuiltAppPreviewSync({
   active: boolean;
   children?: ReactNode;
 }) {
-  const { sessionId, mcpAppOrigin, readOnly } = useMessageList();
-  const seen = useRef<Set<string> | null>(null);
-  const pending = useRef(new Set<string>());
+  const { sessionId, mcpAppOrigin } = useMessageList();
   const latestParts = useMemo(() => latestBuiltAppParts(messages), [messages]);
   useEffect(() => {
     const updating = new Set<string>();
@@ -101,28 +88,8 @@ export function BuiltAppPreviewSync({
     if (session?.tabs.some(tab => tab.type === "mcp-app" && Boolean(tab.updating) !== updating.has(tab.appId))) {
       usePanelTabStore.setState({ sessions: { ...state.sessions, [sessionId]: { ...session, tabs: session.tabs.map(tab => tab.type === "mcp-app" ? { ...tab, updating: updating.has(tab.appId) } : tab) } } });
     }
-    for (const message of messages)
-      for (const part of message.parts) {
-        if (
-          active &&
-          part.type === "dynamic-tool" &&
-          isAppBuilderPart(part) &&
-          (part.state === "input-streaming" || part.state === "input-available")
-        )
-          pending.current.add(part.toolCallId);
-      }
-    // Nothing counts as seen until it can open: a build that lands before the
-    // App host is known still opens once it is.
     if (!mcpAppOrigin) return;
     const parts = latestBuiltAppParts(messages);
-    const previous = seen.current;
-    const current = new Set(
-      parts.map(
-        (part) => `${part.toolCallId}:${builtAppSummary(part)?.revisionId}`,
-      ),
-    );
-    seen.current = new Set([...(previous ?? []), ...current]);
-    const turnCalls = new Set(latestTurn.flatMap(message => message.parts.flatMap(part => part.type === "dynamic-tool" ? [part.toolCallId] : [])));
     for (const part of parts) {
       const app = builtAppSummary(part);
       if (!app) continue;
@@ -130,15 +97,7 @@ export function BuiltAppPreviewSync({
       const tab = usePanelTabStore
         .getState()
         .sessions[sessionId]?.tabs.find((tab) => tab.id === id);
-      const buildKey = `${sessionId}:${part.toolCallId}:${app.revisionId}`;
-      const fresh =
-        !autoOpened.has(buildKey) &&
-        (((active || pending.current.has(part.toolCallId)) &&
-          previous !== null &&
-          !previous.has(`${part.toolCallId}:${app.revisionId}`)) ||
-          (active && turnCalls.has(part.toolCallId)));
-      pending.current.delete(part.toolCallId);
-      if (tab || (fresh && !readOnly)) {
+      if (tab) {
         // Updating the same tab keeps the panel in place; closing it stays respected.
         const activeTabId =
           usePanelTabStore.getState().sessions[sessionId]?.activeTabId ?? null;
@@ -153,16 +112,12 @@ export function BuiltAppPreviewSync({
             part,
             origin: mcpAppOrigin,
           });
-        if (!fresh)
-          usePanelTabStore.getState().selectTab(sessionId, activeTabId);
-        if (fresh && !readOnly) {
-          autoOpened.add(buildKey);
-          useUiStateStore.getState().setSidePanelState(sessionId, "panel");
-        }
+        usePanelTabStore.getState().selectTab(sessionId, activeTabId);
       }
     }
-  }, [messages, mcpAppOrigin, readOnly, sessionId, active]);
+  }, [messages, mcpAppOrigin, sessionId, active]);
   return <LatestBuiltAppPartsContext.Provider value={latestParts}>
+    <BuiltAppCatalogSync messages={messages} />
     {children}
   </LatestBuiltAppPartsContext.Provider>;
 }

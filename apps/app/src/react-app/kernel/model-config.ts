@@ -1,3 +1,4 @@
+import { get3wProviderId } from "@/app/lib/get3w-provider-id";
 import { useMemo, useSyncExternalStore } from "react";
 
 import {
@@ -100,7 +101,7 @@ const parseStoredModel = (value: unknown) => {
     typeof record.providerID === "string" &&
     typeof record.modelID === "string"
   ) {
-    return { providerID: record.providerID, modelID: record.modelID };
+    return { providerID: get3wProviderId(record.providerID), modelID: record.modelID };
   }
   return null;
 };

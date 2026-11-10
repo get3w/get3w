@@ -14,5 +14,5 @@ test("old schema and malformed cloud data cannot change local preferences",()=>{
   const value={schema_version:1,revision:1,preferences:prefs};
   expect(()=>validateSettingsDocument({...value,schema_version:Reflect.get({bad:2},"bad")})).toThrow("incompatible");
   expect(()=>validateSettingsDocument({...value,revision:-1})).toThrow("incompatible");
-  expect(settingsErrorMessage(new Error("Error invoking remote method 'openwork:auth': Error: Get3W is unavailable. Retry when online."))).toBe("Get3W is unavailable. Retry when online.");
+  expect(settingsErrorMessage(new Error("Error invoking remote method 'get3w:auth': Error: Get3W is unavailable. Retry when online."))).toBe("Service unavailable. Check your connection and try again.");
 });

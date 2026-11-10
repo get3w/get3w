@@ -1,8 +1,8 @@
 import { isDesktopRuntime } from "./runtime-env";
 
-const ENV_FEEDBACK_URL = String(import.meta.env.VITE_OPENWORK_FEEDBACK_URL ?? "").trim();
-const ENV_APP_VERSION = String(import.meta.env.VITE_OPENWORK_APP_VERSION ?? "").trim();
-const ENV_BUILD_SHA = String(import.meta.env.VITE_OPENWORK_BUILD_SHA ?? "").trim();
+const ENV_FEEDBACK_URL = String(import.meta.env.VITE_GET3W_FEEDBACK_URL ?? "").trim();
+const ENV_APP_VERSION = String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
+const ENV_BUILD_SHA = String(import.meta.env.VITE_GET3W_BUILD_SHA ?? "").trim();
 
 export const DEFAULT_FEEDBACK_URL =
   ENV_FEEDBACK_URL || "https://get3w.com/docs/help/contact-support";

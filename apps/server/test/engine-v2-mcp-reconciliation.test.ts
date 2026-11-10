@@ -45,9 +45,9 @@ async function isolatedPreviewEnvironment(engineMode: string) {
     XDG_DATA_HOME: join(root, "data"),
     XDG_STATE_HOME: join(root, "state"),
     XDG_CACHE_HOME: join(root, "cache"),
-    OPENWORK_RUNTIME_DB: join(root, "runtime.sqlite"),
-    OPENWORK_OPENCODE2_BIN: binary,
-    OPENWORK_ENGINE_V2_PREVIEW: engineMode,
+    GET3W_RUNTIME_DB: join(root, "runtime.sqlite"),
+    GET3W_OPENCODE2_BIN: binary,
+    GET3W_ENGINE_V2_PREVIEW: engineMode,
   };
   const previous = new Map(Object.keys(environment).map(key => [key, process.env[key]]));
   Object.assign(process.env, environment);

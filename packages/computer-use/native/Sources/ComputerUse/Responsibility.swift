@@ -12,8 +12,8 @@ import Foundation
 /// shares stdin/stdout/stderr with the relaunched helper, forwards signals and
 /// exits with its status. The relaunched helper exits if that parent goes away.
 enum Responsibility {
-    private static let relaunchedKey = "OPENWORK_COMPUTER_USE_DISCLAIMED"
-    private static let hostKey = "OPENWORK_COMPUTER_USE_HOST_PID"
+    private static let relaunchedKey = "GET3W_COMPUTER_USE_DISCLAIMED"
+    private static let hostKey = "GET3W_COMPUTER_USE_HOST_PID"
     private static var parentWatch: DispatchSourceProcess?
     private static var helperPID: pid_t = 0
     /// This process is the relaunched helper: its parent is the first helper process.

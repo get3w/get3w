@@ -1,3 +1,8 @@
+import { readGet3wAccount } from "@/react-app/domains/cloud/get3w-account";
+import { loadTaskCatalog } from "@/react-app/domains/cloud/task-catalog-store";
+import { resolveGenerationPolicy } from "@/react-app/domains/cloud/generation-policy";
+import { readComposerPill } from "@/react-app/domains/session/surface/composer/composer-pills";
+import { get3wProviderId } from "./get3w-provider-id";
 import type {
   Agent,
   ApiError,
@@ -2214,7 +2219,7 @@ type SessionCommandParameters = SessionParameters & {
 function parseCommandModel(value: string | undefined): { providerID: string; modelID: string } | null {
   const separator = value?.indexOf("/") ?? -1;
   if (!value || separator <= 0 || separator === value.length - 1) return null;
-  return { providerID: value.slice(0, separator), modelID: value.slice(separator + 1) };
+  return { providerID: get3wProviderId(value.slice(0, separator)), modelID: value.slice(separator + 1) };
 }
 
 export type V2CommandListItem = {
@@ -2560,7 +2565,7 @@ export function createClientV2(
   ): Promise<FieldsResult<Session>> => {
     const modelID = parameters.model?.id ?? parameters.model?.modelID;
     const model = parameters.model && modelID
-      ? { providerID: parameters.model.providerID, id: modelID }
+      ? { providerID: get3wProviderId(parameters.model.providerID), id: modelID }
       : undefined;
     // v2 binds a session's location through the create BODY; the query-param
     // location middleware does not apply to session.create (verified against
@@ -2699,7 +2704,7 @@ export function createClientV2(
         "POST",
         `/api/session/${encodeURIComponent(parameters.sessionID)}/model`,
         { model: {
-          providerID: parameters.model.providerID,
+          providerID: get3wProviderId(parameters.model.providerID),
           id: parameters.model.modelID,
           ...(parameters.variant === undefined ? {} : { variant: parameters.variant ?? "default" }),
         } },
@@ -2764,7 +2769,7 @@ export function createClientV2(
           "POST",
           `/api/session/${encodeURIComponent(parameters.sessionID)}/model`,
           { model: {
-            providerID: parameters.model.providerID,
+            providerID: get3wProviderId(parameters.model.providerID),
             id: parameters.model.modelID,
             ...(parameters.variant === undefined ? {} : { variant: parameters.variant }),
           } },
@@ -2790,7 +2795,11 @@ export function createClientV2(
           { value: parameters.system }, options?.signal);
         if (!instructions.response.ok) return failedResult(instructions);
       }
-      const text = v2PromptText(parameters.parts ?? []);
+      const account=readGet3wAccount();
+      const selectedModels=(parameters.parts??[]).flatMap(part=>{const pill=part.type==="text"?readComposerPill(readRecord(part,"metadata")?.openworkComposerPill):null;return pill?.kind==="model"?[pill]:[];});
+      const generationPolicy=account.status==="signed_in"&&account.user?resolveGenerationPolicy(account.user.id,parameters.sessionID,await loadTaskCatalog(account.user.id),selectedModels):undefined;
+      if(account.status==="signed_in"&&readGet3wAccount().user?.id!==account.user?.id)throw new Error("Account changed. Please send again.");
+      const text = v2PromptText([...(parameters.parts??[]),...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Explicit output values in this message override output defaults. Obtain schema and quote using the resolved model.`}]:[])]);
       const promptResult = await request(
         "POST",
         `/api/session/${encodeURIComponent(parameters.sessionID)}/prompt`,
@@ -2801,7 +2810,7 @@ export function createClientV2(
           ...(skills.length ? { skills } : {}),
           // Settings › Show model reasoning. The engine plugin asks the provider
           // for readable reasoning only while this is on.
-          metadata: { openwork: { showReasoning: readShowThinkingPreference() } },
+          metadata: { openwork: { showReasoning: readShowThinkingPreference(), generationPolicy } },
         },
         options?.signal,
       );

@@ -53,26 +53,6 @@ export function shouldAutoOpenUnavailableModelPicker(
   return input.autoOpenedUnavailableModelKey !== input.selectedModelUnavailableKey;
 }
 
-export type CloudProviderSyncReadyInput = {
-  signedIn: boolean;
-  clientConnected: boolean;
-  workspaceId: string | null | undefined;
-  activeOrgId: string | null | undefined;
-  cloudProviderSyncReady: boolean;
-};
-
-export function shouldWaitForCloudProviderSyncBeforePolicyReconcile(
-  input: CloudProviderSyncReadyInput,
-) {
-  return (
-    input.signedIn &&
-    input.clientConnected &&
-    Boolean(input.workspaceId?.trim()) &&
-    Boolean(input.activeOrgId?.trim()) &&
-    !input.cloudProviderSyncReady
-  );
-}
-
 export type OrganizationModelsRefreshInput<T> = {
   runCloudProviderSync: (reason: OrganizationModelsRefreshReason) => Promise<unknown>;
   refreshProviders: () => Promise<T> | T;

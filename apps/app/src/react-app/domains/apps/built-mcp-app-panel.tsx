@@ -1,3 +1,4 @@
+import { AppArtifact } from "./app-artifact";
 import { t } from "@/i18n";
 import { McpAppFrame } from "@/components/chat/mcp-app-frame";
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
@@ -15,6 +16,7 @@ export function BuiltMcpAppPanel({
   onClose: () => void;
 }) {
   const summary = builtAppSummary(tab.part);
+  if (summary) return <AppArtifact appId={summary.appId} revisionId={summary.revisionId} onClose={onClose} />;
   return (
     <section
       className="min-h-0 flex-1 overflow-y-auto"

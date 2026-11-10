@@ -1,8 +1,9 @@
 import { envKey, setEnv } from "@openwork/paths";
 import { startupPhase } from "./startup-phase.js";
-import type { EnginePermissionRule } from "./managed-policy-rules.js";
 import { agentPermissionEngineV2Rules, type AgentPermissionRule, type EngineV2PermissionRule } from "./agent-permission-engine.js";
-import type { OrganizationMcpServers } from "./organization-mcp-names.js";
+import type { OrganizationMcpServers } from "./reserved-mcp-names.js";
+
+type EnginePermissionRule = { action: string; resource: string; effect: "allow" | "deny" };
 import { nativeModelVariants } from "@openwork/types/cloud-model-fast";
 import { gatewayBase } from "./gateway-quota.js";
 import { openworkAgentPermissionsV2PluginPath, openworkAutoRouteV2PluginPath, openworkContextV2PluginPath, openworkMcpResultsV2PluginPath, openworkMcpReadinessV2PluginPath, openworkProviderFiltersV2PluginPath, openworkVisibleReasoningV2PluginPath } from "./openwork-extensions-plugin-path.js";

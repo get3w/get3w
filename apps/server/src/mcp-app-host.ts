@@ -10,6 +10,8 @@ import { connectionActionAppResourceUri, connectionActionIntentSchema, type Conn
 import { trustedAppHostCloudEndpoint } from "./connect-mcp-server-catalog.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import {
+  nativeArtifactTransportConfig,
+  isNativeArtifactTransportConfig,
   CONNECT_MCP_APP_HOST_CAPABILITY,
   CONNECT_MCP_APP_HOST_CAPABILITY_HEADER,
   CONNECT_MCP_APP_HOST_NAME_PREFIX,
@@ -34,7 +36,7 @@ import {
 import { diagnoseMcpToolDenies, listMcpFromRuntimeSnapshot } from "./mcp.js";
 import { readEffectiveRuntimeOpencodeConfig, readRuntimeMcpConfigRevisions } from "./runtime-opencode-config-store.js";
 import { localManagedMcpAppIdentity } from "./local-managed-mcp.js";
-import { externalFetch } from "./server-fetch.js";
+import { externalFetch, loopbackFetch } from "./server-fetch.js";
 
 async function listMcp(serverConfig: ServerConfig, workspaceId: string, workspaceRoot: string) {
   // Account-scoped gateways live in the engine-global runtime layer. Resolve
@@ -389,15 +391,20 @@ function remoteAccessError(error: unknown): McpAppHostError | null {
 async function connectRemoteClient(config: Record<string, unknown>): Promise<Client> {
   const url = remoteUrl(config);
   if (!url) throw new McpAppHostError("unsupported_transport", "MCP Apps currently require a configured remote HTTP MCP server.");
+  const nativeArtifact = isNativeArtifactTransportConfig(config);
   try {
-    await assertLocalManagedMcpUrl(url.toString());
+    if (!nativeArtifact) await assertLocalManagedMcpUrl(url.toString());
   } catch (error) {
     if (error instanceof LocalManagedMcpPrivateUrlError) {
       throw new McpAppHostError("unsafe_server_url", error.message);
     }
     throw error;
   }
-  const transportFetch = createLocalManagedMcpGuardedFetch();
+  const transportFetch = nativeArtifact ? async (target: string | URL | Request, init?: RequestInit) => {
+    const actual = target instanceof Request ? target.url : String(target);
+    if (actual !== url.href) throw new McpAppHostError("unsafe_server_url", "Artifact transport cannot change its native endpoint.");
+    return loopbackFetch(target, {...init, redirect:"error"});
+  } : createLocalManagedMcpGuardedFetch();
   const canonicalCloud = url.pathname === "/mcp/agent" && await trustedAppHostCloudEndpoint(config);
   const guardedFetch: typeof transportFetch = async (target, init) => {
     if (canonicalCloud && new URL(String(target)).href !== url.href) {
@@ -642,13 +649,18 @@ async function privateConnectMcpConfigUntimed(input: {
   workspaceId: string;
   connectionId?: string;
   serverName?: string;
+  resourceUri?: string;
 }): Promise<{ serverName: string; config: Record<string, unknown> } | null> {
   // Ordinary user-configured servers do not depend on Connect discovery.
   if (input.connectionId === undefined && !input.serverName?.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX)) return null;
+  // Drafts are deliberately absent from the active catalog. Resolve their exact
+  // URI on subsequent lease calls too, while binding it to the requested host.
+  const draftId = input.resourceUri?.match(/^ui:\/\/openwork\/apps\/(cob_[0-7][0-9a-hjkmnp-tv-z]{25})\/revisions\/cov_[0-7][0-9a-hjkmnp-tv-z]{25}\/index\.html$/)?.[1];
+  const connectionId = input.connectionId ?? (draftId && input.serverName === connectMcpAppHostName(draftId) ? draftId : undefined);
   let descriptor = await findOpenWorkConnectMcpAppHostServer(
     input.serverConfig,
     input.workspaceId,
-    { connectionId: input.connectionId, serverName: input.serverName },
+    { connectionId, serverName: input.serverName },
   );
   if (!descriptor) {
     let refreshed = await refreshOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
@@ -668,7 +680,7 @@ async function privateConnectMcpConfigUntimed(input: {
       descriptor = await findOpenWorkConnectMcpAppHostServer(
         input.serverConfig,
         input.workspaceId,
-        { connectionId: input.connectionId, serverName: input.serverName },
+        { connectionId, serverName: input.serverName },
       );
     }
   }
@@ -681,15 +693,7 @@ async function privateConnectMcpConfigUntimed(input: {
   if (!appHostAuthorization) throw connectCatalogError("missing_app_host_auth");
   return {
     serverName: connectMcpAppHostName(descriptor.connectionId),
-    config: {
-      type: "remote",
-      url: descriptor.url,
-      enabled: true,
-      headers: {
-        Authorization: appHostAuthorization,
-        [CONNECT_MCP_APP_HOST_CAPABILITY_HEADER]: CONNECT_MCP_APP_HOST_CAPABILITY,
-      },
-    },
+    config: nativeArtifactTransportConfig(descriptor.url, appHostAuthorization, input.resourceUri),
   };
 }
 
@@ -890,15 +894,7 @@ export async function listMcpAppCatalog(input: {
         apps: [],
       };
     }
-    const config: Record<string, unknown> = {
-      type: "remote",
-      url: descriptor.url,
-      enabled: true,
-      headers: {
-        Authorization: authorization,
-        [CONNECT_MCP_APP_HOST_CAPABILITY_HEADER]: CONNECT_MCP_APP_HOST_CAPABILITY,
-      },
-    };
+    const config = nativeArtifactTransportConfig(descriptor.url, authorization);
     try {
       const apps = await withCatalogProbeTimeout(withRemoteClient(config, (client) =>
         catalogAppsFromClient(client, {
@@ -1025,6 +1021,7 @@ export async function resolveConnectMcpAppResource(input: {
     serverConfig: input.serverConfig,
     workspaceId: input.workspaceId,
     connectionId: input.launch.connectionId,
+    resourceUri: input.launch.resourceUri,
   });
   if (!item || !remoteUrl(item.config)) {
     throw new McpAppHostError("server_unavailable", "The originating Connect MCP server is not available to this workspace.");
@@ -1191,7 +1188,8 @@ export async function callMcpAppTool(input: {
       serverConfig: input.serverConfig,
       workspaceId: input.workspaceId,
       serverName: input.serverName,
-    });
+
+      resourceUri: input.resourceUri,    });
     const configured = privateItem ? [] : await listMcp(input.serverConfig, input.workspaceId, input.workspaceRoot);
     // A reserved private host must never fall back to a same-name workspace configuration.
     const item = input.serverName.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX)
@@ -1308,7 +1306,7 @@ export async function callMcpAppTool(input: {
 }
 
 // Opt-in numeric profiling only; never emit request payloads or identities.
-if (process.env.OPENWORK_MCP_APP_TIMINGS === "1") {
+if (process.env.GET3W_MCP_APP_TIMINGS === "1") {
   new PerformanceObserver(list => {
     for (const entry of list.getEntries()) if (entry.name.startsWith("openwork.mcp-app.")) {
       console.log("MCP_APP_TIMING", JSON.stringify({ stage: entry.name, durationMs: entry.duration }))

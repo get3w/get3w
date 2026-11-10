@@ -97,7 +97,7 @@ export function providerLogoCandidates(input: {
 }): string[] {
   const id = input.providerId?.trim().toLowerCase() ?? "";
   // These internal/legacy provider IDs use the bundled Get3W mark.
-  if (["openwork", "openwork-account", "openwork", "openwork-free", "openwork-auto"].includes(id)) return [];
+  if (["openwork", "get3w-account", "openwork-auto"].includes(id)) return [];
   const candidates: string[] = [];
 
   if (id) {

@@ -2,7 +2,7 @@ import { afterAll, expect, mock, test } from "bun:test";
 import type { DenSettings } from "../src/app/lib/den-types";
 
 let desktopRuntime = false;
-let settings: DenSettings = { baseUrl: "https://den.example.test", authToken: "token-a", activeOrgId: "org_a" };
+let settings: DenSettings = { baseUrl: "https://den.example.test", authToken: "token-a" };
 
 mock.module("../src/app/lib/den", () => ({
   readDenSettings: () => settings,
@@ -24,17 +24,16 @@ afterAll(() => { globalThis.fetch = originalFetch; });
 
 const { telemetryContextKey, resolveDenTelemetryIngestUrl, trackTelemetryEvent } = await import("../src/app/lib/den-telemetry");
 
-test("the context key changes with the account or the organization", () => {
-  const base: DenSettings = { baseUrl: "https://den.example.test", authToken: "token-a", activeOrgId: "org_a" };
+test("the context key changes with the account", () => {
+  const base: DenSettings = { baseUrl: "https://den.example.test", authToken: "token-a" };
   expect(telemetryContextKey({ ...base, authToken: null })).toBeNull();
-  expect(telemetryContextKey(base)).not.toBe(telemetryContextKey({ ...base, activeOrgId: "org_b" }));
   expect(telemetryContextKey(base)).not.toBe(telemetryContextKey({ ...base, authToken: "token-b" }));
 });
 
-test("events queued under one organization are never sent under another", async () => {
-  trackTelemetryEvent("session.active", { sessionId: "recorded-in-org-a" });
-  settings = { baseUrl: "https://den.example.test", authToken: "token-b", activeOrgId: "org_b" };
-  for (let index = 0; index < 50; index += 1) trackTelemetryEvent("session.active", { sessionId: `org-b-${index}` });
+test("events queued under one account are never sent under another", async () => {
+  trackTelemetryEvent("session.active", { sessionId: "recorded-in-account-a" });
+  settings = { baseUrl: "https://den.example.test", authToken: "token-b" };
+  for (let index = 0; index < 50; index += 1) trackTelemetryEvent("session.active", { sessionId: `account-b-${index}` });
   await Promise.resolve();
   expect(sent).toEqual([{ authorization: "Bearer token-b", count: 50 }]);
 });

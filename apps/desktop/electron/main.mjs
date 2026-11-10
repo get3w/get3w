@@ -1,10 +1,13 @@
+import { createAutomationReceiptJournal } from "./get3w-automation-receipts.mjs";
+import { createPersonalAutomationRunner } from "./get3w-automation-runner.mjs";
 import { nativeText, nativeMessage } from "./native-i18n.mjs";
+import { createModelApprovalBridge } from "./get3w-model-approvals.mjs";
 import { createGet3wManagedMcp } from "./get3w-managed-mcp.mjs";
 import { createGet3wManagedProvider } from "./get3w-managed-provider.mjs";
 import { createGet3wAuth } from "./get3w-auth.mjs";
+import { GET3W_SERVICES, resolveGet3wOrigins } from "./get3w-services.mjs";
 import { prepareLocalPackageEnvironment } from "./local-package-profile.mjs";
 import { processBlankSlateProfile, resolveBlankSlateLaunch } from "./blank-slate-profile.mjs";
-import { DESKTOP_POLICY_ENFORCEMENT_ENABLED } from "@openwork/types/den/desktop-policies-runtime";
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
 import net from "node:net";
@@ -48,17 +51,7 @@ import {
   executeNukeFreshStart,
   runPendingNukeCleanup,
 } from "./nuke.mjs";
-import {
-  createConnectLinkReplayGuard,
-  extractConnectExchange,
-  resolveConnectExchangeUrl,
-  verifyConnectLinkUrl,
-} from "./connect-link.mjs";
-import {
-  applyDesktopBootstrapBrandIcon,
-  persistConnectLinkBranding,
-} from "./connect-link-branding.mjs";
-import { resolveConnectLinkPublicKeys } from "./connect-link-keys.mjs";
+import { applyDesktopBootstrapBrandIcon } from "./bootstrap-brand-icon.mjs";
 import { openExternalUrl } from "./open-external.mjs";
 import { openChatWorkspaceFile, resolveWorkspaceFileLaunch } from "./workspace-file-access.mjs";
 import { createOpenWithApplications, installedApplicationCommand } from "./open-with-applications.mjs";
@@ -85,8 +78,6 @@ import {
 import { createWindowsShortcutScheduler, readWindowsShortcutMarker } from "./windows-shortcut.mjs";
 import { resetMacDockIcon } from "./brand-icon-darwin.mjs";
 import { createDesktopVaultKeyProvider } from "./secure-vault-key.mjs";
-import { desktopFreeBootstrapEligible } from "./desktop-free-eligibility.mjs";
-import { applyDesktopFreeBuildSettings } from "./desktop-free-release.mjs";
 import {
   clearOpenworkSentrySession,
   initOpenworkSentry,
@@ -160,12 +151,12 @@ const speechDictation = createSpeechDictation({
 });
 const pty = require(["node", "pty"].join("-"));
 const NATIVE_DEEP_LINK_EVENT = "openwork:deep-link-native";
-const isDevMode = process.env.OPENWORK_DEV_MODE === "1";
-const localValidationPackage = app.isPackaged && desktopPackageMetadata.openworkLocalValidation === true;
+const isDevMode = process.env.GET3W_DEV_MODE === "1";
+const localValidationPackage = app.isPackaged && Reflect.get(desktopPackageMetadata,"openworkLocalValidation") === true;
 const baseDesktopDistribution = resolveDesktopDistribution({
   isPackaged: app.isPackaged,
   packageFlavor: Reflect.get(desktopPackageMetadata, "openworkDistribution"),
-  environmentFlavor: process.env.OPENWORK_DESKTOP_DISTRIBUTION,
+  environmentFlavor: process.env.GET3W_DESKTOP_DISTRIBUTION,
 });
 const DESKTOP_DISTRIBUTION = localValidationPackage
   ? { ...baseDesktopDistribution, appName: "Get3W Local", appIdentifier: "com.openwork.desktop.local", protocolScheme: "openwork-local" }
@@ -174,7 +165,7 @@ const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
 const DESKTOP_PROTOCOL_SCHEME = DESKTOP_DISTRIBUTION.protocolScheme;
 const DEFAULT_APP_NAME =
-  (!app.isPackaged ? process.env.OPENWORK_ELECTRON_APP_NAME?.trim() : "") ||
+  (!app.isPackaged ? process.env.GET3W_ELECTRON_APP_NAME?.trim() : "") ||
   (isDevMode ? `${DESKTOP_DISTRIBUTION.appName} - Dev` : DESKTOP_DISTRIBUTION.appName);
 const BLANK_SLATE_LAUNCH = resolveBlankSlateLaunch({
   appName: DEFAULT_APP_NAME,
@@ -191,15 +182,15 @@ await initOpenworkSentry({
 });
 const BASE_APP_IDENTIFIER = isDevMode ? DEV_APP_IDENTIFIER : TAURI_APP_IDENTIFIER;
 const APP_IDENTIFIER = resolveAppIdentifier({
-  appIdentifierOverride: process.env.OPENWORK_ELECTRON_APP_IDENTIFIER,
+  appIdentifierOverride: process.env.GET3W_ELECTRON_APP_IDENTIFIER,
   appRootPath: APP_ROOT,
   baseAppIdentifier: BASE_APP_IDENTIFIER,
   devAppIdentifier: DEV_APP_IDENTIFIER,
-  devProfile: process.env.OPENWORK_DEV_PROFILE,
+  devProfile: process.env.GET3W_DEV_PROFILE,
   isDevMode,
   isPackaged: app.isPackaged,
 });
-if (BLANK_SLATE_LAUNCH.enabled || process.env.OPENWORK_ELECTRON_USE_MOCK_KEYCHAIN === "1") {
+if (BLANK_SLATE_LAUNCH.enabled || process.env.GET3W_ELECTRON_USE_MOCK_KEYCHAIN === "1") {
   // Fresh, isolated development profiles otherwise trigger macOS's native
   // "Login" keychain prompt as soon as Chromium persists an authenticated
   // cookie. That modal blocks the entire Electron main loop and makes the demo
@@ -245,16 +236,6 @@ const computerControl = createComputerControl({
   onTiming: (_sessionId, step) => console.info(`[computer] ${step.name} computer ${Math.round(step.computerMs)} ms${step.modelMs === undefined ? "" : ` · model ${Math.round(step.modelMs)} ms`}`),
   runProgram: async (request, host, signal) => (await import("@openwork/computer-use/runtime")).runComputerProgram(request, host, signal),
   browserTask: (request, options) => browserPanel?.browserTask(request, options) ?? Promise.resolve({ ok: false, code: "browser_unavailable" }),
-  readRemoteFeatureEnabled: async () => {
-    const server = await runtimeManager.openworkServerInfo();
-    if (!server.baseUrl || !(server.clientToken ?? server.ownerToken)) return false;
-    // loopback-fetch: the local policy service verifies the signed-in Den identity.
-    const response = await fetch(`${server.baseUrl}/managed-policy/remote-computers`, {
-      headers: { Authorization: `Bearer ${server.clientToken ?? server.ownerToken}` }, signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return false;
-    return (await response.json())?.enabled === true;
-  },
   // This computer first, then any configured VM (see computer-targets.mjs).
   adapters: [process.platform === "win32" ? createWindowsComputerAdapter({
     resourcesPath: process.resourcesPath,
@@ -363,16 +344,16 @@ function killTerminalsForWebContents(webContentsId) {
 // so in-place migration is a no-op for almost every file. Dev mode uses the
 // separate dev identifier so it can run beside the production app.
 //
-// Dev profile precedence: OPENWORK_ELECTRON_USERDATA (explicit profile path)
-// wins over everything; then OPENWORK_ELECTRON_APP_IDENTIFIER; then
-// OPENWORK_DEV_PROFILE in unpackaged dev; then the legacy identifier default.
+// Dev profile precedence: GET3W_ELECTRON_USERDATA (explicit profile path)
+// wins over everything; then GET3W_ELECTRON_APP_IDENTIFIER; then
+// GET3W_DEV_PROFILE in unpackaged dev; then the legacy identifier default.
 app.setName(APP_NAME);
 app.setAppUserModelId(APP_IDENTIFIER);
 if (BLANK_SLATE_LAUNCH.homePath) app.setPath("home", BLANK_SLATE_LAUNCH.homePath);
 if (
   app.isPackaged
   && !BLANK_SLATE_LAUNCH.enabled
-  && process.env.OPENWORK_ELECTRON_DISABLE_PROTOCOL_REGISTRATION !== "1"
+  && process.env.GET3W_ELECTRON_DISABLE_PROTOCOL_REGISTRATION !== "1"
   && !(process.platform === "linux" && process.env.APPIMAGE)
 ) {
   app.setAsDefaultProtocolClient(DESKTOP_PROTOCOL_SCHEME);
@@ -380,7 +361,7 @@ if (
 const userDataPath = BLANK_SLATE_LAUNCH.userDataPath ?? resolveUserDataPath({
   appDataPath: app.getPath("appData"),
   appIdentifier: APP_IDENTIFIER,
-  userDataOverride: process.env.OPENWORK_ELECTRON_USERDATA,
+  userDataOverride: process.env.GET3W_ELECTRON_USERDATA,
 });
 app.setPath("userData", userDataPath);
 // The local package also isolates sidecar config, credentials and history.
@@ -528,7 +509,7 @@ async function resolveArchitectureInfo() {
   // match the machine; a matching install never shows a download, so it must
   // not contact the release host (an unactivated enterprise install in
   // particular has no business reaching anything before its Den is known).
-  const latestDownloadUrl = appArch === systemArch ? null : await resolveCorrectArchitectureDownloadUrl(targetArch);
+  const latestDownloadUrl = appArch === systemArch ? null : await resolveCorrectArchitectureDownloadUrl();
   const hasCorrectArchitectureDownload = Boolean(latestDownloadUrl);
   return {
     appArch,
@@ -1076,7 +1057,7 @@ if (process.platform === "darwin" && INITIAL_APP_ICON_IMAGE && !INITIAL_APP_ICON
 }
 
 // Expose the Chrome DevTools Protocol for local debugging and test harnesses.
-// Use OPENWORK_ELECTRON_REMOTE_DEBUG_PORT to pin a specific port; otherwise
+// Use GET3W_ELECTRON_REMOTE_DEBUG_PORT to pin a specific port; otherwise
 // probe for a free one starting at 9223.
 // Must resolve before app.commandLine.appendSwitch (before `ready`).
 function probePort(port) {
@@ -1097,7 +1078,7 @@ async function findFreeCdpPort(candidates) {
 }
 
 const explicitCdpPort = Number.parseInt(
-  process.env.OPENWORK_ELECTRON_REMOTE_DEBUG_PORT?.trim() ?? "",
+  process.env.GET3W_ELECTRON_REMOTE_DEBUG_PORT?.trim() ?? "",
   10,
 );
 const remoteDebugPort = Number.isFinite(explicitCdpPort) && explicitCdpPort > 0
@@ -1109,7 +1090,7 @@ if (remoteDebugPort > 0) {
 }
 // Publish the resolved port; child processes (and the shells they spawn)
 // inherit it through the environment.
-process.env.OPENWORK_ELECTRON_REMOTE_DEBUG_PORT = String(remoteDebugPort);
+process.env.GET3W_ELECTRON_REMOTE_DEBUG_PORT = String(remoteDebugPort);
 if (isDevMode && !app.isPackaged) {
   const cdpAddress = remoteDebugPort > 0 ? `http://127.0.0.1:${remoteDebugPort}` : "disabled";
   console.log(`[openwork] dev profile=${app.getPath("userData")} cdp=${cdpAddress}`);
@@ -1130,11 +1111,11 @@ if (extraLaunchArgs) {
     }
   }
 }
-configureFakeMediaForTests(app, envFlagEnabled("OPENWORK_ELECTRON_FAKE_MEDIA"));
-const DEFAULT_DEN_BASE_URL = "https://app.get3w.com";
+configureFakeMediaForTests(app, envFlagEnabled("GET3W_ELECTRON_FAKE_MEDIA"));
+const DEFAULT_DEN_BASE_URL = GET3W_SERVICES.denBase;
 const DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:4096";
 const FORCE_DESKTOP_REQUIRE_SIGNIN =
-  DESKTOP_DISTRIBUTION.requireSignin || envFlagEnabled("OPENWORK_FORCE_SIGNIN");
+  DESKTOP_DISTRIBUTION.requireSignin || envFlagEnabled("GET3W_FORCE_SIGNIN");
 const DEFAULT_DESKTOP_REQUIRE_SIGNIN = FORCE_DESKTOP_REQUIRE_SIGNIN;
 
 function envFlagEnabled(name) {
@@ -1209,39 +1190,10 @@ browserPanel = createBrowserPanel({
       // Without the record the next start opens pages until rules arrive, as before.
     }
   },
-  // The member's website rules, read from the local Get3W server (which
-  // verifies them with Den), never taken from the app window.
-  readWebsiteRules: async () => {
-    const server = await runtimeManager.openworkServerInfo();
-    if (!server.baseUrl || !(server.clientToken ?? server.ownerToken)) throw new Error("Get3W server unavailable");
-    // loopback-fetch: the policy service is the locally managed Get3W server.
-    const response = await fetch(`${server.baseUrl}/managed-policy/website-rules`, {
-      headers: { Authorization: `Bearer ${server.clientToken ?? server.ownerToken}` }, signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw new Error("Website rules unavailable");
-    const payload = await response.json();
-    return Array.isArray(payload?.rules) ? payload.rules : [];
-  },
-  checkPolicy: async (input) => {
-    if (!DESKTOP_POLICY_ENFORCEMENT_ENABLED) return;
-    let code = "policy_unavailable";
-    try {
-      const server = await runtimeManager.openworkServerInfo();
-      if (!server.baseUrl || !(server.clientToken ?? server.ownerToken)) throw new Error("Policy service unavailable");
-      // loopback-fetch: the policy service is the locally managed Get3W server.
-      const response = await fetch(`${server.baseUrl}/managed-policy/evaluate`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${server.clientToken ?? server.ownerToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: input.external ? "browser_external" : "browser", input }), signal: AbortSignal.timeout(15_000),
-      });
-      if (response.ok) return;
-      const payload = await response.json();
-      if (payload?.code === "organization_policy_denied" || payload?.code === "policy_unavailable") code = payload.code;
-    } catch { /* Fail closed without exposing transport or response details. */ }
-    throw Object.assign(new Error(code === "organization_policy_denied"
-      ? "Your organization's policy blocked this browser request."
-      : "Your organization's policy could not be verified."), { code });
-  },
+  // Personal Desktop has no organization website rules.
+  readWebsiteRules: async () => [],
+  // Personal Desktop applies no organization browser policy.
+  checkPolicy: async () => {},
 });
 
 const workspaceStore = createWorkspaceStore({
@@ -1252,56 +1204,6 @@ const workspaceStore = createWorkspaceStore({
 });
 
 const desktopTransfers = createDesktopTransferRegistry();
-
-const connectLinkReplayGuard = createConnectLinkReplayGuard({
-  filePath: path.join(app.getPath("userData"), "connect-link-seen.json"),
-});
-
-/**
- * @param {string} rawUrl
- * @returns {import("@openwork/types/connect-link").ConnectLinkVerifyResult}
- */
-function verifyConnectLink(rawUrl) {
-  return verifyConnectLinkUrl(String(rawUrl ?? ""), {
-    publicKeys: resolveConnectLinkPublicKeys(),
-    // http is refused everywhere except loopback targets in dev runs.
-    allowInsecureLoopback: isDevMode,
-  });
-}
-
-async function previewConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "preview",
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
-}
-
-async function acceptConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "exchange",
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
-}
-
-async function persistConnectLinkClaims(claims) {
-  return withStartupPhase("account.connect", () => persistConnectLinkClaimsInner(claims));
-}
-
-async function persistConnectLinkClaimsInner(claims) {
-  return persistConnectLinkBranding(claims, {
-    persistBootstrap: (config) => workspaceStore.setDesktopBootstrapConfig(config),
-    applyBrandIconUrl: (iconUrl) => applyBrandIconUrl(iconUrl).catch((error) =>
-      brandIconFailure("connect-apply-failed", error)),
-  });
-}
 
 function normalizePlatform(value) {
   if (value === "darwin" || value === "linux") return value;
@@ -1370,22 +1272,12 @@ function validateSkillName(raw) {
   return trimmed;
 }
 
-// Apply the build opt-out before the runtime captures inherited environment values.
-await applyDesktopFreeBuildSettings({ appVersion: resolveAppVersion(app) });
 const runtimeManager = createRuntimeManager({
   app,
   desktopRoot: path.resolve(__dirname, ".."),
   listLocalWorkspacePaths: () => workspaceStore.listLocalWorkspacePaths(),
-  anonymousInference: {
-    // Signed-out Auto has no device identity: like OpenCode Zen, the gateway limits it by IP.
-    desktop: {
-      // app.getVersion() is Electron's own version in development builds.
-      currentVersion: resolveAppVersion(app),
-      eligible: () => desktopFreeBootstrapEligible(DESKTOP_DISTRIBUTION, workspaceStore.readDesktopBootstrapConfigSync()),
-    },
-  },
-  // When OPENWORK_ENCRYPTION_KEY is set, skip the safeStorage provider so it does not shadow the documented env override used by CI/headless/enterprise.
-  localManagedMcpVaultKey: process.env.OPENWORK_ENCRYPTION_KEY?.trim()
+  // When GET3W_ENCRYPTION_KEY is set, skip the safeStorage provider so it does not shadow the documented env override used by CI/headless/enterprise.
+  localManagedMcpVaultKey: process.env.GET3W_ENCRYPTION_KEY?.trim()
     ? undefined
     : createDesktopVaultKeyProvider({
         filePath: path.join(app.getPath("userData"), "local-managed-mcp-vault-key.bin"),
@@ -1485,8 +1377,8 @@ function assertOpenworkServerReady(info) {
 }
 
 async function bootRuntimeForSelectedWorkspace() {
-  if (typeof process.env.OPENWORK_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE === "string") {
-    throw new Error(process.env.OPENWORK_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE);
+  if (typeof process.env.GET3W_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE === "string") {
+    throw new Error(process.env.GET3W_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE);
   }
   const list = await workspaceStore.readWorkspaceState();
   const selectedId = list.selectedId || list.activeId || list.workspaces[0]?.id || "";
@@ -1863,9 +1755,9 @@ const desktopCommandHandlers = {
   "appBuildInfo": async (event, ...args) => {
       return {
         version: app.getVersion(),
-        gitSha: process.env.OPENWORK_GIT_SHA ?? null,
-        buildEpoch: process.env.OPENWORK_BUILD_EPOCH ?? null,
-        openworkDevMode: process.env.OPENWORK_DEV_MODE === "1",
+        gitSha: process.env.GET3W_GIT_SHA ?? null,
+        buildEpoch: process.env.GET3W_BUILD_EPOCH ?? null,
+        openworkDevMode: process.env.GET3W_DEV_MODE === "1",
       };
   },
   "startupTimings": async (event, ...args) => {
@@ -1879,7 +1771,6 @@ const desktopCommandHandlers = {
       return {
         enabled: setOpenworkSentrySession({
           userId: input.userId,
-          orgId: input.orgId,
         }),
       };
   },
@@ -1917,14 +1808,14 @@ const desktopCommandHandlers = {
       }
   },
   "getOpenworkUiMcpCommand": async (event, ...args) => {
-      if (process.env.OPENWORK_DEV_MODE === "1") {
+      if (process.env.GET3W_DEV_MODE === "1") {
         return ["node", path.resolve(__dirname, "../../..", "packages/openwork-ui-mcp/index.mjs")];
       }
       return ["npx", "-y", "openwork-ui-mcp"];
   },
   "getOpenworkUiMcpEnvironment": async (event, ...args) => {
       return {
-        OPENWORK_UI_CONTROL_DISCOVERY: path.join(app.getPath("userData"), "openwork-ui-control.json"),
+        GET3W_UI_CONTROL_DISCOVERY: path.join(app.getPath("userData"), "openwork-ui-control.json"),
       };
   },
   "computerSnapshot": async (event, sessionId) => {
@@ -2005,37 +1896,6 @@ const desktopCommandHandlers = {
   "setDesktopBootstrapConfig": async (event, ...args) => {
       return workspaceStore.setDesktopBootstrapConfig(args[0] ?? {});
   },
-  "connectLinkVerify": async (event, ...args) => {
-      // Read-only check — parses + verifies the deep link, writes nothing.
-      // Replay is surfaced here too so an already-used link gets its refusal
-      // before the user is ever shown a confirmation.
-      const verified = await previewConnectLink(String(args[0] ?? ""));
-      if (verified.ok === false) return verified;
-      if (verified.transport === "signed" && await connectLinkReplayGuard.has(verified.claims.jti)) {
-        return { ok: false, code: "replayed", message: "This connect link was already used on this machine." };
-      }
-      return verified;
-  },
-  "connectLinkAccept": async (event, ...args) => {
-      // The renderer passes the raw URL back after the user confirmed; claims
-      // shaped in the renderer are never trusted (desktop-ipc trust boundary).
-      const verified = await acceptConnectLink(String(args[0] ?? ""));
-      if (verified.ok === false) return verified;
-      if (verified.transport === "exchange") {
-        const config = await persistConnectLinkClaims(verified.claims);
-        return { ok: true, config };
-      }
-      if (await connectLinkReplayGuard.has(verified.claims.jti)) {
-        return { ok: false, code: "replayed", message: "This connect link was already used on this machine." };
-      }
-      // Consume before mutation. If the replay ledger cannot be persisted,
-      // fail closed and leave the existing bootstrap untouched.
-      if (!(await connectLinkReplayGuard.remember(verified.claims.jti))) {
-        return { ok: false, code: "replayed", message: "This connect link was already used on this machine." };
-      }
-      const config = await persistConnectLinkClaims(verified.claims);
-      return { ok: true, config };
-  },
   "nukeOpenworkAndOpencodeConfigPreview": async (event, ...args) => {
       return buildNukeManifest({
         env: process.env,
@@ -2068,7 +1928,7 @@ const desktopCommandHandlers = {
       return runtimeManager.openworkServerInfo();
   },
   "automationRunnerConfigure": async (event, ...args) => {
-      return { configured: false, reason: "scheduled_automations_unavailable" };
+      return { connected: false };
   },
   "openworkServerRestart": async (event, ...args) => {
       return runtimeManager.openworkServerRestart(args[0] ?? {});
@@ -2229,7 +2089,7 @@ const desktopCommandHandlers = {
   },
   "__applyBrandAppName": async (event, ...args) => {
     currentDisplayAppName = applyBrandAppName(
-      BLANK_SLATE_LAUNCH.enabled || DESKTOP_DISTRIBUTION.flavor === "enterprise" ? null : args[0],
+      BLANK_SLATE_LAUNCH.enabled ? null : args[0],
       {
       fallbackName: APP_NAME,
       platform: process.platform,
@@ -2735,7 +2595,7 @@ async function createMainWindowInner() {
     routeBlockedNavigationOnce(url);
   });
 
-  const startUrl = process.env.OPENWORK_ELECTRON_START_URL?.trim() || process.env.ELECTRON_START_URL?.trim();
+  const startUrl = process.env.GET3W_ELECTRON_START_URL?.trim() || process.env.ELECTRON_START_URL?.trim();
   if (startUrl) {
     await mainWindow.loadURL(startUrl);
   } else {
@@ -2760,11 +2620,12 @@ const openworkAuth = createGet3wAuth({
   userData: app.getPath("userData"),
   safeStorage: require("electron").safeStorage,
   openExternal: (url) => shell.openExternal(url),
-  ...(!app.isPackaged ? {
-    apiBase: process.env.OPENWORK_AUTH_API_ORIGIN || "https://api.get3w.com",
-    webBase: process.env.OPENWORK_AUTH_WEB_ORIGIN || "https://get3w.com",
-    gatewayBase: process.env.OPENWORK_GATEWAY_API_ORIGIN || process.env.OPENWORK_AUTH_API_ORIGIN || "https://api.get3w.com",
-  } : localValidationPackage && desktopPackageMetadata.openworkAuthOrigins ? desktopPackageMetadata.openworkAuthOrigins : {}),
+  ...resolveGet3wOrigins({
+    isPackaged: app.isPackaged,
+    env: process.env,
+    packageMetadata: desktopPackageMetadata,
+    localValidation: localValidationPackage,
+  }),
 });
 const openworkManagedProvider = createGet3wManagedProvider({
   auth: openworkAuth, userData: app.getPath("userData"), getServerInfo: () => runtimeManager.openworkServerInfo(),
@@ -2772,19 +2633,38 @@ const openworkManagedProvider = createGet3wManagedProvider({
 const openworkManagedMcp = createGet3wManagedMcp({
   auth:openworkAuth,userData:app.getPath("userData"),getServerInfo:()=>runtimeManager.openworkServerInfo(),
 });
-ipcMain.handle("openwork:auth", async (event, operation, input) => {
+const personalAutomationRunner = createPersonalAutomationRunner({auth:openworkAuth,log:message=>console.warn("[get3w-automations]",message),receiptJournal:createAutomationReceiptJournal({userData:app.getPath("userData"),safeStorage:require("electron").safeStorage}),getWorkspaceIds:async()=>{
+  const server=await runtimeManager.openworkServerInfo();
+  if(!server.baseUrl)throw Error("The local workspace service is starting. Retry shortly.");
+  // loopback-fetch: local engine baseUrl is always 127.0.0.1.
+  const response=await fetch(`${server.baseUrl}/workspaces`,{headers:{Authorization:`Bearer ${server.clientToken??server.ownerToken}`},signal:AbortSignal.timeout(10000)});
+  if(!response.ok)throw Error("Workspace inventory is unavailable.");
+  const listed=await response.json();
+  return listed.items.map(item=>item.id);
+},getLocalRuntime:async()=>{
+  const server=await runtimeManager.openworkServerInfo();
+  return {baseUrl:server.baseUrl,token:server.clientToken??server.ownerToken};
+}});
+personalAutomationRunner.start();
+app.on("before-quit",()=>personalAutomationRunner.stop());
+powerMonitor.on("resume",()=>personalAutomationRunner.wake());
+const openworkModelApprovals = createModelApprovalBridge({ getServerInfo: () => runtimeManager.openworkServerInfo() });
+ipcMain.handle("get3w:auth", async (event, operation, input) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Untrusted sign-in caller");
+  if (operation === "modelTasks") return openworkManagedMcp.tasks(input);
+  if (operation === "outputs") return openworkManagedMcp.outputs(input);
+  if (operation === "modelApprovals") return openworkModelApprovals(input);
   if (operation === "managedMcp") return openworkManagedMcp.run(input);
   if (operation === "managedModels") return openworkManagedProvider.run(input);
-  if (!["status", "begin", "poll", "cancel", "logout", "settings", "organizations", "members", "updateMember", "balance", "models", "createOrganization", "toolAccess", "connectors", "membership", "modelUsage"].includes(operation)) throw new Error("Unknown sign-in operation");
+  if (!["status", "begin", "poll", "cancel", "logout", "settings", "balance", "models", "connectors", "modelUsage", "taskCatalog", "artifacts", "automations"].includes(operation)) throw new Error("Unknown sign-in operation");
   const result = await openworkAuth[operation](input);
-  if (["status", "poll", "logout", "organizations", "createOrganization"].includes(operation)) {
-    const modelSnapshot = ["organizations","createOrganization"].includes(operation) ? await openworkAuth.status() : result;
+  if (["status", "poll", "logout"].includes(operation)) {
+    const modelSnapshot = result;
     try { result.managedModels = await openworkManagedProvider.reconcile(modelSnapshot); }
     catch { result.managedModels = {state:"unavailable",error:"Get3W models could not reconnect. Open account settings and retry."}; }
   }
-  if (["status","poll","logout","organizations","createOrganization"].includes(operation)) {
-    const snapshot = ["organizations","createOrganization"].includes(operation) ? await openworkAuth.status() : result;
+  if (["status","poll","logout"].includes(operation)) {
+    const snapshot = result;
     await openworkManagedMcp.reconcile(snapshot).catch(() => undefined);
   }
   return result;
@@ -2818,7 +2698,7 @@ ipcMain.handle("openwork:terminal:create", async (event, options = {}) => {
       ...process.env,
       TERM: "xterm-256color",
       COLORTERM: "truecolor",
-      OPENWORK_TERMINAL: "1",
+      GET3W_TERMINAL: "1",
     },
   });
 
@@ -2890,7 +2770,7 @@ if (!app.requestSingleInstanceLock()) {
     console.error(`[openwork] Another Get3W dev instance already holds this profile directory:
   ${app.getPath("userData")}
 The second process is exiting so its CDP port is released.
-Run this worktree with an isolated profile: OPENWORK_DEV_PROFILE=auto pnpm dev
+Run this worktree with an isolated profile: GET3W_DEV_PROFILE=auto pnpm dev
 or use: pnpm dev:worktree`);
     app.exit(1);
     setImmediate(() => process.exit(1));
@@ -2937,7 +2817,7 @@ or use: pnpm dev:worktree`);
     });
     const bootstrapConfig = await workspaceStore.getDesktopBootstrapConfig();
     currentDisplayAppName = applyBrandAppName(
-      BLANK_SLATE_LAUNCH.enabled || DESKTOP_DISTRIBUTION.flavor === "enterprise"
+      BLANK_SLATE_LAUNCH.enabled
         ? null
         : bootstrapConfig.brandAppName,
       {

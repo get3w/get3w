@@ -6,6 +6,10 @@ import { promisify } from "node:util";
 import { workspaceOpencodeConfigCandidates } from "@openwork/paths";
 import constants from "../../../constants.json" with { type: "json" };
 import { readJsoncFile } from "./jsonc.js";
+import { OPENWORK_AGENT_PROMPT, OPENWORK_CONNECT_ROUTING_INSTRUCTION } from "./openwork-agent-prompt.js";
+import { automationRuntimeKnowledge } from "./automation-runtime-knowledge.js";
+
+const CONNECT_DISCOVERY_INSTRUCTION = "Org-connected services, remote skills, Workflows, and Automations reach you through OpenWork Connect. Use the Code Mode catalog and search() to discover available tools, then call exact returned paths. When Connect exposes individual service tools, call them directly. For anything without a tool of its own, use Connect's search_capabilities and execute_capability: discover capabilities with the former and run exact returned names with the latter. Read remote skills with the available get_skill tool. Discover on demand; only name services and skills returned by discovery or the remote skill catalog.";
 
 export const OPENWORK_V2_INSTRUCTION_KEY = "openwork.context";
 export const OPENWORK_V2_CONFIGURED_INSTRUCTION_KEY = "openwork.configured-instructions";
@@ -114,20 +118,16 @@ export async function readConfiguredInstructions(workspaceRoot: string): Promise
   return blocks.length > 0 ? blocks.join("\n\n") : null;
 }
 
-/**
- * Discover remote skills on demand through Connect; native skills are workspace
- * files. `organizationPrompts` is the member's organization Prompts text,
- * appended to the operating instructions.
- */
-export function buildOpenWorkV2Instructions(connectReady: boolean, organizationPrompts?: string) {
+/** Operating instructions for the v2 engine; native skills are workspace files. */
+export function buildOpenWorkV2Instructions(connectReady: boolean, modelGatewayReady = false, workspacePath?: string) {
   return {
-    // Both Connect views work in native Code Mode; never require a tool that
-    // disappears when an organization opts into the individual-tool catalog.
-    operatingInstructions: "You are Get3W, a personal assistant working on the user's local files. Follow the user's instructions, respect file permissions and ask for required approvals. Discover available local tools and configured personal MCP services before using them. Never invent capabilities or claim organization services are connected.",
-    context: "Use openwork_context to discover Get3W app reads. Use openwork_query with session.search then session.read to read another conversation without opening it. Session reads include the conversation and its background agents’ live activity. Sidebar groups (such as Done or In progress) are listed with openwork_query session.group.list and changed with openwork_execute session.group.create, session.group.move or session.group.remove; never search code or files for them. When Code Mode exposes these native tools, discover their exact paths with bare search({ query }) and compose them there; otherwise use the direct native tools. Only use capabilities actually returned by discovery.",
-    connect: "Only configured personal MCP connections are available. Organization Gateway services are unavailable in this edition.",
-    automations: "Cloud automations and remote tasks are unavailable in this edition.",
-    skillInstructions: "Use the native skill tool when a task matches an available local skill. Follow its instructions within the user's request and operating instructions. Never recover removed or denied skills from earlier context.",
-    browser: "The native browser_tabs, browser_open, browser_observe, browser_act, browser_extract, browser_navigate and browser_handoff tools control this conversation's built-in browser. Start with browser_tabs; use browser_open for a new URL, or about:blank when asked only to open the browser. Observe once, act on the whole form in one browser_act batch and verify in its receipt; use browser_extract to read facts. These are direct native tools, not Code Mode calls. Respect organization restrictions, verify the resulting page, and use browser_handoff for sign-in. Never use browser tools to control Get3W itself or claim access to external browser profiles.",
+    operatingInstructions: "You are Get3W, a personal assistant working on the user's local files. Preserve existing work, respect approvals, and use only discovered tools. Call one outer tool at a time. Native tools require their declared arguments: read needs path, shell needs command, and execute needs code. Never use empty tool arguments as a probe.",
+    context: `Use openwork_context to discover Get3W app reads. Use openwork_query session.search then session.read for other conversations. Use discovered session.group commands to manage sidebar groups. Save deliverables inside the user's workspace${workspacePath ? ` (${workspacePath})` : ""}, and use absolute Markdown file links so they can open the results. Engine scratch directories are temporary, not deliverable locations.`,
+    connect: modelGatewayReady
+      ? "The Get3W model gateway get3w-account is connected. Discover available models and tools with search_capabilities before execution. Code Mode execute requires a non-empty string field code; never call execute with {} or omit code. Call one outer tool at a time and preserve the same inner and outer idempotency_key for a submission. Use the native approval card for paid generation and never claim that a draft or quote is approval. For image edits, reuse the previous generated image URL. When two references are supplied, pass both URLs to a model that supports multiple image references. Preserve the original subject pixels with a foreground mask when changing a background; also preserve the cup from the original scene when it belongs to the subject. Never use a centered crop that clips the product. Keep all label text inside safe margins, and extend continuous scene content across the entire canvas. Inspect and reopen every final output after the last write. Code Mode does not provide setTimeout; use supported status tools to follow a task."
+      : "The Get3W model gateway is unavailable. Use only configured personal MCP connections and local tools; do not claim organization services are connected.",
+    automations: automationRuntimeKnowledge(),
+    skillInstructions: "Use the native skill tool when a task matches an available local skill. Follow its instructions within the user's request. Never recover removed or denied skills from earlier context.",
+    browser: "Use native browser tools for this conversation's built-in browser. Start with browser_tabs, observe before acting, and verify the result. Use browser_handoff for sign-in. Never use browser tools to control Get3W itself or claim access to external browser profiles.",
   };
 }

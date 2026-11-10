@@ -23,9 +23,9 @@ async function listen(answer: Answer) {
 
 async function register(browserUrl: string, reloadable: boolean) {
   const names = new Set<string>();
-  let callback: ((editor: { add(tool: { name: string }): void }) => void) | undefined;
+  let callback: ((editor: { get(id: string): undefined; update(): void; add(tool: { name: string }): void }) => void) | undefined;
   let prompt: (() => void | Promise<void>) | undefined;
-  const apply = () => { names.clear(); callback?.({ add: tool => names.add(tool.name) }); };
+  const apply = () => { names.clear(); callback?.({ get: () => undefined, update() {}, add: tool => names.add(tool.name) }); };
   const stop = await nativeContext.setup({
     options: { url: "http://127.0.0.1:9/read", token: "read", browser: { url: `${browserUrl}/browser`, token: "browser" } },
     tool: {
@@ -67,13 +67,13 @@ test("an engine without registry reload keeps computer tools offered", async () 
 
 test("only an explicit desktop answer of off hides computer tools", async () => {
   const directory = await mkdtemp(join(tmpdir(), "openwork-computer-gate-"));
-  const previous = process.env.OPENWORK_UI_CONTROL_DISCOVERY;
+  const previous = process.env.GET3W_UI_CONTROL_DISCOVERY;
   let answer: { status: number; body: unknown } = { status: 200, body: { enabled: false } };
   const desktop = await listen(path => path === "/computer/enabled" ? answer : { status: 404, body: { ok: false } });
   try {
     const discovery = join(directory, "openwork-ui-control.json");
     await writeFile(discovery, JSON.stringify({ baseUrl: desktop.url, token: "desktop" }));
-    process.env.OPENWORK_UI_CONTROL_DISCOVERY = discovery;
+    process.env.GET3W_UI_CONTROL_DISCOVERY = discovery;
     assert.equal(await computerToolsOffered(), false);
     answer = { status: 200, body: { enabled: true } };
     assert.equal(await computerToolsOffered(), true);
@@ -81,8 +81,8 @@ test("only an explicit desktop answer of off hides computer tools", async () => 
     answer = { status: 404, body: { ok: false } };
     assert.equal(await computerToolsOffered(), true);
   } finally {
-    if (previous === undefined) delete process.env.OPENWORK_UI_CONTROL_DISCOVERY;
-    else process.env.OPENWORK_UI_CONTROL_DISCOVERY = previous;
+    if (previous === undefined) delete process.env.GET3W_UI_CONTROL_DISCOVERY;
+    else process.env.GET3W_UI_CONTROL_DISCOVERY = previous;
     await desktop.close();
     await rm(directory, { recursive: true, force: true });
   }
