@@ -7,10 +7,12 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readFileSync,
   readSync,
   readdirSync,
+  rmSync,
   statSync,
   unlinkSync,
   writeFileSync,
@@ -194,6 +196,22 @@ const adHocSignDarwin = (filePath) => {
   }
 };
 
+// Release packaging re-signs sidecars with Developer ID, which changes their
+// bytes. Record the hash of the unsigned Mach-O so receipts survive re-signing.
+const unsignedSha256Darwin = (filePath) => {
+  if (process.platform !== "darwin" || !filePath || !existsSync(filePath)) return null;
+  const dir = mkdtempSync(join(tmpdir(), "get3w-sidecar-"));
+  try {
+    const copy = join(dir, "bin");
+    copyFileSync(filePath, copy);
+    const strip = spawnSync("codesign", ["--remove-signature", copy], { encoding: "utf8" });
+    if (strip.status !== 0) throw new Error(`Failed to strip signature from ${filePath}: ${strip.stderr?.trim() ?? ""}`);
+    return sha256File(copy);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
 const adHocSignDarwinSidecars = (paths) => {
   if (process.platform !== "darwin") return;
   for (const filePath of [...new Set(paths.filter(Boolean))]) {
@@ -358,10 +376,12 @@ const versions = {
   opencode2: {
     version: JSON.parse(readFileSync(constantsPath, "utf8")).opencodeV2Version,
     sha256: sha256File(opencodeV2Path),
+    unsignedSha256: unsignedSha256Darwin(opencodeV2Path),
   },
   opencode: {
     version: normalizedOpencodeVersion,
     sha256: opencodeCandidatePath && existsSync(opencodeCandidatePath) ? sha256File(opencodeCandidatePath) : null,
+    unsignedSha256: unsignedSha256Darwin(opencodeCandidatePath),
   },
   "openwork-server": {
     version: openworkServerVersion,

@@ -4433,7 +4433,7 @@
     },
     {
       "path": "apps/desktop/scripts/prepare-sidecar.mjs",
-      "sha256": "16e27a54bc7b8d58e2f3c867ff54457ed6f85528573ffc48c2a9daab14f1c36f"
+      "sha256": "47993997e4c8d0b2517aaa34246a3dd3592a7c529c4cd2163deee08aa625fec3"
     },
     {
       "path": "apps/desktop/scripts/windows-sign.cjs",
@@ -6625,7 +6625,7 @@
     },
     {
       "path": "scripts/verify-public-package.py",
-      "sha256": "aef84471c0308805ae886c273e9ad5d5b3062a3c44860ddfed42dcf15f668e63"
+      "sha256": "27b65a4a9fee563f76aed67d82b03cae6b35010547a7a86dba6a4f282ae4606a"
     },
     {
       "path": "scripts/verify-public-release.py",
