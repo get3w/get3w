@@ -2,6 +2,10 @@ import { z } from "zod";
 import { server as browserTools } from "./openwork-chrome-devtools.js";
 import { server as computerTools } from "./openwork-computer-use.js";
 import { addProviderSafeTool } from "./provider-safe-tool-schema.js";
+import { GET3W_CHAT_TOOLS } from "../get3w-chat-tools.js";
+import { mcpToolId } from "../opencode-v2-mcp-readiness.js";
+
+const GET3W_ACCOUNT_MCP = "get3w-account";
 
 const browserResult = z.object({
   content: z.array(z.union([z.object({ type: z.literal("text"), text: z.string() }),
@@ -17,12 +21,19 @@ type Tool = {
   options: { codemode: boolean };
   execute(input: unknown, context: ToolCall): Promise<z.infer<typeof browserResult>>;
 };
+type ModelTool = { execute(input: unknown, call: ToolCall): Promise<{ output: unknown }> };
+const modelCallError = z.object({ error: z.object({ message: z.string() }) });
+const modelCallResult = z.object({ result: z.unknown() });
 type Context = {
   session?: { hook(name: "prompt", callback: () => void | Promise<void>): Promise<{ dispose(): Promise<void> }> };
   location?: { directory?: string };
   options: { url: string; token: string; browser?: { url: string; token: string } };
   tool: {
-    transform(callback: (editor: { add(tool: Tool): void }) => void): Promise<{ dispose(): Promise<void> }>;
+    transform(callback: (editor: {
+      add(tool: Tool): void;
+      get?(id: string): unknown;
+      update?(id: string, change: (tool: ModelTool) => void): void;
+    }) => void): Promise<{ dispose(): Promise<void> }>;
     reload?(): Promise<void>;
   };
 };
@@ -89,6 +100,31 @@ export default {
             if (!response.ok) throw new Error(`Get3W ${name === "openwork_execute" ? "command" : "read"} failed (${response.status})`);
             return { content: [{ type: "text", text: await response.text() }] };
           },
+        });
+      }
+      // Route Get3W account tools through the host bridge so the engine, not the
+      // model's arguments, supplies the conversation the paid call belongs to.
+      for (const name of GET3W_CHAT_TOOLS) {
+        const id = mcpToolId(GET3W_ACCOUNT_MCP, name);
+        if (!editor.get?.(id)) continue;
+        editor.update?.(id, tool => {
+          tool.execute = async (input, call) => {
+            call.signal.throwIfAborted();
+            const directory = context.location?.directory;
+            if (!directory || !call.messageID || !call.sessionID) throw new Error("Conversation context is unavailable");
+            const response = await fetch(context.options.url, {
+              method: "POST", redirect: "error", signal: call.signal,
+              headers: { Authorization: `Bearer ${context.options.token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ name: "get3w_model_call", input: { name, arguments: input }, sessionId: call.sessionID,
+                caller: { directory, messageId: call.messageID, ...(call.id ? { callId: call.id } : {}), ...(call.agent ? { agent: call.agent } : {}) } }),
+            });
+            const payload: unknown = await response.json().catch(() => null);
+            const failed = modelCallError.safeParse(payload);
+            if (failed.success) throw new Error(failed.data.error.message);
+            const done = modelCallResult.safeParse(payload);
+            if (!response.ok || !done.success) throw new Error(`Get3W model call failed (${response.status})`);
+            return { output: done.data.result };
+          };
         });
       }
       const bridged = { ...browserDefinitions, ...(computerOn ? computerDefinitions : undefined) };

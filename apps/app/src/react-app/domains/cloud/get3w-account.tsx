@@ -5,7 +5,7 @@ import { Get3wBalance } from "./get3w-balance";
 import { Get3wConnectors } from "./get3w-connectors";
 import { Get3wGateway } from "./get3w-gateway";
 import { Get3wModelUsage } from "./get3w-model-usage";
-import get3wMark from "@/assets/get3w-mark.svg?url";
+import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
 import { t, useLocale } from "@/i18n";
 import type { ModelUsageSnapshot } from "./get3w-model-usage";
 import type { BalanceSnapshot } from "./get3w-balance";
@@ -24,6 +24,8 @@ export type Snapshot = {
 import { settingsErrorMessage } from "./get3w-settings-policy";
 import type { SettingsDocument } from "./get3w-settings-policy";
 type AccountIdentity = {userId:string};
+const get3wMark = resolveExtensionIconSrc("/get3w-mark.svg");
+
 export type ConnectorProvider = "google" | "microsoft";
 export type ConnectorSnapshot = {connectors:{provider:ConnectorProvider;configured:boolean;connected:boolean}[]};
 export type TaskCatalogModel = {

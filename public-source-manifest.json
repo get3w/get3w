@@ -1393,7 +1393,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-account.tsx",
-      "sha256": "eae8147729cc86259001702951d6ddd133708a76bc8a23099f736ce77eedb44c"
+      "sha256": "5cd4e33349b0f1a47103404c6cf94530d2a145a625eb54749ca11fdd1fba1e74"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-balance.tsx",
@@ -4817,7 +4817,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-context-v2.ts",
-      "sha256": "60047f09ca018c4f43656b41e45669a967b912136fc1d3f1fa0310b02b2c71b0"
+      "sha256": "aeaa8307bc815aac16bb8eb3e4c95e5a7310bcc383c8c621bd3c83fed4100876"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-extensions-preview-steering.ts",
@@ -6629,7 +6629,7 @@
     },
     {
       "path": "scripts/verify-public-release.py",
-      "sha256": "d9e568418b77213c5d3b3a72c38cd3aab6330a9257cdbf3b077f3bedf1fd1bd7"
+      "sha256": "1e26e7162f5d979ec0243ad548d40228b302fff8d798816cc31d9a1baa013e7a"
     },
     {
       "path": "scripts/verify-public-source.py",

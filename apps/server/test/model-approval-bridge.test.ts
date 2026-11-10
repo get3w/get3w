@@ -19,7 +19,9 @@ test("managed proxy reaches the real approval service; explicit allow and deny g
  registerOperationRoutes({routes,config,jsonResponse:(value,status=200)=>Response.json(value,{status}),readJsonBody:request=>request.json(),requireClientScope:()=>{},resolveWorkspace:async()=>({id:"ws",name:"Test",path:root,workspaceType:"local"}),reloadOpencodeEngine:async()=>{}});
  let definition: {url:string;headers:Record<string,string>} | undefined;
  let cloudCalls=0;
- const manager=createGet3wManagedMcp({userData:root,auth:{status:async()=>({status:"signed_in",user:{id:"u"}}),submitPersonal:async()=>{cloudCalls++;return {request_id:"request"};},mcp:async input=>{const message=JSON.parse(input.body.toString());const call=message.params.arguments;let value;
+ const manager=createGet3wManagedMcp({userData:root,auth:{status:async()=>({status:"signed_in",user:{id:"u"}}),
+ // The model guard verifies every quote and submit against the signed-in catalog.
+ taskCatalog:async()=>({models:[{model_id:"p/m/run",type:"text-to-image",api_schema:{api_schemas:[{request_schema:{properties:{prompt:{type:"string"}}}}]}}]}),submitPersonal:async()=>{cloudCalls++;return {request_id:"request"};},mcp:async input=>{const message=JSON.parse(input.body.toString());const call=message.params.arguments;let value;
  if(message.params.name==="search_capabilities") value={data:[{name:"quote",handler:"get3w.quote"},{name:"get3w.submit",handler:"get3w.submit"}]};
  else if(call.name==="quote") value={status:"succeeded",result:{quote_id:"q",slug:"p/m/run",currency:"USD",discounted_price:"0.1",expires_at:Math.floor(Date.now()/1000)+300}};
  else {cloudCalls++;value={request_id:"request"};}
