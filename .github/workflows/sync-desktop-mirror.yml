@@ -50,7 +50,7 @@ jobs:
           cp "$RUNNER_TEMP/release"/latest-mac.yml "$RUNNER_TEMP/release"/latest.yml "$RUNNER_TEMP/release"/get3w-mac-*.zip "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/*.blockmap "$RUNNER_TEMP/updater/"
           grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest-mac.yml"
           grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest.yml"
-          shasum -a 256 -c "$RUNNER_TEMP/release/SHA256SUMS" --ignore-missing
+          (cd "$RUNNER_TEMP/release" && shasum -a 256 -c SHA256SUMS --ignore-missing)
 
       - name: Upload release files to COS
         run: |
