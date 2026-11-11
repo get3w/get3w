@@ -153,7 +153,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       else void syncOutputs(scope).catch(()=>{});
       const rows=input.action==="listAll" ? await journal.listConnection(scope) : await journal.list(scope);
       // Keep submission inputs in main; expose only scoped state and result outputs.
-      return {items:rows.map(row=>({key:row.key,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],outputEntry:row.outputEntry??null}))};
+      return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],outputEntry:row.outputEntry??null}))};
     }),
     outputs:async input=>{
       if(!input||!/^[-\w]{1,100}$/.test(input.workspaceId??"")||!["index","read"].includes(input.action))throw Error("Invalid output scope.");

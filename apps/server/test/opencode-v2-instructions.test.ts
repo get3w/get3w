@@ -81,6 +81,10 @@ test("connected model gateway guides native generation and image editing without
   assert.match(connected.connect, /search_capabilities/);
   assert.match(connected.connect, /previous generated image URL/);
   assert.match(connected.connect, /native approval card/);
+  assert.match(connected.connect, /including missing illustrations inside office documents/);
+  assert.match(connected.connect, /Do not open an external generation app or website/);
+  assert.match(connected.connect, /third-party generation CLI or skill/);
+  assert.match(connected.connect, /preserve work for retry/);
   assert.match(connected.connect, /never call execute with \{\} or omit code/);
   assert.match(connected.connect, /non-empty string field code/);
   assert.match(connected.connect, /Never use a centered crop that clips the product/);
@@ -100,4 +104,35 @@ test("deliverables use the user workspace rather than engine scratch space", () 
   const instructions=buildOpenWorkV2Instructions(false,true,"/user/workspace");
   assert.match(instructions.context,/\/user\/workspace/);
   assert.match(instructions.context,/absolute Markdown file links/);
+});
+
+
+test("presentations require confirmation, bounded geometry and verified isolated revisions", () => {
+  const instructions = buildOpenWorkV2Instructions(false, true);
+  assert.match(instructions.presentations, /wait for the user's confirmation/);
+  assert.match(instructions.presentations, /both width and height limits/);
+  assert.match(instructions.presentations, /out-of-bounds objects/);
+  assert.match(instructions.presentations, /render every slide and visually inspect/);
+  assert.match(instructions.presentations, /other slides and their media unchanged/);
+  assert.match(instructions.presentations, /model request IDs/);
+  assert.match(instructions.presentations, /including at the outline stage/);
+  assert.match(instructions.presentations, /Omit unsupported details/);
+  assert.match(instructions.presentations, /DrawingML a:ea/);
+  assert.match(instructions.presentations, /source-image letterbox bars/);
+  assert.match(instructions.presentations, /explicit text wrapping/);
+  assert.match(instructions.presentations, /actual viewer as well as its PDF/);
+  assert.match(instructions.presentations, /Export PDF directly from the final PPTX/);
+});
+
+
+test("documents require actual editable files, live fields and isolated revisions", () => {
+  const { documents } = buildOpenWorkV2Instructions(false, true);
+  assert.match(documents, /do not hand a prose instruction to computer_open/);
+  assert.match(documents, /Discover installed apps/);
+  assert.match(documents, /real TOC, PAGE, SEQ and REF\/PAGEREF fields/);
+  assert.match(documents, /Update field results/);
+  assert.match(documents, /render and visually inspect every page/);
+  assert.match(documents, /only the requested paragraph and dependent field results/);
+  assert.match(documents, /quote and settled charge/);
+  assert.match(documents, /preserve original product pixels/);
 });

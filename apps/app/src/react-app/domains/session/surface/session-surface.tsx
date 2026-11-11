@@ -1,5 +1,4 @@
 /** @jsxImportSource react */
-import { ModelTaskStatus } from "../../cloud/model-task-status";
 import { ModelApprovalCards } from "../../cloud/model-approval-cards";
 import { requireGet3wSignIn } from "@/react-app/domains/cloud/get3w-account";
 import { childOrigin, rememberChildOrigin, prepareChildReturn, consumeChildReturn, registerChildDraftPersistence } from "@/lib/child-navigation";
@@ -3734,9 +3733,6 @@ export function SessionSurface(props: SessionSurfaceProps) {
               </DevProfiler>
             )}
             </SessionHistoryBoundary>
-            {/* Result previews belong to the transcript's scroll flow. Keeping
-                them in the non-shrinking composer collapses the history viewport. */}
-            <ModelTaskStatus key={`tasks:${props.workspaceId}:${props.sessionId}`} workspaceId={props.workspaceId} sessionId={props.sessionId} />
             {!archived && admissionOutcomeUnresolved && queuedDrainState.phase.kind !== "admission_unknown" && renderedMessages.length > 0 ? (
               <AdmissionOutcomeUnknownCard
                 resuming={resuming}

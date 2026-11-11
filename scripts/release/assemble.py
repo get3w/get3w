@@ -1,11 +1,14 @@
-"""Validate all six native release outputs before producing public assets."""
+"""Validate all four native release outputs (macOS + Windows) before producing public assets.
+
+Linux is not released (decided 2026-11-10).
+"""
 import argparse, base64, hashlib, json, re, shutil
 from pathlib import Path
 import yaml
 
 MATRIX = {('mac', 'x64'): ['dmg', 'zip'], ('mac', 'arm64'): ['dmg', 'zip'],
-          ('win', 'x64'): ['exe'], ('win', 'arm64'): ['exe'],
-          ('linux', 'x86_64'): ['AppImage', 'tar.gz'], ('linux', 'arm64'): ['AppImage', 'tar.gz']}
+          ('win', 'x64'): ['exe'], ('win', 'arm64'): ['exe']}
+MANIFESTS = {'latest-mac.yml', 'latest.yml'}
 
 def assemble(source, output, version):
     if not re.fullmatch(r'\d+\.\d+\.\d+', version): raise ValueError('Expected stable version')
@@ -24,11 +27,9 @@ def assemble(source, output, version):
                 assets[path.name] = path
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
-            asset_arch = 'x64' if platform == 'linux' and arch == 'x86_64' and ext == 'tar.gz' else arch
-            name = f'get3w-{platform}-{asset_arch}-{version}.{ext}'
+            name = f'get3w-{platform}-{arch}-{version}.{ext}'
             if name not in assets or assets[name].stat().st_size == 0: raise ValueError('Missing installer: ' + name)
-    expected_manifests = {'latest-mac.yml', 'latest.yml', 'latest-linux.yml', 'latest-linux-arm64.yml'}
-    if set(manifests) != expected_manifests: raise ValueError('Missing updater manifests')
+    if set(manifests) != MANIFESTS: raise ValueError('Unexpected updater manifests: ' + ', '.join(sorted(manifests)))
     output.mkdir(parents=True, exist_ok=False)
     covered = set()
     for name, inputs in manifests.items():
@@ -45,7 +46,7 @@ def assemble(source, output, version):
         (output / name).write_text(yaml.safe_dump(merged, sort_keys=False))
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
-            if ext in ['dmg', 'zip', 'exe', 'AppImage'] and f'get3w-{platform}-{arch}-{version}.{ext}' not in covered:
+            if f'get3w-{platform}-{arch}-{version}.{ext}' not in covered:
                 raise ValueError('Installer absent from updater manifest')
     checksums = []
     for name, path in sorted(assets.items()):
@@ -54,7 +55,7 @@ def assemble(source, output, version):
         with path.open('rb') as stream:
             checksums.append(hashlib.file_digest(stream, 'sha256').hexdigest() + '  ' + path.name)
     (output / 'SHA256SUMS').write_text('\n'.join(checksums) + '\n')
-    (output / 'release.json').write_text(json.dumps({'version': version, 'signed': False, 'platforms': 6, 'assets': sorted(assets)}, indent=2) + '\n')
+    (output / 'release.json').write_text(json.dumps({'version': version, 'signed': False, 'platforms': len(MATRIX), 'assets': sorted(assets)}, indent=2) + '\n')
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(); p.add_argument('source', type=Path); p.add_argument('output', type=Path); p.add_argument('version')

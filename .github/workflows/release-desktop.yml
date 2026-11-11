@@ -27,12 +27,7 @@ jobs:
           - runner: windows-11-arm
             platform: win
             arch: arm64
-          - runner: ubuntu-24.04
-            platform: linux
-            arch: x64
-          - runner: ubuntu-24.04-arm
-            platform: linux
-            arch: arm64
+          # Linux is not released (decided 2026-11-10).
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     defaults:
@@ -148,7 +143,7 @@ jobs:
         with:
           pattern: release-*
           path: artifacts/release-input
-      - name: Validate all six platforms and merge updater metadata
+      - name: Validate all four platforms and merge updater metadata
         run: |
           python3 -m pip install PyYAML==6.0.3
           python3 scripts/release/assemble.py artifacts/release-input artifacts/release-public "${GITHUB_REF_NAME#v}"

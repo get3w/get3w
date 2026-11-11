@@ -56,3 +56,19 @@ test("failed image read offers retry and shows the recovered image",async()=>{
   expect(node.querySelector("img")?.getAttribute("src")).toBe("blob:recovered-cat");
  }finally{await act(async()=>root.unmount());node.remove();URL.createObjectURL=previousCreate;URL.revokeObjectURL=previousRevoke;}
 });
+
+test("compact previews reserve no large image space and keep videos bounded",async()=>{
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ const previousCreate=URL.createObjectURL,previousRevoke=URL.revokeObjectURL;
+ URL.createObjectURL=()=>"blob:compact";URL.revokeObjectURL=()=>{};
+ try{
+  await act(async()=>root.render(<OutputPreview compact file={{path:"outputs/image.png",mimeType:"image/png",sizeBytes:1}} read={async()=>({dataBase64:"AA==",mimeType:"image/png",sizeBytes:1})}/>));
+  expect(node.querySelector("img")?.className).toContain("max-h-40");
+  expect(node.querySelector("img")?.className).toContain("max-w-40");
+  expect(node.firstElementChild?.getAttribute("style")??"").not.toContain("min-height");
+  expect(node.textContent).not.toContain("outputs/");
+  await act(async()=>root.render(<OutputPreview compact file={{path:"video.mp4",mimeType:"video/mp4",sizeBytes:1}} read={async()=>({dataBase64:"AA==",mimeType:"video/mp4",sizeBytes:1})}/>));
+  expect(node.querySelector("video")?.className).toContain("max-h-40");
+  expect(node.querySelector("video")?.hasAttribute("controls")).toBe(true);
+ }finally{await act(async()=>root.unmount());node.remove();URL.createObjectURL=previousCreate;URL.revokeObjectURL=previousRevoke;}
+});

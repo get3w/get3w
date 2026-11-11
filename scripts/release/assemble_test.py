@@ -10,10 +10,9 @@ class ReleaseTest(unittest.TestCase):
             folder = root / f'{platform}-{arch}'; folder.mkdir()
             files = []
             for ext in extensions:
-                asset_arch = 'x64' if platform == 'linux' and arch == 'x86_64' and ext == 'tar.gz' else arch
-                name = f'get3w-{platform}-{asset_arch}-0.1.0.{ext}'; raw = name.encode(); (folder / name).write_bytes(raw)
-                if ext != 'tar.gz': files.append({'url': name, 'size': len(raw), 'sha512': base64.b64encode(hashlib.sha512(raw).digest()).decode()})
-            manifest = 'latest-mac.yml' if platform == 'mac' else 'latest.yml' if platform == 'win' else f'latest-linux{"-arm64" if arch == "arm64" else ""}.yml'
+                name = f'get3w-{platform}-{arch}-0.1.0.{ext}'; raw = name.encode(); (folder / name).write_bytes(raw)
+                files.append({'url': name, 'size': len(raw), 'sha512': base64.b64encode(hashlib.sha512(raw).digest()).decode()})
+            manifest = 'latest-mac.yml' if platform == 'mac' else 'latest.yml'
             (folder / manifest).write_text(yaml.safe_dump({'version': '0.1.0', 'files': files, 'path': files[0]['url'], 'sha512': files[0]['sha512']}))
     def test_complete_release_merges_both_architectures(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -30,5 +29,10 @@ class ReleaseTest(unittest.TestCase):
                 if tamper: asset.write_bytes(b'tampered')
                 else: asset.unlink()
                 with self.assertRaises(ValueError): module.assemble(source,root/'output','0.1.0')
+    def test_release_has_no_linux_assets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); source=root/'input'; source.mkdir(); self.fixtures(source)
+            module.assemble(source,root/'output','0.1.0')
+            self.assertFalse(any('linux' in p.name for p in (root/'output').iterdir()))
 
 if __name__ == '__main__': unittest.main()

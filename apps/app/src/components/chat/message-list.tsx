@@ -1,5 +1,6 @@
 "use memo";
 
+import { ModelTasksProvider, ModelTaskStatus } from "@/react-app/domains/cloud/model-task-status"
 import { appBuildActivity, appBuildInProgress, appCreationRuns } from "@/react-app/domains/apps/app-creation-progress"
 import { BuiltAppPreviewSync } from "@/react-app/domains/apps/built-app-chat-preview"
 import { builtAppSummary } from "@/react-app/domains/apps/built-mcp-app-model"
@@ -2020,6 +2021,7 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
   const createdSkills = useCreatedSkillsModel(messages, appRunActive && !syncDegraded)
 
   return (
+    <ModelTasksProvider key={`${workspaceId}:${sessionId}`} workspaceId={workspaceId} sessionId={sessionId} messages={messages}>
     <CreatedSkillsContext.Provider value={createdSkills}>
     <ParentRunActiveContext.Provider value={appRunActive}>
     <AppPanelLiveContext.Provider value={appPanelLive}>
@@ -2040,6 +2042,7 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
         renderGroup={(item) => {
         if (isMessageGroup(item)) {
           return (
+            <>
             <MemoizedMessageGroup
               key={item.messages[0]?.message.id ?? "empty-assistant-group"}
               items={item.messages}
@@ -2047,6 +2050,8 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
               isStreaming={isStreaming && item.messages.at(-1)?.index === lastVisibleIndex}
               newestAppCallIds={newestAppCallIds}
             />
+            <ModelTaskStatus messageIds={item.messages.map(({message})=>message.id)} />
+            </>
           )
         }
 
@@ -2055,6 +2060,7 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
           !visibleMessages[item.index + 1] || visibleMessages[item.index + 1].role !== item.message.role
 
         return (
+          <>
           <StandaloneMessage
             key={item.message.id}
             message={item.message}
@@ -2062,6 +2068,8 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
             isStreaming={isLastMessage && isStreaming}
             isLastStep={isLastStep}
           />
+          <ModelTaskStatus messageIds={[item.message.id]} />
+          </>
         )
         }}
       >
@@ -2100,6 +2108,7 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
     </AppPanelLiveContext.Provider>
     </ParentRunActiveContext.Provider>
     </CreatedSkillsContext.Provider>
+    </ModelTasksProvider>
   )
 }
 

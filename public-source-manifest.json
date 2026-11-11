@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "9f6e21d747e31807a9b0fc6511dde88b1d0b4c4e91b8eeafa09dcd8ff2923781"
+      "sha256": "34cca054988dc3cce07bef61608f23ed6029ea489a4166f3cea6e06fb21fccf8"
     },
     {
       "path": ".gitignore",
@@ -86,6 +86,10 @@
     {
       "path": "apps/app/index.html",
       "sha256": "9a9daa2edb22ad58ddc9d003965d51f2d6c1e2ef5efba2e782c74f8390db348e"
+    },
+    {
+      "path": "apps/app/model-task-proof.html",
+      "sha256": "641bd14e99c4ebd04b6c399f2a7de677e259b489a9526fb3fbd54d799324b797"
     },
     {
       "path": "apps/app/package.json",
@@ -665,7 +669,7 @@
     },
     {
       "path": "apps/app/src/components/chat/message-list.tsx",
-      "sha256": "ccd6060dddf714c794615135049c9660c32b71adc82fd03fea9cf6143b65a303"
+      "sha256": "c7f07ddf2e151faf18012964996c974b1687c0c3ad4cbcefea3eee12860646b3"
     },
     {
       "path": "apps/app/src/components/chat/progressive-message-list.tsx",
@@ -1393,7 +1397,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-account.tsx",
-      "sha256": "5cd4e33349b0f1a47103404c6cf94530d2a145a625eb54749ca11fdd1fba1e74"
+      "sha256": "9fde660a3dc30e28ef9944ac8baf81cc6466ca4eb59737fd620140cb82127be5"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-balance.tsx",
@@ -1441,7 +1445,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/model-task-status.tsx",
-      "sha256": "ba1e5ce335d8502859ce11b8aaa759c35f8d9f18e900e12a0bafc420461923bd"
+      "sha256": "bdc1d597418adad6f38506db8613c3be1b42c06691f48cb344ba34040ab9349b"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/open-browser-auth.ts",
@@ -1453,7 +1457,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/output-preview.tsx",
-      "sha256": "3853e4c141282a7aeb3de556bf5168fc750bf13f8d420806513f9fa1c2fb40e0"
+      "sha256": "2f01d37922115ae4929d748bfea792cb53824fb1a76ff549e2f454da4b2671ca"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/outputs-page.tsx",
@@ -2373,7 +2377,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/session-surface.tsx",
-      "sha256": "4812899f29583df138c37e5c265181f19cd4c7050f03d2f87d7b16f06e7ac9c4"
+      "sha256": "7baf456b0b1ee20143c1ea10a897ef2abb6167d15960ae14aec16ee28c7434ee"
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/text-highlights.ts",
@@ -3544,6 +3548,14 @@
       "sha256": "68c9c7d40bf8ca276955b60da1c82a3054ad82ac6ee90fa2ea7bb295d7f16a68"
     },
     {
+      "path": "apps/app/tests/model-task-proof.tsx",
+      "sha256": "5d1722ea7c09d4821667013a81d5618217e4b7e70604cd2e845bdfa76e759091"
+    },
+    {
+      "path": "apps/app/tests/model-task-transcript.test.tsx",
+      "sha256": "693a73241e371edc16619a2092f5bbe7f9f9fb62afb76861c28432415322f24e"
+    },
+    {
       "path": "apps/app/tests/model-unavailable-retry.test.ts",
       "sha256": "ee7af14b0f97c58642d70f84786216b9fef63225e8459207af20cde582909a6c"
     },
@@ -3621,7 +3633,7 @@
     },
     {
       "path": "apps/app/tests/output-preview.test.tsx",
-      "sha256": "4a7238caba214500a97585ea1a4ac4e16a499741e877acfcb8c71475abc56432"
+      "sha256": "1327134994f0f3f3732aaac53afdcf0cecc668f532605ef3438baee396f40f0d"
     },
     {
       "path": "apps/app/tests/personal-account-ui.test.tsx",
@@ -4045,11 +4057,11 @@
     },
     {
       "path": "apps/desktop/electron/get3w-managed-mcp.mjs",
-      "sha256": "45b5e3fefd6b7d83aacc82e9ef971cb892fd476b9b34e6c6ad1f69ad1fce91b4"
+      "sha256": "23305c1259626cde365f67b7741bd0f5fb5e976e1c3f15a3387464fea3b9767d"
     },
     {
       "path": "apps/desktop/electron/get3w-managed-mcp.test.mjs",
-      "sha256": "ceed0c26ea4c6d1cf4090efeea67d1506111ca587490c7443723926f5c8da729"
+      "sha256": "316fff85c4647739781c018716961b3c68b37b90d48f0d8f036dc5a3806d5f40"
     },
     {
       "path": "apps/desktop/electron/get3w-managed-provider.mjs",
@@ -4297,7 +4309,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "fba103a930b536809556ac102a65d470a415d0ac72484d7eaff5ce8c37cd04a9"
+      "sha256": "5cf46f1865abe669f6534df7ec7e3b85835648f7c3c7c14e017c4400795a441a"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -4785,7 +4797,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-agent-permissions-v2.ts",
-      "sha256": "b8124581b40f3e6a74705a97ad08e4c1be38474ad097e0cc4347e92a2e10f607"
+      "sha256": "2e28867161d73fb219c03e866c179df9f2c685ff9d6c12273edcb9571f35cd5d"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-anthropic-adaptive-thinking.ts",
@@ -4925,7 +4937,7 @@
     },
     {
       "path": "apps/server/src/opencode-v2-instructions.ts",
-      "sha256": "54e2b306f912e72d06d3d27e25c5d834f929561337137a1829c1947ae13649a9"
+      "sha256": "9edfd909d4c97526c5a81c3663e080064357b3169c72faacf998ef3dd25008b5"
     },
     {
       "path": "apps/server/src/opencode-v2-local-auth.ts",
@@ -5333,7 +5345,7 @@
     },
     {
       "path": "apps/server/test/opencode-v2-instructions.test.ts",
-      "sha256": "6d42f011f2c806671d20b4a1cc9500adf0ee986c23f2c3f1afe8040016fb186a"
+      "sha256": "08b24efe2d6ec86d152d85b0fed4c0704ed1b2e3ab2f6652f8ebac5fc31ce11e"
     },
     {
       "path": "apps/server/test/opencode-v2-local-auth.test.ts",
@@ -5461,7 +5473,7 @@
     },
     {
       "path": "docs/release-notes.md",
-      "sha256": "a9a1718cbd7d00624098e7ad6112b49c5a12fe5210aa03289f5cd28befc27301"
+      "sha256": "d8975ea1a55234cb7c97b7a5fd0bede2436038b3204057f54d34cf64bcb84fb8"
     },
     {
       "path": "package.json",
@@ -6609,11 +6621,11 @@
     },
     {
       "path": "scripts/release/assemble.py",
-      "sha256": "49f464b139ab6386c4d44479cdda0600ac82ab881bd1b2dea178e0d20a35bb38"
+      "sha256": "8e3cccdd46b1fdb00a3c3fb7d6a9ce5925824740177ae09648f9b0767d9a897c"
     },
     {
       "path": "scripts/release/assemble_test.py",
-      "sha256": "9dd4bcd6bff1da1192877dc73393437d11beb6be3eab8fc28c86bfe64d42a1fc"
+      "sha256": "7da275feea3b2c161f78c7d9b5b0f0f37d8dc1fe8f7ea6140cd09a5d783eef92"
     },
     {
       "path": "scripts/release/windows-signatures.ps1",

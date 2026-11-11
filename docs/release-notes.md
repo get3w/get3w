@@ -1,12 +1,21 @@
-Get3W 0.1.1 桌面版本，支持 macOS Apple Silicon / Intel、Windows x64 / ARM64 和 Linux x64 / ARM64。
+Get3W 0.1.2 桌面版本，支持 macOS Apple Silicon / Intel、Windows x64 / ARM64。不提供 Linux 安装包。
+
+国内用户可在 https://get3w.com/download 下载。
+
+## 本版本更新
+
+- 图片、视频、音频生成结果显示在发起任务的那条对话下方，后续对话不会把结果挤到底部；预览尺寸更紧凑，图片可点击放大。
+- 生成图片、视频、音频（包括文档中缺少的配图）统一通过已登录的 Get3W 账户完成，不再调用外部生成网站、第三方命令行工具或下载外部素材。
+- 改进演示文稿和 Word 文档的生成要求：先确认结构，保留原始内容，交付前检查版面、字体、目录和页码。
+
+## 下载与安装
 
 - macOS：下载对应架构的 `.dmg` 安装；`.zip` 为应用压缩包。
 - Windows：下载对应架构的 `.exe` 安装程序。
-- Linux：下载 `.AppImage` 或 `.tar.gz`。
 - 使用 `SHA256SUMS` 核对下载文件；更新清单和 blockmap 同安装包一并发布。
 
 macOS 版本已使用 Apple Developer ID 签名并经 Apple 公证。**Windows 版本未进行代码签名**，可能显示 SmartScreen 提示。仅从本仓库 Release 下载并核对校验值。
 
 本版本保留本地个人工作区功能；企业版功能未包含。Google/Microsoft 连接器真实 OAuth、生产云端 API 端到端验收不在本次已通过范围。
 
-应用内自动更新尚未在签名版本上完成验收，请通过 Release 页面下载新版本。
+应用内自动更新尚未开启，已安装旧版本的用户请手动下载新版本安装包。

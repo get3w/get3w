@@ -14,7 +14,7 @@ export function outputKind(path:string):"image"|"video"|"audio"|"document"|"3d"|
  if(["pdf","docx","html","htm"].includes(extension??""))return "document";
  return "text";
 }
-export function OutputPreview({file,read}:{file:OutputFile;read:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
+export function OutputPreview({file,read,compact=false}:{compact?:boolean;file:OutputFile;read:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
  const locale=useLocale();
  const containerRef=useRef<HTMLDivElement>(null);
  const [inView,setInView]=useState(false);
@@ -39,12 +39,12 @@ export function OutputPreview({file,read}:{file:OutputFile;read:()=>Promise<{dat
   }).catch(()=>{if(!stopped)setError(true);});
   return()=>{stopped=true;if(url)URL.revokeObjectURL(url);};
  },[file.path,attempt,inView]);
- return <div ref={containerRef} className="space-y-2" style={kind==="image"?{minHeight:280}:undefined}>
-  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{file.path}</span><span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>{src?<a href={src} download={file.path.split("/").at(-1)} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
-  {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&!src?<div className="h-20 animate-pulse rounded bg-muted" aria-busy="true"/>:null}
-  {src&&kind==="image"?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className="max-h-64 max-w-full object-contain"/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
-  {src&&kind==="video"?<video src={src} controls preload="metadata" className="max-h-72 max-w-full"/>:null}
-  {src&&kind==="audio"?<audio src={src} controls preload="metadata" className="w-full"/>:null}
+ return <div ref={containerRef} className="space-y-2" >
+  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate" title={file.path}>{compact?file.path.split("/").at(-1):file.path}</span>{!compact?<span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>:null}{src?<a href={src} download={file.path.split("/").at(-1)} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
+  {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&!src?<div className={compact?"h-28 w-40 animate-pulse rounded bg-muted":"h-20 animate-pulse rounded bg-muted"} aria-busy="true"/>:null}
+  {src&&kind==="image"?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
+  {src&&kind==="video"?<video src={src} controls preload="metadata" className={compact?"max-h-40 max-w-60 rounded-md":"max-h-72 max-w-full"}/>:null}
+  {src&&kind==="audio"?<audio src={src} controls preload="metadata" className={compact?"max-w-60":"w-full"}/>:null}
   {src&&/\.pdf$/i.test(file.path)?<PdfPreview title={file.path} url={src} className="h-80 w-full"/>:null}
   {src&&/\.html?$/i.test(file.path)?<iframe title={file.path} srcDoc={`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'">${text}`} sandbox="" referrerPolicy="no-referrer" className="h-80 w-full border-0 bg-background"/>:null}
   {src&&/\.docx$/i.test(file.path)?<DocxPreview source={src}/>:null}

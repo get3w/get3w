@@ -111,7 +111,7 @@ test('output download failures retry without submission and local reads stay off
  const scope={userId:'u',workspaceId:'ws',sessionId:'chat-session-123456'};
  const {createModelTaskJournal}=await import('./get3w-model-task-journal.mjs');
  const journal=createModelTaskJournal({userData});
- const context={type:'get3w.submit',hash:'h',quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
+ const context={type:'get3w.submit',messageId:'original-message',hash:'h',quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
  const key=await journal.beforeSubmit(scope,context);
  await journal.observe(scope,context,{result:{structuredContent:{status:'succeeded',result:{request_id:'r',status:'completed',outputs:['https://xianchou.com/image.png']}}}});
  let identity={userId:'u'},fail=true,saves=0,cloud=0;
@@ -126,6 +126,8 @@ test('output download failures retry without submission and local reads stay off
   assert.match(failed.items[0].outputEntry.downloadError,/Download failed/);
   fail=false;const saved=await manager.tasks({...scope,action:'retryDownload',key});
   assert.equal(saved.items[0].outputEntry.files.length,1);assert.equal(saves,2);
+  assert.equal(saved.items[0].messageId,'original-message');
+  assert.equal(saved.items[0].createdAt,saved.items[0].outputEntry.createdAt);
   const before=cloud;
   assert.equal((await manager.outputs({...scope,action:'read',path:'image.png'})).dataBase64,'YWJj');
   assert.equal(cloud,before,'local read must not call cloud identity');
