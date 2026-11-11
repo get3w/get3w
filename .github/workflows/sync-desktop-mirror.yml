@@ -1,0 +1,88 @@
+name: Sync Desktop mirror
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable Desktop version without the leading v (for example 0.1.3)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-mirror-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ inputs.version }}
+      COS_SECRET_ID: ${{ secrets.GET3W_COS_SECRET_ID }}
+      COS_SECRET_KEY: ${{ secrets.GET3W_COS_SECRET_KEY }}
+      COS_REGION: ${{ secrets.GET3W_COS_REGION }}
+      COS_BUCKET: ${{ secrets.GET3W_COS_BUCKET || 'get3w-web-1252164560' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate version
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+      - name: Install Tencent COS CLI
+        env:
+          COSCLI_VERSION: "1.0.8"
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/tencentyun/coscli/releases/download/v${COSCLI_VERSION}/coscli-linux-amd64" -o "$RUNNER_TEMP/coscli"
+          chmod +x "$RUNNER_TEMP/coscli"
+          "$RUNNER_TEMP/coscli" version
+
+      - name: Download the published GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release" "$RUNNER_TEMP/manual" "$RUNNER_TEMP/updater"
+          gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" \
+            -p 'get3w-mac-*.dmg' -p 'get3w-win-*.exe' -p SHA256SUMS -p release.json
+          gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" \
+            -p 'latest-mac.yml' -p 'latest.yml' -p 'get3w-mac-*.zip' -p 'get3w-win-*.exe' -p '*.blockmap'
+          cp "$RUNNER_TEMP/release"/get3w-mac-*.dmg "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/SHA256SUMS "$RUNNER_TEMP/release"/release.json "$RUNNER_TEMP/manual/"
+          cp "$RUNNER_TEMP/release"/latest-mac.yml "$RUNNER_TEMP/release"/latest.yml "$RUNNER_TEMP/release"/get3w-mac-*.zip "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/*.blockmap "$RUNNER_TEMP/updater/"
+          grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest-mac.yml"
+          grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest.yml"
+          shasum -a 256 -c "$RUNNER_TEMP/release/SHA256SUMS" --ignore-missing
+
+      - name: Upload release files to COS
+        run: |
+          set -euo pipefail
+          test -n "$COS_SECRET_ID"
+          test -n "$COS_SECRET_KEY"
+          test -n "$COS_REGION"
+          "$RUNNER_TEMP/coscli" config set --secret_id "$COS_SECRET_ID" --secret_key "$COS_SECRET_KEY" --region "$COS_REGION"
+          "$RUNNER_TEMP/coscli" sync "$RUNNER_TEMP/manual/" "cos://$COS_BUCKET/download/releases/v$VERSION/" --recursive
+          "$RUNNER_TEMP/coscli" sync "$RUNNER_TEMP/updater/" "cos://$COS_BUCKET/desktop/releases/v$VERSION/" --recursive
+          "$RUNNER_TEMP/coscli" sync "$RUNNER_TEMP/updater/" "cos://$COS_BUCKET/desktop/releases/latest/download/" --recursive
+
+      - name: Verify public mirror
+        run: |
+          set -euo pipefail
+          for url in \
+            "https://get3w.com/desktop/releases/latest/download/latest-mac.yml" \
+            "https://get3w.com/desktop/releases/latest/download/latest.yml" \
+            "https://get3w.com/desktop/releases/latest/download/release.json" \
+            "https://get3w.com/download/releases/v$VERSION/SHA256SUMS"; do
+            body="$RUNNER_TEMP/$(basename "$url")"
+            curl --fail --location --retry 5 --silent --show-error "$url" -o "$body"
+            test -s "$body"
+            ! head -c 512 "$body" | grep -Eiq '<!doctype html|<html'
+          done
+          curl --fail --location --silent --show-error \
+            "https://get3w.com/desktop/releases/latest/download/latest-mac.yml" | grep -q "^version: $VERSION$"
+          curl --fail --location --silent --show-error \
+            "https://get3w.com/desktop/releases/latest/download/latest.yml" | grep -q "^version: $VERSION$"
