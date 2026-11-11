@@ -44,7 +44,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/release" "$RUNNER_TEMP/manual" "$RUNNER_TEMP/updater"
           gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" \
             -p 'get3w-mac-*.dmg' -p 'get3w-win-*.exe' -p SHA256SUMS -p release.json
-          gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" \
+          gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" --clobber \
             -p 'latest-mac.yml' -p 'latest.yml' -p 'get3w-mac-*.zip' -p 'get3w-win-*.exe' -p '*.blockmap'
           cp "$RUNNER_TEMP/release"/get3w-mac-*.dmg "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/SHA256SUMS "$RUNNER_TEMP/release"/release.json "$RUNNER_TEMP/manual/"
           cp "$RUNNER_TEMP/release"/latest-mac.yml "$RUNNER_TEMP/release"/latest.yml "$RUNNER_TEMP/release"/get3w-mac-*.zip "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/*.blockmap "$RUNNER_TEMP/updater/"
