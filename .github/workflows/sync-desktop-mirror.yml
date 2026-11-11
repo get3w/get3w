@@ -34,7 +34,7 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 
       - name: Install Tencent COS client
-        run: python3 -m pip install --disable-pip-version-check --no-input coscmd==1.8.6
+        run: python3 -m pip install --disable-pip-version-check --no-input coscmd==1.8.6.34
 
       - name: Download the published GitHub Release
         env:
