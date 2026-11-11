@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "a07a6d66086694c1669873e20cc875efb2c3c6c0f8b20fe2506eea4b63c85a1c"
+      "sha256": "4e566d572a75448496f4148970b3f5d0d3d84d0cfd2c76d5961fbc71581598e0"
     },
     {
       "path": ".gitignore",

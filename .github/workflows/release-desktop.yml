@@ -155,7 +155,7 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" artifacts/release-public/*
 
       - name: Install Tencent COS client
-        run: python3 -m pip install --disable-pip-version-check --no-input coscmd==1.8.6.34
+        run: python3 -m pip install --disable-pip-version-check --no-input cos-python-sdk-v5==1.9.45
 
       - name: Sync installers and updater feed to the mainland mirror
         env:

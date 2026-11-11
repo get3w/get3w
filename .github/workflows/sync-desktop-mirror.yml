@@ -34,7 +34,7 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 
       - name: Install Tencent COS client
-        run: python3 -m pip install --disable-pip-version-check --no-input coscmd==1.8.6.34
+        run: python3 -m pip install --disable-pip-version-check --no-input cos-python-sdk-v5==1.9.45
 
       - name: Download the published GitHub Release
         env:
@@ -58,10 +58,9 @@ jobs:
           test -n "$COS_SECRET_ID"
           test -n "$COS_SECRET_KEY"
           test -n "$COS_REGION"
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -r "$COS_REGION" -b "$COS_BUCKET"
-          coscmd upload -r "$RUNNER_TEMP/manual/" "cos://$COS_BUCKET/download/releases/v$VERSION/"
-          coscmd upload -r "$RUNNER_TEMP/updater/" "cos://$COS_BUCKET/desktop/releases/v$VERSION/"
-          coscmd upload -r "$RUNNER_TEMP/updater/" "cos://$COS_BUCKET/desktop/releases/latest/download/"
+          python3 scripts/release/sync_cos.py "$RUNNER_TEMP/manual" "download/releases/v$VERSION"
+          python3 scripts/release/sync_cos.py "$RUNNER_TEMP/updater" "desktop/releases/v$VERSION"
+          python3 scripts/release/sync_cos.py "$RUNNER_TEMP/updater" "desktop/releases/latest/download"
 
       - name: Verify public mirror
         run: |
