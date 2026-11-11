@@ -34,11 +34,9 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 
       - name: Install Tencent COS CLI
-        env:
-          COSCLI_VERSION: "1.0.8"
         run: |
           set -euo pipefail
-          curl -fsSL "https://github.com/tencentyun/coscli/releases/download/v${COSCLI_VERSION}/coscli-linux-amd64" -o "$RUNNER_TEMP/coscli"
+          curl -fsSL "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -o "$RUNNER_TEMP/coscli"
           chmod +x "$RUNNER_TEMP/coscli"
           "$RUNNER_TEMP/coscli" version
 

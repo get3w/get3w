@@ -155,10 +155,8 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" artifacts/release-public/*
 
       - name: Install Tencent COS CLI
-        env:
-          COSCLI_VERSION: "1.0.8"
         run: |
-          curl -fsSL "https://github.com/tencentyun/coscli/releases/download/v${COSCLI_VERSION}/coscli-linux-amd64" -o "$RUNNER_TEMP/coscli"
+          curl -fsSL "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -o "$RUNNER_TEMP/coscli"
           chmod +x "$RUNNER_TEMP/coscli"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/coscli" version
