@@ -154,12 +154,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Get3W $GITHUB_REF_NAME" --notes-file docs/release-notes.md
           gh release upload "$GITHUB_REF_NAME" artifacts/release-public/*
 
-      - name: Install Tencent COS CLI
-        run: |
-          curl -fsSL "https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux" -o "$RUNNER_TEMP/coscli"
-          chmod +x "$RUNNER_TEMP/coscli"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/coscli" version
+      - name: Install Tencent COS client
+        run: python3 -m pip install --disable-pip-version-check --no-input coscmd==1.8.6
 
       - name: Sync installers and updater feed to the mainland mirror
         env:
@@ -180,10 +176,10 @@ jobs:
           mkdir -p "$MANUAL_DIR" "$UPDATER_DIR"
           cp "$RELEASE_DIR"/get3w-mac-*.dmg "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/SHA256SUMS "$RELEASE_DIR"/release.json "$MANUAL_DIR"/
           cp "$RELEASE_DIR"/latest-mac.yml "$RELEASE_DIR"/latest.yml "$RELEASE_DIR"/get3w-mac-*.zip "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/*.blockmap "$UPDATER_DIR/"
-          "$RUNNER_TEMP/coscli" config set --secret_id "$COS_SECRET_ID" --secret_key "$COS_SECRET_KEY" --region "$COS_REGION"
-          "$RUNNER_TEMP/coscli" sync "$MANUAL_DIR/" "cos://$COS_BUCKET/download/releases/v$VERSION/" --recursive
-          "$RUNNER_TEMP/coscli" sync "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/v$VERSION/" --recursive
-          "$RUNNER_TEMP/coscli" sync "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/latest/download/" --recursive
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -r "$COS_REGION" -b "$COS_BUCKET"
+          coscmd upload -r "$MANUAL_DIR/" "cos://$COS_BUCKET/download/releases/v$VERSION/"
+          coscmd upload -r "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/v$VERSION/"
+          coscmd upload -r "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/latest/download/"
 
       - name: Verify mainland mirror contains real release files
         env:
