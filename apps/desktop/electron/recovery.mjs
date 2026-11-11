@@ -103,8 +103,12 @@ function validRecoveryArtifactIdentity(artifact) {
   } catch {
     return false;
   }
-  const prefix = `/get3w/get3w/releases/download/v${version}/`;
-  if (url.protocol !== "https:" || url.hostname !== "github.com" || !url.pathname.startsWith(prefix)) return false;
+  const prefixes = [
+    { hostname: "get3w.com", prefix: `/desktop/releases/download/v${version}/` },
+    { hostname: "github.com", prefix: `/get3w/get3w/releases/download/v${version}/` },
+  ];
+  const source = prefixes.find((candidate) => url.protocol === "https:" && url.hostname === candidate.hostname && url.pathname.startsWith(candidate.prefix));
+  if (!source) return false;
   const assetArch = artifact.platform === "linux" && artifact.arch === "x64" ? "x86_64" : artifact.arch;
   const platformSlug = artifact.platform === "darwin" ? "mac" : artifact.platform === "win32" ? "win" : "linux";
   const fileName = path.basename(url.pathname);
@@ -124,12 +128,12 @@ export function selectRecoveryArtifact(files, { version, platform, arch, distrib
     && typeof file.sha512 === "string"
     && file.sha512.trim(),
   );
-  const baseUrl = `https://github.com/get3w/get3w/releases/download/v${normalizedVersion}/`;
+  const baseUrl = `https://get3w.com/desktop/releases/download/v${normalizedVersion}/`;
   for (const selected of matching) {
     const url = new URL(selected.url, baseUrl);
-    if (url.origin !== "https://github.com" || !url.pathname.startsWith(`/get3w/get3w/releases/download/v${normalizedVersion}/`)) {
-      continue;
-    }
+    const domestic = url.origin === "https://get3w.com" && url.pathname.startsWith(`/desktop/releases/download/v${normalizedVersion}/`);
+    const github = url.origin === "https://github.com" && url.pathname.startsWith(`/get3w/get3w/releases/download/v${normalizedVersion}/`);
+    if (!domestic && !github) continue;
     const artifact = {
       version: normalizedVersion,
       platform,

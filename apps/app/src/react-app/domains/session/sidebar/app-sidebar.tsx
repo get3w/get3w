@@ -1,4 +1,5 @@
 /** @jsxImportSource react */
+import { DesktopUpdateButton } from "../../settings/state/desktop-updater-provider";
 import { useNewTaskDraftState } from "../sync/draft-store";
 import { newSessionDraftOwnerKey, newSessionDraftSlot } from "../chat/new-session-destination";
 import { persistableComposerDraftText, useComposerStateStore } from "../surface/composer-state-store";
@@ -1061,7 +1062,10 @@ export function AppSidebar(props: AppSidebarProps) {
         </SidebarReorderScope>
 
         <SidebarFooter className="border-t border-sidebar-border/60 p-1.5 pe-0">
-          <AccountStatusMenu {...props.status} onOpenAccountSettings={props.onOpenAccountSettings} />
+          <div className="flex items-center gap-1 pe-1.5">
+            <AccountStatusMenu {...props.status} onOpenAccountSettings={props.onOpenAccountSettings} />
+            <DesktopUpdateButton />
+          </div>
         </SidebarFooter>
 
         <SidebarRail

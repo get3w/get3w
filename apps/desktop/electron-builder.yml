@@ -8,3 +8,7 @@ protocols:
 linux:
   executableName: get3w
 artifactName: get3w-${os}-${arch}-${version}.${ext}
+
+publish:
+  provider: generic
+  url: https://get3w.com/desktop/releases/latest/download

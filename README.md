@@ -65,7 +65,7 @@ pnpm dev
 
 ## 使用范围
 
-本地功能可使用个人 Provider。账户、推理与设置使用 Get3W cloud 服务；默认服务地址为 `https://cloud.get3w.com` 和 `https://get3w.com`。
+本地功能可使用个人 Provider。账户、推理与设置使用 Get3W Cloud 服务；默认服务地址为 `https://cloud.get3w.com` 和 `https://get3w.com`。
 
 - [使用指南](packages/docs/desktop.md)
 - [贡献](CONTRIBUTING.md)
@@ -73,21 +73,3 @@ pnpm dev
 ## 来源与许可
 
 本项目基于 [OpenWork](https://github.com/different-ai/openwork) 以及 [OpenCode](https://github.com/anomalyco/opencode) 开发，源码采用 MIT 版权与许可。
-
-
-## Personal account release
-
-Get3W uses a personal account. Sign in to configure model/output preferences,
-connect services, inspect usage and manage saved artifacts; no organization or
-member setup is required. Paid model tasks still require an explicit quote and
-host approval. Organization sharing is unavailable.
-
-All Desktop native requests (login, inference, personal account and MCP gateway)
-go to the cloud service `services.cloud.app:app` at `https://cloud.get3w.com`
-under `/v1/*`. Browser approval stays on `api.get3w.com`. Deploy the cloud
-service and API before this Desktop.
-Run `python3 scripts/verify-public-release.py` before packaging. The release gate
-includes personal identity, removed management methods, approval isolation and
-bilingual UI regressions. Current release evidence and operational steps live in
-`../plan/personal-account-simplification/p5/`. No historical-data backfill is required
-for the initial release.

@@ -9,7 +9,6 @@ import { PendingConversationView } from "./pending-conversation";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { usePanelRef } from "react-resizable-panels";
-import { DesktopUpdateButton } from "../../settings/state/desktop-updater-provider";
 import { ArrowLeft, CheckCheck, Cloud, FileText, Globe, Maximize2, MoreHorizontal, PanelRight, TextSearch, Undo2, X, Zap } from "lucide-react";
 
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
@@ -150,6 +149,8 @@ type PendingConversationHistoryNavigation = {
 
 /** Live status the route feeds into the sidebar footer account menu. */
 type StatusBarOverrides = {
+  runtimeConnected: boolean;
+  initializing: boolean;
   showSettingsButton: boolean;
   reloadBusy: boolean;
   reloadError: string | null;
@@ -1537,7 +1538,8 @@ export function SessionPage(props: SessionPageProps) {
           ) : undefined}
           extensionsActive={props.extensionsActive}
           status={{
-            clientConnected: props.clientConnected,
+            clientConnected: props.statusBar?.runtimeConnected ?? props.clientConnected,
+            initializing: props.statusBar?.initializing,
             openworkServerStatus: props.openworkServerStatus,
             developerMode: props.developerMode,
             showConnectionStatus: Boolean(props.selectedWorkspaceId),
@@ -1627,7 +1629,6 @@ export function SessionPage(props: SessionPageProps) {
             {props.mainContentHeaderActionsRef ? (
               <div ref={props.mainContentHeaderActionsRef} className="shrink-0 titlebar-no-drag" />
             ) : <div className="flex shrink-0 items-center gap-1.5 text-gray-10 titlebar-no-drag">
-              <DesktopUpdateButton />
               {!props.primarySlot && findButtonSessionId && !hasMainContentTakeover ? (
                 <Tooltip>
                   <TooltipTrigger

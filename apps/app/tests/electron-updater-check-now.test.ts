@@ -1,3 +1,5 @@
+import { setLocale } from "../src/i18n";
+setLocale("en");
 import { afterAll, afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act, createElement } from "react";

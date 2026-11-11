@@ -4,11 +4,11 @@
  * There are two channels users can opt into:
  *
  * - "stable": the default. The desktop app auto-updates from the rolling
- *   "latest" GitHub release attached to whichever semver tag most recently
+ *   Get3W release mirror attached to whichever semver tag most recently
  *   finished the Release App workflow. macOS, Linux, Windows.
  *
  * - "alpha": a macOS-only rolling channel that auto-updates on every merge
- *   to `dev`. Alpha builds are published to a fixed GitHub release tag
+ *   to `dev`. Alpha builds are published to a fixed Get3W release mirror tag
  *   (`alpha-macos-latest`) so the updater endpoint stays stable while the
  *   underlying artifact is replaced on every dev push.
  *

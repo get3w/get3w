@@ -4062,6 +4062,8 @@ export function SessionRoute() {
         // No per-session loading state here: the account row renders only
         // app-scoped facts. Session loading lives in the pane; an unresolved
         // model surfaces in the composer where the person can act on it.
+        runtimeConnected: Boolean(opencodeClient && !selectedWorkspaceError),
+        initializing: loading || connectionPending,
         reloadBusy: reloadCoordinator.reloadBusy,
         reloadError: reloadCoordinator.reloadError,
         openWorkConnectState: sessionMcpMaintenance,

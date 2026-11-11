@@ -44,6 +44,12 @@ export function resolveAppVersion(app) {
   return _cachedAppVersion;
 }
 const ELECTRON_UPDATER_FEEDS = Object.freeze({
+  // Mainland-friendly origin first. The GitHub URLs remain as a controlled
+  // fallback for users outside China or while the mirror is propagating.
+  stable: "https://get3w.com/desktop/releases/latest/download",
+  alpha: "https://get3w.com/desktop/releases/download/alpha-macos-latest",
+});
+const ELECTRON_UPDATER_FALLBACK_FEEDS = Object.freeze({
   stable: "https://github.com/get3w/get3w/releases/latest/download",
   alpha: "https://github.com/get3w/get3w/releases/download/alpha-macos-latest",
 });
@@ -199,7 +205,7 @@ export function targetedStableUpdaterFeed(currentVersion, targetVersion, allowOl
       ? "Recovery target version must differ from the installed version."
       : "Target update version must be newer than the installed version.");
   }
-  return `https://github.com/get3w/get3w/releases/download/v${normalizedTarget}`;
+  return `https://get3w.com/desktop/releases/download/v${normalizedTarget}`;
 }
 
 function updaterChannelState(app, channel, targetVersion = null, manifestChannel = "latest") {
@@ -334,12 +340,9 @@ export function registerUpdaterIpc({
   // and the renderer must not be able to check for, stage, or install updates.
   assertActivation = () => {},
   localValidationPackage = false,
-  // Get3W has no verified release/signing service yet. Keep all update and
-  // recovery entry points closed, including cached upstream installers. Tests
-  // inject their isolated release assertion to exercise the existing machinery.
-  assertReleaseReady = () => {
-    throw new Error("Get3W updates and recovery are unavailable until a verified release service is configured.");
-  },
+  // Official releases include SHA-512 updater manifests; electron-updater
+  // verifies package integrity and Squirrel verifies the macOS signature.
+  assertReleaseReady = () => {},
 }) {
   const assertUpdatesAvailable = () => {
     if (localValidationPackage) throw new Error("Updates are unavailable in this local validation build.");
@@ -350,6 +353,7 @@ export function registerUpdaterIpc({
   let checkedUpdateVersion = null;
   let checkedUpdateTargetVersion = null;
   let checkedUpdateChannel = null;
+  let checkedUpdateFeedUrl = null;
   let updateDownloaded = false;
   let macStagedVersion = null;
   let stagedUpdate = null;
@@ -502,7 +506,7 @@ export function registerUpdaterIpc({
   async function resolveRecoveryArtifact(version) {
     if (!electronNet?.fetch) return null;
     try {
-      const manifestUrl = `https://github.com/get3w/get3w/releases/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
+      const manifestUrl = `https://get3w.com/desktop/releases/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
       const response = await electronNet.fetch(manifestUrl, { headers: { Accept: "text/yaml, text/plain, */*" } });
       if (!response.ok) return null;
       return selectRecoveryArtifact(parseRecoveryManifest(await response.text()), {
@@ -737,6 +741,22 @@ export function registerUpdaterIpc({
     return updaterChannelState(app, channel, null, manifestChannel);
   }));
 
+  async function retryOnFallbackFeed(updater, channel, targetVersion, manifestChannel, allowOlder = false) {
+    const fallback = ELECTRON_UPDATER_FALLBACK_FEEDS[normalizeElectronUpdaterChannel(channel, manifestChannel)];
+    const primary = electronUpdaterFeedUrl(channel, manifestChannel);
+    if (!fallback || fallback === primary || targetVersion) return null;
+    updater.setFeedURL({ provider: "generic", url: fallback });
+    try {
+      const result = await updater.checkForUpdates();
+      return { result, feedUrl: fallback };
+    } catch (error) {
+      // Restore the domestic origin for the next attempt and preserve the
+      // original error as the user-facing diagnostic.
+      updater.setFeedURL({ provider: "generic", url: primary });
+      throw error;
+    }
+  }
+
   ipcMain.handle("openwork:updater:check", async (_event, rawChannel, rawTargetVersion, options) => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     assertActivation();
@@ -771,7 +791,16 @@ export function registerUpdaterIpc({
         : updaterChannelState(app, channel, targetVersion, manifestChannel);
       if (!updater) return { available: false, reason: "unavailable", totalBytes: null, ...stagedResponse(), ...channelState };
 
-      const result = await updater.checkForUpdates();
+      let result;
+      let feedUrl = channelState.feedUrl;
+      try {
+        result = await updater.checkForUpdates();
+      } catch (primaryError) {
+        const fallbackResult = await retryOnFallbackFeed(updater, channel, targetVersion, manifestChannel).catch(() => null);
+        if (!fallbackResult) throw primaryError;
+        result = fallbackResult.result;
+        feedUrl = fallbackResult.feedUrl;
+      }
       const info = result?.updateInfo ?? null;
       const currentVersion = resolveAppVersion(app);
       if (targetVersion && compareVersions(info?.version ?? "", targetVersion) !== 0) {
@@ -785,6 +814,7 @@ export function registerUpdaterIpc({
       checkedUpdateVersion = available ? info.version : null;
       checkedUpdateTargetVersion = available ? targetVersion : null;
       checkedUpdateChannel = available ? channelState.channel : null;
+      checkedUpdateFeedUrl = available ? feedUrl : null;
       if (!available && !preserveStaged) updateDownloaded = false;
       return {
         available,
@@ -830,6 +860,9 @@ export function registerUpdaterIpc({
         false,
         checkedUpdateChannel ?? undefined,
       );
+      if (checkedUpdateFeedUrl && checkedUpdateFeedUrl !== channelState.feedUrl) {
+        updater.setFeedURL({ provider: "generic", url: checkedUpdateFeedUrl });
+      }
       const currentVersion = resolveAppVersion(app);
       if (!checkedUpdateVersion || !isVersionNewer(checkedUpdateVersion, currentVersion)) {
         const result = await updater.checkForUpdates();

@@ -108,7 +108,7 @@ jobs:
           pnpm --dir apps/desktop exec electron-rebuild --force --which-module better-sqlite3
           pnpm build
       - name: Package installers and updater manifests
-        run: pnpm --dir apps/desktop exec electron-builder --config electron-builder.yml --${{ matrix.platform }} --${{ matrix.arch }} --publish never --config.publish.provider=generic --config.publish.url=https://github.com/get3w/get3w/releases/latest/download
+        run: pnpm --dir apps/desktop exec electron-builder --config electron-builder.yml --${{ matrix.platform }} --${{ matrix.arch }} --publish never --config.publish.provider=generic --config.publish.url=https://get3w.com/desktop/releases/latest/download
       - name: Verify macOS packaged engine
         if: matrix.platform == 'mac'
         run: |

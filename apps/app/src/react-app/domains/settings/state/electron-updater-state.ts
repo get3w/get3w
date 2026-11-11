@@ -555,6 +555,7 @@ export function useElectronUpdaterState(options: UseElectronUpdaterStateOptions)
         ? checkedReleaseChannel
         : null;
       downloadedReleaseChannelRef.current = null;
+      updateStatusRef.current = nextStatus;
       setUpdateStatus(nextStatus);
       if (availableAllowed && updateAutoDownload && !suppressAutoDownload) {
         await downloadUpdate(checkedReleaseChannel);
@@ -877,6 +878,20 @@ export function useElectronUpdaterState(options: UseElectronUpdaterStateOptions)
     }
   }, [appVersion, onReleaseChannelChange, refreshDesktopConfig, refreshStagedUpdate, resolvePolicyReleaseChannel, runCheckForUpdates, setError]);
 
+  // One action for the sidebar and titlebar: discover, download, then restart.
+  const updateActionInFlight = useRef(false);
+  const updateAndRestart = useCallback(async () => {
+    if (updateActionInFlight.current) return;
+    updateActionInFlight.current = true;
+    try {
+      if (updateStatusRef.current?.state === "error") await checkForUpdates();
+      if (updateStatusRef.current?.state === "available") await downloadUpdate();
+      if (updateStatusRef.current?.state === "ready") await installUpdateAndRestart();
+    } finally {
+      updateActionInFlight.current = false;
+    }
+  }, [checkForUpdates, downloadUpdate, installUpdateAndRestart]);
+
   const setReleaseChannel = useCallback(
     async (next: ReleaseChannel) => {
       const requestId = releaseChannelRequestRef.current + 1;
@@ -915,6 +930,7 @@ export function useElectronUpdaterState(options: UseElectronUpdaterStateOptions)
     checkForUpdates,
     downloadUpdate,
     installUpdateAndRestart,
+    updateAndRestart,
     setReleaseChannel,
   };
 }

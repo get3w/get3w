@@ -198,7 +198,7 @@ if (BLANK_SLATE_LAUNCH.enabled || process.env.GET3W_ELECTRON_USE_MOCK_KEYCHAIN =
   // system keychain normally.
   app.commandLine.appendSwitch("use-mock-keychain");
 }
-const DOCS_PAGE_URL = "https://get3w.com/docs";
+const DOCS_PAGE_URL = "https://get3w.com/docs/desktop-app/";
 const applicationMenu = createApplicationMenu({
   appName: APP_NAME,
   docsUrl: DOCS_PAGE_URL,

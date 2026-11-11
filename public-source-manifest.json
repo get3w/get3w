@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "34cca054988dc3cce07bef61608f23ed6029ea489a4166f3cea6e06fb21fccf8"
+      "sha256": "94915af846c433f9cc5f01fc039ab7336528e33bf5a3940483f8be8c6968aa2a"
     },
     {
       "path": ".gitignore",
@@ -53,7 +53,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "f0eef6d7cceda2da1b916c4f8d0b670635717b9c9d92cc7fb4f1e09fe03756af"
+      "sha256": "f3f560d3383a9c24913aeeccdddceebc9584df57a3e39c5f4fab88d72970d7b4"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -481,7 +481,7 @@
     },
     {
       "path": "apps/app/src/app/lib/release-channels.ts",
-      "sha256": "d9bf98296550b5ffa91557a0d913cedbdd421b1702372531ea2e19e414f21ff2"
+      "sha256": "20145b907ddbe3550f75df83cfd2466ef2a4161f60998f7f5e589d07565964b6"
     },
     {
       "path": "apps/app/src/app/lib/runtime-env.ts",
@@ -517,7 +517,7 @@
     },
     {
       "path": "apps/app/src/app/lib/version-gate.ts",
-      "sha256": "7462665803a2e909c2a48268b3bf275586846f6db4c5553c237a40201017c49a"
+      "sha256": "15c0cdce502f879a6afe8b8b313f8a0969b6b618bf43ada377e3513b08a2a179"
     },
     {
       "path": "apps/app/src/app/lib/workflow-run-access.ts",
@@ -1077,11 +1077,11 @@
     },
     {
       "path": "apps/app/src/i18n/locales/en.ts",
-      "sha256": "7285b9609469835f46f742264e3259d782f6d0bc114639ecd89c4dcf4f78ead5"
+      "sha256": "7badd4285cb4d31bba70516202b7fcea3287672d72e7008bba0adcfd2e7c6f1d"
     },
     {
       "path": "apps/app/src/i18n/locales/zh.ts",
-      "sha256": "b3d45f33943bd3a6948c1fce9227577b9b9b71e5023d08821ac1f1d8255d659d"
+      "sha256": "8677c52ea4cdf18b6fba1ecae60c7d0bfb25958bcd56420b901ff93700924a7b"
     },
     {
       "path": "apps/app/src/i18n/money.ts",
@@ -1849,7 +1849,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/chat/session-page.tsx",
-      "sha256": "6641a5966ff19baba864f220d1649afc21918ff283783b65495abee0857c7474"
+      "sha256": "60352e61b815f60e2f7240bfa3c1c3b89e25bc2958bef82c06f9de4a2cae3c1b"
     },
     {
       "path": "apps/app/src/react-app/domains/session/chat/session-reference-navigation.ts",
@@ -2041,7 +2041,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/account-status-menu.tsx",
-      "sha256": "80a7fd5690053e4071d9e0ca38f996a691eced4043060b542b09746850bb7a4a"
+      "sha256": "1fda671178b94203b47e1ed44e0d9d3251e8e2e713f19ce9d2593735578fce8a"
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/app-sidebar-provider.tsx",
@@ -2049,7 +2049,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/app-sidebar.tsx",
-      "sha256": "77cfccd4a2c624adeb926e7c27d1edc40442a4005e62cff47b0a656cb86af19b"
+      "sha256": "e460b1ad4955c439dc3d31895d936775171027452668262e6f8d1d0fd9dedc18"
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/remote-task-sidebar-rows.tsx",
@@ -2733,7 +2733,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/settings/shell/settings-shell.tsx",
-      "sha256": "f170e69fb6660e0b3cadd4e857d363eaf503941d7014901ec344dd87e3f1a1a3"
+      "sha256": "77ef67e8a721377e30f8278ac2dc28ca85f9e98785f896ff741a78d2ca3ce061"
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/debug-view-model.ts",
@@ -2741,11 +2741,11 @@
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/desktop-updater-provider.tsx",
-      "sha256": "110779216ac19bce06c89a90f7800abcf18cbde1dd9c4d80340aefede75b4b14"
+      "sha256": "fbfb8bfeef7695580a9c8563f3d50e4acd9788b8c44e144cd55f14a81e41d2f1"
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/electron-updater-state.ts",
-      "sha256": "9f340a36d8c6c4f7f52315648e7d134601a8d20ab5742c94c1844cb8882ce94c"
+      "sha256": "fc72f8cb2d7974477772e221fc7f99975fda0811c06b51083deebb6488ec324a"
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/extensions-store.ts",
@@ -3077,7 +3077,7 @@
     },
     {
       "path": "apps/app/src/react-app/shell/session-route.tsx",
-      "sha256": "861f0d2c3b33dfd6b9d9b9502f4e2066e102d56b923f0c28abbba64a6e6e576d"
+      "sha256": "586070e6814cc9c13b6e066eb535a7b1730165de6f4d6f02208fd48491a44819"
     },
     {
       "path": "apps/app/src/react-app/shell/session-search-dialog.tsx",
@@ -3182,6 +3182,10 @@
     {
       "path": "apps/app/test-fixtures/computer-window-approval.tsx",
       "sha256": "31194931799e8dcf28732a9bd5389595536c022dcc7682730491a73c4fa6b14d"
+    },
+    {
+      "path": "apps/app/tests/account-status-menu.test.tsx",
+      "sha256": "3bebb295f761f61a214f5a58c293833f9180e3882d04f67e9e4d5c7371387753"
     },
     {
       "path": "apps/app/tests/app-boot.test.tsx",
@@ -3337,15 +3341,15 @@
     },
     {
       "path": "apps/app/tests/desktop-update-button.test.tsx",
-      "sha256": "5134c6ce40e6b9730343d4dbed2a90bc7869ffd00b120a5dab6e658c5ed36246"
+      "sha256": "504d2d0f584a1842b667e0ebe448a6a24c8482e5afb53348c9dcd35caa778413"
     },
     {
       "path": "apps/app/tests/electron-updater-check-now.test.ts",
-      "sha256": "10fb94ee33e99fd1baad8a3901eca390e3a8dd0968a9c75d1a94de66641197fb"
+      "sha256": "f81824cbc386315eda94f0fcc19bc89772ec9cf55608367807c93ebad60cfe95"
     },
     {
       "path": "apps/app/tests/electron-updater-install-policy.test.ts",
-      "sha256": "ae5a3545f47b8fdbbbc9c7de011457cbe3ac9d46b094bd543e6b900283fa6123"
+      "sha256": "d2db41a0667fe59fe89af0596fcb466d24b2d6307916b3340b4ff8391169a8a6"
     },
     {
       "path": "apps/app/tests/engine-migration-analytics.test.ts",
@@ -3869,7 +3873,7 @@
     },
     {
       "path": "apps/desktop/electron-builder.yml",
-      "sha256": "96079b1e9c3d695b7bd8b512f4737af55616694614df63d56fbaa483517e9a16"
+      "sha256": "2217d3528ddaa011c57a85f5ca4c5f081a1643a7b4f5f8cd150fa4bb79a2a11d"
     },
     {
       "path": "apps/desktop/electron/agent-context-diagnostics-fetch.mjs",
@@ -4149,7 +4153,7 @@
     },
     {
       "path": "apps/desktop/electron/main.mjs",
-      "sha256": "8694c34f8a91a6e6875a0e4e1f9143561d790d95a2a2df479d9cfbc107fec8e9"
+      "sha256": "e76b85024ef9c5fad51e228edb2a9e10f72bc20762447122c123e1faa696259c"
     },
     {
       "path": "apps/desktop/electron/media-permissions.mjs",
@@ -4209,7 +4213,7 @@
     },
     {
       "path": "apps/desktop/electron/recovery.mjs",
-      "sha256": "cfaec38491ad684d04196bf03644e3fedf06b2d018c2e4d551a48185c228843c"
+      "sha256": "6cbc77852dcccc76b395a8946d2141d9dcdb4dd1c2d1833d536856de2e937082"
     },
     {
       "path": "apps/desktop/electron/runtime.mjs",
@@ -4257,11 +4261,11 @@
     },
     {
       "path": "apps/desktop/electron/updater.mjs",
-      "sha256": "ec50370d5e93f0b999f603c1b546ffc9fad57b050a9d2da06cb18a08747e6829"
+      "sha256": "f42631dbb0e1fd30030bd2ef0b1b7d1c4d77aa170a5d3c0b0f1461fdbfef1156"
     },
     {
       "path": "apps/desktop/electron/updater.test.mjs",
-      "sha256": "6b25eca729e66017028e4cf7d17b89f59174791c6ca0e2f04a4751ef36a3d832"
+      "sha256": "33d71e02fdfd82dc1e8acab0caf822c8578a04452cb0619c6411d7b217429f69"
     },
     {
       "path": "apps/desktop/electron/webmcp-host.mjs",
@@ -4309,7 +4313,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "5cf46f1865abe669f6534df7ec7e3b85835648f7c3c7c14e017c4400795a441a"
+      "sha256": "99511ae8cd540a0e05368d779dfa930ad6d1cac0f7f4abe7a469855d600db3d7"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -4797,7 +4801,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-agent-permissions-v2.ts",
-      "sha256": "2e28867161d73fb219c03e866c179df9f2c685ff9d6c12273edcb9571f35cd5d"
+      "sha256": "b8124581b40f3e6a74705a97ad08e4c1be38474ad097e0cc4347e92a2e10f607"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-anthropic-adaptive-thinking.ts",
@@ -5473,7 +5477,7 @@
     },
     {
       "path": "docs/release-notes.md",
-      "sha256": "d8975ea1a55234cb7c97b7a5fd0bede2436038b3204057f54d34cf64bcb84fb8"
+      "sha256": "d81a59792c22d5a8c5bef71f6f83326317a4843df67181fe9d127753f9708567"
     },
     {
       "path": "package.json",

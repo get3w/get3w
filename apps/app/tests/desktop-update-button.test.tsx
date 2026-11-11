@@ -30,7 +30,7 @@ mock.module("../src/react-app/domains/settings/state/electron-updater-state", ()
     updateStatus: status,
     checkForUpdates: async () => {},
     downloadUpdate: async () => { downloads += 1; },
-    installUpdateAndRestart: async () => { installs += 1; },
+    updateAndRestart: async () => { installs += 1; },
     setReleaseChannel: async () => {},
   }),
 }));
@@ -62,36 +62,29 @@ describe("titlebar staged-update restart", () => {
     localStorage.clear();
   });
 
-  test.each(["idle", "checking", "available", "blocked", "downloading", "error"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("does not offer a restart while %s", async (state) => {
+  test.each(["idle", "checking", "blocked"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("stays hidden while %s", async (state) => {
+    status = { state };
+    await render();
+    expect(host.querySelector("[data-update-button]")).toBeNull();
+  });
+
+  test.each(["available", "ready", "error"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("updates directly while %s", async (state) => {
     status = { state, version: "0.18.5" };
     await render();
-    expect(host.querySelector("[data-update-button]") !== null).toBe(false);
-    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
-    expect(downloads).toBe(0);
-    expect(installs).toBe(0);
-  });
-
-  test("only restarts a staged build after confirmation, without a download window", async () => {
-    status = { state: "ready", version: "0.18.5" };
-    await render();
-    expect(host.querySelector("[data-update-button]")).not.toBeNull();
-    await click("Restart to update");
-    expect(document.body.textContent).toContain("Restart Get3W?");
-    expect(installs).toBe(0);
-    await click("Restart & update");
+    const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
+    expect(button).not.toBeNull();
+    await act(async () => { button?.click(); });
     expect(installs).toBe(1);
-    expect(downloads).toBe(0);
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   });
 
-  test("Keep working leaves the staged update alone", async () => {
-    status = { state: "ready", version: "0.18.5" };
+  test("shows download progress and prevents duplicate downloads", async () => {
+    status = { state: "downloading", totalBytes: 100, downloadedBytes: 45 };
     await render();
-    await click("Restart to update");
-    await click("Keep working");
+    const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute("aria-label")).toContain("45%");
+    await act(async () => { button?.click(); });
     expect(installs).toBe(0);
-    expect(downloads).toBe(0);
-    expect(host.querySelector("[data-update-button]")).not.toBeNull();
-    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   });
 });

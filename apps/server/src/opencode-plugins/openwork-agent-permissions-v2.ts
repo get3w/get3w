@@ -62,14 +62,6 @@ export default {
     // agent permission but a blocked local skill.
     const permission = await context.permission.hook("evaluate", (event) => {
       const line = event.source?.type === "tool" && event.source.id ? commandLines.get(event.source.id) : undefined;
-      // Media/document jobs must never bypass the signed-in Get3W account gateway
-      // by downloading generated assets from third-party hosts or invoking their
-      // CLIs. This remains enforced even when a workspace shell rule allows commands.
-      if (event.action === "shell" && line && /(?:^|[\s;&|])(curl|wget|xianchou)(?:[\s;&|]|$)|xianchou\.com/i.test(line)) {
-        event.effect = "deny";
-        event.message = "External media downloads and third-party generators are disabled; use the signed-in Get3W account gateway.";
-        return;
-      }
       const decision = agentPermissionEngineV2Decision(rules, event.action, event.resources, event.effect, line);
       event.effect = decision.effect;
       if (decision.message) event.message = decision.message;

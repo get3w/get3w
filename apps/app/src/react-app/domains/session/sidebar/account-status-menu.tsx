@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { t } from "@/i18n";
+import { currentLocale, t } from "@/i18n";
 import { usePlatform } from "../../../kernel/platform";
 import { useDenAuth } from "../../cloud/den-auth-provider";
 import { useDesktopRestriction } from "../../cloud/desktop-config-provider";
@@ -40,7 +40,7 @@ import {
 } from "../../connections/openwork-connect-status";
 import type { SessionCloudMcpMaintenanceState } from "../../connections/use-session-mcp-maintenance";
 
-const DOCS_URL = "https://get3w.com";
+const DOCS_URL = "https://get3w.com/docs/desktop-app/";
 const BOOT_STARTED_AT = Date.now();
 const INITIALIZING_MS = 15_000;
 
@@ -93,23 +93,23 @@ export function resolveRuntimeStatus(input: RuntimeStatusInput): RuntimeStatus {
   // This row renders app-scoped facts only. Per-session loading (messages
   // still fetching, a model verdict still pending) stays in the pane and the
   // composer — one session's state must not paint the whole app as booting.
-  if (input.openworkServerStatus === "disconnected" && input.initializing) {
+  if (!input.clientConnected && input.initializing) {
     return {
       variant: "loading",
-      label: t("session.preparing_workspace"),
-      detail: t("session.loading_detail"),
+      label: t("status.workspace_connecting"),
+      detail: null,
     };
   }
   if (input.clientConnected) {
-    return { variant: "connected", label: t("status.ready_for_tasks"), detail: null };
+    return { variant: "connected", label: t("status.workspace_connected"), detail: null };
   }
   if (input.openworkServerStatus === "limited") {
     return { variant: "partial", label: t("status.limited_mode"), detail: t("status.limited_hint") };
   }
   return {
     variant: "disconnected",
-    label: t("status.disconnected_label"),
-    detail: t("status.disconnected_hint"),
+    label: t("status.workspace_disconnected"),
+    detail: t("status.workspace_disconnected_hint"),
   };
 }
 
@@ -163,6 +163,7 @@ export type AccountStatusMenuProps = {
   showConnectionStatus: boolean;
   providerConnectedIds: string[];
   mcpConnectedCount: number;
+  initializing?: boolean;
   reloadBusy?: boolean;
   reloadError?: string | null;
   openWorkConnectState?: SessionCloudMcpMaintenanceState;
@@ -182,19 +183,19 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
   const user = account.user;
   const status = props.showConnectionStatus ? resolveRuntimeStatus({
     clientConnected: props.clientConnected, openworkServerStatus: props.openworkServerStatus,
-    initializing: false, reloadBusy: props.reloadBusy, reloadError: props.reloadError,
+    initializing: props.initializing ?? false, reloadBusy: props.reloadBusy, reloadError: props.reloadError,
   }) : null;
-  return <div className="flex w-full items-center gap-1">
+  return <div className="flex min-w-0 flex-1 items-center gap-1">
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" className="min-w-0 flex-1 justify-start" data-testid="account-status-menu" data-runtime-state={status?.variant} />}>
         <UserRound className="size-4 shrink-0" />
         <span className="truncate">{user?.name || t("account.sign_in")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="w-64">
-        {status ? <div role="status" className="px-2 py-1.5 text-xs text-muted-foreground">{status.label}</div> : null}
+        {status ? <div role="status" className="px-2 py-1.5 text-xs text-muted-foreground"><span title={status.detail ?? undefined}>{status.label}</span></div> : null}
         <DropdownMenuItem onClick={() => openGet3wSignIn()}><UserRound className="size-4" />{user ? t("settings.tab_cloud_account") : t("account.sign_in")}</DropdownMenuItem>
         {props.showSettingsButton !== false ? <DropdownMenuItem onClick={props.onOpenAccountSettings}><Settings className="size-4" />{t("status.settings")}</DropdownMenuItem> : null}
-        {config.docsButton ? <DropdownMenuItem onClick={() => platform.openLink(DOCS_URL)}><BookOpen className="size-4" />{t("status.docs")}</DropdownMenuItem> : null}
+        {config.docsButton ? <DropdownMenuItem onClick={() => platform.openLink(currentLocale() === "zh" ? "https://get3w.com/docs/zh/desktop-app/" : DOCS_URL)}><BookOpen className="size-4" />{t("status.docs")}</DropdownMenuItem> : null}
         {config.feedbackButton && props.onSendFeedback ? <DropdownMenuItem onClick={props.onSendFeedback}><MessageCircleMore className="size-4" />{t("status.feedback")}</DropdownMenuItem> : null}
       </DropdownMenuContent>
     </DropdownMenu>

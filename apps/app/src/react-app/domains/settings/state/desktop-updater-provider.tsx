@@ -1,13 +1,11 @@
 /** @jsxImportSource react */
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { RotateCw } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Download, LoaderCircle } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogTitle } from "../../../../components/ui/alert-dialog";
 import { t } from "../../../../i18n";
 import { useLocal } from "../../../kernel/local-provider";
 import { useDesktopConfig } from "../../cloud/desktop-config-provider";
-import { useBrandAppName } from "../../cloud/brand-theme";
 import { notifyAlert } from "../../../shell/notifications";
 import { useElectronUpdaterState } from "./electron-updater-state";
 
@@ -74,40 +72,42 @@ export function DesktopUpdaterProvider({ children }: { children: ReactNode }) {
 
 export function DesktopUpdateButton() {
   const updater = useContext(DesktopUpdaterContext);
-  const appName = useBrandAppName();
-  const [confirmRestart, setConfirmRestart] = useState(false);
-  if (updater?.updateStatus?.state !== "ready") return null;
-  return (
-    <>
-      <Tooltip>
-        <TooltipTrigger render={
-          <Button
-            variant="ghost"
-            size="sm"
-            data-update-button
-            onClick={() => setConfirmRestart(true)}
-            className="mac:titlebar-no-drag h-7 gap-1.5 rounded-lg border border-foreground/[0.06] bg-foreground/[0.04] px-2.5 text-xs font-medium text-foreground/80 shadow-none transition-colors hover:bg-foreground/[0.08] hover:text-foreground"
-          >
-            <RotateCw className="size-3.5 opacity-70" strokeWidth={1.75} aria-hidden="true" />
-            {t("settings.update_restart_button")}
-          </Button>
-        } />
-        <TooltipContent side="bottom" align="end">{t("settings.update_on_quit_hint")}</TooltipContent>
-      </Tooltip>
-      <AlertDialog open={confirmRestart} onOpenChange={setConfirmRestart}>
-        <AlertDialogContent className="max-w-[340px] gap-0 rounded-[15px] border border-border p-6 ring-0 sm:max-w-[340px]">
-          <RotateCw className="mb-3 size-6 text-muted-foreground" aria-hidden="true" />
-          <AlertDialogTitle className="mb-2 text-[19px] leading-tight tracking-tight">{t("settings.update_restart_now_title", undefined, { appName })}</AlertDialogTitle>
-          <AlertDialogDescription className="text-xs leading-[1.75]">{t("settings.update_restart_now_message", undefined, { appName })}</AlertDialogDescription>
-          <AlertDialogFooter className="mt-5">
-            <AlertDialogCancel variant="ghost" size="sm" className="rounded-[7px] text-[11px] text-muted-foreground">{t("settings.update_keep_working")}</AlertDialogCancel>
-            <AlertDialogAction size="sm" className="rounded-[7px] text-[11px]" onClick={() => {
-              setConfirmRestart(false);
-              void updater.installUpdateAndRestart();
-            }}>{t("settings.update_restart_confirm_action")}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const status = updater?.updateStatus;
+  if (!updater || !status || !["available", "downloading", "ready", "error"].includes(status.state)) return null;
+  if (updater.updateEnv?.supported === false) return null;
+  const downloading = status.state === "downloading";
+  const label = downloading
+    ? t("settings.update_downloading")
+    : status.state === "error" ? t("updates.retry") : t("updates.available");
+  const progress = status.totalBytes && status.downloadedBytes != null
+    ? ` ${Math.min(100, Math.floor(status.downloadedBytes / status.totalBytes * 100))}%` : "";
+  const title = `${label}${downloading ? progress : ""}`;
+  const update = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    try { await updater.updateAndRestart(); }
+    finally { inFlight.current = false; setBusy(false); }
+  };
+  return <Tooltip>
+    <TooltipTrigger render={
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        data-update-button
+        aria-label={title}
+        aria-busy={busy || downloading}
+        disabled={busy || downloading}
+        onClick={() => void update()}
+        className="mac:titlebar-no-drag shrink-0 rounded-full bg-blue-9 text-primary-foreground hover:bg-blue-10 hover:text-primary-foreground disabled:opacity-70"
+      >
+        {busy || downloading
+          ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
+          : <Download className="size-4" strokeWidth={1.5} aria-hidden="true" />}
+      </Button>
+    } />
+    <TooltipContent side="top">{title}</TooltipContent>
+  </Tooltip>;
 }
