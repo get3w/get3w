@@ -45,9 +45,9 @@ jobs:
           gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" \
             -p 'get3w-mac-*.dmg' -p 'get3w-win-*.exe' -p SHA256SUMS -p release.json
           gh release download "v$VERSION" -R get3w/get3w --dir "$RUNNER_TEMP/release" --clobber \
-            -p 'latest-mac.yml' -p 'latest.yml' -p 'get3w-mac-*.zip' -p 'get3w-win-*.exe' -p '*.blockmap'
+            -p 'latest-mac.yml' -p 'latest.yml' -p release.json -p 'get3w-mac-*.zip' -p 'get3w-win-*.exe' -p '*.blockmap'
           cp "$RUNNER_TEMP/release"/get3w-mac-*.dmg "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/SHA256SUMS "$RUNNER_TEMP/release"/release.json "$RUNNER_TEMP/manual/"
-          cp "$RUNNER_TEMP/release"/latest-mac.yml "$RUNNER_TEMP/release"/latest.yml "$RUNNER_TEMP/release"/get3w-mac-*.zip "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/*.blockmap "$RUNNER_TEMP/updater/"
+          cp "$RUNNER_TEMP/release"/latest-mac.yml "$RUNNER_TEMP/release"/latest.yml "$RUNNER_TEMP/release"/release.json "$RUNNER_TEMP/release"/get3w-mac-*.zip "$RUNNER_TEMP/release"/get3w-win-*.exe "$RUNNER_TEMP/release"/*.blockmap "$RUNNER_TEMP/updater/"
           grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest-mac.yml"
           grep -q "^version: $VERSION$" "$RUNNER_TEMP/release/latest.yml"
           (cd "$RUNNER_TEMP/release" && shasum -a 256 -c SHA256SUMS --ignore-missing)

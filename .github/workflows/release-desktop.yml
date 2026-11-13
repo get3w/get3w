@@ -175,11 +175,10 @@ jobs:
           UPDATER_DIR="$RUNNER_TEMP/get3w-updater"
           mkdir -p "$MANUAL_DIR" "$UPDATER_DIR"
           cp "$RELEASE_DIR"/get3w-mac-*.dmg "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/SHA256SUMS "$RELEASE_DIR"/release.json "$MANUAL_DIR"/
-          cp "$RELEASE_DIR"/latest-mac.yml "$RELEASE_DIR"/latest.yml "$RELEASE_DIR"/get3w-mac-*.zip "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/*.blockmap "$UPDATER_DIR/"
-          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -r "$COS_REGION" -b "$COS_BUCKET"
-          coscmd upload -r "$MANUAL_DIR/" "cos://$COS_BUCKET/download/releases/v$VERSION/"
-          coscmd upload -r "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/v$VERSION/"
-          coscmd upload -r "$UPDATER_DIR/" "cos://$COS_BUCKET/desktop/releases/latest/download/"
+          cp "$RELEASE_DIR"/latest-mac.yml "$RELEASE_DIR"/latest.yml "$RELEASE_DIR"/release.json "$RELEASE_DIR"/get3w-mac-*.zip "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/*.blockmap "$UPDATER_DIR/"
+          python3 scripts/release/sync_cos.py "$MANUAL_DIR" "download/releases/v$VERSION"
+          python3 scripts/release/sync_cos.py "$UPDATER_DIR" "desktop/releases/v$VERSION"
+          python3 scripts/release/sync_cos.py "$UPDATER_DIR" "desktop/releases/latest/download"
 
       - name: Verify mainland mirror contains real release files
         env:
