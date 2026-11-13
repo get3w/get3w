@@ -39,7 +39,7 @@ export function createModelTaskRecovery({auth,journal,scope,onResult=()=>{}}) {
       return structured.result;
   }
   const poller=createModelTaskPoller({
-    list:()=>journal.listConnection(scope),
+    list:async()=>(await journal.listConnection(scope)).filter(row=>!journal.isSubmitting?.(row.key)),
     read:async row=>{
       const controller=new AbortController();
       activeRequests.set(row.key,controller);

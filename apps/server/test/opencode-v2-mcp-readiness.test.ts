@@ -104,3 +104,11 @@ test("the shipped engine pin has a reviewed readiness adapter", async () => {
   assert.equal(isMcpReadinessVersionSupported(pinned), true);
   assert.equal(isMcpReadinessVersionSupported("unreviewed"), false);
 });
+
+test("native media readiness requires both direct tools after removing its internal marker", async () => {
+  const { mcpBindingsReady } = await import("../src/opencode-v2-mcp-readiness.js");
+  const desired = ["get3w-account_native_media_ready"];
+  assert.equal(mcpBindingsReady([{id:"media_prepare"}], "get3w-account", desired, []), false);
+  assert.equal(mcpBindingsReady([{id:"media_prepare"},{id:"media_generate"}], "get3w-account", desired, []), true);
+  assert.equal(mcpBindingsReady([{id:desired[0],options:{namespace:"get3w-account"}}], "get3w-account", desired, []), false);
+});

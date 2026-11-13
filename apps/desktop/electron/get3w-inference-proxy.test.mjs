@@ -13,6 +13,9 @@ test("loopback proxy rejects browser, wrong token, arbitrary routes; preserves s
     assert.equal((await fetch(proxy.baseURL+'/models')).status,401);
     assert.equal((await fetch(proxy.baseURL+'/models',{headers:{...headers,Origin:'https://example.com'}})).status,401);
     assert.equal((await fetch(proxy.baseURL+'/settings',{headers})).status,404);
+    assert.equal((await fetch(proxy.baseURL+'/health')).status,401);
+    assert.equal((await fetch(proxy.baseURL+'/health',{headers:{...headers,Origin:'https://example.com'}})).status,401);
+    assert.deepEqual(await (await fetch(proxy.baseURL+'/health',{headers})).json(),{ready:true});
     assert.equal(calls.length,0);
     const response=await fetch(proxy.baseURL+'/chat/completions',{method:'POST',headers,body:'{"model":"test","stream":true}'});
     assert.equal(response.headers.get('x-task-id'),'test');assert.equal(response.headers.get('set-cookie'),null);

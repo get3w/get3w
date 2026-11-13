@@ -12,7 +12,7 @@ test("personal instructions do not advertise organization tools or a cloud runne
     assert.match(instructions.operatingInstructions, /Get3W/);
     assert.match(instructions.operatingInstructions, /Call one outer tool at a time/);
     assert.match(instructions.operatingInstructions, /read needs path, shell needs command, and execute needs code/);
-    assert.match(instructions.connect, /Get3W model gateway/);
+    assert.match(instructions.connect, /Get3W.*(?:gateway|media generation)/);
     assert.match(instructions.automations, /automation.propose/);
     assert.match(instructions.automations, /must be open/);
     assert.match(instructions.automations, /Cloud execution and meeting-triggered schedules are not available/);
@@ -77,25 +77,22 @@ test("configured instructions never send local or secret files", async () => {
 
 test("connected model gateway guides native generation and image editing without advertising it offline", () => {
   const connected = buildOpenWorkV2Instructions(false, true);
-  assert.match(connected.connect, /get3w-account/);
-  assert.match(connected.connect, /search_capabilities/);
+  assert.match(connected.connect, /media_prepare and media_generate/);
+  assert.match(connected.connect, /direct tools, not Code Mode/);
+  assert.match(connected.connect, /Never discover media capabilities/);
+  assert.match(connected.connect, /background polling/);
   assert.match(connected.connect, /previous generated image URL/);
   assert.match(connected.connect, /native approval card/);
-  assert.match(connected.connect, /including missing illustrations inside office documents/);
+  assert.match(connected.connect, /native tools for generated illustrations inside office documents/);
   assert.match(connected.connect, /Do not open an external generation app or website/);
   assert.match(connected.connect, /third-party generation CLI or skill/);
   assert.match(connected.connect, /preserve work for retry/);
-  assert.match(connected.connect, /never call execute with \{\} or omit code/);
-  assert.match(connected.connect, /non-empty string field code/);
   assert.match(connected.connect, /Never use a centered crop that clips the product/);
   assert.match(connected.connect, /all label text inside safe margins/);
   assert.match(connected.connect, /Preserve the original subject pixels with a foreground mask/);
   assert.match(connected.connect, /also preserve the cup from the original scene/);
-  assert.match(connected.connect, /Code Mode does not provide setTimeout/);
   assert.match(connected.connect, /continuous scene content across the entire canvas/);
-  assert.match(connected.connect, /reopen every final output after the last write/);
   assert.match(connected.connect, /pass both URLs to a model that supports multiple image references/);
-  assert.match(connected.connect, /same inner and outer idempotency_key/);
   assert.doesNotMatch(buildOpenWorkV2Instructions(false).connect, /gateway is connected|search_capabilities/);
 });
 

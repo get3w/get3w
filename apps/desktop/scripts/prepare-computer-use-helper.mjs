@@ -8,9 +8,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(__dirname, "..");
 const repoRoot = resolve(desktopRoot, "../..");
 const packagePath = resolve(repoRoot, "packages", "computer-use", "native");
-// The Get3W tile with a pointer badge: System Settings lists this helper
-// right next to Get3W, so the two rows must not look the same.
-const iconPath = resolve(desktopRoot, "resources", "icons", "computer-use.icns");
+// Use the same Get3W brand icon in System Settings as the desktop app.
+const iconPath = resolve(desktopRoot, "resources", "icons", "icon.icns");
 const productName = "ComputerUse";
 const helperExecutableName = "ComputerUse";
 const helperAppName = "Get3W Computer Use.app";

@@ -1598,7 +1598,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                     if (!props.steering) props.onModelVariantChange(value);
                   }}
                 />
-                <ModelPreferencesPanel sessionId={props.sessionId} />
+                <ModelPreferencesPanel />
                 {props.modelUnavailable ? props.onRefreshOrganizationModels ? (
                   <button
                     type="button"

@@ -41,3 +41,26 @@ test("Artifact and capability tools use trusted engine context without changing 
       .rejects.toThrow("quote_expired: Request a fresh quote.");
   } finally { await stop(); endpoint.stop(true); }
 });
+
+test("native media tools are direct, readiness-gated and flatten only the typed media result",async()=>{
+ const requests:unknown[]=[];
+ const endpoint=Bun.serve({port:0,async fetch(request){requests.push(await request.json());return Response.json({result:{structuredContent:{status:'ready',preparation_id:'prep'}}});}});
+ type Editor=Parameters<Parameters<Parameters<typeof contextPlugin.setup>[0]['tool']['transform']>[0]>[0];
+ type Added=Parameters<Editor['add']>[0];
+ const tools:Added[]=[];
+ const removed:string[]=[];
+ const run=async(ready:boolean)=>contextPlugin.setup({options:{url:`http://127.0.0.1:${endpoint.port}`,token:'bridge'},location:{directory:'/workspace'},tool:{async transform(callback){callback({add:tool=>tools.push(tool),get:id=>ready&&id==='get3w-account_native_media_ready'?{}:undefined,remove:id=>{removed.push(id);}});return {async dispose(){}};}}});
+ try{
+  const offline=await run(false);expect(tools.some(tool=>tool.name==='media_prepare')).toBe(false);await offline();tools.length=0;
+  const close=await run(true);
+  expect(removed).toEqual(['get3w-account_native_media_ready']);
+  for(const name of ['media_prepare','media_generate']){
+   const tool=tools.find(item=>item.name===name);expect(tool?.options.codemode).toBe(false);expect(tool?.options.pinned).toBe(true);
+   if(!tool)throw Error('Native media tool missing');
+   const result=await tool.execute({task_type:'text-to-image'},{signal:new AbortController().signal,sessionID:'trusted-session',messageID:'trusted-message'});
+   expect(result.content).toEqual([{type:'text',text:JSON.stringify({status:'ready',preparation_id:'prep'})}]);
+  }
+  expect(requests).toContainEqual({name:'get3w_model_call',input:{name:'media_prepare',arguments:{task_type:'text-to-image'}},sessionId:'trusted-session',caller:{directory:'/workspace',messageId:'trusted-message'}});
+  await close();
+ }finally{endpoint.stop(true);}
+});

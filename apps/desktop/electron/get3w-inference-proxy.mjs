@@ -20,6 +20,13 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
     // Browsers cannot use this endpoint, even if they can reach loopback.
     if (request.headers.origin || request.headers.host !== `127.0.0.1:${serverPort()}` ||
       supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return fail(401, "Local inference authorization required");
+    // Probe only the authenticated local transport. Cloud catalog latency must
+    // not cause the host to tear down a healthy proxy and its active streams.
+    if (request.url === "/v1/health" && request.method === "GET") {
+      response.writeHead(200, {"Content-Type":"application/json", "Cache-Control":"no-store"});
+      response.end(JSON.stringify({ready:true}));
+      return;
+    }
     const route = request.url === "/v1/models" && request.method === "GET" ? "models"
       : request.url === "/v1/chat/completions" && request.method === "POST" ? "chat/completions" : null;
     if (!route) return fail(404, "Unsupported inference route");

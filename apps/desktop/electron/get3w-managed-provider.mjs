@@ -87,7 +87,7 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
         return {enabled:true,state:providerState};
       } else {
         try {
-          const probe = await fetchImpl(`${proxy.baseURL}/models`, {
+          const probe = await fetchImpl(`${proxy.baseURL}/health`, {
             method: "GET", redirect: "error", signal: AbortSignal.timeout(2_000),
             headers: { Authorization: `Bearer ${proxy.apiKey}` },
           });

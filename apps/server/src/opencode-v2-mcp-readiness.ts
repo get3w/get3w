@@ -12,9 +12,12 @@ export const mcpNamespace = (server: string) => server.replace(/[^a-zA-Z0-9_-]/g
 export const mcpToolId = (server: string, name: string) => `${mcpNamespace(server)}_${name.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 
 export function mcpBindingsReady(current: readonly McpPublishedTool[], server: string, desired: readonly string[], previous: readonly string[]): boolean {
-  const published = new Set(current.filter(tool => tool.options?.namespace === mcpNamespace(server)).map(tool => tool.id));
-  const wanted = new Set(desired);
-  return desired.every(id => published.has(id)) && previous.every(id => wanted.has(id) || !published.has(id));
+  const native = server === "get3w-account";
+  const marker = mcpToolId(server, "native_media_ready");
+  const published = new Set(current.filter(tool => tool.options?.namespace === mcpNamespace(server)
+    || native && ["media_prepare", "media_generate"].includes(tool.id)).map(tool => tool.id));
+  const wanted = new Set(desired.flatMap(id => native && id === marker ? ["media_prepare", "media_generate"] : [id]));
+  return [...wanted].every(id => published.has(id)) && previous.every(id => wanted.has(id) || !published.has(id));
 }
 
 /** SDK-independent observation; the native adapter supplies its owned registry. */

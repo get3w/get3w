@@ -2,7 +2,9 @@ import { generationCategory, generationModelId } from "./generation-models";
 import { z } from "zod";
 import type { TaskCatalogSnapshot } from "./get3w-account";
 
-const outputFields = new Set(["aspect_ratio","resolution","num_images","num_outputs","quantity","generate_audio","with_audio","language","format","output_format"]);
+import { outputFieldNames, outputSettingsForSchemas } from "@/lib/model-settings";
+export { uniqueOutputValues } from "@/lib/model-settings";
+const outputFields = new Set(outputFieldNames);
 export function savedOutputFields(fields:Record<string,string>):Record<string,string>{
   return Object.fromEntries(Object.entries(fields).filter(([name])=>outputFields.has(name)));
 }
@@ -44,12 +46,9 @@ export function writeOutputPreference(userId:string,preference:OutputPreference,
   const rows=readOutputPreferences(userId,session).filter(row=>row.runType!==value.runType);
   window.localStorage.setItem(key(userId,"outputs",session),JSON.stringify([...rows,value]));
 }
-function merge<T extends {runType:string}>(global:T[],session:T[]):T[]{return [...new Map([...global,...session].map(row=>[row.runType,row])).values()];}
-export function effectivePreferences(userId:string,sessionId?:string){
-  return {
-    models:merge(readModelPreferences(userId),sessionId?readModelPreferences(userId,sessionId):[]),
-    outputs:merge(readOutputPreferences(userId),sessionId?readOutputPreferences(userId,sessionId):[]),
-  };
+/** Global preferences apply to every conversation; legacy session rows are ignored. */
+export function effectivePreferences(userId:string,_sessionId?:string){
+  return {models:readModelPreferences(userId),outputs:readOutputPreferences(userId)};
 }
 /** Keep complete JSON entries within the limit; never truncate a JSON string. */
 export function modelPreferencesContext(userId:string,sessionId?:string,catalog?:TaskCatalogSnapshot):string{
@@ -72,18 +71,9 @@ export function modelPreferencesContext(userId:string,sessionId?:string,catalog?
   return serialize();
 }
 
-/** Only existing enum fields become controls. Free text, prompts and credentials never do. */
-export function outputSettingOptions(catalog:TaskCatalogSnapshot,runType:string){
-  const fields=new Map<string,Set<string>>();
-  for(const model of catalog.models.filter(model=>generationCategory(model.type)===generationCategory(runType)))for(const api of model.api_schema.api_schemas){
-    const properties=api.request_schema.properties;
-    if(!properties||typeof properties!=="object")continue;
-    for(const [name,schema] of Object.entries(properties)){
-      if(!outputFields.has(name)||!schema||typeof schema!=="object"||!("enum" in schema)||!Array.isArray(schema.enum))continue;
-      const values=fields.get(name)??new Set<string>();
-      for(const value of schema.enum)if(["string","number","boolean"].includes(typeof value)&&String(value).length<=500)values.add(String(value));
-      if(values.size)fields.set(name,values);
-    }
-  }
-  return [...fields].map(([name,values])=>({name,values:[...values].sort()}));
+/** Model lookup stays client-specific; all field rules are shared with Web. */
+export function outputSettingOptions(catalog:TaskCatalogSnapshot,runType:string,slug?:string|null,selection:Record<string,string>={}){
+  const candidates=catalog.models.filter(model=>generationCategory(model.type)===generationCategory(runType)&&(!slug||generationModelId(model)===slug||model.model_id===slug));
+  const schemas=candidates.flatMap(model=>model.api_schema.api_schemas.length?model.api_schema.api_schemas.map(api=>api.request_schema):[{}]);
+  return outputSettingsForSchemas(schemas,selection);
 }

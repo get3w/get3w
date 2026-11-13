@@ -17,8 +17,10 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
   const file=path.join(userData,"get3w-managed-mcp.json"), live=new Map();
   const journal=createModelTaskJournal({userData,limitUsd:process.env.GET3W_M1_BUDGET_USD});
   const journalFor=(userId,workspaceId,sessionId)=>({
+    findTask:async(host,key)=>(await journal.list({userId,workspaceId,sessionId:host.sessionId})).find(row=>row.arguments.idempotency_key===key),
     isStopped:context=>journal.isStopped({userId,workspaceId,sessionId:context.sessionId ?? sessionId},context),
     beforeSubmit:context=>journal.beforeSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
+    releaseSubmit:context=>journal.releaseSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
     observe:async(context,payload)=>{await journal.observe({userId,workspaceId,sessionId:context.sessionId ?? sessionId},context,payload);void syncOutputs({userId,workspaceId}).catch(()=>{});},
   });
   let records,queue=Promise.resolve();
@@ -81,13 +83,13 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       const urls=(row.result.outputs??[]).flatMap(value=>typeof value==="string"?[value]:value&&typeof value==="object"&&typeof value.url==="string"?[value.url]:[]).filter(value=>value.startsWith("https://"));
       const files=row.outputEntry?.files??[];
       if(!retry&&files.length===urls.length)continue;
-      downloading.add(row.key);
+      downloading.add(row.key);const downloadStarted=Date.now();
       try{
         const saved=[];
         for(const url of urls)saved.push(await outputRequest(scope,{action:"save",key:row.key,url,sessionId:row.scope.sessionId}));
         await journal.updateOutput(row.scope,row.key,{files:saved,downloadError:null});
       }catch{await journal.updateOutput(row.scope,row.key,{downloadError:"Download failed. Retry or refresh the result."});}
-      finally{downloading.delete(row.key);}
+      finally{downloading.delete(row.key);if(row.nativeMedia?.traceId)console.info("[get3w-media-timing]",JSON.stringify({traceId:row.nativeMedia.traceId,stage:"download",durationMs:Date.now()-downloadStarted}));}
     }
   }
   function approvalCallback(server, ws) {
@@ -153,7 +155,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       else void syncOutputs(scope).catch(()=>{});
       const rows=input.action==="listAll" ? await journal.listConnection(scope) : await journal.list(scope);
       // Keep submission inputs in main; expose only scoped state and result outputs.
-      return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],outputEntry:row.outputEntry??null}))};
+      return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],reservedUsd:row.quote?.amountUsd??null,chargedUsd:row.result?.billing?.charged?.usd??null,error:row.result?.error?{code:row.result.error.code}:null,outputEntry:row.outputEntry??null}))};
     }),
     outputs:async input=>{
       if(!input||!/^[-\w]{1,100}$/.test(input.workspaceId??"")||!["index","read"].includes(input.action))throw Error("Invalid output scope.");
@@ -208,7 +210,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       if(requestedSession !== undefined && !SESSION_ID_RE.test(requestedSession)) throw new Error("Invalid Get3W chat session.");
       if(existing&&existing.scope===server.scope&&value) return {enabled:true,state:"configured"};
       await stop(ws);
-      const proxy=await createProxy({hostToken:server.host,enforceModelGuard:true,auth,userId:input.userId,...(requestedSession ? {sessionId:requestedSession} : {}),journal:journalFor(input.userId,ws,requestedSession),approveSubmit: approvalCallback(server, ws)});
+      const proxy=await createProxy({nativeMediaDirectory:path.join(userData,"native-media",fingerprint([input.userId,ws])),workspaceId:ws,onMediaTiming:event=>console.info("[get3w-media-timing]",JSON.stringify(event)),hostToken:server.host,enforceModelGuard:true,auth,userId:input.userId,...(requestedSession ? {sessionId:requestedSession} : {}),journal:journalFor(input.userId,ws,requestedSession),approveSubmit: approvalCallback(server, ws)});
       const definition={type:"remote",url:proxy.url,headers:{Authorization:`Bearer ${proxy.token}`},oauth:false,enabled:true,timeout:10 * 60_000};
       // Persist ownership before a write whose response might be lost.
       const previous=records[ws];

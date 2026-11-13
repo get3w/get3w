@@ -8,3 +8,24 @@ export function rememberGenerationPolicy(workspace:string,session:string,message
   entries.set(key(workspace,session,message),policy);
 }
 export function generationPolicyFor(workspace:string,session:string,message:string){return entries.get(key(workspace,session,message));}
+
+/** V2 messages have no parentID: bind to the user before this caller, never
+ * to a newer queued prompt. Pages must be supplied newest first. */
+export async function generationPolicyFromMessages(callerId:string,read:(cursor?:string)=>Promise<unknown>){
+  let cursor:string|undefined,found=false;
+  const seen=new Set<string>();
+  while(true){
+    const page=await read(cursor);
+    const parsed=z.object({data:z.array(z.object({id:z.string(),type:z.string(),metadata:z.unknown().optional(),time:z.object({created:z.number()}).optional()})),cursor:z.object({next:z.string().nullable().optional()}).optional()}).parse(page);
+    for(const row of parsed.data){
+      if(row.id===callerId)found=true;
+      if(found&&row.type==='user'){
+        const metadata=z.object({openwork:z.object({generationPolicy:policySchema.optional()}).optional()}).parse(row.metadata??{});
+        return {messageId:row.id,policy:metadata.openwork?.generationPolicy??{models:{},outputs:{}},...(row.time?{receivedAt:row.time.created}:{})};
+      }
+    }
+    const next=parsed.cursor?.next;
+    if(!next||seen.has(next))throw Error('Generation policy message could not be verified');
+    seen.add(next);cursor=next;
+  }
+}

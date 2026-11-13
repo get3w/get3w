@@ -98,3 +98,10 @@ test('definitively rejected submission becomes terminal rather than retrying for
  const recovery=createModelTaskRecovery({scope:{userId:'u',workspaceId:'w'},journal:{listConnection:async()=>[row],observe:async(_scope,_context,payload)=>{saved=payload.result.structuredContent.result;row.status=saved.status;}},auth:{submitPersonal:async()=>{calls++;throw Object.assign(Error('Use a new key'),{definitive:true,code:'idempotency_conflict'});}}});
  try {await new Promise(resolve=>setTimeout(resolve,2200));assert.equal(calls,1);assert.equal(saved.status,'failed');assert.equal(saved.error.code,'idempotency_conflict');}finally{recovery.close();}
 });
+
+test('recovery leaves a live first submission with its current owner',async()=>{
+ let owned=true,calls=0;
+ const row={key:'k',requestId:null,status:'submitting',scope:{sessionId:'original-session'},arguments:{idempotency_key:'original-key'}};
+ const recovery=createModelTaskRecovery({scope:{userId:'u',workspaceId:'w'},journal:{listConnection:async()=>[row],isSubmitting:()=>owned,observe:async()=>{row.status='completed';}},auth:{submitPersonal:async()=>{calls++;return {request_id:'r',status:'completed'};}}});
+ try{await new Promise(resolve=>setTimeout(resolve,1100));assert.equal(calls,0);owned=false;await new Promise(resolve=>setTimeout(resolve,1100));assert.equal(calls,1);}finally{recovery.close();}
+});

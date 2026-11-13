@@ -14,12 +14,20 @@ export function outputKind(path:string):"image"|"video"|"audio"|"document"|"3d"|
  if(["pdf","docx","html","htm"].includes(extension??""))return "document";
  return "text";
 }
-export function OutputPreview({file,read,compact=false}:{compact?:boolean;file:OutputFile;read:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
+export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(value:{dataBase64:string;mimeType:string;sizeBytes:number})=>boolean|Promise<boolean>;compact?:boolean;file:OutputFile;read:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
  const locale=useLocale();
  const containerRef=useRef<HTMLDivElement>(null);
  const [inView,setInView]=useState(false);
  const [src,setSrc]=useState(""),[text,setText]=useState(""),[error,setError]=useState(false),[expanded,setExpanded]=useState(false),[attempt,setAttempt]=useState(0);
  const kind=outputKind(file.path);
+ const [imageData,setImageData]=useState<{dataBase64:string;mimeType:string;sizeBytes:number}|null>(null);
+ const [imageHidden,setImageHidden]=useState(false);
+ useEffect(()=>{
+  let active=true;
+  if(kind!=="image"||!imageData||!hideImage){setImageHidden(false);return;}
+  void Promise.resolve(hideImage(imageData)).then(hidden=>{if(active)setImageHidden(hidden);}).catch(()=>{if(active)setImageHidden(false);});
+  return()=>{active=false;};
+ },[kind,imageData,hideImage]);
  useEffect(()=>{
   const element=containerRef.current;
   if(!element)return;
@@ -30,9 +38,10 @@ export function OutputPreview({file,read,compact=false}:{compact?:boolean;file:O
  },[]);
  useEffect(()=>{
   if(!inView)return;
-  let stopped=false,url="";setError(false);setSrc("");setText("");
+  let stopped=false,url="";setError(false);setSrc("");setText("");setImageData(null);
   void read().then(value=>{
    if(stopped)return;
+   if(kind==="image")setImageData(value);
    const bytes=Uint8Array.from(atob(value.dataBase64),char=>char.charCodeAt(0));
    url=URL.createObjectURL(new Blob([bytes],{type:value.mimeType}));setSrc(url);
    if(kind==="text"||/\.html?$/i.test(file.path))setText(new TextDecoder().decode(bytes));
@@ -42,7 +51,7 @@ export function OutputPreview({file,read,compact=false}:{compact?:boolean;file:O
  return <div ref={containerRef} className="space-y-2" >
   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate" title={file.path}>{compact?file.path.split("/").at(-1):file.path}</span>{!compact?<span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>:null}{src?<a href={src} download={file.path.split("/").at(-1)} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
   {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&!src?<div className={compact?"h-28 w-40 animate-pulse rounded bg-muted":"h-20 animate-pulse rounded bg-muted"} aria-busy="true"/>:null}
-  {src&&kind==="image"?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
+  {src&&kind==="image"&&!imageHidden?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
   {src&&kind==="video"?<video src={src} controls preload="metadata" className={compact?"max-h-40 max-w-60 rounded-md":"max-h-72 max-w-full"}/>:null}
   {src&&kind==="audio"?<audio src={src} controls preload="metadata" className={compact?"max-w-60":"w-full"}/>:null}
   {src&&/\.pdf$/i.test(file.path)?<PdfPreview title={file.path} url={src} className="h-80 w-full"/>:null}

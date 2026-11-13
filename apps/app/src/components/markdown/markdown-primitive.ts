@@ -395,9 +395,15 @@ function renderVideo(href: string, label: string, fallbackHtml: string) {
   return `<span data-openwork-video="" class="my-3 flex w-full max-w-lg flex-col items-start gap-1.5"><video data-openwork-video-path="${escapeAttribute(href)}"${source} controls playsinline preload="metadata" aria-label="${escapeAttribute(label)}" class="block max-h-80 w-full rounded-lg border border-border/70 bg-black"></video><a ${fileLink} class="text-sm text-indigo-10">${escapeHtml(label)}</a><span data-openwork-video-fallback="" hidden>${fallbackHtml}</span></span>`;
 }
 
+function renderLinkedImage(profile: MarkdownProfile, href: string, html: string) {
+  if (profile.linkPresentation !== "chat" || !/\.(?:png|jpe?g|webp|gif|avif|bmp)(?:[?#].*)?$/i.test(href)) return null;
+  if (!parseLocalPathReference(href, { decode: true })) return null;
+  return `<span class="my-3 flex w-full flex-col items-start gap-2">${html}<button type="button" data-openwork-image-preview="" hidden class="max-w-full cursor-zoom-in" aria-label="Expand ${escapeAttribute(href)}"><img data-openwork-image-path="${escapeAttribute(href)}" alt="${escapeAttribute(href)}" loading="lazy" decoding="async" class="block max-h-80 max-w-full rounded-lg object-contain"></button></span>`;
+}
+
 function renderLink(profile: MarkdownProfile, href: string, title: string | null | undefined, text: string) {
   const html = renderLinkHtml(profile, href, title, text);
-  return (profile.linkPresentation === "chat" ? renderVideo(href, href, html) : null) ?? html;
+  return renderLinkedImage(profile, href, html) ?? (profile.linkPresentation === "chat" ? renderVideo(href, href, html) : null) ?? html;
 }
 
 function renderLinkHtml(profile: MarkdownProfile, href: string, title: string | null | undefined, text: string) {

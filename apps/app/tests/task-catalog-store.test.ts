@@ -21,3 +21,20 @@ test('account change discards pending replies and clears account snapshot',async
  await expect(pending).rejects.toThrow('Account changed');expect(cachedTaskCatalog('alice')).toBeNull();expect(cachedTaskCatalog('bob')).toBeNull();
  resetTaskCatalog();
 });
+
+test('expired catalog refresh keeps visible data and falls back to offline cache',async()=>{
+ resetTaskCatalog();let calls=0;let fail=false;
+ const requests:unknown[]=[];
+ Reflect.set(window,'__GET3W_ACCOUNT__',{taskCatalog:async(input:unknown)=>{
+  calls++;requests.push(input);
+  if(fail&&!(typeof input==='object'&&input!==null&&Reflect.get(input,'offline')))throw Error('network unavailable');
+  return {...value(),catalog_version:fail?'cached':'expired',expiresAt:Date.now()-1,offline:fail};
+ }});
+ await loadTaskCatalog('offline-account');expect(calls).toBe(1);
+ fail=true;const refresh=loadTaskCatalog('offline-account');
+ expect(cachedTaskCatalog('offline-account')?.catalog_version).toBe('expired');
+ const offline=await refresh;expect(offline.offline).toBe(true);expect(calls).toBe(3);
+ expect(requests[2]).toEqual({userId:'offline-account',offline:true});
+ expect(cachedTaskCatalog('offline-account')?.catalog_version).toBe('cached');
+ resetTaskCatalog();
+});

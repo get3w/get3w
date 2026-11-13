@@ -1,4 +1,4 @@
-import { rememberGenerationPolicy, generationPolicyFor } from "./generation-policies.js";
+import { rememberGenerationPolicy, generationPolicyFor, generationPolicyFromMessages } from "./generation-policies.js";
 import { GET3W_CHAT_TOOLS } from "./get3w-chat-tools.js";
 import { createV2SessionHomes, nativeSession, nativeSessionDirectory } from "./opencode-v2-session-home.js";
 import { createTaskRecovery, setTaskRecovery } from "./task-recovery.js";
@@ -3203,8 +3203,9 @@ function createRoutes(
     const nativePayload:unknown=await nativeMessage.json();
     const message=isRecord(nativePayload)&&isRecord(nativePayload.data)?nativePayload.data:nativePayload;
     const info=isRecord(message)&&isRecord(message.info)?message.info:message;
-    const parentId=isRecord(info)&&typeof info.parentID==="string"?info.parentID:body.caller.messageId;
+    let parentId=isRecord(info)&&typeof info.parentID==="string"?info.parentID:body.caller.messageId;
     let policy=generationPolicyFor(workspace.id,body.sessionId,parentId);
+    let receivedAt:number|undefined;
     if(!policy){
       messageUrl.pathname=`/api/session/${encodeURIComponent(body.sessionId)}/message/${encodeURIComponent(parentId)}`;
       const parentResponse=await loopbackFetch(messageUrl.toString(),{headers:{authorization:`Basic ${Buffer.from(`opencode:${connection.password}`).toString("base64")}`},signal:ctx.request.signal});
@@ -3215,10 +3216,26 @@ function createRoutes(
       const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
       if(openwork?.generationPolicy){rememberGenerationPolicy(workspace.id,body.sessionId,parentId,openwork.generationPolicy);policy=generationPolicyFor(workspace.id,body.sessionId,parentId);}
     }
+    if(!policy||["media_prepare","media_generate"].includes(String(body.input.name))){
+      const callerMessageId=body.caller.messageId;
+      const policySessionId=body.sessionId;
+      const resolved=await generationPolicyFromMessages(callerMessageId,async cursor=>{
+        const listUrl=new URL(messageUrl);
+        listUrl.pathname=`/api/session/${encodeURIComponent(policySessionId)}/message`;
+        listUrl.searchParams.set('limit','200');
+        if(cursor)listUrl.searchParams.set('cursor',cursor);else listUrl.searchParams.set('order','desc');
+        const reply=await loopbackFetch(listUrl.toString(),{headers:{authorization:`Basic ${Buffer.from(`opencode:${connection.password}`).toString('base64')}`},signal:ctx.request.signal});
+        if(!reply.ok)throw new ApiError(503,'message_context_unavailable','Generation policy could not be verified');
+        return reply.json();
+      });
+      rememberGenerationPolicy(workspace.id,body.sessionId,resolved.messageId,resolved.policy);
+      rememberGenerationPolicy(workspace.id,body.sessionId,callerMessageId,resolved.policy);
+      policy=resolved.policy;parentId=resolved.messageId;receivedAt=resolved.receivedAt;
+    }
     const response = await fetch(url,{method:"POST",redirect:"error",signal:ctx.request.signal,
       headers:{Authorization:String(definition.headers.Authorization),"Content-Type":"application/json",Accept:"application/json, text/event-stream","X-Get3W-Host-Token":config.hostToken},
       body:JSON.stringify({jsonrpc:"2.0",id:body.caller.messageId,method:"tools/call",params:body.input,
-        hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,generationPolicy:policy}})});
+        hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,userMessageId:parentId,receivedAt,workspaceDirectory:workspace.path,generationPolicy:policy}})});
     const payload: unknown = await response.json();
     if (!response.ok) throw new ApiError(502,"model_call_failed","Model task could not finish");
     return jsonResponse(payload);

@@ -25,3 +25,20 @@ test('artifact authoring is allowed while unknown tools and undiscovered paid al
  assert.throws(()=>guard.prepare({method:'tools/call',params:{name:'submit',arguments:{}}}),/Unsupported/);
  assert.throws(()=>guard.prepare({method:'tools/call',params:{name:'execute_capability',arguments:{name:'paid'}}}),/tool-name\/discovery error, not an account permission/);
 });
+
+test('only trusted host submissions can omit session identity and quote/key checks remain enforced',()=>{
+ const guard=createModelSubmitGuard({sessionId:'trusted-chat',now:()=>1000});
+ guard.observe({type:'search'},{result:{structuredContent:{data:[{name:'paid',handler:'get3w.submit'},{name:'quote',handler:'get3w.quote'}]}}});
+ const message=(name,args,key='stable')=>({method:'tools/call',params:{name:'execute_capability',arguments:{name,arguments:args,idempotency_key:key}}});
+ const inputs={prompt:'cup'};
+ guard.observe(guard.prepare(message('quote',{slug:'model',inputs})),{result:{structuredContent:{status:'succeeded',result:{quote_id:'q',slug:'model',currency:'USD',discounted_price:'0.1',expires_at:2}}}});
+ const args={slug:'model',inputs,quote_id:'q',idempotency_key:'stable'};
+ assert.throws(()=>guard.prepare(message('paid',{...args})),/session_mismatch/);
+ const context=guard.prepare(message('paid',{...args}),{trustedSession:true});
+ assert.equal(context.call.arguments.session_id,'trusted-chat');
+ guard.approve(context);
+ assert.equal(guard.prepare(message('paid',{...args}),{trustedSession:true}).alreadyApproved,true);
+ assert.throws(()=>guard.prepare(message('paid',{...args},'different'),{trustedSession:true}),/session_mismatch/);
+ assert.throws(()=>guard.prepare(message('paid',{...args,inputs:{prompt:'different'}}),{trustedSession:true}),/idempotency_conflict/);
+ assert.throws(()=>guard.prepare(message('paid',{...args,quote_id:'missing',idempotency_key:'new'},'new'),{trustedSession:true}),/quote_required/);
+});

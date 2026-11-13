@@ -1,3 +1,4 @@
+import { useTaskImageRegistration } from "@/react-app/domains/cloud/model-task-status";
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -71,6 +72,8 @@ function MarkdownBlockInner({
   ...props
 }: MarkdownBlockInnerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const registerImage = useTaskImageRegistration();
+  const imageCleanups = useRef(new Map<HTMLImageElement, () => void>());
   const videoCleanups = useRef(new Map<HTMLVideoElement, () => void>());
   const codeCopyResetTimers = useRef(new Map<HTMLButtonElement, number>());
   const codeWrapStates = useRef(new Map<number, boolean>());
@@ -79,6 +82,8 @@ function MarkdownBlockInner({
   useEffect(() => () => {
     videoCleanups.current.forEach((cleanup) => cleanup());
     videoCleanups.current.clear();
+    imageCleanups.current.forEach((cleanup) => cleanup());
+    imageCleanups.current.clear();
   }, [client, workspaceId, workspaceRoot, sessionId]);
   const [linkMenu, setLinkMenu] = useState<{ target: OpenTarget; anchor: HTMLElement } | null>(null);
   useEffect(() => setLinkMenu(null), [client, workspaceId, workspaceRoot]);
@@ -213,6 +218,46 @@ function MarkdownBlockInner({
     if (!root || !githubReferences) return;
     decorateGitHubReferences(root);
   }, [githubReferences, rendered]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    for (const [image, cleanup] of imageCleanups.current) {
+      if (!root.contains(image)) { cleanup(); imageCleanups.current.delete(image); }
+    }
+    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-openwork-image-path]")) {
+      if (imageCleanups.current.has(image)) continue;
+      const href = image.dataset.openworkImagePath ?? "";
+      const target = openTargetForHref(href, openTargets, workspaceRoot);
+      const reference = parseLocalPathReference(href, { decode: true });
+      const path = target?.exists === true ? target.value : reference && reference.anchor !== "home"
+        ? workspaceLookupValue(reference, { workspaceRoot }).replace(/\\/g, "/") : "";
+      if (!client || !workspaceId || !path || /^(?:\/|[A-Za-z]:\/)/.test(path)) continue;
+      let cancelled = false;
+      let url = "";
+      let unregisterImage: (() => void) | undefined;
+      const button = image.closest("button");
+      const hide = () => { if (button) button.hidden = true; unregisterImage?.(); unregisterImage = undefined; };
+      const loaded = () => { if (!cancelled && !unregisterImage) unregisterImage = registerImage?.(href); };
+      image.addEventListener("load", loaded);
+      image.addEventListener("error", hide);
+      imageCleanups.current.set(image, () => {
+        cancelled = true;
+        image.removeEventListener("error", hide);
+        image.removeEventListener("load", loaded);
+        unregisterImage?.();
+        if (url) URL.revokeObjectURL(url);
+      });
+      void client.downloadWorkspaceFile(workspaceId, path, { sessionId, fileScope: target?.fileScope }).then(result => {
+        if (cancelled) return;
+        const extension = path.split(".").at(-1)?.toLowerCase();
+        const mime = extension === "jpg" || extension === "jpeg" ? "image/jpeg" : `image/${extension}`;
+        url = URL.createObjectURL(new Blob([result.data], { type: result.contentType && result.contentType !== "application/octet-stream" ? result.contentType : mime }));
+        image.src = url;
+        if (button) button.hidden = false;
+      }).catch(hide);
+    }
+  }, [client, workspaceId, workspaceRoot, sessionId, openTargets, rendered, registerImage]);
 
   useEffect(() => {
     const root = rootRef.current;

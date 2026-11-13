@@ -28,7 +28,9 @@ test('personal auth negotiates without organizations, binds Unicode consent, fil
   for(const name of ["organizations","createOrganization","members","updateMember","membership","toolAccess"])assert.equal(auth[name],undefined);
   assert.equal((await auth.taskCatalog({userId:'alice'})).catalog_version,'v');
   const args={slug:'demo/image',inputs:{prompt:'你好 🌏',size:1.5},quote_id:'q',idempotency_key:'stable',session_id:'chat-session-123456'};
+  const beforeSubmit=calls.length;
   await auth.submitPersonal({userId:'alice',arguments:args});
+  assert.deepEqual(calls.slice(beforeSubmit).map(call=>new URL(call.url).pathname),['/v1/personal/tasks'],'a valid signed-in submission must not repeat identity or entitlement requests');
   const task=JSON.parse(calls.find(c=>c.url.endsWith('/tasks')).options.body);
   assert.deepEqual(JSON.parse(task.approval.payload_json),args);
   assert.equal(task.approval.payload_hash,createHash('sha256').update(task.approval.payload_json).digest('hex'));
@@ -46,25 +48,28 @@ test('personal auth negotiates without organizations, binds Unicode consent, fil
 
 test('personal paid calls use REST only after trusted host approval and durable journal, denied calls never dispatch',async()=>{
  let allowed=false,submitted=0,persisted=0,approvals=0;
+ const catalogRequests=[];
  const sessionId='chat-session-123456';
  const proxy=await createGet3wMcpProxy({userId:'alice',sessionId,hostToken:'host-secret',enforceModelGuard:true,
  approveSubmit:async()=>{approvals++;return allowed;},journal:{beforeSubmit:async()=>{persisted++;},observe:async()=>{}},
- auth:{taskCatalog:async()=>({models:[{model_id:"demo/image",type:"text-to-image",api_schema:{api_schemas:[{request_schema:{properties:{}}}]}}]}),submitPersonal:async input=>{assert.equal(persisted,1);submitted++;assert.equal(input.arguments.session_id,sessionId);return {request_id:'r',status:'processing'};},mcp:async input=>{
+ auth:{taskCatalog:async input=>{catalogRequests.push(input);return {models:[{model_id:"demo/image",type:"text-to-image",api_schema:{api_schemas:[{request_schema:{properties:{}}}]}}]};},submitPersonal:async input=>{assert.equal(persisted,1);submitted++;assert.equal(input.arguments.session_id,sessionId);return {request_id:'r',status:'processing'};},mcp:async input=>{
   const request=JSON.parse(input.body);const args=request.params.arguments;
-  if(request.params.name==='search_capabilities')return {response:Response.json({result:{structuredContent:{data:[{name:'quote-alias',handler:'get3w.quote',enabled:true},{name:'submit-alias',handler:'get3w.submit',enabled:false}]}}})};
+  if(request.params.name==='search_capabilities'){assert.equal(args.query,'get3w.');return {response:Response.json({result:{structuredContent:{data:[{name:'quote-alias',handler:'get3w.quote',enabled:true},{name:'submit-alias',handler:'get3w.submit',enabled:false,inputSchema:{required:['slug','session_id']}}]}}})};}
   assert.equal(args.name,'quote-alias','submit must never reach MCP');
   return {response:Response.json({result:{structuredContent:{status:'succeeded',result:{quote_id:'q',slug:'demo/image',currency:'USD',discounted_price:'0.1',expires_at:Math.floor(Date.now()/1000)+300}}}})};
  }}});
  const send=async(params,host=true)=>fetch(proxy.url,{method:'POST',headers:{Authorization:`Bearer ${proxy.token}`,'Content-Type':'application/json',...(host?{'X-Get3W-Host-Token':'host-secret'}:{})},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params,hostContext:{sessionId,messageId:'message'}})});
  try{
-  const discovery=await (await send({name:'search_capabilities',arguments:{query:''}})).json();
+  const discovery=await (await send({name:'search_capabilities',arguments:{query:'image'}})).json();
   assert.equal(discovery.result.structuredContent.data[1].enabled,true);
+  assert.deepEqual(discovery.result.structuredContent.data[1].inputSchema.required,['slug']);
   await send({name:'execute_capability',arguments:{name:'quote-alias',arguments:{slug:'demo/image',inputs:{prompt:'你好'}}}});
-  const params={name:'execute_capability',arguments:{name:'submit-alias',idempotency_key:'key',arguments:{slug:'demo/image',inputs:{prompt:'你好'},quote_id:'q',idempotency_key:'key',session_id:sessionId}}};
+  const params={name:'execute_capability',arguments:{name:'submit-alias',idempotency_key:'key',arguments:{slug:'demo/image',inputs:{prompt:'你好'},quote_id:'q',idempotency_key:'key'}}};
   assert.equal((await send(params,false)).status,403);assert.equal(approvals,0);
   assert.ok((await (await send(params)).json()).error);assert.equal(submitted,0);assert.equal(persisted,0);
   allowed=true;assert.equal((await (await send(params)).json()).result.structuredContent.result.request_id,'r');
   assert.equal(submitted,1);assert.equal(persisted,1);
+  assert.ok(catalogRequests.length>0);assert.ok(catalogRequests.every(input=>input.refresh!==true));
  }finally{await proxy.close();}
 });
 
@@ -83,9 +88,33 @@ test('v3 recovery keeps legacy organization rows on disk, never serves or recove
   const stored=JSON.parse(await readFile(path.join(userData,'get3w-model-tasks.json'))).records;
   assert.equal(stored.filter(row=>row.scope.organizationId==='old-org').length,1);
   let personalCalls=0,legacyCalls=0;
+  // Simulate process exit: the next process has no live submit owner.
+  journal.releaseSubmit(personal,context('personal-key'));
   recovery=createModelTaskRecovery({journal,scope:personal,auth:{submitPersonal:async input=>{personalCalls++;assert.equal(input.arguments.idempotency_key,'personal-key');return {request_id:'personal',status:'completed'};},mcp:async()=>{legacyCalls++;throw Error('legacy rows must not reach the gateway');}}});
   await new Promise(resolve=>setTimeout(resolve,1250));assert.equal(personalCalls,1);assert.equal(legacyCalls,0);
   const rows=await journal.listConnection(personal);
   assert.deepEqual(rows.map(row=>row.arguments.idempotency_key),['personal-key']);assert.equal(rows[0].status,'completed');
  }finally{recovery?.close();await rm(userData,{recursive:true,force:true});}
+});
+
+test('a slow paid submit releases the identity lock and is cancelled by logout',async()=>{
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-submit-concurrency-'));
+ let signal,started;
+ const ready=new Promise(resolve=>{started=resolve;});
+ const auth=createGet3wAuth({userData,safeStorage:{isAsyncEncryptionAvailable:async()=>true,getSelectedStorageBackend:()=> 'keychain',encryptStringAsync:async value=>Buffer.from(value),decryptStringAsync:async value=>({result:value.toString()})},openExternal:async()=>{},fetchImpl:async(url,options)=>{
+  if(url.endsWith('/requests'))return Response.json({request_id:'test',expires_in:300});
+  if(url.endsWith('/exchange'))return Response.json({access_token:'secret',refresh_token:'refresh',expires_in:600});
+  if(url.endsWith('/me'))return Response.json({user:{id:'owner'}});
+  if(url.endsWith('/capabilities'))return Response.json({contract_version:'personal-account-v1'});
+  if(url.endsWith('/tasks')){signal=options.signal;started();return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true}));}
+  return Response.json({ok:true});
+ }});
+ try{
+  await auth.begin();await auth.poll();
+  const pending=auth.submitPersonal({userId:'owner',arguments:{slug:'image',inputs:{prompt:'test'},quote_id:'q',idempotency_key:'key',session_id:'session'}});
+  const rejected=assert.rejects(pending,/aborted/);
+  await ready;
+  assert.equal((await auth.status()).status,'signed_in');
+  await auth.logout();assert.equal(signal.aborted,true);await rejected;
+ }finally{await rm(userData,{recursive:true,force:true});}
 });

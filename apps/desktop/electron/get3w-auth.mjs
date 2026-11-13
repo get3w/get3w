@@ -48,6 +48,19 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
   const identifier = value => typeof value === "string" && value.length > 0 && value.length <= 255;
   return {
     outputIdentity: () => ({userId:account.session&&account.status==="signed_in"&&account.user?.id}),
+    // The paid and MCP endpoints enforce live permissions. Avoid an extra /me
+    // request at every native workflow stage while retaining token refresh.
+    mediaIdentity: () => serial(async()=>{
+      await load();
+      if(account.status!=="signed_in"||!account.session||account.session.expiresAt<=now()+30_000)await refreshIdentity();
+      return account.snapshot();
+    }),
+    mediaCatalog: input => serial(async()=>{
+      await load();
+      if(account.status!=="signed_in"||!account.session||account.session.expiresAt<=now()+30_000)await refreshIdentity();
+      if(!account.session||account.status!=="signed_in"||input.userId!==account.user?.id)throw Error("Get3W account changed or is unavailable.");
+      return taskCatalogCache.read({userId:input.userId,load:etag=>personal("models",{headers:etag?{"If-None-Match":etag}:{}})});
+    }),
     status: () => serial(async () => {
       try { return await refreshIdentity(); }
       catch (failure) { return account.markUnavailable(failure.message); }
@@ -100,16 +113,33 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
     // Main-process only: never add this streaming method to the renderer IPC allowlist.
     // Main-process only; deliberately absent from the renderer IPC allowlist.
     // Main-process only. The guarded proxy/recovery supplies persisted host consent.
-    submitPersonal: input => serial(async()=>{
-      await requirePersonal(input.userId);
+    submitPersonal: async input => {
+      // Serialize identity changes, not the potentially slow paid request. Keep
+      // its cancellation registered before releasing the identity lock so logout
+      // and account replacement cannot leave an old-account request running.
+      const controller=new AbortController();
+      const access=await serial(async()=>{
+        await load();
+        if(account.status!=="signed_in"||!account.session||account.session.expiresAt<=now()+30_000)await refreshIdentity();
+        if(!account.session||account.status!=="signed_in"||input.userId!==account.user?.id)throw Error("Get3W account changed or is unavailable.");
+        // The paid endpoint verifies the current account, entitlement, quote and
+        // consent itself. Repeating /me and /capabilities adds two network hops
+        // between approval and dispatch without strengthening that decision.
+        mcpRequests.add(controller);
+        return account.session.access_token;
+      });
+      try {
       const args=input.arguments;
       const payload_json=JSON.stringify(args);
-      const response=await personal("tasks",{method:"POST",signal:input.signal,body:{
+      const response=await fetchImpl(`${cloudBase}/v1/personal/tasks`,{method:"POST",redirect:"error",
+        headers:{Authorization:`Bearer ${access}`,"Content-Type":"application/json"},
+        signal:AbortSignal.any([controller.signal,AbortSignal.timeout(150_000),...(input.signal?[input.signal]:[])]),body:JSON.stringify({
         slug:args.slug,inputs:args.inputs,quote_id:args.quote_id,idempotency_key:args.idempotency_key,
         conversation_id:args.session_id,approval:{approved:true,quote_id:args.quote_id,payload_json,
           payload_hash:createHash("sha256").update(payload_json).digest("hex")},
-      }});
+      })});
       if(!response.ok) {
+        if(response.status===401||response.status===403)taskCatalogCache.clear();
         const failure=await response.json().catch(()=>null);
         const code=failure?.error?.code;
         const corrections={
@@ -125,14 +155,16 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
         }
         throw Error("Personal task submission could not be confirmed. Retrieve the original task before retrying.");
       }
-      return response.json();
-    }),
+      return await response.json();
+      } finally {mcpRequests.delete(controller);}
+    },
     mcp: async ({userId, sessionId, appId, method, body, headers = {}, signal}) => {
       if (!["GET","POST","DELETE"].includes(method)) throw new Error("Unsupported MCP method");
       if (appId !== undefined && !/^cob_[0-7][0-9a-hjkmnp-tv-z]{25}$/.test(appId)) throw new Error("Invalid artifact connection");
       const controller = new AbortController();
       const access = await serial(async () => {
-        await refreshIdentity();
+        await load();
+        if(account.status!=="signed_in"||!account.session||account.session.expiresAt<=now()+30_000)await refreshIdentity();
         // MCP is the source of truth for personal model access, so it does not
         // wait on the capabilities probe before each request.
         if (!account.session || account.status !== "signed_in" || userId !== account.user?.id) throw new Error("Get3W account changed or is unavailable.");
@@ -156,6 +188,7 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
           signal:signal ? AbortSignal.any([controller.signal,signal]) : controller.signal,
         };
         const response = await fetchImpl(mcpPath, requestOptions);
+        if(response.status===401||response.status===403)taskCatalogCache.clear();
         if (!response.ok) console.warn("[get3w-account-mcp] upstream", JSON.stringify({status:response.status, method, contentType:response.headers.get("content-type")}));
         return {response,release:()=>{mcpRequests.delete(controller);controller.abort();}};
       } catch {

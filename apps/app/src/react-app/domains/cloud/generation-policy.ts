@@ -1,5 +1,5 @@
 import { generationModelId, generationCategory, categoryDefault } from "./generation-models";
-import { effectivePreferences, savedOutputFields } from "./model-preferences";
+import { effectivePreferences, savedOutputFields, outputSettingOptions } from "./model-preferences";
 import type { TaskCatalogSnapshot } from "./get3w-account";
 export type SelectedGenerationModel = {slug:string;runType?:string;name:string};
 export type GenerationPolicy = {selectedModels?:{slug:string;name:string}[];models:Record<string,{slug:string;source:"explicit"|"user"|"system"}>;outputs:Record<string,Record<string,string>>};
@@ -20,6 +20,15 @@ export function resolveGenerationPolicy(userId:string,sessionId:string,catalog:T
     else if(available(system?.slug)&&system?.slug)result.models[type]={slug:available(system.slug)!.model_id,source:"system"};
     const fields=savedOutputFields(system?.fields??{});
     for(const [key,value] of Object.entries(user.outputs.find(r=>r.runType===generationCategory(type))?.fields??{}))if(value!=="auto")fields[key]=value;
+    const modelId=result.models[type]?.slug;
+    const candidates={...catalog,models:catalog.models.filter(model=>model.type===type&&(!modelId||model.model_id===modelId))};
+    const supported=outputSettingOptions(candidates,type,modelId,fields);
+    const channel=supported.find(field=>field.name==="channel");
+    if(channel&&(!fields.channel||fields.channel==="auto"))fields.channel=channel.defaultValue??channel.values[0]??"";
+    for(const [name,value] of Object.entries(fields)){
+      const canonical=supported.find(field=>field.name===name)?.values.find(option=>option.toLowerCase()===value.toLowerCase());
+      if(canonical!==undefined)fields[name]=canonical;else delete fields[name];
+    }
     if(Object.keys(fields).length)result.outputs[type]=fields;
   }
   return result;

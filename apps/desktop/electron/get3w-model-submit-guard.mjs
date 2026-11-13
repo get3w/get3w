@@ -14,7 +14,7 @@ export function createModelSubmitGuard({sessionId, now=Date.now}) {
     return quote;
   };
   return {
-    prepare(message) {
+    prepare(message, {trustedSession = false} = {}) {
       if(Array.isArray(message)) throw Error("invalid_request: Batched model calls are not supported.");
       if(message?.method!=="tools/call") return null;
       // These endpoints author/read drafts only; their cloud handlers enforce
@@ -27,6 +27,7 @@ export function createModelSubmitGuard({sessionId, now=Date.now}) {
       if(!metadata) throw Error(`capability_required: "${String(call?.name)}" was not discovered on this chat connection. This is a tool-name/discovery error, not an account permission or balance denial. Discover the exact capability with search_capabilities to find the exact quote, submit and result names; do not guess names. Already discovered names: ${[...capabilities.keys()].join(", ") || "none"}.`);
       if(typeof metadata.handler!=="string" || !metadata.handler) throw Error("gateway_upgrade_required: Trusted capability metadata is unavailable. Reconnect after updating the gateway.");
       if(metadata.handler!=="get3w.submit") return {type:metadata.handler,call};
+      if(trustedSession && call.arguments) call.arguments.session_id=sessionId;
       if(call.arguments.session_id!==sessionId || !call.idempotency_key || call.idempotency_key!==call.arguments.idempotency_key) throw Error("session_mismatch: Use the current chat and the same inner and outer submission key.");
       const hash=fingerprint(call.arguments), previous=approved.get(call.idempotency_key);
       if(previous && previous!==hash) throw Error("idempotency_conflict: Keep the original submission payload.");
@@ -37,6 +38,11 @@ export function createModelSubmitGuard({sessionId, now=Date.now}) {
       if (approved.get(context.call.idempotency_key) === context.hash) return;
       requireValidQuote(context.call);
       approved.set(context.call.idempotency_key,context.hash);
+    },
+    rejectQuote(context) {
+      // Only a definitive server refusal before task creation may retire consent.
+      // The replacement quote must pass approval again, with the same frozen inputs.
+      approved.delete(context.call.idempotency_key);
     },
     observe(context,payload) {
       if(!context || payload?.error || payload?.result?.isError) return;

@@ -1,3 +1,4 @@
+import {t} from "@/i18n";
 import type { DynamicToolUIPart } from "ai"
 
 /**
@@ -241,6 +242,8 @@ export function getCapabilityCallSentence(
   options?: { includeQuery?: boolean; connectionName?: string | null },
 ): CapabilityCallSentence {
   const toolName = part.toolName
+  if(toolName === "media_prepare") return {service:null,present:t("personal.media.preparing"),past:t("personal.media.prepared"),failure:t("personal.media.prepare_failed")}
+  if(toolName === "media_generate") return {service:null,present:t("personal.media.starting"),past:t("personal.media.started"),failure:t("personal.media.start_failed")}
   if (getConnectionStatusProbeId(part)) {
     const service = options?.connectionName?.trim() || null
     const target = service ? `${service} connection` : "connection"

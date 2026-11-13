@@ -10,7 +10,10 @@ test('uncertain submissions survive restart with the same payload and remain acc
  const context={type:'get3w.submit',hash:'exact-input',quote:{amountUsd:'0.1'},call:{arguments:{idempotency_key:'same',inputs:{prompt:'test'}}}};
  try {
   let journal=createModelTaskJournal({userData});const key=await journal.beforeSubmit(scope,context);
+  assert.equal(journal.isSubmitting(key),true);
+  journal.releaseSubmit(scope,context);assert.equal(journal.isSubmitting(key),false);
   journal=createModelTaskJournal({userData});
+  assert.equal(journal.isSubmitting(key),false,'process restart releases local ownership for recovery');
   assert.equal((await journal.list(scope))[0].status,'submitting');
   assert.equal(await journal.beforeSubmit(scope,context),key);assert.equal((await journal.list(scope)).length,1);
   await assert.rejects(journal.beforeSubmit(scope,{...context,hash:'different'}),/conflict/);
@@ -105,5 +108,19 @@ test('detached chain blocks session submits and survives restart until explicit 
   assert.equal(await journal.isStopped(scope,{...next,messageId:'new-turn'}),true);
   await journal.resume(scope,key);assert.equal(await journal.isStopped(scope,next),false);
   assert.equal((await journal.list(scope)).length,1);
+ }finally{await rm(userData,{recursive:true,force:true});}
+});
+
+test('definitively stale quotes can be replaced only for the same frozen inputs and key',async()=>{
+ const userData=await mkdtemp(path.join(tmpdir(),'get3w-requote-'));
+ const scope={userId:'u',workspaceId:'w',sessionId:'s'};
+ const first={type:'get3w.submit',hash:'old',quote:{amountUsd:'0.02'},call:{arguments:{idempotency_key:'original',slug:'demo',quote_id:'old',inputs:{prompt:'cup'}}}};
+ try{
+  const journal=createModelTaskJournal({userData});const key=await journal.beforeSubmit(scope,first);
+  await journal.observe(scope,first,{result:{structuredContent:{result:{status:'failed',error:{code:'quote_stale'}}}}});journal.releaseSubmit(scope,first);
+  const replacement={...first,hash:'new',call:{arguments:{...first.call.arguments,quote_id:'new'}}};
+  await assert.rejects(journal.beforeSubmit(scope,{...replacement,call:{arguments:{...replacement.call.arguments,inputs:{prompt:'changed'}}}}),/conflict/);
+  assert.equal(await journal.beforeSubmit(scope,replacement),key);
+  const rows=await journal.list(scope);assert.equal(rows.length,1);assert.equal(rows[0].status,'submitting');assert.equal(rows[0].arguments.quote_id,'new');
  }finally{await rm(userData,{recursive:true,force:true});}
 });

@@ -18,7 +18,7 @@ type Tool = {
   name: string;
   description: string;
   input: Record<string, unknown>;
-  options: { codemode: boolean };
+  options: { codemode: boolean; pinned?: boolean };
   execute(input: unknown, context: ToolCall): Promise<z.infer<typeof browserResult>>;
 };
 type ModelTool = { execute(input: unknown, call: ToolCall): Promise<{ output: unknown }> };
@@ -32,6 +32,7 @@ type Context = {
     transform(callback: (editor: {
       add(tool: Tool): void;
       get?(id: string): unknown;
+      remove?(id: string): void;
       update?(id: string, change: (tool: ModelTool) => void): void;
     }) => void): Promise<{ dispose(): Promise<void> }>;
     reload?(): Promise<void>;
@@ -99,6 +100,31 @@ export default {
             });
             if (!response.ok) throw new Error(`Get3W ${name === "openwork_execute" ? "command" : "read"} failed (${response.status})`);
             return { content: [{ type: "text", text: await response.text() }] };
+          },
+        });
+      }
+      // Native media tools are direct engine tools, never Code Mode scripts.
+      const readinessMarker=mcpToolId(GET3W_ACCOUNT_MCP,"native_media_ready");
+      const nativeMediaReady=Boolean(editor.get?.(readinessMarker));
+      // The marker establishes transport readiness; it is never a model action.
+      if(nativeMediaReady)editor.remove?.(readinessMarker);
+      if(nativeMediaReady) for(const name of ["media_prepare","media_generate"]) {
+        addProviderSafeTool(editor,{
+          name, options:{codemode:false,pinned:true},
+          description:name==="media_prepare"
+            ? "Prepare native media. task_type uses exact run types: text-to-image, image-to-image, text-to-video, reference-to-video, first-to-video, first-last-to-video, video-edit, text-to-speech, text-to-music. Optional model must be exact. Unknown types return supported_task_types; retry this native tool using that list, never discover gateway tools. References use named model input fields. Returns preparation_id, parameter schema, defaults and missing inputs. Prepare independent requested media tasks in parallel. Do not write scripts."
+            : "Start a prepared native media task. Supply preparation_id and creative inputs matching its parameters. Omit defaulted settings unless the user explicitly changes them; the host already applies them. Host handles defaults, validation, quote, approval, durable submission and background polling. Submit independent prepared tasks in parallel. Returns a task id immediately after submission. Do not poll, sleep, download, read or duplicate the result preview; the native task shows and saves results.",
+          input:name==="media_prepare"?{type:"object",properties:{task_type:{type:"string"},model:{type:"string"},references:{type:"object",additionalProperties:true}},required:["task_type"],additionalProperties:false}
+            :{type:"object",properties:{preparation_id:{type:"string"},inputs:{type:"object",additionalProperties:true}},required:["preparation_id","inputs"],additionalProperties:false},
+          async execute(input,call){
+            if(!context.location?.directory||!call.messageID)throw Error("Native media conversation unavailable");
+            const response=await fetch(context.options.url,{method:"POST",redirect:"error",signal:call.signal,
+              headers:{Authorization:`Bearer ${context.options.token}`,"Content-Type":"application/json"},
+              body:JSON.stringify({name:"get3w_model_call",input:{name,arguments:input},sessionId:call.sessionID,caller:{directory:context.location.directory,messageId:call.messageID,...(call.id?{callId:call.id}:{})}})});
+            const payload:unknown=await response.json();const result=modelCallResult.safeParse(payload);
+            if(!response.ok||!result.success)throw Error("Native media service unavailable; reconnect the account and retry");
+            const native=z.object({structuredContent:z.unknown()}).parse(result.data.result);
+            return {content:[{type:"text",text:JSON.stringify(native.structuredContent)}]};
           },
         });
       }

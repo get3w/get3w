@@ -80,8 +80,9 @@ export default {
         const server = inputServer(input);
         const mcp = yield* nativeCatalog;
         const discovered = (yield* mcp.tools()).filter(tool => tool.server === server).map(tool => mcpToolId(server, tool.name));
-        const published = (yield* ctx.tool.list()).filter(tool => tool.options?.namespace === mcpNamespace(server)).map(tool => tool.id);
-        return { tools: [...new Set([...discovered, ...published])].sort() };
+        const registered = yield* ctx.tool.list();
+        const published = registered.filter(tool => tool.options?.namespace === mcpNamespace(server)||server==='get3w-account'&&['media_prepare','media_generate'].includes(tool.id)).map(tool => tool.id);
+        return { tools: [...new Set([...discovered, ...published])].filter(id => server !== 'get3w-account' || id !== mcpToolId(server,'native_media_ready')).sort() };
       }),
       waitForTools: Effect.fn("OpenWorkMcp.waitForTools")(function* (input: unknown) {
         supported();

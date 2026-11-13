@@ -2799,7 +2799,7 @@ export function createClientV2(
       const selectedModels=(parameters.parts??[]).flatMap(part=>{const pill=part.type==="text"?readComposerPill(readRecord(part,"metadata")?.openworkComposerPill):null;return pill?.kind==="model"?[pill]:[];});
       const generationPolicy=account.status==="signed_in"&&account.user?resolveGenerationPolicy(account.user.id,parameters.sessionID,await loadTaskCatalog(account.user.id),selectedModels):undefined;
       if(account.status==="signed_in"&&readGet3wAccount().user?.id!==account.user?.id)throw new Error("Account changed. Please send again.");
-      const text = v2PromptText([...(parameters.parts??[]),...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Explicit output values in this message override output defaults. Obtain schema and quote using the resolved model.`}]:[])]);
+      const text = v2PromptText([...(parameters.parts??[]),...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Explicit output values in this message override output defaults. Use native media_prepare and media_generate; the host resolves schema, defaults and quote.`}]:[])]);
       const promptResult = await request(
         "POST",
         `/api/session/${encodeURIComponent(parameters.sessionID)}/prompt`,

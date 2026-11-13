@@ -1,13 +1,13 @@
 import {assertModelBudget} from './get3w-model-budget.mjs';
 import {createHash} from 'node:crypto';
-import {mkdir,readFile,rename,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,rename,open} from 'node:fs/promises';
 import path from 'node:path';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const terminal=new Set(['completed','failed']);
 /** Persist before dispatch. An interrupted submit keeps its original key and payload. */
 export function createModelTaskJournal({userData,limitUsd}) {
   const file=path.join(userData,'get3w-model-tasks.json');
-  let records,queue=Promise.resolve();
+  let records,queue=Promise.resolve();const submitting=new Set();
   /** @template T @param {()=>Promise<T>} fn @returns {Promise<T>} */
   const serial=fn=>{const next=queue.then(fn,fn);queue=next.then(()=>{},()=>{});return next;};
   async function load() {
@@ -40,8 +40,10 @@ export function createModelTaskJournal({userData,limitUsd}) {
   }
   async function save() {
     await mkdir(userData,{recursive:true});
-    await writeFile(file+'.tmp',JSON.stringify({version:3,records}),{mode:0o600});
+    const handle=await open(file+'.tmp','w',0o600);
+    try{await handle.writeFile(JSON.stringify({version:3,records}));await handle.sync();}finally{await handle.close();}
     await rename(file+'.tmp',file);
+    if(process.platform!=='win32'){const folder=await open(userData,'r');try{await folder.sync();}finally{await folder.close();}}
   }
   // Rows written under a retired organization scope stay on disk but are never served.
   const personal=row=>row.scope.organizationId===undefined;
@@ -52,6 +54,8 @@ export function createModelTaskJournal({userData,limitUsd}) {
       context.type==='get3w.submit'));
   }
   return {
+    isSubmitting:key=>submitting.has(key),
+    releaseSubmit:(scope,context)=>submitting.delete(hash([scope,context.call.arguments.idempotency_key])),
     isStopped:(scope,context)=>serial(async()=>{await load();return stopped(scope,context);}),
     beforeSubmit:(scope,context)=>serial(async()=>{
       await load();
@@ -59,10 +63,18 @@ export function createModelTaskJournal({userData,limitUsd}) {
       const args=context.call.arguments;
       const key=hash([scope,args.idempotency_key]);
       const old=records.find(row=>row.key===key);
-      if(old) {if(old.payloadHash!==context.hash)throw Error('idempotency_conflict');return old.key;}
+      if(old) {
+        const rejectedQuote=old.status==='failed'&&!old.requestId&&['quote_expired','quote_stale'].includes(old.result?.error?.code);
+        if(rejectedQuote&&old.arguments.slug===args.slug&&hash(old.arguments.inputs)===hash(args.inputs)){
+          assertModelBudget(records.filter(row=>row!==old),scope,context,limitUsd);
+          Object.assign(old,{payloadHash:context.hash,arguments:args,quote:context.quote,status:'submitting',result:undefined,outputEntry:undefined,updatedAt:Date.now()});
+          await save();
+        }else if(old.payloadHash!==context.hash)throw Error('idempotency_conflict');
+        submitting.add(key);return old.key;
+      }
       assertModelBudget(records,scope,context,limitUsd);
-      records.push({key,scope:{...scope},messageId:context.messageId ?? null,payloadHash:context.hash,arguments:args,quote:context.quote,status:'submitting',requestId:null,createdAt:Date.now(),updatedAt:Date.now()});
-      await save();return key;
+      records.push({key,...(context.nativeMedia?{nativeMedia:context.nativeMedia}:{}),scope:{...scope},messageId:context.messageId ?? null,payloadHash:context.hash,arguments:args,quote:context.quote,status:'submitting',requestId:null,createdAt:Date.now(),updatedAt:Date.now()});
+      await save();submitting.add(key);return key;
     }),
     observe:(scope,context,payload)=>serial(async()=>{
       await load();
@@ -78,9 +90,14 @@ export function createModelTaskJournal({userData,limitUsd}) {
       if(typeof requestId==='string')row.requestId=requestId;
       if(typeof value.status==='string' && row.status!=='detached')row.status=value.status;
       if(terminal.has(value.status)){
+        if(!row.result&&row.nativeMedia?.traceId){
+          const duration=value.timings?.total;
+          console.info('[get3w-media-timing]',JSON.stringify({traceId:row.nativeMedia.traceId,stage:Number.isFinite(duration)?'upstream_generation':'upstream_observed',durationMs:Number.isFinite(duration)?duration:Date.now()-(row.submittedAt??row.createdAt)}));
+        }
         row.result=value;if(row.status!=='detached')row.status=value.status;
         row.outputEntry={...makeOutputEntry(row),updatedAt:Date.now()};
       }
+      if(context.type==='get3w.submit'&&row.requestId&&!row.submittedAt)row.submittedAt=Date.now();
       row.retryAfter=typeof value.retry_after==='number'?Math.max(1,Math.min(300,value.retry_after)):3;
       row.updatedAt=Date.now();await save();
     }),

@@ -10,8 +10,9 @@ import type {ComposerMentionKind} from '../src/react-app/domains/session/surface
 import {setLocale} from '../src/i18n';
 import '../src/app/index.css';
 setLocale('zh');
-const types=['text-to-image','image-to-image','text-to-video','image-to-video','first-last-to-video','text-to-panorama','image-to-panorama','digital-human','text-to-3d','image-to-3d','text-to-speech','text-to-music'];
-const proofModels=types.map(type=>({model_id:`demo/creative/${type}`,name:'Creative Model',provider_id:'demo',description:'',type,run_type_title:type,category:type,catalog_version:'v1',base_price:.02,currency:'USD',billing_unit:'output',output_schema:null,api_schema:{api_schemas:[{api_path:'/run',request_schema:{properties:{format:{enum:['standard','high']},...(type.endsWith('-to-video')||type==='text-to-music'?{duration:{enum:[5,10]}}:{})}}}]}}));
+const types=['text-to-image','image-to-image','text-to-video','image-to-video','first-last-to-video','text-to-panorama','image-to-panorama','digital-human','text-to-3d','image-to-3d','text-to-speech','text-to-music','image-to-layers','image-upscale','speech-to-text','video-edit','video-extend','video-upscale'];
+const proofModels=types.map(type=>({model_id:`demo/creative/${type}`,name:'GPT Image 2.6 Sunshine — High quality image generation',provider_id:'demo',description:'',type,run_type_title:type,category:type,catalog_version:'v1',base_price:.02,currency:'USD',billing_unit:'output',output_schema:null,api_schema:{api_schemas:[{api_path:'/run',request_schema:{properties:{format:{enum:['standard','high']},...(type.endsWith('-to-video')||type==='text-to-music'?{duration:{enum:[5,10]}}:{})}}}]}}));
+proofModels.push(...Array.from({length:24},(_,index)=>({...proofModels[0],model_id:`demo/long-model-${index}/text-to-image`,name:`GPT Image ${index+1} Sunshine — High quality image generation`,base_price:(index+1)/100})));
 Reflect.set(window,'__GET3W_ACCOUNT__',{
  status:async()=>({status:'signed_in',user:{id:'generation-proof',name:'Demo'},error:null,pending:false}),
  taskCatalog:async()=>({catalog_version:'v1',expiresAt:Date.now()+60000,offline:false,desktop_defaults:{schema_version:1,version:'v1',tasks:{image:{slug:'demo/creative',fields:{format:'high'}}}},models:proofModels})

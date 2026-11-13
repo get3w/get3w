@@ -33,3 +33,9 @@ test("the native skill tool names the skill a person would recognize", () => {
   expect(skillDisplayName({ name: "release" })).toBe("release")
   expect(skillDisplayName(undefined)).toBe("")
 })
+
+test('native media errors are failures even when the engine completed the call',async()=>{
+ const {openWorkNativeFailure}=await import('../src/lib/openwork-native-activity');
+ expect(openWorkNativeFailure({...call('media_prepare',{}),output:[{type:'text',text:JSON.stringify({status:'error',error:{code:'offline',message:'Reconnect the media service'}})}]})).toBe('Reconnect the media service');
+ expect(openWorkNativeFailure({...call('media_generate',{}),output:JSON.stringify({status:'submitted',task_id:'task'})})).toBeNull();
+});

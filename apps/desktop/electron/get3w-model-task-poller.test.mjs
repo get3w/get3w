@@ -89,3 +89,16 @@ test('extended outage backoff caps at five minutes and resets after recovery',as
   now++;await poller.tick();assert.equal(calls,103);
  }finally{poller.stop();}
 });
+
+test('completed media keeps polling only until its original bill settles',async()=>{
+ let now=0,reads=0;
+ const row={key:'settling',requestId:'original-request',status:'completed',result:{billing:{reservation_released:false}}};
+ const poller=createModelTaskPoller({list:async()=>[row],now:()=>now,
+  read:async task=>{assert.equal(task.requestId,'original-request');reads++;return {status:'completed',billing:{reservation_released:reads>1,charged:reads>1?{usd:'0.02'}:null,retry_after:9}};},
+  save:async(task,result)=>{task.result=result;}});
+ try{
+  await poller.tick();assert.equal(reads,1);now=8999;await poller.tick();assert.equal(reads,1);
+  now=9000;await poller.tick();assert.equal(reads,2);assert.equal(row.result.billing.charged.usd,'0.02');
+  now=100000;await poller.tick();assert.equal(reads,2);
+ }finally{poller.stop();}
+});

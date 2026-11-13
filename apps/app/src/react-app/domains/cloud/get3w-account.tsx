@@ -1,4 +1,5 @@
-import { resetTaskCatalog, loadTaskCatalog } from "./task-catalog-store";
+import { toast } from "sonner";
+import { cachedTaskCatalog, resetTaskCatalog, loadTaskCatalog } from "./task-catalog-store";
 import { useLocation } from "react-router";
 import { settingsNavigationFromPathname } from "@/react-app/shell/workspace-routes";
 import { Get3wBalance } from "./get3w-balance";
@@ -54,7 +55,7 @@ export type TaskCatalogSnapshot = {
 export type ModelApproval = { id: string; workspaceId: string; modelTask: {quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number} };
 export type OutputFile = {sessionId?:string;rootPath?:string;path:string;mimeType:string;sizeBytes:number;updatedAt?:number};
 export type OutputEntry = {id:string;userId:string;workspaceId:string;sessionId:string|null;messageId:string|null;requestId:string|null;slug:string|null;status:string;files:OutputFile[];outputs:unknown[];structured:unknown;charged:number|string|null;createdAt:number;updatedAt:number;downloadError?:string|null};
-export type ModelTask = {messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
+export type ModelTask = {reservedUsd?:string|null;chargedUsd?:string|null;error?:{code?:string}|null;messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
 type AccountBridge = {
   automations?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   artifacts?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
@@ -80,7 +81,7 @@ const empty: Snapshot = { status: "checking", user: null, error: null, pending: 
 let current = empty;
 export function readGet3wAccount() { return current; }
 const listeners = new Set<() => void>();
-function publish(next: Snapshot) { const userId = next.status === "signed_in" ? next.user?.id : undefined; resetTaskCatalog(userId); current = next; if(userId) void loadTaskCatalog(userId).catch(() => {}); for (const listener of listeners) listener(); }
+function publish(next: Snapshot) { const userId = next.status === "signed_in" || next.status === "unavailable" ? next.user?.id : undefined; resetTaskCatalog(userId); current = next; if(userId) void loadTaskCatalog(userId).catch(() => {}); for (const listener of listeners) listener(); }
 export function useGet3wAccount() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => current, () => empty);
 }
@@ -94,7 +95,14 @@ export function openGet3wSignIn(): boolean {
 /** Gate before consuming a draft or touching the engine. Self-hosted web has no native account bridge. */
 export function requireGet3wSignIn(): boolean {
   if (!window.__GET3W_ACCOUNT__ && !isDesktopRuntime()) return true;
-  if (current.status === "signed_in" && current.user) return true;
+  if (current.status === "signed_in" && current.user) {
+    if (cachedTaskCatalog(current.user.id)?.offline) {
+      toast.error(t("personal.errors.unavailable"));
+      void loadTaskCatalog(current.user.id,true).catch(() => {});
+      return false;
+    }
+    return true;
+  }
   openGet3wSignIn();
   return false;
 }
@@ -114,7 +122,7 @@ export function DesktopAccountGate({ children }: { children: ReactNode }) {
   if (!isDesktopRuntime()) return children;
   return <>
     <Get3wAccount />
-    {snapshot.status === "signed_in" && snapshot.user ? children : null}
+    {snapshot.user && (snapshot.status === "signed_in" || snapshot.status === "unavailable") ? children : null}
   </>;
 }
 
@@ -167,7 +175,7 @@ export function Get3wAccount() {
     }, 3000);
     return () => { current = false; window.clearInterval(timer); };
   }, [snapshot.pending, bridge]);
-  const required = isDesktopRuntime() && (snapshot.status !== "signed_in" || !snapshot.user);
+  const required = isDesktopRuntime() && (!snapshot.user || (snapshot.status !== "signed_in" && snapshot.status !== "unavailable"));
   if (!bridge && !required) return null;
   if (required) return (
     <main data-testid="desktop-sign-in" aria-labelledby="desktop-sign-in-title" className="fixed inset-0 flex min-h-0 flex-col overflow-y-auto bg-background text-foreground">
