@@ -10,6 +10,23 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const fingerprint = value => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 
+// Early releases persisted account ownership before configuration fingerprints.
+// Adopt only that account's exact generated legacy shape, never arbitrary providers.
+function recoverableLegacyProvider(provider, record, userId) {
+  if (record.fingerprint || !record.enabled || record.account !== fingerprint(userId)) return false;
+  if (!provider || Object.keys(provider).sort().join() !== "models,name,npm,options"
+    || provider.name !== "Get3W Models" || provider.npm !== "@ai-sdk/openai-compatible") return false;
+  const options = provider.options;
+  if (!options || Object.keys(options).sort().join() !== "apiKey,baseURL"
+    || typeof options.apiKey !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(options.apiKey)
+    || typeof options.baseURL !== "string" || !/^http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}\/v1$/.test(options.baseURL)
+    || Number(new URL(options.baseURL).port) > 65535) return false;
+  const models = provider.models;
+  return models && typeof models === "object" && !Array.isArray(models) && Object.keys(models).length > 0
+    && Object.values(models).every(model => model && Object.keys(model).sort().join() === "name,tool_call"
+      && typeof model.name === "string" && model.tool_call === true);
+}
+
 /** Own only the exact provider definition we wrote. Never touch user providers. */
 export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetchImpl = fetch, createProxy = createGet3wInferenceProxy }) {
   const file = path.join(userData, "get3w-managed-provider.json");
@@ -56,9 +73,8 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     // Never use an identity that could not be verified. Reconnect on the next status check.
     if (snapshot.status === "unavailable") return {enabled:Boolean(record.enabled),state:"unavailable"};
     const enabled=Boolean(userId);
-    if (enabled && (!record.enabled || record.account !== fingerprint(userId))) {
-      record.enabled=true;record.account=fingerprint(userId);await save();
-    }
+    // Check the original account marker before updating it for a new sign-in.
+    const canRecoverLegacy = enabled && record.enabled && record.account === fingerprint(userId) && !record.fingerprint;
     if (!enabled && !record.fingerprint) return {enabled:false,state:"disconnected"};
     const target=await server();
     const providers=(await request(target,"GET")).provider ?? {};
@@ -75,7 +91,13 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
       if (legacy) await request(target,"PATCH",{"openwork-account":null});
       record={};await save();return {enabled:false,state:"disconnected"};
     }
+    if (current && canRecoverLegacy && recoverableLegacyProvider(current, record, userId)) {
+      record.fingerprint=fingerprint(current);await save();
+    }
     if (current && (!record.fingerprint || fingerprint(current)!==record.fingerprint)) throw new Error("Get3W account provider was edited locally. Rename it before connecting.");
+    if (enabled && (!record.enabled || record.account !== fingerprint(userId))) {
+      record.enabled=true;record.account=fingerprint(userId);await save();
+    }
     const labelsCurrent = current?.name === "Get3W Models" && current?.models && Object.entries(current.models).every(([id, model]) => model.name === get3wModelName(id));
     if (!legacy && proxy && owner===`${userId}:personal` && serverScope===target.scope && current && labelsCurrent) {
       // A provider definition survives app restarts, but its loopback proxy does
@@ -83,8 +105,6 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
       // otherwise surfaces as the vague “couldn\'t reach the model provider”.
       if (!current.options?.baseURL || current.options.baseURL !== proxy.baseURL) {
         await closeProxy();
-      } else if (fetchImpl !== fetch) {
-        return {enabled:true,state:providerState};
       } else {
         try {
           const probe = await fetchImpl(`${proxy.baseURL}/health`, {

@@ -2666,7 +2666,11 @@ ipcMain.handle("get3w:auth", async (event, operation, input) => {
   if (["status", "poll", "logout"].includes(operation)) {
     const modelSnapshot = result;
     try { result.managedModels = await openworkManagedProvider.reconcile(modelSnapshot); }
-    catch { result.managedModels = {state:"unavailable",error:"Get3W models could not reconnect. Open account settings and retry."}; }
+    catch (error) {
+      // Record the recovery failure without logging provider definitions/tokens.
+      console.error("[get3w-managed-provider] reconnect failed", error instanceof Error ? error.message : "Unknown reconnect error");
+      result.managedModels = {state:"unavailable",error:"Get3W models could not reconnect. Open account settings and retry."};
+    }
   }
   if (["status","poll","logout"].includes(operation)) {
     const snapshot = result;

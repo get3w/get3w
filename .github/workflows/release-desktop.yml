@@ -64,6 +64,8 @@ jobs:
           python3 scripts/check-public-personal-boundary.py
           python3 scripts/check-public-brand.py
           python3 scripts/check-public-licenses.py
+      - name: Verify managed model upgrade and reconnect
+        run: node --test apps/desktop/electron/get3w-managed-provider.test.mjs
       - name: Import macOS signing and notarization credentials
         if: matrix.platform == 'mac'
         env:

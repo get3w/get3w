@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "313b4dbd8d5ce30b77fa6d5bd5f14fe292c45b02bb9e900db73f3836e601f863"
+      "sha256": "fc8e9c2b7fa34375e9a1dfd5273ec1ce2cff5a58d2f7ecc59fee2548a0abda0f"
     },
     {
       "path": ".gitignore",
@@ -4113,11 +4113,11 @@
     },
     {
       "path": "apps/desktop/electron/get3w-managed-provider.mjs",
-      "sha256": "d5b6c3e5b443f1d7d9ed88fc8549ad22349557490c1364df97049a4122177ab5"
+      "sha256": "7db1f41db5b4000b9d8053961a6bbc34c332a897a70984efbf8a7caa23d0dd12"
     },
     {
       "path": "apps/desktop/electron/get3w-managed-provider.test.mjs",
-      "sha256": "1e2490c2e037d814262fa20e03666e1e844f2e30325a56dd7ed753d64a4b98af"
+      "sha256": "4967d67bd1f298af8d29e237502c15d6926d393745a4efede4523fb0b2eb340b"
     },
     {
       "path": "apps/desktop/electron/get3w-mcp-proxy-stop.test.mjs",
@@ -4213,7 +4213,7 @@
     },
     {
       "path": "apps/desktop/electron/main.mjs",
-      "sha256": "c458081673ff32d47909b9a159e05c881392d1dbb73374419d00bf6d2b0b9840"
+      "sha256": "7d92477744092fce27cfdb8b660d08a1d0002e4950e3f987a568d6247cd7eab3"
     },
     {
       "path": "apps/desktop/electron/media-permissions.mjs",
@@ -4385,7 +4385,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "d08814279166b2c5af5f771be604d2c716a5aa157c8a5d2851dd4c0efb3d873b"
+      "sha256": "b8dfd1c4f3ea3768853ec1b234dc591bdf825322607e4cfbc5a1b665879d60d7"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -5573,7 +5573,7 @@
     },
     {
       "path": "docs/release-notes.md",
-      "sha256": "65066a67e4427418ac9247f6999234859bb2fd7cd04538afc24947474686202d"
+      "sha256": "6834a1e33586bc9678d671565b2ad71ec4c088495fd462bb3e21479e3c111530"
     },
     {
       "path": "package.json",
