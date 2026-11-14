@@ -75,15 +75,10 @@ export function DesktopUpdateButton() {
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const status = updater?.updateStatus;
-  if (!updater || !status || !["available", "downloading", "ready", "error"].includes(status.state)) return null;
+  // Discovery and download run quietly; only a staged update needs attention.
+  if (!updater || status?.state !== "ready") return null;
   if (updater.updateEnv?.supported === false) return null;
-  const downloading = status.state === "downloading";
-  const label = downloading
-    ? t("settings.update_downloading")
-    : status.state === "error" ? t("updates.retry") : t("updates.available");
-  const progress = status.totalBytes && status.downloadedBytes != null
-    ? ` ${Math.min(100, Math.floor(status.downloadedBytes / status.totalBytes * 100))}%` : "";
-  const title = `${label}${downloading ? progress : ""}`;
+  const title = t("settings.update_restart_button");
   const update = async () => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -98,12 +93,12 @@ export function DesktopUpdateButton() {
         size="icon-sm"
         data-update-button
         aria-label={title}
-        aria-busy={busy || downloading}
-        disabled={busy || downloading}
+        aria-busy={busy}
+        disabled={busy}
         onClick={() => void update()}
         className="mac:titlebar-no-drag shrink-0 rounded-full bg-blue-9 text-primary-foreground hover:bg-blue-10 hover:text-primary-foreground disabled:opacity-70"
       >
-        {busy || downloading
+        {busy
           ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
           : <Download className="size-4" strokeWidth={1.5} aria-hidden="true" />}
       </Button>

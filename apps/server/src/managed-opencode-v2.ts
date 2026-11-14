@@ -6,7 +6,7 @@ import type { OrganizationMcpServers } from "./reserved-mcp-names.js";
 type EnginePermissionRule = { action: string; resource: string; effect: "allow" | "deny" };
 import { nativeModelVariants } from "@openwork/types/cloud-model-fast";
 import { gatewayBase } from "./gateway-quota.js";
-import { openworkAgentPermissionsV2PluginPath, openworkAutoRouteV2PluginPath, openworkContextV2PluginPath, openworkMcpResultsV2PluginPath, openworkMcpReadinessV2PluginPath, openworkProviderFiltersV2PluginPath, openworkVisibleReasoningV2PluginPath } from "./openwork-extensions-plugin-path.js";
+import { taskLogEvidenceV2PluginPath, openworkAgentPermissionsV2PluginPath, openworkAutoRouteV2PluginPath, openworkContextV2PluginPath, openworkMcpResultsV2PluginPath, openworkMcpReadinessV2PluginPath, openworkProviderFiltersV2PluginPath, openworkVisibleReasoningV2PluginPath } from "./openwork-extensions-plugin-path.js";
 import { pathToFileURL } from "node:url";
 // Parallel v2 lane prototype: provider injection is a watched-config write. This module
 // deliberately has no reload/dispose call, unlike managed-opencode.ts and server.ts reloadOpencodeEngine.
@@ -231,6 +231,7 @@ export function renderOpencodeV2Config(input: {
   /** Applies Settings › Show model reasoning to each agent request. */
   visibleReasoningPluginDirectory?: string;
   autoRoutePluginDirectory?: string;
+  taskLogPluginDirectory?: string;
   contextPluginDirectory?: string;
   contextTools?: { url: string; token: string; browser?: { url: string; token: string } };
   agentPermissionRules?: AgentPermissionRule[];
@@ -296,6 +297,7 @@ export function renderOpencodeV2Config(input: {
   // disconnected OpenCode Zen disappears here too and returns once re-enabled.
   for (const id of disabled) filters[id] = { whitelist: [] };
   const plugins = [
+    ...(input.contextTools && input.taskLogPluginDirectory ? [{ package: pathToFileURL(input.taskLogPluginDirectory).href, options: input.contextTools }] : []),
     ...(input.contextTools && input.contextPluginDirectory ? [{ package: pathToFileURL(input.contextPluginDirectory).href, options: input.contextTools }] : []),
     ...(Object.keys(filters).length && input.providerFiltersPluginDirectory ? [{
       package: pathToFileURL(input.providerFiltersPluginDirectory).href,
@@ -378,6 +380,7 @@ async function createManagedOpencodeV2ServerInner(
   const mcpReadinessPluginDirectory = join(instanceRoot, "mcp-readiness-plugin");
   const visibleReasoningPluginDirectory = join(instanceRoot, "visible-reasoning-plugin");
   const autoRoutePluginDirectory = join(instanceRoot, "auto-route-plugin");
+  const taskLogPluginDirectory = join(instanceRoot, "task-log-plugin");
   const contextPluginDirectory = join(instanceRoot, "context-plugin");
   const agentPermissionsPluginDirectory = join(instanceRoot, "agent-permissions-plugin");
   const password = randomBytes(24).toString("base64url");
@@ -422,6 +425,10 @@ async function createManagedOpencodeV2ServerInner(
   await writeFile(join(autoRoutePluginDirectory, "server.js"),
     `export { default } from ${JSON.stringify(pathToFileURL(openworkAutoRouteV2PluginPath()).href)};\n`, { mode: 0o600 });
   if (options.contextTools) {
+    await mkdir(taskLogPluginDirectory, { recursive: true, mode: 0o700 });
+    await writeFile(join(taskLogPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
+    await writeFile(join(taskLogPluginDirectory, "server.js"),
+      `export { default } from ${JSON.stringify(pathToFileURL(taskLogEvidenceV2PluginPath()).href)};\n`, { mode: 0o600 });
     await mkdir(contextPluginDirectory, { recursive: true, mode: 0o700 });
     await writeFile(join(contextPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
     await writeFile(join(contextPluginDirectory, "server.js"),
@@ -530,6 +537,7 @@ async function createManagedOpencodeV2ServerInner(
       mcpReadinessPluginDirectory,
       visibleReasoningPluginDirectory,
       autoRoutePluginDirectory,
+      taskLogPluginDirectory,
       contextPluginDirectory,
       contextTools: options.contextTools,
       ...(options.permissions ? { permissions: await options.permissions() } : {}),

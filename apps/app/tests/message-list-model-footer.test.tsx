@@ -4,6 +4,7 @@ import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import type { UIMessage } from "ai"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { MemoryRouter } from "react-router"
 import type { ModelOption } from "../src/app/types"
 
 GlobalRegistrator.register({ url: "https://web.example/" })
@@ -12,6 +13,7 @@ Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true)
 const { PlatformProvider, createDefaultPlatform } = await import("../src/react-app/kernel/platform")
 const { MessageListProvider } = await import("../src/components/chat/message-list-provider")
 const { DenAuthProvider } = await import("../src/react-app/domains/cloud/den-auth-provider")
+const { Get3wAccount } = await import("../src/react-app/domains/cloud/get3w-account")
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
 const { MessageList } = await import("../src/components/chat/message-list")
 const { useModelPickerCatalogStore } = await import("../src/react-app/domains/session/models/model-collections-store")
@@ -31,6 +33,7 @@ afterEach(async () => {
   }
   useModelPickerCatalogStore.setState({ bySession: {} })
   useAutoRouteStore.setState({ bySession: {} })
+  Reflect.deleteProperty(window, "__GET3W_ACCOUNT__")
 })
 afterAll(() => {
   queryClient.clear()
@@ -51,7 +54,7 @@ async function render(messages: UIMessage[], streaming = false, modelOptions?: r
   document.body.append(container)
   const root = createRoot(container)
   mounted = { root, container }
-  await act(async () => root.render(createElement(QueryClientProvider, { client: queryClient,
+  await act(async () => root.render(createElement(MemoryRouter, {}, createElement(Get3wAccount), createElement(QueryClientProvider, { client: queryClient,
     children: createElement(DenAuthProvider, { children: createElement(PlatformProvider, {
     value: createDefaultPlatform(),
     children: createElement(MessageListProvider, {
@@ -62,9 +65,30 @@ async function render(messages: UIMessage[], streaming = false, modelOptions?: r
       onMcpReconnect: async () => {}, onMcpReopenAuthorization: async () => {},
       children: createElement(MessageList, { messages, status: streaming ? "streaming" : "ready" }),
     }),
-  }) }), })))
+  }) }), }))))
   return container
 }
+
+test("generated results stay between reply prose and the hover-only footer", async () => {
+  Reflect.set(window, "__GET3W_ACCOUNT__", {
+    status: async () => ({ status: "signed_in", user: { id: "fixture" }, error: null, pending: false }),
+    taskCatalog: async () => ({ catalog_version: "fixture", expiresAt: Date.now() + 60000, offline: false, models: [] }),
+    modelTasks: async () => ({ items: [
+      { key: "image", messageId: "reply", slug: "demo/text-to-image", status: "completed", requestId: "image", updatedAt: 1, chargedUsd: "0.028571", outputs: ["https://xianchou.com/cup.jpg"] },
+      { key: "video", messageId: "reply", slug: "demo/text-to-video", status: "processing", requestId: "video", updatedAt: 1, outputs: [] },
+    ] }),
+  })
+  const container = await render([answer("reply"), { id: "follow-up", role: "user", parts: [{ type: "text", text: "Next question" }] }])
+  const results = container.querySelector('[data-model-task="image"]')?.closest("section")
+  expect(results).not.toBeNull()
+  expect(container.querySelectorAll('[data-model-task="image"]').length).toBe(1)
+  expect(results?.previousElementSibling?.textContent).toContain("The document is ready.")
+  expect(container.querySelector('[data-testid="reply-actions"]')).not.toBeNull()
+  expect(results?.querySelector('[data-model-task="video"]')).not.toBeNull()
+  expect(results?.textContent).not.toContain("USD")
+  expect(results?.querySelector("img")?.getAttribute("src")).toBe("https://xianchou.com/cup.jpg")
+  expect(container.textContent).toContain("Next question")
+})
 
 test("completed reply model stays in the footer and reveals on hover", async () => {
   const container = await render([answer("reply")])
@@ -237,3 +261,53 @@ test("missing model metadata never invents a footer", async () => {
   const container = await render([{ id: "reply", role: "assistant", parts: [{ type: "text", text: "Ready." }] }])
   expect(container.querySelector('[data-testid="reply-model"]')).toBeNull()
 })
+
+
+test("video stays after its generation call before later processing and reply text",async()=>{
+  Reflect.set(window,"__GET3W_ACCOUNT__",{
+    status:async()=>({status:"signed_in",user:{id:"fixture"},error:null,pending:false}),
+    taskCatalog:async()=>({catalog_version:"fixture",expiresAt:Date.now()+60000,offline:false,models:[]}),
+    modelTasks:async()=>({items:[{key:"generated-video",messageId:"user",slug:"demo/text-to-video",status:"completed",requestId:"request-video",updatedAt:1,outputs:["https://xianchou.com/video.mp4"]}]}),
+  });
+  const message=answer("generation");
+  message.parts=[
+    {type:"text",text:"Starting the video."},
+    {type:"dynamic-tool",toolName:"media_generate",toolCallId:"generate",state:"output-available",input:{},output:{task_id:"generated-video",request_id:"request-video",status:"submitted"}},
+    {type:"text",text:"Now processing the generated file."},
+    {type:"dynamic-tool",toolName:"bash",toolCallId:"process",state:"output-available",input:{command:"echo processed"},output:"processed"},
+    {type:"text",text:"The final summary."},
+  ];
+  const container=await render([{id:"user",role:"user",parts:[{type:"text",text:"Generate a video"}]},message,answer("later")]);
+  const result=container.querySelector('[data-model-task="generated-video"]');
+  expect(result).not.toBeNull();
+  expect(container.querySelectorAll('[data-model-task="generated-video"]').length).toBe(1);
+  const section=result?.closest("section");
+  expect(section?.parentElement?.nextElementSibling?.textContent).toContain("Now processing the generated file.");
+  expect(section?.closest('[data-message-id]')?.getAttribute("data-message-id")).toBe("generation");
+  expect(result?.querySelector("video")).not.toBeNull();
+});
+
+test("all native generation categories keep progress and results at their own calls",async()=>{
+ const types=["text-to-image","text-to-video","text-to-speech","text-to-music","text-to-panorama","digital-human","text-to-3d","image-to-layers","image-upscale","speech-to-text","video-edit","video-extend","video-upscale"];
+ const tasks=types.map((type,index)=>({key:`task-${index}`,messageId:"user",slug:`demo/model/${type}`,status:index%2?"processing":"completed",createdAt:Date.now()-30000,estimatedDuration:90,requestId:`request-${index}`,updatedAt:1,reservedUsd:"1.000000",chargedUsd:"0.500000",outputs:type==="text-to-image"?["https://xianchou.com/image.avif"]:type==="text-to-speech"?["https://xianchou.com/speech.flac"]:[]}));
+ Reflect.set(window,"__GET3W_ACCOUNT__",{
+  status:async()=>({status:"signed_in",user:{id:"fixture"},error:null,pending:false}),
+  taskCatalog:async()=>({catalog_version:"fixture",expiresAt:Date.now()+60000,offline:false,models:[]}),
+  modelTasks:async()=>({items:tasks}),
+ });
+ const message=answer("native");
+ message.parts=tasks.flatMap(task=>[
+  {type:"dynamic-tool",toolName:"media_generate",toolCallId:task.key,state:"output-available",input:{},output:{task_id:task.key,request_id:task.requestId}},
+  {type:"text",text:`After ${task.key}`},
+ ]);
+ const container=await render([{id:"user",role:"user",parts:[{type:"text",text:"Generate media"}]},message]);
+ for(const task of tasks){
+  const rows=container.querySelectorAll(`[data-model-task="${task.key}"]`);expect(rows.length).toBe(1);
+  const row=rows[0];expect(row.closest("section")?.parentElement?.nextElementSibling?.textContent).toContain(`After ${task.key}`);
+  expect(row.querySelector('[role="progressbar"]')!==null).toBe(task.status==="processing");
+  expect(row.textContent).not.toContain("USD");
+  expect(row.textContent).not.toContain("Stop waiting");expect(row.textContent).not.toContain("Retrieve result");
+  if(task.slug.endsWith("text-to-image"))expect(row.querySelector("img")?.getAttribute("src")).toBe("https://xianchou.com/image.avif");
+  if(task.slug.endsWith("text-to-speech"))expect(row.querySelector("button")?.textContent).toContain("Play audio");
+ }
+});

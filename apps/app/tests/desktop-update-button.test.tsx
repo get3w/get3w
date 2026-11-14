@@ -42,11 +42,6 @@ describe("titlebar staged-update restart", () => {
   async function render() {
     await act(async () => { root.render(<DesktopUpdaterProvider><DesktopUpdateButton /></DesktopUpdaterProvider>); });
   }
-  async function click(label: string) {
-    const button = Array.from(document.querySelectorAll("button")).find((node) => node.textContent === label);
-    if (!button) throw new Error(`Missing button: ${label}`);
-    await act(async () => { button.click(); });
-  }
   beforeEach(() => {
     Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { configurable: true, value: true });
     status = null;
@@ -62,29 +57,33 @@ describe("titlebar staged-update restart", () => {
     localStorage.clear();
   });
 
-  test.each(["idle", "checking", "blocked"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("stays hidden while %s", async (state) => {
+  test.each(["idle", "checking", "available", "downloading", "blocked", "error"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("stays hidden while %s", async (state) => {
     status = { state };
     await render();
     expect(host.querySelector("[data-update-button]")).toBeNull();
   });
 
-  test.each(["available", "ready", "error"] satisfies NonNullable<SettingsUpdateStatus>["state"][])("updates directly while %s", async (state) => {
-    status = { state, version: "0.18.5" };
+  test("offers restart only after the update is staged", async () => {
+    status = { state: "ready", version: "0.18.5" };
     await render();
     const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
     expect(button).not.toBeNull();
+    expect(button?.getAttribute("aria-label")).toBe("Restart to update");
     await act(async () => { button?.click(); });
     expect(installs).toBe(1);
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   });
 
-  test("shows download progress and prevents duplicate downloads", async () => {
-    status = { state: "downloading", totalBytes: 100, downloadedBytes: 45 };
-    await render();
-    const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
-    expect(button?.disabled).toBe(true);
-    expect(button?.getAttribute("aria-label")).toContain("45%");
-    await act(async () => { button?.click(); });
+  test("stays hidden through download progress, then appears when ready", async () => {
+    for (const downloadedBytes of [0, 45, 100]) {
+      status = { state: "downloading", totalBytes: 100, downloadedBytes };
+      await render();
+      expect(host.querySelector("[data-update-button]")).toBeNull();
+    }
+    expect(downloads).toBe(0);
     expect(installs).toBe(0);
+    status = { state: "ready", version: "0.18.5" };
+    await render();
+    expect(host.querySelector("[data-update-button]")).not.toBeNull();
   });
 });

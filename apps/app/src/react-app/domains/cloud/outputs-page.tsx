@@ -53,7 +53,7 @@ export function OutputsPage({workspaceId,workspaceRoot}:{workspaceId:string;sess
  const renderedHistorical=sortedHistorical.slice(0,Math.max(0,displayLimit-renderedVisible.length));
  const hasMore=displayLimit<totalCount;
  const loadMore=()=>{if(hasMore)setDisplayLimit(value=>Math.min(value+OUTPUT_PAGE_SIZE,totalCount));};
- async function change(item:ModelTask,action:"retrieve"|"retryDownload"|"refreshResult"){
+ async function change(item:ModelTask,action:"retryDownload"|"refreshResult"){
   if(!userId||!(item.outputEntry?.sessionId??item.sessionId))return;
   const startedScope=scopeKey;setBusy(true);
   try{await window.__GET3W_ACCOUNT__?.modelTasks?.({userId,workspaceId,sessionId:item.outputEntry?.sessionId??item.sessionId,key:item.key,action});if(currentScope.current===startedScope)setAttempt(value=>value+1);}catch{if(currentScope.current===startedScope)setError(true);}finally{if(currentScope.current===startedScope)setBusy(false);}
@@ -75,7 +75,6 @@ export function OutputsPage({workspaceId,workspaceRoot}:{workspaceId:string;sess
   {valid&&!visible.length&&!historical.length?<p className="text-sm text-muted-foreground">{t("personal.copy.no_matching_outputs_generate_a_file_to_see_it_here")}</p>:null}
   <div className="divide-y">{renderedVisible.map(item=><article key={`${scopeKey}:${item.key}`} className="space-y-3 py-3">
    <div className="flex flex-wrap justify-between gap-2"><strong className="text-sm">{item.slug}</strong><span className="text-xs text-muted-foreground">{statuses[item.status]??t("personal.copy.running")} · {new Date(item.updatedAt).toLocaleString(locale)}</span></div>
-   {item.status==="detached"?<div className="flex items-center justify-between gap-2"><span className="text-sm">{t("personal.copy.task_still_running_and_billable")}</span><Button size="sm" disabled={busy} onClick={()=>void change(item,"retrieve")}>{t("personal.copy.retrieve_result")}</Button></div>:null}
    {item.outputEntry?.files.map(file=>preview(file,item.outputEntry?.sessionId??undefined))}
    {item.outputEntry?.downloadError?<div className="flex flex-wrap items-center gap-2 text-sm"><span>{t("personal.copy.download_failed_remote_results_retained")}</span><Button size="sm" variant="outline" disabled={busy} onClick={()=>void change(item,"retryDownload")}>{t("personal.copy.retry_download")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={()=>void change(item,"refreshResult")}>{t("personal.copy.refresh_result_links")}</Button></div>:null}
    {!item.outputEntry?.files.length?item.outputs.filter((value):value is string=>typeof value==="string"&&value.startsWith("https://")).map((url,index)=><a key={url} href={url} target="_blank" rel="noreferrer" className="mr-3 text-sm underline">{t("personal.copy.open_remote_result")} {index+1}</a>):null}

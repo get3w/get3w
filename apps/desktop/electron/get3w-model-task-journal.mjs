@@ -86,6 +86,7 @@ export function createModelTaskJournal({userData,limitUsd}) {
       if(context.type==='get3w.submit')row=records.find(row=>owns(row,scope)&&row.arguments.idempotency_key===context.call.arguments.idempotency_key);
       if(context.type==='get3w.result')row=records.find(row=>owns(row,scope)&&row.requestId===context.call.arguments.request_id);
       if(!row)return;
+      if(Number.isFinite(value.estimated_duration)&&value.estimated_duration>0)row.estimatedDuration=value.estimated_duration;
       const requestId=value.request_id??value.id;
       if(typeof requestId==='string')row.requestId=requestId;
       if(typeof value.status==='string' && row.status!=='detached')row.status=value.status;

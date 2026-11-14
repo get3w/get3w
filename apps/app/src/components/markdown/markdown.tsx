@@ -87,6 +87,7 @@ function MarkdownBlockInner({
   }, [client, workspaceId, workspaceRoot, sessionId]);
   const [linkMenu, setLinkMenu] = useState<{ target: OpenTarget; anchor: HTMLElement } | null>(null);
   useEffect(() => setLinkMenu(null), [client, workspaceId, workspaceRoot]);
+  const [videoPreview,setVideoPreview]=useState<{src:string;label:string}|null>(null);
   const [imagePreview, setImagePreview] = useState<{ src: string; alt: string } | null>(null);
   const references = useSessionReferencesMaybe();
   const untrusted = useUntrustedMarkdown();
@@ -309,7 +310,7 @@ function MarkdownBlockInner({
         const contentType = result.contentType && result.contentType !== "application/octet-stream" ? result.contentType : fallbackType;
         const url = URL.createObjectURL(new Blob([result.data], { type: contentType }));
         objectUrl = url;
-        video.src = url;
+        video.src = `${url}#t=0.001`;
       }).catch(() => { if (!cancelled) showError(); });
     }
   }, [client, workspaceId, workspaceRoot, sessionId, openTargets, rendered]);
@@ -413,6 +414,14 @@ function MarkdownBlockInner({
         }
       }
 
+      const videoButton=event.target.closest("[data-openwork-video-preview]");
+      if(videoButton instanceof HTMLButtonElement){
+        event.preventDefault();event.stopPropagation();
+        const video=videoButton.querySelector("video");
+        if(video?.src)setVideoPreview({src:video.src.split("#")[0],label:videoButton.getAttribute("aria-label")||t("personal.media.play_video")});
+        return;
+      }
+
       const preview = event.target.closest("[data-openwork-image-preview]");
       if (!(preview instanceof HTMLElement)) return;
 
@@ -511,6 +520,12 @@ function MarkdownBlockInner({
         />
       ) : null}
       <MermaidZoomPortals diagrams={mermaidDiagrams} />
+      <Dialog open={videoPreview!==null} onOpenChange={open=>{if(!open)setVideoPreview(null);}}>
+        <DialogContent className="max-h-[92dvh] lg:w-fit lg:max-w-[92vw]" data-video-lightbox="">
+          <DialogTitle className="sr-only">{videoPreview?.label??t("personal.media.play_video")}</DialogTitle>
+          {videoPreview?<video src={videoPreview.src} controls autoPlay playsInline className="max-h-[80dvh] max-w-full rounded-md"/>:null}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={imagePreview !== null}
         onOpenChange={(open) => {

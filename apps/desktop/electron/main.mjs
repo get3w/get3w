@@ -1,3 +1,4 @@
+import { createTaskLogs } from "./task-logs.mjs";
 import { createAutomationReceiptJournal } from "./get3w-automation-receipts.mjs";
 import { createPersonalAutomationRunner } from "./get3w-automation-runner.mjs";
 import { nativeText, nativeMessage } from "./native-i18n.mjs";
@@ -2627,6 +2628,10 @@ const openworkAuth = createGet3wAuth({
     localValidation: localValidationPackage,
   }),
 });
+const taskLogs = createTaskLogs({directory:app.getPath("userData"),clientVersion:app.getVersion(),auth:openworkAuth,getServerInfo:()=>runtimeManager.openworkServerInfo()});
+globalThis.__get3wTaskLogs = taskLogs;
+taskLogs.start();
+app.on("before-quit",()=>taskLogs.stop());
 const openworkManagedProvider = createGet3wManagedProvider({
   auth: openworkAuth, userData: app.getPath("userData"), getServerInfo: () => runtimeManager.openworkServerInfo(),
 });

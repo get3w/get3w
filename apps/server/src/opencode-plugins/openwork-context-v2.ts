@@ -5,6 +5,8 @@ import { addProviderSafeTool } from "./provider-safe-tool-schema.js";
 import { GET3W_CHAT_TOOLS } from "../get3w-chat-tools.js";
 import { mcpToolId } from "../opencode-v2-mcp-readiness.js";
 
+import { NATIVE_MEDIA_TASK_SELECTION } from "../native-media-instructions.js";
+
 const GET3W_ACCOUNT_MCP = "get3w-account";
 
 const browserResult = z.object({
@@ -112,10 +114,10 @@ export default {
         addProviderSafeTool(editor,{
           name, options:{codemode:false,pinned:true},
           description:name==="media_prepare"
-            ? "Prepare native media. task_type uses exact run types: text-to-image, image-to-image, text-to-video, reference-to-video, first-to-video, first-last-to-video, video-edit, text-to-speech, text-to-music. Optional model must be exact. Unknown types return supported_task_types; retry this native tool using that list, never discover gateway tools. References use named model input fields. Returns preparation_id, parameter schema, defaults and missing inputs. Prepare independent requested media tasks in parallel. Do not write scripts."
-            : "Start a prepared native media task. Supply preparation_id and creative inputs matching its parameters. Omit defaulted settings unless the user explicitly changes them; the host already applies them. Host handles defaults, validation, quote, approval, durable submission and background polling. Submit independent prepared tasks in parallel. Returns a task id immediately after submission. Do not poll, sleep, download, read or duplicate the result preview; the native task shows and saves results.",
-          input:name==="media_prepare"?{type:"object",properties:{task_type:{type:"string"},model:{type:"string"},references:{type:"object",additionalProperties:true}},required:["task_type"],additionalProperties:false}
-            :{type:"object",properties:{preparation_id:{type:"string"},inputs:{type:"object",additionalProperties:true}},required:["preparation_id","inputs"],additionalProperties:false},
+            ? NATIVE_MEDIA_TASK_SELECTION + " Prepare native media. task_type uses exact run types: text-to-image, image-to-image, text-to-video, reference-to-video, first-to-video, first-last-to-video, video-edit, text-to-speech, text-to-music. Optional model must be exact. Unknown types return supported_task_types; retry this native tool using that list, never discover gateway tools. For multiple candidates of the same model, set a distinct stable task_key per candidate (candidate-1, candidate-2); reuse that key only to retry the same task. References use named model input fields. First prepare without references to learn supported fields, then bind local references in prepare after copying external files into the workspace. Never pass local paths to generate. Returns preparation_id, parameter schema, defaults and missing inputs. Prepare independent requested media tasks in parallel. Do not write scripts."
+            : "Start a prepared native media task. Supply preparation_id and creative inputs matching its parameters. Omit defaulted settings from inputs; the host already applies them. Only when the current user message explicitly requests a different output setting, put that setting in output_overrides. Never choose output_overrides yourself. Host handles defaults, validation, quote, approval, durable submission and background polling. Submit independent prepared tasks in parallel. Returns a task id immediately after submission. Do not poll, sleep, download, read or duplicate the result preview; the native task shows and saves results.",
+          input:name==="media_prepare"?{type:"object",properties:{task_type:{type:"string",description:NATIVE_MEDIA_TASK_SELECTION},model:{type:"string"},task_key:{type:"string",minLength:1,maxLength:120},references:{type:"object",additionalProperties:true}},required:["task_type"],additionalProperties:false}
+            :{type:"object",properties:{preparation_id:{type:"string"},inputs:{type:"object",additionalProperties:true},output_overrides:{type:"object",description:"Output settings explicitly requested in the current user message; omit otherwise.",additionalProperties:true}},required:["preparation_id","inputs"],additionalProperties:false},
           async execute(input,call){
             if(!context.location?.directory||!call.messageID)throw Error("Native media conversation unavailable");
             const response=await fetch(context.options.url,{method:"POST",redirect:"error",signal:call.signal,

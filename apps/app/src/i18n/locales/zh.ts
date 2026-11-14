@@ -1,4 +1,13 @@
 export default {
+  "personal.media.play_audio": "播放音频",
+  "personal.media.audio_unavailable": "音频预览不可用，请下载文件播放。",
+  "personal.media.elapsed": "已用 {time}",
+  "personal.media.estimate": "预计 {time}",
+  "personal.media.remaining": "剩余 ~{time}",
+  "personal.media.overdue": "超出预计 {time}",
+  "personal.media.progress": "生成预估进度",
+  "personal.media.play_video": "播放视频",
+  "personal.media.video_unavailable": "视频预览不可用，请下载文件播放。",
   "personal.media.charged": "实际费用",
   "personal.media.reserved": "预留费用 · 等待结算",
   "personal.media.failed": "生成失败。请查看任务详情后再发起新请求。",
@@ -9,6 +18,7 @@ export default {
   "personal.media.started": "已开始媒体生成",
   "personal.media.start_failed": "无法开始媒体生成",
   "desktop.sign_in.headline": "Get3W，帮你完成工作",
+  "desktop.sign_in.loading": "载入中...",
   "desktop.sign_in.privacy": "隐私政策",
   "desktop.sign_in.terms": "服务条款",
 

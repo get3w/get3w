@@ -7,7 +7,7 @@ import {createNativeMedia} from './get3w-native-media.mjs';
 const types=['text-to-image','image-to-image','text-to-video','reference-to-video','video-edit','text-to-speech','text-to-music'];
 const host={workspaceId:'workspace',sessionId:'ses_native_media_123',userMessageId:'user',messageId:'assistant',generationPolicy:{models:{},outputs:{'text-to-image':{channel:'official'}}}};
 const schema={type:'object',required:['prompt','channel'],properties:{prompt:{type:'string'},channel:{type:'string',enum:['economy','official'],default:'economy'},quality:{type:'string',enum:['low','medium'],default:'low'},images:{type:'array',items:{type:'string'}}}};
-function fixture(directory){
+function fixture(directory,definition=schema){
  let calls=[],tasks=[],identity='owner',denied=false,version='v1';
  const auth={status:async()=>({status:'signed_in',user:{id:identity}}),taskCatalog:async()=>({catalog_version:version,models:types.map(type=>({model_id:`demo/model/${type}`,type,name:'Native Media',base_price:1}))})};
  const dispatch=async(name,args)=>{
@@ -16,7 +16,7 @@ function fixture(directory){
   const {name:cap,arguments:input}=args;
   if(cap==='get3w.submit'&&denied)return {error:{message:'Approval denied'}};
   let result;
-  if(cap==='get3w.models.schema')result={input_schema:schema};
+  if(cap==='get3w.models.schema')result={input_schema:definition};
   if(cap==='get3w.quote')result={quote_id:'quote'};
   if(cap==='get3w.submit'){tasks.push({key:'task',status:'submitted',requestId:'request',arguments:input});result={request_id:'request',status:'submitted'};}
   return {result:{structuredContent:{status:'succeeded',result}}};
@@ -297,4 +297,64 @@ test('legacy UUID preparations remain usable and short handles cannot cross conv
   assert.equal((await media.call('media_generate',{preparation_id:ready.preparation_id,inputs:{prompt:'other'}},other,signal)).request_id,'request');
   assert.equal(f.tasks.length,2);
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+
+test('saved 16:9 rejects invented 4:3 before quote; retry after restart preserves preferences',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'native-ratio-'));
+ try{
+  const definition={...schema,properties:{...schema.properties,aspect_ratio:{type:'string',enum:['4:3','16:9'],default:'4:3'},resolution:{type:'string',enum:['1k','2k'],default:'1k'}}};
+  const f=fixture(dir,definition),signal=new AbortController().signal;
+  const scope={...host,generationPolicy:{models:{},outputs:{'text-to-image':{aspect_ratio:'16:9',resolution:'2k'}}}};
+  const media=f.create(),prep=await media.call('media_prepare',{task_type:'text-to-image'},scope,signal);
+  assert.equal(prep.parameters.properties.aspect_ratio.default,'16:9');
+  const bad=await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'cup',aspect_ratio:'4:3'}},scope,signal);
+  assert.equal(bad.error.code,'output_preference_conflict');
+  assert.deepEqual(bad.error.expected,{aspect_ratio:'16:9'});
+  assert.equal(f.calls.some(call=>call.args.name==='get3w.quote'),false);
+  assert.equal((await f.create().call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'cup'}},scope,signal)).status,'submitted');
+  assert.equal(f.tasks[0].arguments.inputs.aspect_ratio,'16:9');
+  assert.equal(f.tasks[0].arguments.inputs.resolution,'2k');
+  assert.deepEqual(f.calls.find(call=>call.args.name==='get3w.quote').args.arguments.inputs,f.tasks[0].arguments.inputs);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('declared user overrides are validated and submitted with the exact quoted inputs',async()=>{
+ const definition={...schema,properties:{...schema.properties,aspect_ratio:{type:'string',enum:['4:3','16:9'],default:'4:3'}}};
+ const f=fixture(undefined,definition),media=f.create(),signal=new AbortController().signal;
+ const scope={...host,generationPolicy:{models:{},outputs:{'text-to-image':{aspect_ratio:'16:9'}}}};
+ const prep=await media.call('media_prepare',{task_type:'text-to-image'},scope,signal);
+ const args={preparation_id:prep.preparation_id,inputs:{prompt:'cup'},output_overrides:{aspect_ratio:'4:3'}};
+ assert.equal((await media.call('media_generate',{...args,output_overrides:{prompt:'other'}},scope,signal)).error.code,'invalid_input');
+ assert.equal((await media.call('media_generate',{...args,output_overrides:{aspect_ratio:'bad'}},scope,signal)).error.code,'invalid_inputs');
+ assert.equal(f.tasks.length,0);
+ assert.equal((await media.call('media_generate',args,scope,signal)).status,'submitted');
+ assert.equal(f.tasks[0].arguments.inputs.aspect_ratio,'4:3');
+ assert.deepEqual(f.calls.find(call=>call.args.name==='get3w.quote').args.arguments.inputs,f.tasks[0].arguments.inputs);
+});
+
+test('same-reference candidates have distinct durable tasks and idempotent retries',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'native-candidates-')),f=fixture(dir),signal=new AbortController().signal;
+ try{
+  const media=f.create(),args={task_type:'text-to-video',references:{images:['https://example.test/product']}};
+  const preps=await Promise.all(['a','b','c'].map(task_key=>media.call('media_prepare',{...args,task_key},host,signal)));
+  assert.equal(new Set(preps.map(prep=>prep.preparation_id)).size,3);
+  const results=await Promise.all(preps.map((prep,index)=>media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:`complete story ${index}`}},host,signal)));
+  assert.ok(results.every(result=>result.status==='submitted'));assert.equal(f.tasks.length,3);
+  const reopened=f.create(),retry=await reopened.call('media_prepare',{...args,task_key:'b'},host,signal);
+  assert.equal(retry.preparation_id,preps[1].preparation_id);
+  assert.equal((await reopened.call('media_generate',{preparation_id:retry.preparation_id,inputs:{prompt:'complete story 1'}},host,signal)).request_id,'request');
+  assert.equal(f.tasks.length,3);
+  assert.equal((await reopened.call('media_generate',{preparation_id:retry.preparation_id,inputs:{prompt:'changed story'}},host,signal)).error.code,'input_conflict');
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('numeric conditional duration options retain integer schema type',async()=>{
+ const definition={...schema,properties:{...schema.properties,duration:{type:'integer',enum:[5,10,15],default:5,'x-channel-options':{official:[{value:'5'},{value:'15'}]}}}};
+ const f=fixture(undefined,definition),media=f.create(),signal=new AbortController().signal;
+ const scope={...host,generationPolicy:{outputs:{'text-to-video':{channel:'official'}}}};
+ const prep=await media.call('media_prepare',{task_type:'text-to-video'},scope,signal);
+ assert.deepEqual(prep.parameters.properties.duration.enum,[5,15]);
+ assert.equal((await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'story',duration:15}},scope,signal)).status,'submitted');
+ assert.equal(f.tasks[0].arguments.inputs.duration,15);
 });

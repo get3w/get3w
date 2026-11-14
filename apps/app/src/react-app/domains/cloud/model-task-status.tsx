@@ -5,22 +5,52 @@ import {marked} from "marked";
 import {getMessageCreated} from "@/components/chat/utils";
 import {generationCategory} from "./generation-models";
 import {ImageLightbox} from "@/components/chat/image-lightbox";
-import {OutputPreview} from "./output-preview";
+import {AudioPreview} from "./audio-preview";
+import {VideoPreview} from "./video-preview";
+import {ModelTaskProgress} from "./model-task-progress";
+import {OutputPreview,outputKind} from "./output-preview";
 import {Button} from "@/components/ui/button";
 import {useGet3wAccount,type ModelTask} from "./get3w-account";
 
-type TaskContext = {displayedImages:Set<string>;registerImage:(path:string)=>()=>void;items:ModelTask[];messages:UIMessage[];anchors:Map<string,string>;busy:boolean;error:string|null;change:(key:string,action:"detach"|"retrieve"|"retryDownload")=>Promise<void>;userId?:string;workspaceId:string;sessionId:string};
+type TaskContext = {displayedImages:Set<string>;registerImage:(path:string)=>()=>void;items:ModelTask[];messages:UIMessage[];anchors:Map<string,string>;busy:boolean;error:string|null;change:(key:string,action:"retryDownload")=>Promise<void>;userId?:string;workspaceId:string;sessionId:string};
 const TasksContext=createContext<TaskContext|null>(null);
 
 export function useTaskImageRegistration(){
   return useContext(TasksContext)?.registerImage;
 }
 
+// Match the original generation call using its durable output ids.
+export function modelTaskToolAnchors(items:ModelTask[],messages:UIMessage[]):Map<string,{messageId:string;toolCallId:string}>{
+  const anchors=new Map<string,{messageId:string;toolCallId:string}>();
+  function matches(value:unknown,item:ModelTask,depth=0):boolean{
+    if(depth>6||value===null||value===undefined)return false;
+    if(typeof value==="string"){try{return matches(JSON.parse(value),item,depth+1);}catch{return false;}}
+    if(Array.isArray(value))return value.some(entry=>matches(entry,item,depth+1));
+    if(typeof value!=="object")return false;
+    if("task_id" in value&&value.task_id===item.key)return true;
+    if(item.requestId&&"request_id" in value&&value.request_id===item.requestId)return true;
+    return Object.values(value).some(entry=>matches(entry,item,depth+1));
+  }
+  for(const item of items)for(const message of messages){
+    if(message.role!=="assistant")continue;
+    const part=message.parts.find(part=>"toolCallId" in part&&"output" in part&&matches(part.output,item));
+    if(part&&"toolCallId" in part){anchors.set(item.key,{messageId:message.id,toolCallId:part.toolCallId});break;}
+  }
+  return anchors;
+}
+export function useHasModelTasks(messageIds:string[]):boolean{
+  const context=useContext(TasksContext);
+  return context?.items.some(item=>messageIds.includes(context.anchors.get(item.key)??""))??false;
+}
+
 // Old journals may have no message id. Use submission time, never the last
 // message or result time: a task may finish after another turn has started.
 export function modelTaskAnchors(items:ModelTask[],messages:UIMessage[]):Map<string,string>{
   const anchors=new Map<string,string>();
+  const tools=modelTaskToolAnchors(items,messages);
   for(const item of items){
+    const tool=tools.get(item.key);
+    if(tool){anchors.set(item.key,tool.messageId);continue;}
     const messageId=item.messageId??item.outputEntry?.messageId;
     if(messageId){
       if(messages.some(message=>message.id===messageId))anchors.set(item.key,messageId);
@@ -121,7 +151,7 @@ export function ModelTasksProvider({workspaceId,sessionId,messages,children}:{wo
     }
     void refresh();return()=>{stopped=true;clearTimeout(timer);};
   },[userId,workspaceId,sessionId]);
-  async function change(key:string,action:"detach"|"retrieve"|"retryDownload"){
+  async function change(key:string,action:"retryDownload"){
     if(!userId)return;
     setBusy(true);
     try{const result=await window.__GET3W_ACCOUNT__?.modelTasks?.({userId,workspaceId,sessionId,key,action});if(currentScope.current!==scope)return;if(result)setItems(result.items);setLoaded(scope);setError(null);}
@@ -136,42 +166,48 @@ function RemoteImage({url}:{url:string}){
   return <><Button variant="ghost" className="mt-2 h-auto p-0" aria-label={t("personal.copy.enlarge_image")} onClick={()=>setExpanded(true)}><img src={url} alt={t("personal.copy.model_result")} loading="lazy" className="max-h-40 max-w-40 rounded-md object-contain" /></Button><ImageLightbox src={url} alt={t("personal.copy.model_result")} open={expanded} onOpenChange={setExpanded}/></>;
 }
 
-export function ModelTaskStatus({messageIds}:{messageIds:string[]}) {
+export function ModelTaskStatus({messageIds,toolCallIds,inline=false}:{messageIds:string[];toolCallIds?:string[];inline?:boolean}) {
   useLocale();
   const context=useContext(TasksContext);
   if(!context)return null;
   const {busy,error,change,userId,workspaceId,sessionId}=context;
-  const items=context.items.filter(item=>messageIds.includes(context.anchors.get(item.key)??""));
+  const toolAnchors=modelTaskToolAnchors(context.items,context.messages);
+  const items=context.items.filter(item=>{
+    if(!messageIds.includes(context.anchors.get(item.key)??""))return false;
+    const tool=toolAnchors.get(item.key);
+    return toolCallIds?Boolean(tool&&toolCallIds.includes(tool.toolCallId)):!tool;
+  });
   if(!items.length)return null;
   const labels:Record<string,string>={submitting:t("personal.copy.confirming_submission"),uncertain:t("personal.copy.submission_unconfirmed"),submitted:t("personal.copy.submitted"),created:t("personal.copy.queued"),processing:t("personal.copy.running"),completed:t("personal.copy.completed"),failed:t("personal.copy.failed"),detached:t("personal.copy.stopped_waiting")};
   const status=(value:string)=>labels[value]??t("personal.copy.running");
   const taskLabel=(slug:string)=>{
-    const category=generationCategory(slug.split("/").at(-1)??"");
+    const type=slug.split("/").at(-1)??"";
+    const category=generationCategory(type);
     const keys:Record<string,string>={image:"image",video:"video",panorama:"panorama","3d":"3d",speech:"speech",music:"music","digital-human":"digital_human"};
-    return keys[category]?t(`personal.run_type.${keys[category]}`):t("personal.copy.model_result");
+    const variants:Record<string,string>={"image-to-layers":"image_layers","image-upscale":"image_upscale","video-upscale":"video_upscale","video-edit":"video_edit","video-extend":"video_extend","speech-to-text":"transcription"};
+    const key=keys[category]??variants[type];
+    return key?t(`personal.run_type.${key}`):t("personal.copy.model_result");
   };
   const media=(url:string)=>{
     try { const parsed=new URL(url); if(parsed.protocol!=="https:" || parsed.hostname!=="xianchou.com") return null;
-      const lower=parsed.pathname.toLowerCase();
-      if(/\.(png|jpe?g|webp|gif)$/.test(lower)) return <RemoteImage url={url}/>;
-      if(/\.(mp4|webm|mov)$/.test(lower)) return <video src={url} controls preload="metadata" className="mt-2 max-h-40 max-w-60 rounded-md" />;
-      if(/\.(mp3|wav|m4a|ogg)$/.test(lower)) return <audio src={url} controls preload="metadata" className="mt-2 max-w-60" />;
+      const kind=outputKind(parsed.pathname);
+      if(kind==="image") return <RemoteImage url={url}/>;
+      if(kind==="video") return <VideoPreview src={url} compact/>;
+      if(kind==="audio") return <AudioPreview src={url}/>;
       return null;
     } catch { return null; }
   };
-  return <section aria-label={t("personal.copy.model_tasks")} className="mx-auto w-full max-w-3xl space-y-2 px-2 text-sm md:px-10" aria-live="polite">
+  return <section aria-label={t("personal.copy.model_tasks")} className={inline?"w-full space-y-2 text-sm":"mx-auto w-full max-w-3xl space-y-2 px-2 text-sm md:px-10"} aria-live="polite">
     {items.map(item=>{
       const sources=new Set([...modelTaskImageSources(context.messages,context.anchors.get(item.key)??"")].filter(source=>context.displayedImages.has(source)));
       const urls=item.outputs.flatMap(output=>typeof output==="string"?[output]:output&&typeof output==="object"&&"url" in output&&typeof output.url==="string"?[output.url]:[]);
       return <div key={item.key} className="space-y-2" data-model-task={item.key}>
       <div className="flex items-center justify-between gap-3"><span className="min-w-0 truncate text-xs text-muted-foreground" title={item.slug}>{taskLabel(item.slug)} · {status(item.status)}</span>
-        {item.status==="detached"?<Button size="xs" variant="ghost" disabled={busy} onClick={()=>void change(item.key,"retrieve")}>{t("personal.copy.retrieve_result")}</Button>:!["completed","failed"].includes(item.status)?<Button size="xs" variant="ghost" disabled={busy} onClick={()=>void change(item.key,"detach")}>{t("personal.copy.stop_waiting")}</Button>:null}
       </div>
-      {item.chargedUsd?<p className="text-xs text-muted-foreground">{t("personal.media.charged")} ${item.chargedUsd} USD</p>:item.reservedUsd?<p className="text-xs text-muted-foreground">{t("personal.media.reserved")} ${item.reservedUsd} USD</p>:null}
+      <ModelTaskProgress task={item}/>
       {item.status==="failed"?<p role="alert" className="text-sm text-destructive">{t("personal.media.failed")}</p>:null}
       {item.status==="failed"&&item.error?.code?<details className="text-xs text-muted-foreground"><summary>{t("text_activity.technical_details")}</summary><pre>{item.error.code}</pre></details>:null}
       {item.outputEntry?.downloadError?<div className="flex items-center gap-2 text-xs"><span>{t("personal.copy.download_failed_remote_results_retained")}</span><Button size="xs" variant="ghost" disabled={busy} onClick={()=>void change(item.key,"retryDownload")}>{t("personal.copy.retry_download")}</Button></div>:null}
-      {!["completed","failed"].includes(item.status)?<p className="sr-only">{t("personal.copy.after_you_stop_waiting_the_upstream_task_continues_and_remains_bi")}</p>:null}
       {item.outputEntry?.files.map(file=><OutputPreview key={file.path} file={file} compact hideImage={value=>hasMatchingTaskImage(sources,urls.length===1?urls:[],value.dataBase64,value.mimeType)} read={async()=>{
         if(!userId||!window.__GET3W_ACCOUNT__?.outputs)throw Error("Unavailable");
         return window.__GET3W_ACCOUNT__.outputs({userId,workspaceId,sessionId,action:"read",path:file.path});

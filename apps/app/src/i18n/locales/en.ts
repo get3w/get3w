@@ -1,4 +1,13 @@
 export default {
+  "personal.media.play_audio": "Play audio",
+  "personal.media.audio_unavailable": "Audio preview unavailable. Download the file to play it.",
+  "personal.media.elapsed": "Elapsed {time}",
+  "personal.media.estimate": "Estimated {time}",
+  "personal.media.remaining": "Remaining ~{time}",
+  "personal.media.overdue": "{time} beyond estimate",
+  "personal.media.progress": "Estimated generation progress",
+  "personal.media.play_video": "Play video",
+  "personal.media.video_unavailable": "Video preview unavailable. Download the file to play it.",
   "personal.media.charged": "Charged",
   "personal.media.reserved": "Reserved · settlement pending",
   "personal.media.failed": "Generation failed. Check the task details before preparing a new request.",
@@ -9,6 +18,7 @@ export default {
   "personal.media.started": "Started media generation",
   "personal.media.start_failed": "Couldn't start media generation",
   "desktop.sign_in.headline": "Get3W, here to help",
+  "desktop.sign_in.loading": "Loading...",
   "desktop.sign_in.privacy": "Privacy policy",
   "desktop.sign_in.terms": "Terms of service",
 

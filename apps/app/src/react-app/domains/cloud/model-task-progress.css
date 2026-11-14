@@ -1,0 +1,46 @@
+.model-task-canvas-progress {
+  background-color: var(--muted);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--blue-9) 40%, transparent);
+  animation: model-task-breathe 3s ease-in-out infinite;
+}
+.model-task-canvas-fill {
+  overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--blue-9) 15%, transparent), color-mix(in srgb, var(--blue-9) 25%, transparent), color-mix(in srgb, var(--blue-9) 15%, transparent));
+}
+.model-task-canvas-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--blue-9) 30%, transparent), transparent);
+  animation: model-task-sweep 3s ease-in-out infinite;
+}
+.model-task-canvas-edge {
+  width: 2px;
+  background: var(--blue-9);
+  color: var(--blue-9);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, currentColor 50%, transparent);
+  animation: model-task-glow 2s ease-in-out infinite;
+}
+.model-task-canvas-progress[data-overtime] .model-task-canvas-edge {
+  background: var(--amber-9);
+  color: var(--amber-9);
+}
+@keyframes model-task-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes model-task-glow {
+  0%, 100% { opacity: .8; }
+  50% { opacity: 1; }
+}
+@keyframes model-task-breathe {
+  0%, 100% { background-color: var(--muted); }
+  50% { background-color: color-mix(in srgb, var(--muted) 94%, var(--foreground)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .model-task-canvas-progress,
+  .model-task-canvas-edge,
+  .model-task-canvas-fill::after { animation: none; }
+}

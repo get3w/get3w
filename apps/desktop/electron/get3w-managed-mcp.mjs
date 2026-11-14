@@ -21,7 +21,10 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     isStopped:context=>journal.isStopped({userId,workspaceId,sessionId:context.sessionId ?? sessionId},context),
     beforeSubmit:context=>journal.beforeSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
     releaseSubmit:context=>journal.releaseSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
-    observe:async(context,payload)=>{await journal.observe({userId,workspaceId,sessionId:context.sessionId ?? sessionId},context,payload);void syncOutputs({userId,workspaceId}).catch(()=>{});},
+    observe:async(context,payload)=>{const scope={userId,workspaceId,sessionId:context.sessionId ?? sessionId};await journal.observe(scope,context,payload);
+      const structured=payload?.result?.structuredContent;const result=structured?.result??structured;
+      if(result)await globalThis.__get3wTaskLogs?.captureOutput?.(scope,[],result).catch(()=>{});
+      void syncOutputs({userId,workspaceId}).catch(()=>{});},
   });
   let records,queue=Promise.resolve();
   /** @template T @param {()=>Promise<T>} fn @returns {Promise<T>} */
@@ -88,6 +91,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
         const saved=[];
         for(const url of urls)saved.push(await outputRequest(scope,{action:"save",key:row.key,url,sessionId:row.scope.sessionId}));
         await journal.updateOutput(row.scope,row.key,{files:saved,downloadError:null});
+        await globalThis.__get3wTaskLogs?.captureOutput?.(row.scope,saved,row.result).catch(()=>{});
       }catch{await journal.updateOutput(row.scope,row.key,{downloadError:"Download failed. Retry or refresh the result."});}
       finally{downloading.delete(row.key);if(row.nativeMedia?.traceId)console.info("[get3w-media-timing]",JSON.stringify({traceId:row.nativeMedia.traceId,stage:"download",durationMs:Date.now()-downloadStarted}));}
     }
@@ -155,7 +159,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       else void syncOutputs(scope).catch(()=>{});
       const rows=input.action==="listAll" ? await journal.listConnection(scope) : await journal.list(scope);
       // Keep submission inputs in main; expose only scoped state and result outputs.
-      return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],reservedUsd:row.quote?.amountUsd??null,chargedUsd:row.result?.billing?.charged?.usd??null,error:row.result?.error?{code:row.result.error.code}:null,outputEntry:row.outputEntry??null}))};
+      return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,submittedAt:row.submittedAt,estimatedDuration:row.estimatedDuration,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],reservedUsd:row.quote?.amountUsd??null,chargedUsd:row.result?.billing?.charged?.usd??null,error:row.result?.error?{code:row.result.error.code}:null,outputEntry:row.outputEntry??null}))};
     }),
     outputs:async input=>{
       if(!input||!/^[-\w]{1,100}$/.test(input.workspaceId??"")||!["index","read"].includes(input.action))throw Error("Invalid output scope.");

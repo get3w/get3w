@@ -147,63 +147,11 @@ jobs:
         run: |
           python3 -m pip install PyYAML==6.0.3
           python3 scripts/release/assemble.py artifacts/release-input artifacts/release-public "${GITHUB_REF_NAME#v}"
-      - name: Publish complete release
+      - name: Publish draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Get3W $GITHUB_REF_NAME" --notes-file docs/release-notes.md
           gh release upload "$GITHUB_REF_NAME" artifacts/release-public/*
-
-      - name: Install Tencent COS client
-        run: python3 -m pip install --disable-pip-version-check --no-input cos-python-sdk-v5==1.9.45
-
-      - name: Sync installers and updater feed to the mainland mirror
-        env:
-          COS_SECRET_ID: ${{ secrets.GET3W_COS_SECRET_ID }}
-          COS_SECRET_KEY: ${{ secrets.GET3W_COS_SECRET_KEY }}
-          COS_REGION: ${{ secrets.GET3W_COS_REGION }}
-          COS_BUCKET: ${{ secrets.GET3W_COS_BUCKET || 'get3w-web-1252164560' }}
-          VERSION: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          test -n "$COS_SECRET_ID" || { echo "Missing GET3W_COS_SECRET_ID" >&2; exit 1; }
-          test -n "$COS_SECRET_KEY" || { echo "Missing GET3W_COS_SECRET_KEY" >&2; exit 1; }
-          test -n "$COS_REGION" || { echo "Missing GET3W_COS_REGION" >&2; exit 1; }
-          VERSION="${VERSION#v}"
-          RELEASE_DIR="$GITHUB_WORKSPACE/artifacts/release-public"
-          MANUAL_DIR="$RUNNER_TEMP/get3w-manual"
-          UPDATER_DIR="$RUNNER_TEMP/get3w-updater"
-          mkdir -p "$MANUAL_DIR" "$UPDATER_DIR"
-          cp "$RELEASE_DIR"/get3w-mac-*.dmg "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/SHA256SUMS "$RELEASE_DIR"/release.json "$MANUAL_DIR"/
-          cp "$RELEASE_DIR"/latest-mac.yml "$RELEASE_DIR"/latest.yml "$RELEASE_DIR"/release.json "$RELEASE_DIR"/get3w-mac-*.zip "$RELEASE_DIR"/get3w-win-*.exe "$RELEASE_DIR"/*.blockmap "$UPDATER_DIR/"
-          python3 scripts/release/sync_cos.py "$MANUAL_DIR" "download/releases/v$VERSION"
-          python3 scripts/release/sync_cos.py "$UPDATER_DIR" "desktop/releases/v$VERSION"
-          python3 scripts/release/sync_cos.py "$UPDATER_DIR" "desktop/releases/latest/download"
-
-      - name: Verify mainland mirror contains real release files
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          VERSION="${VERSION#v}"
-          for url in \
-            "https://get3w.com/desktop/releases/latest/download/latest-mac.yml" \
-            "https://get3w.com/desktop/releases/latest/download/latest.yml" \
-            "https://get3w.com/desktop/releases/latest/download/release.json" \
-            "https://get3w.com/download/releases/v$VERSION/SHA256SUMS"; do
-            body="$RUNNER_TEMP/$(basename "$url")"
-            curl --fail --location --retry 3 --silent --show-error "$url" -o "$body"
-            test -s "$body"
-            ! head -c 512 "$body" | grep -Eiq '<!doctype html|<html'
-          done
-          curl --fail --location --silent --show-error \
-            "https://get3w.com/desktop/releases/latest/download/latest-mac.yml" \
-            | grep -q "^version: $VERSION$"
-          curl --fail --location --silent --show-error \
-            "https://get3w.com/desktop/releases/latest/download/latest.yml" \
-            | grep -q "^version: $VERSION$"
-
-      - name: Mark release as latest
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+      # The release stays a draft. Mirror it to COS from a mainland-reachable
+      # machine with scripts/release/mirror-cos.sh, which marks it Latest.

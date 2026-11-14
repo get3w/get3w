@@ -181,6 +181,15 @@ describe("inline code links", () => {
 });
 
 describe("rendered chat Markdown", () => {
+  test("video download links use decoded link resolution", () => {
+    const href = "/Users/me/Library/Application%20Support/Get3W%20Chat/final.mp4";
+    const html = renderMarkdownHtml(`[Final](${href})`, "chat");
+    expect(html).toContain(`data-openwork-link-href="${href}"`);
+    expect(html).not.toContain(`data-openwork-inline-code-path="${href}"`);
+    const target = openTargetForHref(href, [], "/Users/me/Library/Application Support/Get3W Chat");
+    expect(target?.value).toBe("/Users/me/Library/Application Support/Get3W Chat/final.mp4");
+  });
+
   test("makes file references clickable with clean paths", () => {
     const html = renderMarkdownHtml("See `computer-control.test.mjs:813` and [the plan](docs/plan.md:3).", "chat");
     expect(html).toContain("data-openwork-inline-code-path=\"computer-control.test.mjs\"");

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import type { Snapshot } from "../src/react-app/domains/cloud/get3w-account";
 
 beforeAll(() => {
   GlobalRegistrator.register({ url: "http://localhost" });
@@ -18,6 +19,49 @@ test("native sends require a signed-in account and open the existing sign-in dia
     expect(requests).toBe(1);
   } finally {
     window.removeEventListener(openworkSignInEvent, onSignIn);
+    delete window.__GET3W_ACCOUNT__;
+  }
+});
+
+test("desktop shows loading until signed out is confirmed, including unavailable and failed checks", async () => {
+  const { MemoryRouter } = await import("react-router");
+  const { act } = await import("react");
+  const { createRoot } = await import("react-dom/client");
+  const { DesktopAccountGate } = await import("../src/react-app/domains/cloud/get3w-account");
+  const { setLocale } = await import("../src/i18n");
+  Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
+  let resolveStatus: (snapshot: Snapshot) => void = () => {};
+  let rejectStatus: (error: Error) => void = () => {};
+  const status = () => new Promise<Snapshot>((resolve, reject) => { resolveStatus = resolve; rejectStatus = reject; });
+  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ACCOUNT__", { status });
+  const node = document.createElement("div");
+  document.body.append(node);
+  const root = createRoot(node);
+  const expectLoading = () => {
+    expect(node.textContent).toContain("载入中...");
+    expect(node.textContent).not.toContain("登录 Get3W");
+    expect(node.querySelector("button")).toBeNull();
+    expect(node.querySelector('[data-testid="operation"]')).toBeNull();
+  };
+  try {
+    setLocale("zh");
+    await act(async () => { root.render(<MemoryRouter><DesktopAccountGate><button data-testid="operation">Operation</button></DesktopAccountGate></MemoryRouter>); });
+    expectLoading();
+    await act(async () => { resolveStatus({ status: "unavailable", user: null, pending: false, error: "Service unavailable" }); });
+    expectLoading();
+    expect(node.querySelector('[role="alert"]')).not.toBeNull();
+    await act(async () => { window.dispatchEvent(new Event("focus")); });
+    await act(async () => { rejectStatus(new Error("Service unavailable")); });
+    expectLoading();
+    await act(async () => { window.dispatchEvent(new Event("online")); });
+    await act(async () => { resolveStatus({ status: "signed_out", user: null, pending: false, error: null }); });
+    expect(node.textContent).not.toContain("载入中...");
+    expect(node.querySelector("button")?.textContent).toBe("登录 Get3W");
+  } finally {
+    await act(async () => { root.unmount(); });
+    node.remove();
+    Reflect.deleteProperty(window, "__OPENWORK_ELECTRON__");
     delete window.__GET3W_ACCOUNT__;
   }
 });

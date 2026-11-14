@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {readFile,mkdir,open,rename,realpath,stat} from 'node:fs/promises';
 import path from 'node:path';
-import {resolveSetting} from './model-settings.mjs';
+import {resolveSetting,outputFieldNames} from './model-settings.mjs';
 import {Ajv2020} from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
@@ -75,7 +75,10 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
     channelOptions:property['x-channel-options'],resolutionOptions:property['x-resolution-options'],
     showChannels:property['x-show-channels'],showResolutions:property['x-show-resolutions'],apiOnly:property['x-api-only']},inputs);
    if(!resolved){result.properties[name]=false;continue;}
-   if(resolved.options)property.enum=resolved.options.map(option=>option.value);
+   if(resolved.options)property.enum=resolved.options.map(option=>{
+    const value=option.value;
+    return ['integer','number'].includes(property.type)&&typeof value==='string'&&value.trim()!==''&&Number.isFinite(Number(value))?Number(value):value;
+   });
    // Advertise the resolved preference, so schema defaults do not invite the
    // model to overwrite a user setting with the catalog default.
    if(inputs[name]!==undefined)property.default=structuredClone(inputs[name]);
@@ -139,6 +142,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
  }
  async function prepare(input,host,signal){
   if(!record(input)||typeof input.task_type!=='string'||!input.task_type)return failure('invalid_input','Choose the media task type');
+  if(input.task_key!==undefined&&(typeof input.task_key!=='string'||!input.task_key.trim()||input.task_key.length>120))return failure('invalid_input','Use a stable task_key of 1 to 120 characters for each independent candidate');
   if(input.references!==undefined&&!record(input.references))return failure('invalid_input','References must use the model reference parameter names');
   const cat=await catalog(),policy=host.generationPolicy??{models:{},outputs:{}};
   const taskTypes=[...new Set(cat.models.map(model=>model.type))];
@@ -170,14 +174,14 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   if(!record(schema)||!record(schema.properties))return failure('invalid_schema','The model input definition is unavailable');
   const sourceReferences=input.references??{};
   if(Object.keys(sourceReferences).some(name=>!Object.hasOwn(schema.properties,name)))return failure('invalid_references','Use reference fields supported by this model');
-  const prior=await serial(async()=>{await load();return records.find(item=>hash(item.owner)===hash(identity(host))&&item.model===model.model_id&&hash(item.sourceReferences??item.references)===hash(sourceReferences));});
+  const prior=await serial(async()=>{await load();return records.find(item=>hash(item.owner)===hash(identity(host))&&item.model===model.model_id&&(item.taskKey??'')===(input.task_key??'')&&hash(item.sourceReferences??item.references)===hash(sourceReferences));});
   if(prior)return {status:missingInputs(prior.schema,merged(prior,{})).length>0?'needs_input':'ready',preparation_id:prior.id,model:{id:prior.model,name:prior.name},parameters:conciseSchema(inputSchema(prior.schema,merged(prior,{}))),defaults:prior.defaults,missing_inputs:missingInputs(prior.schema,merged(prior,{})),trace_id:prior.traceId};
   const references=Object.fromEntries(await Promise.all(Object.entries(sourceReferences).map(async([name,value])=>[name,await measure(trace,'reference_upload',()=>referenceValue(value,host,signal,trace))])));
   if(Object.keys(references).some(name=>!Object.hasOwn(schema.properties,name)))return failure('invalid_references','Use reference fields supported by this model');
-  const row={id:"",traceId:trace,owner:identity(host),receivedAt:host.receivedAt,model:model.model_id,name:model.name,taskType:model.type,catalogVersion:cat.catalog_version,schema,defaults:defaults(model,policy,cat),references,sourceReferences,createdAt:now()};
+  const row={id:"",traceId:trace,owner:identity(host),receivedAt:host.receivedAt,model:model.model_id,name:model.name,taskType:model.type,taskKey:input.task_key??'',catalogVersion:cat.catalog_version,schema,defaults:defaults(model,policy,cat),references,sourceReferences,createdAt:now()};
   const initial=merged(row,{});
   const missing=missingInputs(schema,initial);
-  await serial(async()=>{await load();const existing=records.find(item=>hash(item.owner)===hash(row.owner)&&item.model===row.model&&hash(item.references)===hash(row.references));
+  await serial(async()=>{await load();const existing=records.find(item=>hash(item.owner)===hash(row.owner)&&item.model===row.model&&(item.taskKey??'')===row.taskKey&&hash(item.references)===hash(row.references));
     if(existing){Object.assign(row,existing);return;}
     // This is a scoped lookup handle, not a credential. Short decimal handles
     // avoid model transcription errors; ownership is still checked on every call.
@@ -189,6 +193,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
  }
  async function generate(input,host,signal){
   if(!record(input)||typeof input.preparation_id!=='string'||!record(input.inputs))return failure('invalid_input','Provide a preparation and its media inputs');
+  if(input.output_overrides!==undefined&&(!record(input.output_overrides)||Object.keys(input.output_overrides).some(name=>!outputFieldNames.includes(name))))return failure('invalid_input','Output overrides must contain only output settings explicitly requested by the user');
   // Local references must be uploaded in prepare, before the input is frozen.
   // Never send a filesystem path to a model API as if it were a public URL.
   const localFields=Object.entries(input.inputs).filter(([name,value])=>{
@@ -199,7 +204,13 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   if(localFields.length)return failure('references_require_preparation','Prepare local media references before generating',{missing_inputs:localFields});
   const row=await serial(async()=>{await load();return records.find(item=>item.id===input.preparation_id&&hash(item.owner)===hash(identity(host)));});
   if(!row)return failure('preparation_unavailable','Prepare this media task in the current conversation');
-  let inputs=merged(row,input.inputs),fingerprint=hash(inputs);
+  const values={...input.inputs,...input.output_overrides};
+  // Tool arguments are authored by the model, not evidence of user intent.
+  // Keep preferences unless a separately declared user override is supplied.
+  const expected=merged(row,{});
+  const conflicts=Object.keys(row.defaults).filter(name=>Object.hasOwn(expected,name)&&Object.hasOwn(input.inputs,name)&&!Object.hasOwn(input.output_overrides??{},name)&&String(input.inputs[name]).toLowerCase()!==String(expected[name]).toLowerCase());
+  if(conflicts.length)return failure('output_preference_conflict','Omit conflicting output settings to use the saved preferences. Use output_overrides only when the user explicitly requests a change in this message.',{expected:Object.fromEntries(conflicts.map(name=>[name,expected[name]]))});
+  let inputs=merged(row,values),fingerprint=hash(inputs);
   if(row.inputHash&&row.inputHash!==fingerprint)return failure('input_conflict','These inputs differ from the existing task. Prepare a new task to change them');
   if(active.has(row.id)){const running=active.get(row.id);return running.fingerprint===fingerprint?running.pending:failure('input_conflict','A different input is already being submitted for this preparation');}
   const execute=async()=>{
@@ -215,7 +226,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
     if(!record(definition?.input_schema)||!record(definition.input_schema.properties))return failure('invalid_schema','The model input definition is unavailable');
     row.schema=referenceRequirements(row.taskType,definition.input_schema);row.catalogVersion=cat.catalog_version;row.refreshed=true;
     // A frozen request can only be revalidated, never silently rewritten.
-    if(!row.inputHash){row.defaults=defaults(cat.models.find(model=>model.model_id===row.model),host.generationPolicy??{},cat);inputs=merged(row,input.inputs);fingerprint=hash(inputs);}
+    if(!row.inputHash){row.defaults=defaults(cat.models.find(model=>model.model_id===row.model),host.generationPolicy??{},cat);inputs=merged(row,values);fingerprint=hash(inputs);}
     await serial(async()=>{await save();});
    }
    // The host journal is committed after consent and before network dispatch.

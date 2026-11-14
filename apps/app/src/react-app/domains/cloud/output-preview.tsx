@@ -1,3 +1,5 @@
+import {AudioPreview} from "./audio-preview";
+import {VideoPreview} from "./video-preview";
 import {PdfPreview} from "../session/artifacts/preview";
 import {useEffect,useRef,useState} from "react";
 import {t,useLocale} from "@/i18n";
@@ -7,9 +9,9 @@ import type {OutputFile} from "./get3w-account";
 
 export function outputKind(path:string):"image"|"video"|"audio"|"document"|"3d"|"text"{
  const extension=path.split("?")[0]?.split(".").at(-1)?.toLowerCase();
- if(["png","jpg","jpeg","webp","gif"].includes(extension??""))return "image";
+ if(["png","jpg","jpeg","webp","gif","avif","bmp"].includes(extension??""))return "image";
  if(["mp4","webm","mov"].includes(extension??""))return "video";
- if(["mp3","wav","m4a","ogg"].includes(extension??""))return "audio";
+ if(["mp3","wav","m4a","ogg","flac","aac","opus","aiff"].includes(extension??""))return "audio";
  if(["glb","gltf","obj","stl","zip"].includes(extension??""))return "3d";
  if(["pdf","docx","html","htm"].includes(extension??""))return "document";
  return "text";
@@ -52,8 +54,8 @@ export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(v
   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate" title={file.path}>{compact?file.path.split("/").at(-1):file.path}</span>{!compact?<span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>:null}{src?<a href={src} download={file.path.split("/").at(-1)} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
   {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&!src?<div className={compact?"h-28 w-40 animate-pulse rounded bg-muted":"h-20 animate-pulse rounded bg-muted"} aria-busy="true"/>:null}
   {src&&kind==="image"&&!imageHidden?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
-  {src&&kind==="video"?<video src={src} controls preload="metadata" className={compact?"max-h-40 max-w-60 rounded-md":"max-h-72 max-w-full"}/>:null}
-  {src&&kind==="audio"?<audio src={src} controls preload="metadata" className={compact?"max-w-60":"w-full"}/>:null}
+  {src&&kind==="video"?<VideoPreview src={src} compact={compact}/>:null}
+  {src&&kind==="audio"?<AudioPreview src={src}/>:null}
   {src&&/\.pdf$/i.test(file.path)?<PdfPreview title={file.path} url={src} className="h-80 w-full"/>:null}
   {src&&/\.html?$/i.test(file.path)?<iframe title={file.path} srcDoc={`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'">${text}`} sandbox="" referrerPolicy="no-referrer" className="h-80 w-full border-0 bg-background"/>:null}
   {src&&/\.docx$/i.test(file.path)?<DocxPreview source={src}/>:null}

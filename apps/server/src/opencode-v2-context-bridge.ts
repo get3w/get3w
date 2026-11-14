@@ -10,7 +10,7 @@ import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/openwork-session-g
 import { loopbackFetch } from "./server-fetch.js";
 
 const requestSchema = z.object({
-  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call"]),
+  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call", "task_log_evidence"]),
   input: z.unknown(),
   sessionId: z.string().max(256).optional(),
   // The calling tool's place in its chat, where a Drive approval is shown.
@@ -166,15 +166,25 @@ export async function createV2ContextBridge(
     if (request.headers.get("authorization") !== `Bearer ${token}`) return new Response(null, { status: 401 });
     if (request.method !== "POST" || new URL(request.url).pathname !== "/read") return new Response(null, { status: 404 });
     try {
-      const text = await request.text();
-      if (text.length > 64_000) return new Response(null, { status: 413 });
+      const chunks: Uint8Array[] = []; let bytes = 0;
+      if (request.body) for await (const chunk of request.body) {
+        bytes += chunk.byteLength;
+        if (bytes > 40_000_000) return new Response(null, { status: 413 });
+        chunks.push(chunk);
+      }
+      const text = Buffer.concat(chunks).toString("utf8");
+      if (text.length > 40_000_000) return new Response(null, { status: 413 });
       const call = requestSchema.parse(JSON.parse(text));
+      if (call.name !== "task_log_evidence" && text.length > 64_000) return new Response(null, { status: 413 });
       let deadline = AbortSignal.timeout(60_000);
       const read = (path: string, init?: RequestInit) => {
         const signal = AbortSignal.any([request.signal, deadline, ...(init?.signal ? [init.signal] : [])]);
         signal.throwIfAborted();
         return hostRequest(path, { ...init, signal });
       };
+      if (call.name === "task_log_evidence") {
+        return Response.json(await read("/experimental/task-log-evidence", {method:"POST",body:JSON.stringify(call)}));
+      }
       if (call.name === "get3w_model_call") {
         deadline = AbortSignal.timeout(APPROVAL_WAIT_MS);
         if (!call.sessionId || !call.caller) throw new Error("Conversation context required");

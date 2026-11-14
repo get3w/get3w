@@ -1,6 +1,6 @@
 "use memo";
 
-import { ModelTasksProvider, ModelTaskStatus } from "@/react-app/domains/cloud/model-task-status"
+import { ModelTasksProvider, ModelTaskStatus, useHasModelTasks } from "@/react-app/domains/cloud/model-task-status"
 import { appBuildActivity, appBuildInProgress, appCreationRuns } from "@/react-app/domains/apps/app-creation-progress"
 import { BuiltAppPreviewSync } from "@/react-app/domains/apps/built-app-chat-preview"
 import { builtAppSummary } from "@/react-app/domains/apps/built-mcp-app-model"
@@ -717,8 +717,12 @@ const AssistantMessage = React.memo(
 
             if (group.kind === "file") {
               return (
-                <div key={`file-${index}`} className="w-fit max-w-full">
-                  <FileMessage part={group.part} tone="assistant" />
+                <div key={`file-${index}`} data-message-files="" className="flex w-full min-w-0 flex-wrap items-start gap-2">
+                  {group.parts.map((part, fileIndex) => (
+                    <div key={fileIndex} className="w-fit min-w-0 max-w-full flex-none">
+                      <FileMessage part={part} tone="assistant" />
+                    </div>
+                  ))}
                 </div>
               )
             }
@@ -727,6 +731,7 @@ const AssistantMessage = React.memo(
               return (
                 <div key={`tool-aggregate-${index}`} className="w-full">
                   <ToolAggregateGroup messageId={message.id} parts={group.parts} thoughts={group.thoughts} />
+                  <ModelTaskStatus messageIds={[message.id]} toolCallIds={group.parts.map(part=>part.toolCallId)} inline/>
                 </div>
               )
             }
@@ -734,9 +739,11 @@ const AssistantMessage = React.memo(
             return (
               <div key={`tool-${index}`} className="w-full">
                 <ToolMessage part={group.part} />
+                <ModelTaskStatus messageIds={[message.id]} toolCallIds={[group.part.toolCallId]} inline/>
               </div>
             )
           })}
+          <ModelTaskStatus messageIds={[message.id]} inline/>
         </div>
       </Message>
     )
@@ -1552,6 +1559,8 @@ function MessageGroup({
     return createdSkillCards.filter((card) => ids.has(card.anchorToolCallId))
   }, [items, createdSkillCards])
 
+  const hasModelTasks=useHasModelTasks(items.map(item=>item.message.id));
+
   if (!lastItem || isMessageEmptyGroup(items)) {
     return null;
   }
@@ -1590,7 +1599,7 @@ function MessageGroup({
   // the answer interleaved in its parts. Split the first prose message so
   // its leading steps fold with the rest instead of pinning the run open.
   const firstProse = proseItems[0]
-  if (firstProse && firstProse.message.role === "assistant" && !isSessionErrorMessage(firstProse.message)) {
+  if (!hasModelTasks && firstProse && firstProse.message.role === "assistant" && !isSessionErrorMessage(firstProse.message)) {
     const split = splitTurnAtAnswer(firstProse.message)
     if (split) {
       stepItems = [...stepItems, { index: firstProse.index, message: split.steps }]
@@ -1646,7 +1655,7 @@ function MessageGroup({
         : `${stepRowCount} steps`
   // A short finished run reads fine as a list, so only long ones fold away.
   const collapseSteps =
-    !isLiveGroup && stepItems.length > 0 && stepRowCount >= COLLAPSED_STEP_RUN_MIN_ROWS
+    !hasModelTasks && !isLiveGroup && stepItems.length > 0 && stepRowCount >= COLLAPSED_STEP_RUN_MIN_ROWS
     && !stepsNeedAttention(stepItems, connectionCardParts)
   // A task on another computer outlives the turn that started it and may still
   // need the person, so its row stays in view below a folded run.
@@ -1718,7 +1727,7 @@ function MessageGroup({
         item.message.role === "assistant" && !isSessionErrorMessage(item.message)
           ? getAggregateOnlyParts(item.message, showThinking)
           : null
-      if (aggregateParts) {
+      if (aggregateParts && !hasModelTasks) {
         if (!run) run = { parts: [], key: item.message.id }
         run.parts.push(...aggregateParts)
         return
@@ -2050,7 +2059,6 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
               isStreaming={isStreaming && item.messages.at(-1)?.index === lastVisibleIndex}
               newestAppCallIds={newestAppCallIds}
             />
-            <ModelTaskStatus messageIds={item.messages.map(({message})=>message.id)} />
             </>
           )
         }
@@ -2068,7 +2076,7 @@ export function MessageList({ messages, messageIdReplacements, status, activityS
             isStreaming={isLastMessage && isStreaming}
             isLastStep={isLastStep}
           />
-          <ModelTaskStatus messageIds={[item.message.id]} />
+          {item.message.role!=="assistant"?<ModelTaskStatus messageIds={[item.message.id]} />:null}
           </>
         )
         }}

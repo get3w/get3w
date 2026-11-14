@@ -55,7 +55,7 @@ export type TaskCatalogSnapshot = {
 export type ModelApproval = { id: string; workspaceId: string; modelTask: {quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number} };
 export type OutputFile = {sessionId?:string;rootPath?:string;path:string;mimeType:string;sizeBytes:number;updatedAt?:number};
 export type OutputEntry = {id:string;userId:string;workspaceId:string;sessionId:string|null;messageId:string|null;requestId:string|null;slug:string|null;status:string;files:OutputFile[];outputs:unknown[];structured:unknown;charged:number|string|null;createdAt:number;updatedAt:number;downloadError?:string|null};
-export type ModelTask = {reservedUsd?:string|null;chargedUsd?:string|null;error?:{code?:string}|null;messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
+export type ModelTask = {submittedAt?:number;estimatedDuration?:number;reservedUsd?:string|null;chargedUsd?:string|null;error?:{code?:string}|null;messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
 type AccountBridge = {
   automations?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   artifacts?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
@@ -184,9 +184,9 @@ export function Get3wAccount() {
         <div aria-hidden="true" style={{ maskImage: `url(${get3wMark})` }} className="mb-9 size-32 bg-foreground/80 [mask-repeat:no-repeat] [mask-position:center] [mask-size:contain] sm:size-40" />
         <h1 id="desktop-sign-in-title" className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{t("desktop.sign_in.headline")}</h1>
         <div className="mt-10 flex w-full max-w-64 flex-col items-center gap-4">
-          <Button className="h-11 w-full rounded-full bg-foreground text-base font-medium text-background hover:bg-foreground/90" disabled={busy || !bridge} onClick={() => void run(snapshot.pending ? "cancel" : "begin")}>
+          {snapshot.pending || snapshot.status === "signed_out" ? <Button className="h-11 w-full rounded-full bg-foreground text-base font-medium text-background hover:bg-foreground/90" disabled={busy || !bridge} onClick={() => void run(snapshot.pending ? "cancel" : "begin")}>
             {snapshot.pending ? t("ui.9effa0b74884") : t("ui.71513c6f6861")}
-          </Button>
+          </Button> : <p role="status" className="flex h-11 items-center text-base text-muted-foreground">{t("desktop.sign_in.loading")}</p>}
           <div className="min-h-10 text-center text-sm text-muted-foreground" aria-live="polite">
             {error || snapshot.error ? <p role="alert" className="text-destructive">{error || settingsErrorMessage(new Error(snapshot.error ?? ""))}</p>
               : snapshot.pending ? <p role="status">{t("ui.d5368ee88fd6")}</p> : null}

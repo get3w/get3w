@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mcpToolId } from "../src/opencode-v2-mcp-readiness.js";
+import { NATIVE_MEDIA_TASK_SELECTION } from "../src/native-media-instructions.js";
 import contextPlugin from "../src/opencode-plugins/openwork-context-v2.js";
 import { addProviderSafeTool, providerSchemaProblems } from "../src/opencode-plugins/provider-safe-tool-schema.js";
 
-type Registered = { name: string; input: Record<string, unknown> };
+type Registered = { name: string; description: string; input: Record<string, unknown> };
 
 // Loads the context plugin the way OpenCode v2 does, with the browser and
 // computer enabled, and returns every tool it registers.
-async function registeredTools() {
+async function registeredTools(nativeMediaReady = false) {
   const tools: Registered[] = [];
   const registration = { dispose: async () => {} };
   const dispose = await contextPlugin.setup({
     options: { url: "http://127.0.0.1:9/context", token: "context", browser: { url: "http://127.0.0.1:9/browser", token: "browser" } },
-    tool: { transform: async (callback: (editor: { add(tool: Registered): void }) => void) => { callback({ get: () => undefined, update() {}, add: tool => tools.push(tool) }); return registration; } },
+    tool: { transform: async (callback: (editor: { add(tool: Registered): void }) => void) => { callback({ get: id => nativeMediaReady && id === mcpToolId("get3w-account", "native_media_ready") ? {} : undefined, update() {}, add: tool => tools.push(tool) }); return registration; } },
     skill: { transform: async () => registration, reload: async () => {} },
   } as unknown as Parameters<typeof contextPlugin.setup>[0]);
   await dispose();
@@ -44,4 +46,15 @@ test("a tool providers would reject is left out instead of failing every request
     assert.equal(addProviderSafeTool(editor, { name: "flat", input: { type: "object", properties: { input: {} } } }), true);
   } finally { console.warn = warn; }
   assert.deepEqual(added, ["flat"]);
+});
+
+
+test("native media tools distinguish songs from spoken lyrics in provider-visible instructions", async () => {
+  const tools = await registeredTools(true);
+  const prepare = tools.find(tool => tool.name === "media_prepare");
+  assert.ok(prepare);
+  assert.ok(prepare.description.includes(NATIVE_MEDIA_TASK_SELECTION));
+  assert.deepEqual(providerSchemaProblems(prepare.input), []);
+  assert.deepEqual(providerSchemaProblems(tools.find(tool => tool.name === "media_generate")?.input), []);
+  assert.equal((await registeredTools()).some(tool => tool.name === "media_prepare"), false);
 });

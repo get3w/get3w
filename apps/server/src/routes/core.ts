@@ -97,6 +97,12 @@ export function registerCoreRoutes(options: RegisterCoreRoutesOptions): void {
     }, ok ? 200 : 503);
   };
 
+  addRoute(routes, "POST", "/experimental/task-log-evidence", "client", async ctx => {
+    const body = await readJsonBody(ctx.request);
+    if (typeof body.sessionId !== "string" || !isRecord(body.input)) throw new ApiError(422, "invalid_evidence", "Invalid task evidence");
+    await globalThis.__get3wTaskLogs?.captureEvidence?.(body.sessionId, body.input).catch(() => {});
+    return jsonResponse({ok:true});
+  });
   addRoute(routes, "GET", "/health", "none", async () => healthResponse());
 
   addRoute(routes, "GET", "/w/:id/health", "none", async () => healthResponse());

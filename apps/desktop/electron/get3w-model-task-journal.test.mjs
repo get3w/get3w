@@ -124,3 +124,19 @@ test('definitively stale quotes can be replaced only for the same frozen inputs 
   const rows=await journal.list(scope);assert.equal(rows.length,1);assert.equal(rows[0].status,'submitting');assert.equal(rows[0].arguments.quote_id,'new');
  }finally{await rm(userData,{recursive:true,force:true});}
 });
+
+test('duration estimate survives polling without estimates and journal restart',async()=>{
+ const userData=await mkdtemp(path.join(tmpdir(),'get3w-estimate-'));
+ const scope={userId:'u',workspaceId:'w',sessionId:'s'};
+ const context={type:'get3w.submit',hash:'input',quote:{amountUsd:'0.02'},call:{arguments:{idempotency_key:'estimate'}}};
+ try{
+  let journal=createModelTaskJournal({userData});await journal.beforeSubmit(scope,context);
+  await journal.observe(scope,context,{result:{structuredContent:{result:{request_id:'r',status:'submitted'}}}});
+  const poll={type:'get3w.result',call:{arguments:{request_id:'r'}}};
+  await journal.observe(scope,poll,{result:{structuredContent:{result:{id:'r',status:'processing',estimated_duration:90}}}});
+  const start=(await journal.list(scope))[0].submittedAt;
+  for(const estimate of [undefined,null,0,-1,'60'])await journal.observe(scope,poll,{result:{structuredContent:{result:{id:'r',status:'processing',estimated_duration:estimate}}}});
+  journal=createModelTaskJournal({userData});
+  const [row]=await journal.list(scope);assert.equal(row.estimatedDuration,90);assert.equal(row.submittedAt,start);
+ }finally{await rm(userData,{recursive:true,force:true});}
+});

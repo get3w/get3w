@@ -69,6 +69,13 @@ test("compact previews reserve no large image space and keep videos bounded",asy
   expect(node.textContent).not.toContain("outputs/");
   await act(async()=>root.render(<OutputPreview compact file={{path:"video.mp4",mimeType:"video/mp4",sizeBytes:1}} read={async()=>({dataBase64:"AA==",mimeType:"video/mp4",sizeBytes:1})}/>));
   expect(node.querySelector("video")?.className).toContain("max-h-40");
-  expect(node.querySelector("video")?.hasAttribute("controls")).toBe(true);
+  expect(node.querySelector("video")?.hasAttribute("controls")).toBe(false);
+  expect(node.querySelector("video")?.closest("button")).not.toBeNull();
  }finally{await act(async()=>root.unmount());node.remove();URL.createObjectURL=previousCreate;URL.revokeObjectURL=previousRevoke;}
+});
+
+
+test("additional generated image and audio formats use native previews",()=>{
+ for(const extension of ["avif","bmp"])expect(outputKind(`result.${extension}`)).toBe("image");
+ for(const extension of ["flac","aac","opus","aiff"])expect(outputKind(`result.${extension}`)).toBe("audio");
 });

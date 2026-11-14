@@ -37,11 +37,11 @@ test("polled tasks render once between their turn and a later conversation, with
  const {Get3wAccount}=await import("../src/react-app/domains/cloud/get3w-account");
  const {ModelTasksProvider,ModelTaskStatus}=await import("../src/react-app/domains/cloud/model-task-status");
  const calls:unknown[]=[];
- const original=task({messageId:"first"});
+ const original=task({messageId:"first",createdAt:Date.now()-30000,estimatedDuration:90,reservedUsd:"1.071000",chargedUsd:"1.071429"});
  Reflect.set(window,"__GET3W_ACCOUNT__",{
   status:async()=>({status:"signed_in",user:{id:"fixture",name:"Fixture"},error:null,pending:false}),
   taskCatalog:async()=>({catalog_version:"fixture",expiresAt:Date.now()+60000,offline:false,models:[]}),
-  modelTasks:async(input:{action:string})=>{calls.push(input);return {items:[{...original,status:input.action==="detach"?"detached":"processing"}]};},
+  modelTasks:async(input:{action:string})=>{calls.push(input);return {items:[{...original,status:input.action==="retrieve"?"processing":original.status}]};},
  });
  const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
  try{
@@ -52,9 +52,15 @@ test("polled tasks render once between their turn and a later conversation, with
   const row=node.querySelector('[data-model-task="image"]');
   expect(row?.closest("section")?.previousElementSibling?.textContent).toBe("Original reply");
   expect(row?.closest("section")?.nextElementSibling?.textContent).toBe("Follow-up");
-  const button=row?.querySelector("button");
-  await act(async()=>button?.click());
-  expect(calls).toContainEqual({userId:"fixture",workspaceId:"ws",sessionId:"session",key:"image",action:"detach"});
+  expect(row?.textContent).not.toContain("USD");
+  expect(row?.querySelector('[role="progressbar"]')).not.toBeNull();
+  expect(row?.querySelector("button")).toBeNull();
+  expect(calls.some(call=>typeof call==="object"&&call!==null&&"action" in call&&call.action==="detach")).toBe(false);
+  original.status="detached";
+  await act(async()=>root.render(createElement(MemoryRouter,{},createElement(ModelTasksProvider,{key:"legacy",workspaceId:"ws",sessionId:"session",messages,children:createElement(ModelTaskStatus,{messageIds:["first"]})}))));
+  expect(node.querySelector('[data-model-task="image"]')).not.toBeNull();
+  expect(node.querySelector("button")).toBeNull();
+  expect(calls.some(call=>typeof call==="object"&&call!==null&&"action" in call&&call.action==="retrieve")).toBe(false);
  }finally{await act(async()=>root.unmount());node.remove();Reflect.deleteProperty(window,"__GET3W_ACCOUNT__");}
 });
 
@@ -134,4 +140,87 @@ test("an inline image never hides the task metadata or other outputs",async()=>{
   await act(async()=>root.render(render(true)));expect(node.querySelector('[data-model-task="image"]')).not.toBeNull();
   await act(async()=>root.render(render(false)));expect(node.querySelector('[data-model-task="image"]')).not.toBeNull();
  }finally{await act(async()=>root.unmount());node.remove();Reflect.deleteProperty(window,"__GET3W_ACCOUNT__");}
+});
+
+test("estimated progress handles missing estimates, clock skew and overtime",async()=>{
+ const {taskProgress}=await import("../src/react-app/domains/cloud/model-task-progress");
+ expect(taskProgress(0,100,50000)).toEqual({elapsed:50,duration:100,percent:48.75});
+ expect(taskProgress(0,100,10000000).percent).toBe(95);
+ expect(taskProgress(50000,100,0).elapsed).toBe(0);
+ for(const estimate of [undefined,0,-1,NaN,Infinity])expect(taskProgress(0,estimate,30000)).toEqual({elapsed:30,duration:null,percent:95*30/90});
+});
+
+test("video thumbnail opens a dialog player and closing removes playback",async()=>{
+ const {act,createElement}=await import("react");const {createRoot}=await import("react-dom/client");
+ const {VideoPreview}=await import("../src/react-app/domains/cloud/video-preview");
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ try{
+  await act(async()=>root.render(createElement(VideoPreview,{src:"blob:fixture",compact:true})));
+  expect(node.querySelector("video")?.controls).toBe(false);
+  expect(document.querySelector('[data-video-lightbox]')).toBeNull();
+  await act(async()=>node.querySelector("button")?.click());
+  const popup=document.querySelector('[data-video-lightbox]');
+  expect(popup?.querySelector("video")?.controls).toBe(true);
+  expect(popup?.querySelector("video")?.autoplay).toBe(true);
+  await act(async()=>popup?.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]')?.click());
+  expect(document.querySelector('[data-video-lightbox] video')).toBeNull();
+ }finally{await act(async()=>root.unmount());node.remove();}
+});
+
+test("canvas progress uses Xianchou countdown, overtime and unknown-duration states",async()=>{
+ const {createElement}=await import("react");
+ const {renderToStaticMarkup}=await import("react-dom/server");
+ const {setLocale}=await import("../src/i18n");
+ const {ModelTaskProgress}=await import("../src/react-app/domains/cloud/model-task-progress");
+ setLocale("zh");
+ try{
+  const render=(patch:Partial<ModelTask>)=>renderToStaticMarkup(createElement(ModelTaskProgress,{task:task({createdAt:Date.now()-30000,estimatedDuration:120,...patch})}));
+  const normal=render({});expect(normal).toContain("预计 2m");expect(normal).toContain("剩余 ~1m30s");expect(normal).not.toContain("已用");
+  const overdue=render({estimatedDuration:20});expect(overdue).toContain("超出预计 10s");expect(overdue).toContain("已用 30s");expect(overdue).toContain('data-overtime="true"');
+  const unknown=render({estimatedDuration:undefined});expect(unknown).toContain("已用 30s");expect(unknown).not.toContain("aria-valuenow");
+  for(const status of ["completed","failed","detached"])expect(render({status})).toBe("");
+ }finally{setLocale("en");}
+});
+
+test("task tool anchors match distinct native calls within the same user turn",async()=>{
+ const {modelTaskToolAnchors}=await import("../src/react-app/domains/cloud/model-task-status");
+ const calls:UIMessage[]=[{id:"user",role:"user",parts:[]},{id:"reply",role:"assistant",parts:[
+  {type:"dynamic-tool",toolName:"media_generate",toolCallId:"a",state:"output-available",input:{},output:{task_id:"first-task",request_id:"first-request"}},
+  {type:"dynamic-tool",toolName:"media_generate",toolCallId:"b",state:"output-available",input:{},output:JSON.stringify({content:[{type:"text",text:JSON.stringify({request_id:"second-request"})}]})},
+ ]}];
+ const tasks=[task({key:"first-task",requestId:"first-request",messageId:"user"}),task({key:"second-task",requestId:"second-request",messageId:"user"})];
+ expect([...modelTaskToolAnchors(tasks,calls)]).toEqual([["first-task",{messageId:"reply",toolCallId:"a"}],["second-task",{messageId:"reply",toolCallId:"b"}]]);
+ expect([...modelTaskAnchors(tasks,calls).values()]).toEqual(["reply","reply"]);
+});
+
+test("audio result opens on demand and closing removes its player",async()=>{
+ const {act,createElement}=await import("react");const {createRoot}=await import("react-dom/client");
+ const {AudioPreview}=await import("../src/react-app/domains/cloud/audio-preview");
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ try{
+  await act(async()=>root.render(createElement(AudioPreview,{src:"blob:audio"})));
+  expect(node.querySelector("audio")).toBeNull();
+  await act(async()=>node.querySelector("button")?.click());
+  const popup=document.querySelector('[data-audio-lightbox]');
+  expect(popup?.querySelector("audio")?.controls).toBe(true);
+  expect(popup?.querySelector("audio")?.autoplay).toBe(true);
+  await act(async()=>popup?.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]')?.click());
+  expect(document.querySelector('[data-audio-lightbox] audio')).toBeNull();
+ }finally{await act(async()=>root.unmount());node.remove();}
+});
+
+test("markdown delivery video uses a thumbnail and dialog playback",async()=>{
+ const {act,createElement}=await import("react");const {createRoot}=await import("react-dom/client");
+ const {MarkdownBlock}=await import("../src/components/markdown/markdown");
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ try{
+  await act(async()=>root.render(createElement(MarkdownBlock,{text:"最终交付：\n\n[final.mp4](https://xianchou.com/final.mp4)"})));
+  const thumbnail=node.querySelector("video");expect(thumbnail?.controls).toBe(false);
+  expect(thumbnail?.className).toContain("max-h-40");
+  const trigger=node.querySelector<HTMLButtonElement>('[data-openwork-video-preview]');expect(trigger).not.toBeNull();
+  await act(async()=>trigger?.click());
+  const popup=document.querySelector('[data-video-lightbox]');expect(popup?.querySelector("video")?.controls).toBe(true);
+  await act(async()=>popup?.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]')?.click());
+  expect(document.querySelector('[data-video-lightbox] video')).toBeNull();
+ }finally{await act(async()=>root.unmount());node.remove();}
 });

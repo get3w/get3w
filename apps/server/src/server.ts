@@ -1,3 +1,4 @@
+import { captureTaskLogExchange } from "./task-log-capture.js";
 import { rememberGenerationPolicy, generationPolicyFor, generationPolicyFromMessages } from "./generation-policies.js";
 import { GET3W_CHAT_TOOLS } from "./get3w-chat-tools.js";
 import { createV2SessionHomes, nativeSession, nativeSessionDirectory } from "./opencode-v2-session-home.js";
@@ -935,8 +936,8 @@ export async function startServer(
           proxyBaseUrl = workspace.baseUrl?.trim() || undefined;
           const send = () => proxyOpencodeRequest({ config, request, url, workspace, proxyPath: mount.restPath,
             recoverySignal: taskRecovery?.owns(request) ? request.signal : undefined });
-          const response = await sendWithOwnershipProof(ownership,
-            () => taskRecovery ? taskRecovery.forward(workspace, "v1", mount.restPath, request, send) : send());
+          const response = await captureTaskLogExchange(workspace, "v1", mount.restPath, request, () => sendWithOwnershipProof(ownership,
+            () => taskRecovery ? taskRecovery.forward(workspace, "v1", mount.restPath, request, send) : send()));
           if (response.ok && engineV2Preview.status().chatRouting
             && ((["PUT", "DELETE"].includes(request.method) && /^\/opencode\/auth\/[^/]+$/.test(mount.restPath))
               || (request.method === "POST" && /^\/opencode\/provider\/[^/]+\/oauth\/callback$/.test(mount.restPath)))) {
@@ -1023,7 +1024,7 @@ export async function startServer(
             actor,
             recoverySignal: taskRecovery?.owns(request) ? request.signal : undefined,
           });
-          const response = taskRecovery ? await taskRecovery.forward(workspace, "v2", mount.restPath, request, send) : await send();
+          const response = await captureTaskLogExchange(workspace, "v2", mount.restPath, request, () => taskRecovery ? taskRecovery.forward(workspace, "v2", mount.restPath, request, send) : send());
           return finalizeProxyResponse(response);
         } catch (error) {
           const requestCanceled = isExpectedRequestCancellation(error, request.signal);

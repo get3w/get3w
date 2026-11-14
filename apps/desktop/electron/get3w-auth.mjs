@@ -47,6 +47,26 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
   }
   const identifier = value => typeof value === "string" && value.length > 0 && value.length <= 255;
   return {
+    taskLogRequest: async (userId, route, options = {}) => {
+      if (!/^$|^\/[A-Za-z0-9_-]+(?:\/(?:events|attachments\/[A-Za-z0-9_-]+))?$/.test(route)) throw Error("Invalid task log route");
+      const access = await serial(async () => {
+        await load();
+        if(account.status!=="signed_in"||!account.session||account.session.expiresAt<=now()+30_000) await refreshIdentity();
+        if(account.status!=="signed_in"||account.user?.id!==userId) throw Error("Task log account changed");
+        return account.session.access_token;
+      });
+      const controller=new AbortController();mcpRequests.add(controller);
+      try {
+        const response=await fetchImpl(`${cloudBase}/v1/personal/task-logs${route}`,{
+          method:options.method??"GET",redirect:"error",signal:AbortSignal.any([controller.signal,AbortSignal.timeout(150000)]),
+          headers:{Authorization:`Bearer ${access}`,"Content-Type":"application/json"},
+          ...(options.body===undefined?{}:{body:JSON.stringify(options.body)}),
+        });
+        if(!response.ok) throw Object.assign(Error(`Task log upload failed (${response.status})`),{status:response.status});
+        if(account.user?.id!==userId) throw Error("Task log account changed");
+        return response.json();
+      } finally {mcpRequests.delete(controller);}
+    },
     outputIdentity: () => ({userId:account.session&&account.status==="signed_in"&&account.user?.id}),
     // The paid and MCP endpoints enforce live permissions. Avoid an extra /me
     // request at every native workflow stage while retaining token refresh.

@@ -223,7 +223,7 @@ export function groupMessages(messages: UIMessage[], status: ThreadStatus): Mess
 type AssistantRenderGroup =
   | { kind: "text"; text: string }
   | { kind: "reasoning"; text: string; isStreaming: boolean; durationMs?: number | null }
-  | { kind: "file"; part: FileUIPart }
+  | { kind: "file"; parts: FileUIPart[] }
   | { kind: "tool"; part: ToolUIPart | DynamicToolUIPart }
   | { kind: "tool-aggregate"; parts: (ToolUIPart | DynamicToolUIPart)[]; thoughts: AggregateThought[] }
 
@@ -372,7 +372,12 @@ export function getAssistantRenderGroups(
     }
 
     if (part.type === "file") {
-      groups.push({ kind: "file", part })
+      const previous = groups.at(-1)
+      if (previous?.kind === "file") {
+        previous.parts.push(part)
+      } else {
+        groups.push({ kind: "file", parts: [part] })
+      }
       continue
     }
 

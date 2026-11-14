@@ -33,6 +33,13 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
     const startedAt = performance.now();
     const toolCalls = toolCallDiagnostics();
     let upstreamHeadersAt, firstChunkAt, upstreamStatus;
+    const evidenceSession = request.headers["x-openwork-session-id"];
+    const evidenceId = randomBytes(16).toString("hex");
+    const evidence = (type, payload) => typeof evidenceSession === "string"
+      ? globalThis.__get3wTaskLogs?.captureEvidence?.(evidenceSession,{type,payload:{exchange_id:evidenceId,...payload}}).catch(()=>{})
+      : undefined;
+    const evidenceParts = []; let evidenceComplete = false;
+    const evidenceDecoder = new TextDecoder();
     const controller = new AbortController();
     controllers.add(controller);
     const abort = () => controller.abort();
@@ -49,6 +56,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
       }
       if (controller.signal.aborted) return;
       const body = Buffer.concat(chunks);
+      await evidence("model.http.request",{body:body.toString("utf8"),route});
       const executeSchemas = toolSchemaDiagnostics(body);
       if (executeSchemas.length) console.info("[get3w-tool-schema]", JSON.stringify(executeSchemas));
       if (route === "chat/completions") {
@@ -77,6 +85,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
       const upstream = result.response;
       upstreamOk = upstream.ok;
       upstreamStatus = upstream.status;
+      await evidence("model.http.response",{status:upstream.status,request_id:upstream.headers.get("x-request-id"),provider_task_id:upstream.headers.get("x-task-id")});
       const headers = {"Cache-Control":"no-store", "X-Content-Type-Options":"nosniff"};
       for (const name of ["content-type", "x-task-id", "x-request-id", "x-openwork-request-id", "x-openwork-model", "x-get3w-request-id", "x-get3w-model", "x-get3w-auto-reason", "x-get3w-auto-thinking", "server-timing", "retry-after"]) {
         const value = upstream.headers.get(name); if (value) headers[name] = value;
@@ -93,6 +102,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
       if (upstream.body) {
         for await (const chunk of Readable.fromWeb(upstream.body, {signal:controller.signal})) {
           firstChunkAt ??= performance.now();
+          evidenceParts.push(evidenceDecoder.decode(chunk,{stream:true}));
           if (eventStream) {
             pending = (pending + chunk.toString()).slice(-65536);
             let end;
@@ -113,6 +123,8 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
           if (!response.write(chunk)) await once(response, "drain", {signal:controller.signal});
         }
       }
+      evidenceComplete = true;
+      await evidence("model.output",{text:evidenceParts.join("")+evidenceDecoder.decode(),complete:true});
       succeeded = upstream.ok && !streamError;
       response.end();
     } catch (error) {
@@ -129,6 +141,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
         else fail(400, "Get3W inference unavailable. Check model usage before trying again.");
       }
     } finally {
+      if(!evidenceComplete&&evidenceParts.length)await evidence("model.output",{text:evidenceParts.join("")+evidenceDecoder.decode(),complete:false});
       if (fingerprint && (succeeded || (upstreamOk && terminal && !streamError))) { submitted.delete(fingerprint); }
       // Keep failed/unknown bodies reserved against engine replay. A separate
       // explicit message or another model must remain usable without reconnecting.

@@ -133,3 +133,16 @@ test("documents require actual editable files, live fields and isolated revision
   assert.match(documents, /quote and settled charge/);
   assert.match(documents, /preserve original product pixels/);
 });
+
+
+test("song requests use music directly while explicit spoken reading uses speech", () => {
+  const { connect } = buildOpenWorkV2Instructions(false, true);
+  assert.match(connect, /Songs, singing, setting lyrics or poems to music, music and background scores require text-to-music/);
+  assert.match(connect, /Spoken reading, narration, dubbing and text read aloud require text-to-speech/);
+  assert.match(connect, /生成一首歌，歌词为王国维的蝶恋花.*requires text-to-music/);
+  assert.match(connect, /never prepare text-to-speech as a preliminary step or substitute for a song/);
+  assert.match(connect, /supplied lyrics in lyrics/);
+  assert.match(connect, /request vocals rather than instrumental output/);
+  assert.match(connect, /unavailable, report the concrete error instead of falling back to speech/);
+  assert.doesNotMatch(buildOpenWorkV2Instructions(false, false).connect, /Songs, singing/);
+});
