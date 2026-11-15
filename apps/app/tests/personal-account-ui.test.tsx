@@ -47,14 +47,14 @@ test('signed-in accounts with zero organizations can open preferences; unverifie
  Reflect.set(window,'__GET3W_ACCOUNT__',{status:async()=>({status:state,user:{id:'zero-org',name:'Demo'},error:null,pending:false}),taskCatalog:async()=>({catalog_version:'v1',models:[model],offline:false})});
  const node=document.createElement('div');document.body.append(node);const root=createRoot(node);
  try{
-  setLocale('en');await act(async()=>root.render(<MemoryRouter><Get3wAccount/><ModelPreferencesPanel/><OutputsPage workspaceId="test"/></MemoryRouter>));
+  setLocale('en');await act(async()=>root.render(<MemoryRouter><Get3wAccount/><ModelPreferencesPanel/><OutputsPage workspaceId="test" client={null}/></MemoryRouter>));
   expect(node.querySelectorAll('[aria-label="Model preferences"]')).toHaveLength(1);
   expect(node.querySelector('[aria-label="Preferred models"]')).toBeNull();
   expect(node.querySelector('[aria-label="Output settings"]')).toBeNull();
   await act(async()=>node.querySelector<HTMLButtonElement>('[aria-label="Model preferences"]')?.click());
   expect(document.body.textContent).toContain('Image generation');expect(document.body.textContent).not.toContain('Sign in to set preferences');
   state='unavailable';await act(async()=>window.dispatchEvent(new Event('focus')));
-  expect(document.body.textContent).toContain('Could not verify your account');expect(document.body.textContent).not.toContain('Sign in to set preferences');expect(document.body.textContent).not.toContain('Sign in to view outputs');
+  expect(document.body.textContent).toContain('Workspace files are unavailable');expect(document.body.textContent).not.toContain('Sign in to set preferences');expect(document.body.textContent).not.toContain('Sign in to view outputs');
  }finally{await act(async()=>root.unmount());node.remove();delete window.__GET3W_ACCOUNT__;}
 });
 test('personal translations exist in both languages with matching placeholders and no organization IPC or share controls',()=>{

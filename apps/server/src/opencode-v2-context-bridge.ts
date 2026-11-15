@@ -1,3 +1,8 @@
+import { createV2SessionHomes } from "./opencode-v2-session-home.js";
+import { workspaceIdForPath } from "./workspaces.js";
+import { grantCovers, listThreadApprovals } from "./thread-approvals.js";
+import { taskPermissionSettings, initializeTaskPermissionMode } from "./task-permission-modes.js";
+import type { ServerConfig } from "./types.js";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { serve } from "./serve-node.js";
@@ -10,7 +15,7 @@ import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/openwork-session-g
 import { loopbackFetch } from "./server-fetch.js";
 
 const requestSchema = z.object({
-  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call", "task_log_evidence"]),
+  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call", "task_log_evidence", "workspace_file"]),
   input: z.unknown(),
   sessionId: z.string().max(256).optional(),
   // The calling tool's place in its chat, where a Drive approval is shown.
@@ -159,11 +164,41 @@ function bridgeAffordances(value: unknown): unknown {
 export async function createV2ContextBridge(
   hostRequest: (path: string, init?: RequestInit) => Promise<unknown>,
   engine?: () => EngineConnection | undefined,
+  permissionConfig?: ServerConfig,
 ) {
   const token = randomBytes(32).toString("base64url");
   const plugin = await OpenWorkExtensionsPreview();
   const server = await serve({ hostname: "127.0.0.1", port: 0, fetch: async request => {
     if (request.headers.get("authorization") !== `Bearer ${token}`) return new Response(null, { status: 401 });
+    if (request.method === "POST" && new URL(request.url).pathname === "/permission-policy" && permissionConfig) {
+      try {
+        const body: unknown = await request.json();
+        if (!isRecord(body) || typeof body.sessionId !== "string" || body.sessionId.length > 256) return new Response(null, { status: 400 });
+        const connection = engine?.();
+        if (!connection) return new Response(null, { status: 503 });
+        const response = await loopbackFetch(new URL(`/api/session/${encodeURIComponent(body.sessionId)}`, connection.url), {
+          headers: { authorization: `Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}` }, signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) return new Response(null, { status: 503 });
+        const payload: unknown = await response.json();
+        const session = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+        // Engine-created children inherit their parent's recorded mode. Unknown
+        // historical roots stay in default mode, regardless of the new-task default.
+        if (body.initialize === true) await initializeTaskPermissionMode(permissionConfig, body.sessionId, isRecord(session) && typeof session.parentID === "string" ? session.parentID : undefined, isRecord(session) && session.fork !== undefined);
+        const settings = await taskPermissionSettings(permissionConfig, body.sessionId);
+        const directory = isRecord(session) && isRecord(session.location) && typeof session.location.directory === "string" ? session.location.directory : undefined;
+        const resources = Array.isArray(body.resources) ? body.resources.filter((entry): entry is string => typeof entry === "string") : [];
+        const homes = createV2SessionHomes(permissionConfig, async path => {
+          const response = await loopbackFetch(new URL(path, connection.url), { headers: { authorization: `Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}` }, signal: AbortSignal.timeout(5000) });
+          if (!response.ok) throw Error("Task unavailable");
+          return response.json();
+        });
+        const home = await homes.stored(body.sessionId) ?? directory;
+        const workspaceId = permissionConfig.workspaces.find(workspace => workspace.path === home)?.id ?? (home ? workspaceIdForPath(home) : undefined);
+        const grants = workspaceId ? await listThreadApprovals(permissionConfig, workspaceId, body.sessionId) : [];
+        return Response.json({ ...settings, granted: typeof body.action === "string" && grants.some(grant => grantCovers(grant, String(body.action), resources)) });
+      } catch { return new Response(null, { status: 503 }); }
+    }
     if (request.method !== "POST" || new URL(request.url).pathname !== "/read") return new Response(null, { status: 404 });
     try {
       const chunks: Uint8Array[] = []; let bytes = 0;
@@ -184,6 +219,10 @@ export async function createV2ContextBridge(
       };
       if (call.name === "task_log_evidence") {
         return Response.json(await read("/experimental/task-log-evidence", {method:"POST",body:JSON.stringify(call)}));
+      }
+      if(call.name==="workspace_file"){
+        if(!call.sessionId||!call.caller)throw Error("Conversation context required");
+        return Response.json(await read("/experimental/workspace-file",{method:"POST",body:JSON.stringify(call)}));
       }
       if (call.name === "get3w_model_call") {
         deadline = AbortSignal.timeout(APPROVAL_WAIT_MS);

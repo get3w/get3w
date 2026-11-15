@@ -358,3 +358,17 @@ test('numeric conditional duration options retain integer schema type',async()=>
  assert.equal((await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'story',duration:15}},scope,signal)).status,'submitted');
  assert.equal(f.tasks[0].arguments.inputs.duration,15);
 });
+
+test('workspace destination metadata remains local and does not alter quoted generation inputs',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'native-media-output-'));const f=fixture(dir),signal=new AbortController().signal;
+ try{
+  const media=f.create();const prep=await media.call('media_prepare',{task_type:'text-to-image'},host,signal);
+  const output={task_name:'品牌宣传片',filename:'产品主视觉',directory:'品牌宣传片'};
+  const result=await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'cup'},output},host,signal);
+  assert.equal(result.request_id,'request');
+  const submit=f.calls.filter(call=>call.args.name==='get3w.submit').at(-1).args;
+  assert.equal(submit.arguments.inputs.prompt,'cup');assert.equal(submit.arguments.inputs.output,undefined);
+  assert.equal(submit.arguments.output,undefined);
+  assert.equal((await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'cup'},output:{filename:42}},host,signal)).error.code,'invalid_output');
+ }finally{await rm(dir,{recursive:true,force:true});}
+});

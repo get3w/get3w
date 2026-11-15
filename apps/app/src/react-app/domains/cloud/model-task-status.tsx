@@ -4,11 +4,8 @@ import type {UIMessage} from "ai";
 import {marked} from "marked";
 import {getMessageCreated} from "@/components/chat/utils";
 import {generationCategory} from "./generation-models";
-import {ImageLightbox} from "@/components/chat/image-lightbox";
-import {AudioPreview} from "./audio-preview";
-import {VideoPreview} from "./video-preview";
 import {ModelTaskProgress} from "./model-task-progress";
-import {OutputPreview,outputKind} from "./output-preview";
+import {OutputPreview} from "./output-preview";
 import {Button} from "@/components/ui/button";
 import {useGet3wAccount,type ModelTask} from "./get3w-account";
 
@@ -161,11 +158,6 @@ export function ModelTasksProvider({workspaceId,sessionId,messages,children}:{wo
   return <TasksContext.Provider value={{displayedImages,registerImage,items:visibleItems,messages,anchors:modelTaskAnchors(visibleItems,messages),busy,error,change,userId,workspaceId,sessionId}}>{children}</TasksContext.Provider>;
 }
 
-function RemoteImage({url}:{url:string}){
-  const [expanded,setExpanded]=useState(false);
-  return <><Button variant="ghost" className="mt-2 h-auto p-0" aria-label={t("personal.copy.enlarge_image")} onClick={()=>setExpanded(true)}><img src={url} alt={t("personal.copy.model_result")} loading="lazy" className="max-h-40 max-w-40 rounded-md object-contain" /></Button><ImageLightbox src={url} alt={t("personal.copy.model_result")} open={expanded} onOpenChange={setExpanded}/></>;
-}
-
 export function ModelTaskStatus({messageIds,toolCallIds,inline=false}:{messageIds:string[];toolCallIds?:string[];inline?:boolean}) {
   useLocale();
   const context=useContext(TasksContext);
@@ -188,19 +180,10 @@ export function ModelTaskStatus({messageIds,toolCallIds,inline=false}:{messageId
     const key=keys[category]??variants[type];
     return key?t(`personal.run_type.${key}`):t("personal.copy.model_result");
   };
-  const media=(url:string)=>{
-    try { const parsed=new URL(url); if(parsed.protocol!=="https:" || parsed.hostname!=="xianchou.com") return null;
-      const kind=outputKind(parsed.pathname);
-      if(kind==="image") return <RemoteImage url={url}/>;
-      if(kind==="video") return <VideoPreview src={url} compact/>;
-      if(kind==="audio") return <AudioPreview src={url}/>;
-      return null;
-    } catch { return null; }
-  };
   return <section aria-label={t("personal.copy.model_tasks")} className={inline?"w-full space-y-2 text-sm":"mx-auto w-full max-w-3xl space-y-2 px-2 text-sm md:px-10"} aria-live="polite">
     {items.map(item=>{
       const sources=new Set([...modelTaskImageSources(context.messages,context.anchors.get(item.key)??"")].filter(source=>context.displayedImages.has(source)));
-      const urls=item.outputs.flatMap(output=>typeof output==="string"?[output]:output&&typeof output==="object"&&"url" in output&&typeof output.url==="string"?[output.url]:[]);
+      const urls=item.outputs.flatMap(output=>typeof output==="string"?[output]:output&&typeof output==="object"&&"url" in output&&typeof output.url==="string"?[output.url]:[]).filter(url=>url.startsWith("https://"));
       return <div key={item.key} className="space-y-2" data-model-task={item.key}>
       <div className="flex items-center justify-between gap-3"><span className="min-w-0 truncate text-xs text-muted-foreground" title={item.slug}>{taskLabel(item.slug)} · {status(item.status)}</span>
       </div>
@@ -208,11 +191,23 @@ export function ModelTaskStatus({messageIds,toolCallIds,inline=false}:{messageId
       {item.status==="failed"?<p role="alert" className="text-sm text-destructive">{t("personal.media.failed")}</p>:null}
       {item.status==="failed"&&item.error?.code?<details className="text-xs text-muted-foreground"><summary>{t("text_activity.technical_details")}</summary><pre>{item.error.code}</pre></details>:null}
       {item.outputEntry?.downloadError?<div className="flex items-center gap-2 text-xs"><span>{t("personal.copy.download_failed_remote_results_retained")}</span><Button size="xs" variant="ghost" disabled={busy} onClick={()=>void change(item.key,"retryDownload")}>{t("personal.copy.retry_download")}</Button></div>:null}
-      {item.outputEntry?.files.map(file=><OutputPreview key={file.path} file={file} compact hideImage={value=>hasMatchingTaskImage(sources,urls.length===1?urls:[],value.dataBase64,value.mimeType)} read={async()=>{
-        if(!userId||!window.__GET3W_ACCOUNT__?.outputs)throw Error("Unavailable");
-        return window.__GET3W_ACCOUNT__.outputs({userId,workspaceId,sessionId,action:"read",path:file.path});
-      }}/>) }
-      {!item.outputEntry?.files.length?urls.filter(url=>url.startsWith("https://")).map((url,index)=><span key={index} className="mr-3 inline-block align-top"><a href={url} target="_blank" rel="noreferrer" download className="underline">{t("personal.copy.open_result")} {index+1}</a>{hasDisplayedTaskImage(sources,[url])?null:media(url)}</span>):null}
+      {Array.from({length:Math.max(item.outputEntry?.files.length??0,urls.length)},(_,index)=>{
+        const file=item.outputEntry?.files[index];
+        const url=urls[index]?.startsWith("https://")?urls[index]:undefined;
+        if(!file&&!url)return null;
+        let name=file?.path.split("/").at(-1)??t("personal.copy.model_result");
+        const planned=item.outputEntry?.plannedFiles?.[index];
+        if(!file&&!planned&&url){try{name=decodeURIComponent(new URL(url).pathname.split("/").at(-1)??"")||name;}catch{/* Keep the local result name for malformed URLs. */}}
+        if(!file&&planned)name=planned.path.split("/").at(-1)??name;
+        return <OutputPreview key={index} file={file??{path:name,mimeType:"application/octet-stream",sizeBytes:0}} displayName={name} remoteUrl={url} compact
+          hideRemoteImage={hasDisplayedTaskImage(sources,url?[url]:[])}
+          hideImage={value=>hasMatchingTaskImage(sources,url?[url]:[],value.dataBase64,value.mimeType)}
+          read={file?async()=>{
+            if(file.missing)throw Error("File was removed");
+            if(!userId||!window.__GET3W_ACCOUNT__?.outputs)throw Error("Unavailable");
+            return window.__GET3W_ACCOUNT__.outputs({userId,workspaceId,sessionId,action:"read",path:file.path,fileId:file.fileId});
+          }:undefined}/>;
+      })}
       {item.status==="completed"&&!urls.length&&item.outputEntry?.structured?<details className="text-xs"><summary>{t("personal.copy.model_result")}</summary><pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(item.outputEntry.structured,null,2)}</pre></details>:null}
     </div>;})}
     {error?<p role="alert" className="text-destructive">{t("personal.copy.could_not_update_tasks_reconnect_and_retry")}</p>:null}

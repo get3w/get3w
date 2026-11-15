@@ -26,9 +26,9 @@ import {
 } from "@/react-app/domains/session/surface/composer/pasted-text";
 import { resolveAttachmentFileMetadata } from "@/react-app/domains/session/sync/attachment-file-part";
 import type { NewSessionDestination } from "./new-session-destination";
-import { draftHasWorkspaceFiles, draftWorkspaceChangeBlocked, newSessionDraftSlot } from "./new-session-destination";
+import { draftWorkspaceChangeBlocked, newSessionDraftSlot } from "./new-session-destination";
 import { useSessionManagementStore } from "../sidebar/session-management-store";
-import { NewTaskDestinationMenu } from "./new-task-destination-menu";
+import { DraftActionsMenu } from "./new-task-destination-menu";
 import { clearSessionDraft, saveSessionDraft } from "../sync/draft-store";
 
 /**
@@ -168,7 +168,6 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
   draftRef.current = props.draft;
   const workspaceClient = context?.client ?? null;
   const workspaceId = context?.workspaceId ?? null;
-  const groupsByWorkspace = useSessionManagementStore((state) => state.groupsByWorkspace);
 
   useEffect(() => {
     const holder = continuationHolderRef.current;
@@ -479,14 +478,9 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
       setFailedSubmission(null);
     }}>{t("ui.fb73eaec68f7")}</button> : null}
     <ReactSessionComposer
-      contextControl={context?.destination?.workspaceId && context.workspaceOptions ? <NewTaskDestinationMenu
-        destination={context.destination}
-        workspaces={context.workspaceOptions}
-        groupsByWorkspace={Object.fromEntries(context.workspaceOptions.map((workspace) => [workspace.id, groupsByWorkspace[workspace.id]?.groups ?? []]))}
-        hasDraft={Boolean(props.draft || attachments.length)}
-        workspaceChangeBlocked={draftHasWorkspaceFiles({ draft: props.draft, attachments, mentions })}
+      workspaceId={workspaceId ?? undefined}
+      contextControl={props.draft || attachments.length ? <DraftActionsMenu
         disabled={pendingSubmission !== null || failedSubmission !== null}
-        onChange={changeDestination}
         onDiscard={() => {
           attachments.forEach(revokeAttachmentPreview);
           restoreComposer(emptyNewTaskComposerState());

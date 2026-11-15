@@ -2,7 +2,7 @@
 import channelSchema from './model-settings-fixture.json';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router';
-import {Get3wAccount} from '../src/react-app/domains/cloud/get3w-account';
+import {Get3wAccount,openGet3wSignIn} from '../src/react-app/domains/cloud/get3w-account';
 import {PreferenceFields} from '../src/react-app/domains/cloud/model-preferences-panel';
 import {Get3wBalance} from '../src/react-app/domains/cloud/get3w-balance';
 import {Get3wConnectors} from '../src/react-app/domains/cloud/get3w-connectors';
@@ -25,5 +25,5 @@ Reflect.set(window,'__GET3W_ACCOUNT__',{
  modelUsage:async()=>({billing:'personal',items:[],next_cursor:null}),
  modelApprovals:async()=>({items:[{id:'fixture',workspaceId:'ws',modelTask:{quoteId:'q',sessionId:'chat-session-123456',slug:'Demo Image',amountUsd:'0.020000',expiresAt:Date.now()+60000}}]}),
 });
-function Proof(){useLocale();return <MemoryRouter><Get3wAccount/><main className="mx-auto max-w-4xl space-y-6 p-8 text-foreground"><h1 className="text-xl font-semibold">{t('ui.ddf6f9a613af')}</h1><section className="space-y-4"><h2 className="text-sm font-medium">{t('personal.copy.model_preferences')}</h2><PreferenceFields userId="isolated-fixture"/></section><Get3wBalance userId="isolated-fixture"/><Get3wConnectors userId="isolated-fixture"/><Get3wModelUsage userId="isolated-fixture"/><ModelApprovalCards workspaceId="ws" sessionId="chat-session-123456"/></main></MemoryRouter>;}
+function Proof(){useLocale();return <MemoryRouter><Get3wAccount/><main className="mx-auto max-w-4xl space-y-6 p-8 text-foreground"><h1 className="text-xl font-semibold">{t('ui.ddf6f9a613af')}</h1><button onClick={()=>openGet3wSignIn()}>{t('ui.ddb585602c09')}</button><section className="space-y-4"><h2 className="text-sm font-medium">{t('personal.copy.model_preferences')}</h2><PreferenceFields userId="isolated-fixture"/></section><Get3wBalance userId="isolated-fixture"/><Get3wConnectors userId="isolated-fixture"/><Get3wModelUsage userId="isolated-fixture"/><ModelApprovalCards workspaceId="ws" sessionId="chat-session-123456"/></main></MemoryRouter>;}
 createRoot(document.getElementById('root')!).render(<Proof/>);

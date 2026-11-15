@@ -7,6 +7,7 @@ import { parseOrganizationMcpServers } from "../reserved-mcp-names.js";
 
 type Registration = { dispose(): Promise<void> };
 type PermissionEvent = {
+  readonly sessionID?: string;
   readonly action: string;
   readonly resources: readonly string[];
   readonly source?: { readonly type?: string; readonly id?: string };
@@ -21,9 +22,10 @@ type McpEditor = {
   set(name: string, config: Record<string, unknown>): void;
 };
 type Context = {
-  options: { rules?: unknown; organizationMcp?: unknown };
+  event?: { subscribe(options: {types: ["session.created", "session.forked"]; signal: AbortSignal}): AsyncIterable<{data: {sessionID?: string; id?: string}}> };
+  options: { rules?: unknown; organizationMcp?: unknown; permissionPolicy?: {url: string; token: string} };
   mcp: { transform(callback: (editor: McpEditor) => void): Promise<Registration> };
-  permission: { hook(name: "evaluate", callback: (event: PermissionEvent) => void): Promise<Registration> };
+  permission: { hook(name: "evaluate", callback: (event: PermissionEvent) => void | Promise<void>): Promise<Registration> };
   tool: {
     hook(name: "execute.before", callback: (event: ExecuteBefore) => void): Promise<Registration>;
     hook(name: "execute.after", callback: (event: ExecuteAfter) => void): Promise<Registration>;
@@ -47,6 +49,21 @@ export default {
   async setup(context: Context) {
     const rules = parseAgentPermissionRules(context.options.rules);
     const organizationMcp = parseOrganizationMcpServers(context.options.organizationMcp);
+    const lifecycle = new AbortController();
+    const policy = context.options.permissionPolicy;
+    const created = new Set<string>();
+    const initialize = async (sessionId: string) => {
+      if (!policy) return;
+      const result = await fetch(new URL("/permission-policy", policy.url), { method: "POST", redirect: "error", signal: AbortSignal.timeout(5000), headers: { authorization: `Bearer ${policy.token}`, "content-type": "application/json" }, body: JSON.stringify({ sessionId, initialize: true }) });
+      if (!result.ok) throw Error("Task permissions could not be initialized");
+      created.delete(sessionId);
+    };
+    if (policy && context.event) void (async () => {
+      for await (const event of context.event!.subscribe({ types: ["session.created", "session.forked"], signal: lifecycle.signal })) {
+        const id = event.data.sessionID ?? event.data.id;
+        if (id) { created.add(id); await initialize(id).catch(() => undefined); }
+      }
+    })().catch(() => undefined);
     // The engine asks about each command of a shell call's line on its own,
     // without the assignments that may name a program (`x=rm; $x -rf dir`), so
     // keep the whole line of recent calls by call id for their evaluation.
@@ -60,11 +77,22 @@ export default {
     });
     // Called whenever the engine's own rules did not deny, which is every
     // agent permission but a blocked local skill.
-    const permission = await context.permission.hook("evaluate", (event) => {
+    const permission = await context.permission.hook("evaluate", async (event) => {
+      if (event.sessionID && created.has(event.sessionID)) await initialize(event.sessionID);
       const line = event.source?.type === "tool" && event.source.id ? commandLines.get(event.source.id) : undefined;
       const decision = agentPermissionEngineV2Decision(rules, event.action, event.resources, event.effect, line);
       event.effect = decision.effect;
       if (decision.message) event.message = decision.message;
+      const policy = context.options.permissionPolicy;
+      if (event.effect === "ask" && policy && event.sessionID) {
+        const response = await fetch(new URL("/permission-policy", policy.url), {
+          method: "POST", headers: { authorization: `Bearer ${policy.token}`, "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: event.sessionID, action: event.action, resources: event.resources }), signal: AbortSignal.timeout(5000), redirect: "error",
+        });
+        if (!response.ok) throw Error("Permission settings could not be verified");
+        const value: unknown = await response.json();
+        if (value && typeof value === "object" && (("mode" in value && value.mode === "full_access") || ("granted" in value && value.granted === true))) event.effect = "allow";
+      }
     });
     // A blocked local skill is denied natively; name its rule when the error reaches this hook.
     const explain = await context.tool.hook("execute.after", (event) => {
@@ -85,6 +113,7 @@ export default {
       })
       : undefined;
     return async () => {
+      lifecycle.abort();
       await servers?.dispose();
       await explain.dispose();
       await permission.dispose();

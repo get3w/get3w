@@ -1,5 +1,5 @@
 import {expect,test} from "bun:test";
-import {formatMoney} from "../src/i18n/money";
+import {formatMoney,formatAccountBalance} from "../src/i18n/money";
 import {setLocale} from "../src/i18n";
 
 test("money follows app language and converts both billing currencies",()=>{
@@ -16,4 +16,12 @@ test("money follows app language and converts both billing currencies",()=>{
 test("invalid amounts and unknown currencies are not mislabeled as money",()=>{
  for(const amount of ["", "oops", "Infinity", Number.NaN, Number.POSITIVE_INFINITY]) expect(formatMoney(amount,"USD","zh")).toBe("—");
  expect(formatMoney(1,"EUR","en")).toBe("—");
+});
+
+test("account balance matches the web fixed three-decimal display",()=>{
+ expect(formatAccountBalance("326.409091","CNY","zh")).toBe("¥326.409");
+ expect(formatAccountBalance("326.409500","CNY","zh")).toBe("¥326.410");
+ expect(formatAccountBalance("1","USD","en")).toBe("$1.000");
+ expect(formatAccountBalance("0","CNY","zh")).toBe("¥0.000");
+ expect(formatAccountBalance("-1.2345","USD","en")).toBe("-$1.235");
 });

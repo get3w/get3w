@@ -154,6 +154,18 @@ test('legacy upgrade, process restart and dead proxy recover through a real loop
   await manager.reconcile(snapshot);await ask();assert.equal(patches,2);
   await activeProxy.close();
   await manager.reconcile(snapshot);await ask();assert.equal(patches,3);assert.equal(inferences,3);
+  // Reproduce the release's directory-merge split: generated runtime from the
+  // target directory, ownership receipt still pointing to the source DB.
+  await manager.close();
+  const receiptPath=path.join(userData,'get3w-managed-provider.json');
+  const receipt=JSON.parse(await readFile(receiptPath,'utf8'));
+  await writeFile(receiptPath,JSON.stringify({...receipt,fingerprint:'source-directory-receipt'}));
+  const retained=structuredClone(provider['get3w-account']);
+  manager=createGet3wManagedProvider(deps);
+  await manager.reconcile(snapshot);await ask();
+  assert.equal(patches,4);assert.equal(inferences,4);
+  const recovered=Object.entries(provider).filter(([id])=>id.startsWith('get3w-recovered-'));
+  assert.equal(recovered.length,1);assert.deepEqual(recovered[0][1],retained);
   await manager.reconcile({status:'signed_out'});assert.equal(provider['get3w-account'],undefined);
  }finally{await manager.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(userData,{recursive:true,force:true});}
 });
@@ -168,7 +180,7 @@ test('missing fingerprints never authorize adopting other accounts or custom pro
   {record:{enabled:true,account:account('u')},provider:{...original,options:{...original.options,baseURL:'https://example.com/v1'}}},
   {record:{enabled:true,account:account('u')},provider:{...original,headers:{custom:'user'}}},
   {record:{enabled:true,account:account('u')},provider:{...original,models:{test:{name:'Test',tool_call:true,options:{temperature:1}}}}},
-  {record:{enabled:true,account:account('u'),fingerprint:'mismatch'},provider:original},
+  {record:{enabled:true,account:account('u'),fingerprint:'mismatch'},provider:{...original,headers:{custom:'user'}}},
  ];
  for(const fixture of cases){
   const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-ownership-'));let created=0,patched=0;
@@ -181,4 +193,36 @@ test('missing fingerprints never authorize adopting other accounts or custom pro
    assert.equal(created,0);assert.equal(patched,0);
   }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
  }
+});
+
+
+test('conflicting migrated runtime preserves the generated provider and reconnects across restart', async () => {
+ const {createHash}=await import('node:crypto');
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-conflict-'));
+ const old={name:'Get3W Models',npm:'@ai-sdk/openai-compatible',options:{baseURL:'http://127.0.0.1:1/v1',apiKey:'x'.repeat(43)},models:{test:{name:'Test',tool_call:true,attachment:false,modalities:{input:['text'],output:['text']}}}};
+ let provider={'get3w-account':old}, patches=0, fail=false;
+ const snapshot={status:'signed_in',user:{id:'u'}};
+ const deps={userData,auth:{models:async()=>({models:[{id:'test',protocols:['openai']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host'}),
+  createProxy:async()=>({baseURL:'http://127.0.0.1:2345/v1',apiKey:'new',close:async()=>{}}),fetchImpl:async(url,opt)=>{
+   if(url.endsWith('/health'))return new Response(null,{status:200});
+   if(opt.method==='PATCH'){
+    if(fail)throw Error('connection lost before patch');
+    patches++;for(const [id,value] of Object.entries(JSON.parse(opt.body).provider)){if(value===null)delete provider[id];else provider[id]=value;}
+   }
+   return Response.json({provider,reload:'reloaded'});
+  }};
+ let manager=createGet3wManagedProvider(deps);
+ try {
+  await writeFile(path.join(userData,'get3w-managed-provider.json'),JSON.stringify({enabled:true,account:createHash('sha256').update(JSON.stringify('u')).digest('hex'),fingerprint:'legacy-database-receipt'}));
+  fail=true;await assert.rejects(manager.reconcile(snapshot),/connection lost/);
+  assert.equal(JSON.parse(await readFile(path.join(userData,'get3w-managed-provider.json'),'utf8')).fingerprint,'legacy-database-receipt');
+  assert.deepEqual(provider['get3w-account'],old);
+  fail=false;assert.equal((await manager.reconcile(snapshot)).state,'connected');
+  const saved=Object.keys(provider).filter(id=>id.startsWith('get3w-recovered-'));
+  assert.equal(saved.length,1);assert.deepEqual(provider[saved[0]],old);assert.equal(patches,1);
+  assert.equal(provider['get3w-account'].options.apiKey,'new');
+  await manager.close();manager=createGet3wManagedProvider(deps);
+  assert.equal((await manager.reconcile(snapshot)).state,'connected');
+  assert.deepEqual(provider[saved[0]],old);
+ }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
 });

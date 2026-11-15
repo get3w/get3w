@@ -7,6 +7,7 @@ const guidance = "Use a @/components/ui floating primitive (Popover, DropdownMen
 
 // Outside-press listeners that are not floating surfaces, with the reason.
 const outsidePressAllowed = new Map([
+  ["react-app/domains/cloud/outputs-page.tsx", "protects unsaved workspace drafts before shell navigation; does not dismiss a floating surface"],
   ["react-app/domains/session/chat/session-empty-hero.tsx", "ends mobile composition when the person leaves the composer dock"],
 ]);
 

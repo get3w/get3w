@@ -1,3 +1,4 @@
+import { TaskPermissionControl } from "../../chat/task-permission-control";
 import { generationModelChoices } from "../../../cloud/generation-models";
 import { ProviderIcon } from "@/react-app/design-system/provider-icon";
 import { useGet3wAccount } from "../../../cloud/get3w-account";
@@ -103,6 +104,7 @@ type ComposerProps = {
   selectedModel: ModelRef;
   modelOptions?: readonly ModelOption[];
   /** When set, the full model picker opened from here targets this session. */
+  workspaceId?: string;
   sessionId?: string;
   openWorkModelsEntitled?: boolean;
   openWorkModelsSyncing?: boolean;
@@ -1598,6 +1600,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                     if (!props.steering) props.onModelVariantChange(value);
                   }}
                 />
+                <TaskPermissionControl workspaceId={props.workspaceId} sessionId={props.sessionId}/>
                 <ModelPreferencesPanel />
                 {props.modelUnavailable ? props.onRefreshOrganizationModels ? (
                   <button

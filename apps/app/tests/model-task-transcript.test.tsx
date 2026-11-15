@@ -224,3 +224,21 @@ test("markdown delivery video uses a thumbnail and dialog playback",async()=>{
   expect(document.querySelector('[data-video-lightbox] video')).toBeNull();
  }finally{await act(async()=>root.unmount());node.remove();}
 });
+
+test("registered result name uses the workspace filename and file identity rather than its remote basename",async()=>{
+ const {act,createElement}=await import("react");const {createRoot}=await import("react-dom/client");const {MemoryRouter}=await import("react-router");
+ const {Get3wAccount}=await import("../src/react-app/domains/cloud/get3w-account");
+ const {ModelTasksProvider,ModelTaskStatus}=await import("../src/react-app/domains/cloud/model-task-status");
+ const observer=globalThis.IntersectionObserver;Reflect.set(globalThis,"IntersectionObserver",undefined);
+ const calls:unknown[]=[];
+ const file={fileId:"stable-file",path:"品牌宣传片/产品主视觉.png",mimeType:"image/png",sizeBytes:1};
+ const item=task({messageId:"first",status:"completed",outputs:["https://xianchou.com/provider-id.png"],outputEntry:{id:"result",userId:"fixture",workspaceId:"ws",sessionId:"session",messageId:"first",requestId:"request",slug:"demo/text-to-image",status:"completed",files:[file],outputs:[],structured:null,charged:null,createdAt:1,updatedAt:1}});
+ Reflect.set(window,"__GET3W_ACCOUNT__",{status:async()=>({status:"signed_in",user:{id:"fixture"},error:null,pending:false}),taskCatalog:async()=>({catalog_version:"fixture",expiresAt:Date.now()+60000,offline:false,models:[]}),modelTasks:async()=>({items:[item]}),outputs:async(input:unknown)=>{calls.push(input);return {dataBase64:"AA==",mimeType:"image/png",sizeBytes:1};}});
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ try{
+  await act(async()=>root.render(createElement(MemoryRouter,{},createElement(Get3wAccount),createElement(ModelTasksProvider,{workspaceId:"ws",sessionId:"session",messages,children:createElement(ModelTaskStatus,{messageIds:["first"]})}))));
+  expect(node.textContent).toContain("产品主视觉.png");expect(node.textContent).not.toContain("provider-id.png");
+  expect(node.querySelector("a[download]")?.getAttribute("download")).toBe("产品主视觉.png");
+  expect(calls).toContainEqual({userId:"fixture",workspaceId:"ws",sessionId:"session",action:"read",path:file.path,fileId:"stable-file"});
+ }finally{await act(async()=>root.unmount());node.remove();Reflect.set(globalThis,"IntersectionObserver",observer);Reflect.deleteProperty(window,"__GET3W_ACCOUNT__");}
+});

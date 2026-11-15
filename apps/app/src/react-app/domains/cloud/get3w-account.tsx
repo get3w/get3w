@@ -1,11 +1,8 @@
 import { toast } from "sonner";
+import { ExternalLink } from "lucide-react";
 import { cachedTaskCatalog, resetTaskCatalog, loadTaskCatalog } from "./task-catalog-store";
-import { useLocation } from "react-router";
-import { settingsNavigationFromPathname } from "@/react-app/shell/workspace-routes";
 import { Get3wBalance } from "./get3w-balance";
 import { Get3wConnectors } from "./get3w-connectors";
-import { Get3wGateway } from "./get3w-gateway";
-import { Get3wModelUsage } from "./get3w-model-usage";
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
 import { t, useLocale } from "@/i18n";
 import type { ModelUsageSnapshot } from "./get3w-model-usage";
@@ -56,16 +53,19 @@ export type TaskCatalogSnapshot = {
   executionAllowed?: false;
 };
 export type ModelApproval = { id: string; workspaceId: string; modelTask: {quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number} };
-export type OutputFile = {sessionId?:string;rootPath?:string;path:string;mimeType:string;sizeBytes:number;updatedAt?:number};
-export type OutputEntry = {id:string;userId:string;workspaceId:string;sessionId:string|null;messageId:string|null;requestId:string|null;slug:string|null;status:string;files:OutputFile[];outputs:unknown[];structured:unknown;charged:number|string|null;createdAt:number;updatedAt:number;downloadError?:string|null};
+export type OutputFile = {fileId?:string;missing?:boolean;sessionId?:string;rootPath?:string;path:string;mimeType:string;sizeBytes:number;updatedAt?:number};
+export type OutputEntry = {id:string;userId:string;workspaceId:string;sessionId:string|null;messageId:string|null;requestId:string|null;slug:string|null;status:string;files:OutputFile[];plannedFiles?:{fileId:string;path:string;rootPath:string}[];outputs:unknown[];structured:unknown;charged:number|string|null;createdAt:number;updatedAt:number;downloadError?:string|null};
 export type ModelTask = {submittedAt?:number;estimatedDuration?:number;reservedUsd?:string|null;chargedUsd?:string|null;error?:{code?:string}|null;messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
+export type TaskPermissionMode = "default" | "full_access";
+export type TaskPermissionSnapshot = { mode: TaskPermissionMode; defaultMode: TaskPermissionMode; grants: {permission: string; patterns: string[]}[] };
 type AccountBridge = {
+  taskPermissions?: (input: { action: "read" | "set" | "revoke"; workspaceId?: string; sessionId?: string; mode?: TaskPermissionMode; confirmed?: boolean; index?: number; grant?: {permission: string; patterns: string[]} }) => Promise<TaskPermissionSnapshot>;
   automations?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   artifacts?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   modelTasks?: (input: {userId:string;workspaceId:string;sessionId?:string;action:"list"|"listAll"|"detach"|"retrieve"|"retryDownload"|"refreshResult";key?:string})=>Promise<{items:ModelTask[]}>;
   outputs?: {
     (input:{userId:string;workspaceId:string;action:"index"}):Promise<{items:OutputFile[];truncated:boolean}>;
-    (input:{userId:string;workspaceId:string;sessionId?:string;action:"read";path:string}):Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>;
+    (input:{userId:string;workspaceId:string;sessionId?:string;action:"read";path:string;fileId?:string}):Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>;
   };
   modelApprovals?: (input: {workspaceId: string; sessionId: string; action: "list" | "respond"; id?: string; reply?: "allow" | "deny"}) => Promise<{items: ModelApproval[]}>;
   taskCatalog?: (input: {userId: string; offline?: boolean; refresh?: boolean}) => Promise<TaskCatalogSnapshot>;
@@ -158,8 +158,6 @@ export function DesktopAccountGate({ children }: { children: ReactNode }) {
 
 export function Get3wAccount() {
   useLocale();
-  const location=useLocation();
-  const routeScope=settingsNavigationFromPathname(location.pathname,"general").state;
   const bridge = window.__GET3W_ACCOUNT__;
   const [open, setOpen] = useState(false);
   const snapshot = useGet3wAccount();
@@ -188,10 +186,26 @@ export function Get3wAccount() {
   }, [bridge, snapshot.pending, snapshot.status, snapshot.user]);
   useEffect(() => {
     if (!bridge) return;
-    const refresh = () => { void run("status"); };
+    let refreshing = false;
+    const refresh = () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      void run("status").finally(() => { refreshing = false; });
+    };
+    // Web profile edits share the same account record. Refresh on return and
+    // while visible so another browser/device's edits reach the sidebar too.
+    const timer = window.setInterval(() => {
+      if (readGet3wAccount().user) refresh();
+    }, 60_000);
     window.addEventListener("online", refresh);
     window.addEventListener("focus", refresh);
-    return () => { window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); };
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [bridge]);
   useEffect(() => {
     if (!bridge || snapshot.status !== "signed_in" || !snapshot.user
@@ -256,7 +270,17 @@ export function Get3wAccount() {
           {snapshot.pending ? t("ui.d5368ee88fd6") : snapshot.user ? `${snapshot.user.name} · ${snapshot.status === "unavailable" ? t("ui.a1794783aab7") : t("ui.ca566c8968e7")}` : t("ui.71513c6f6861")}
         </p>
         {error || snapshot.error ? <p role="alert" className="text-sm text-destructive">{error || settingsErrorMessage(new Error(snapshot.error ?? ""))}</p> : null}
-        {snapshot.user ? <div key={snapshot.user.id} className="space-y-3"><Get3wBalance userId={snapshot.user.id}/><Get3wGateway userId={snapshot.user.id} workspaceId={routeScope.workspaceId} sessionId={routeScope.sessionId ?? undefined}/><Get3wConnectors userId={snapshot.user.id}/><Get3wModelUsage userId={snapshot.user.id}/></div> : null}
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+          <span className="text-sm">{t("personal.account.web_settings")}</span>
+          <Button variant="outline" onClick={() => {
+            setError(null);
+            void openDesktopUrlWithStatus("https://get3w.com/settings").catch(() => setError(t("ui.4c468a5e8fa3")));
+          }}>
+            {t("ui.ed077f3d8125")}
+            <ExternalLink aria-hidden="true" strokeWidth={1.5} className="size-4 text-muted-foreground" />
+          </Button>
+        </div>
+        {snapshot.user ? <div key={snapshot.user.id} className="space-y-3"><Get3wBalance userId={snapshot.user.id}/><Get3wConnectors userId={snapshot.user.id}/></div> : null}
         <div className="flex gap-2">
           {snapshot.pending ? <Button variant="outline" onClick={() => void run("cancel")} disabled={busy}>{t("ui.9effa0b74884")}</Button> : snapshot.user ? <>
             <Button variant="outline" onClick={() => void run("status")} disabled={busy}>{t("ui.bf8a9eab9e7e")}</Button>

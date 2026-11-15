@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { z } from "zod";
 import type { McpStatusMap } from "../types";
 import type { ConnectionActionIntent } from "@openwork/types/connection-action-app";
@@ -490,6 +491,7 @@ export type OpenworkWorkspaceCatalogEntry = {
 };
 
 export type OpenworkWorkspaceCatalog = {
+  nextAfter?: string;
   incomplete?: boolean;
   skippedDirectories?: string[];
   items: OpenworkWorkspaceCatalogEntry[];
@@ -1684,6 +1686,37 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
     binary: 60_000,
   };
 
+  let legacyFileBrowser = false;
+  async function browseLegacyWorkspaceFiles(workspaceId: string, options: { directory?: string; query?: string; after?: string; showSystem?: boolean }): Promise<OpenworkWorkspaceCatalog> {
+    const created = await requestJson<{ session: { id: string } }>(baseUrl, `/workspace/${encodeURIComponent(workspaceId)}/files/sessions`, { token, hostToken, method: "POST", body: { write: false } });
+    const sessionPath = `/files/sessions/${encodeURIComponent(created.session.id)}`;
+    const all: OpenworkWorkspaceCatalogEntry[] = [];
+    let after: string | undefined;
+    let incomplete = false;
+    try {
+      do {
+        const params = new URLSearchParams({ includeDirs: "true", limit: "10000", excludeHeavyDirectories: String(!options.showSystem) });
+        if (after) params.set("after", after);
+        const page = await requestJson<OpenworkWorkspaceCatalog>(baseUrl, `${sessionPath}/catalog/snapshot?${params}`, { token, hostToken });
+        all.push(...page.items);
+        incomplete ||= Boolean(page.incomplete);
+        if (!page.truncated) break;
+        if (!page.nextAfter || page.nextAfter === after) throw new Error("File listing could not advance. Refresh to try again.");
+        after = page.nextAfter;
+      } while (true);
+      const directory = options.directory ?? "";
+      const query = options.query?.trim().toLocaleLowerCase();
+      const items = all.filter(entry => {
+        if (query) return entry.path.toLocaleLowerCase().includes(query);
+        const parent = entry.path.includes("/") ? entry.path.slice(0, entry.path.lastIndexOf("/")) : "";
+        return parent === directory;
+      });
+      return { items, total: items.length, truncated: false, incomplete };
+    } finally {
+      await requestJson<{ ok: boolean }>(baseUrl, sessionPath, { token, hostToken, method: "DELETE" }).catch(() => undefined);
+    }
+  }
+
   return {
     baseUrl,
     token,
@@ -2327,6 +2360,33 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
         `/workspace/${encodeURIComponent(workspaceId)}/files/stat?path=${encodeURIComponent(path)}`,
         { token, hostToken },
       ),
+
+    browseWorkspaceFiles: async (workspaceId: string, options: { directory?: string; query?: string; after?: string; showSystem?: boolean } = {}) => {
+      const params = new URLSearchParams({ limit: "1000" });
+      if (options.directory) params.set("directory", options.directory);
+      if (options.query) params.set("query", options.query);
+      if (options.after) params.set("after", options.after);
+      if (options.showSystem) params.set("showSystem", "true");
+      if (legacyFileBrowser) return browseLegacyWorkspaceFiles(workspaceId, options);
+      try {
+        return await requestJson<OpenworkWorkspaceCatalog>(baseUrl, `/workspace/${encodeURIComponent(workspaceId)}/files/browser?${params}`, { token, hostToken });
+      } catch (error) {
+        // A hot-reloaded renderer may connect to an older embedded service.
+        // Only an unregistered route permits fallback; never mask permission or workspace errors.
+        if (!(error instanceof OpenworkServerError) || error.status !== 404 || error.code !== "not_found") throw error;
+        legacyFileBrowser = true;
+        return browseLegacyWorkspaceFiles(workspaceId, options);
+      }
+    },
+
+    operateWorkspaceFile: async (workspaceId: string, operation: { type: "create" | "mkdir" | "rename" | "delete"; path: string; to?: string; recursive?: boolean }) => {
+      try {
+        return await requestJson<{ ok: boolean }>(baseUrl, `/workspace/${encodeURIComponent(workspaceId)}/files/browser/ops`, { token, hostToken, method: "POST", body: operation });
+      } catch (error) {
+        if (error instanceof OpenworkServerError && error.status === 404 && error.code === "not_found") throw new Error(t("files.restartService"));
+        throw error;
+      }
+    },
 
     listWorkspaceFiles: async (workspaceId: string) => {
       const created = await requestJson<{ session: { id: string } }>(

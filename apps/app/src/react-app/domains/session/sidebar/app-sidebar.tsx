@@ -1,3 +1,4 @@
+import { WorkspaceSwitcher } from "./workspace-switcher";
 /** @jsxImportSource react */
 import { DesktopUpdateButton } from "../../settings/state/desktop-updater-provider";
 import { useNewTaskDraftState } from "../sync/draft-store";
@@ -81,8 +82,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -723,20 +722,7 @@ export function WorkspaceToolbar({ groups, selectedWorkspaceId, onSelectWorkspac
   return <div data-sidebar-workspace-toolbar className="flex min-w-0 items-center gap-1">
     {connecting ? <SessionDotMatrixLoader label={t("workspace_list.connecting")} />
       : selected ? <WorkspaceAvatarPicker workspaceId={selected.workspace.id} label={workspaceLabel(selected.workspace)} /> : null}
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" className="min-w-0 flex-1 justify-start gap-2 px-2" disabled={groups.length === 0}
-        aria-label={t("workspace_list.switch_workspace")} title={selected ? workspaceLabel(selected.workspace) : undefined} />}>
-        <span className="min-w-0 flex-1 truncate text-left">{selected ? workspaceLabel(selected.workspace) : t("workspace_list.select_workspace")}</span>
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64 max-w-(--available-width)">
-        <DropdownMenuRadioGroup value={selectedWorkspaceId} onValueChange={value => { if (value !== selectedWorkspaceId) void onSelectWorkspace(value); }}>
-          {groups.map(group => <DropdownMenuRadioItem key={group.workspace.id} value={group.workspace.id} closeOnClick>
-            <span className="truncate" title={workspaceLabel(group.workspace)}>{workspaceLabel(group.workspace)}</span>
-          </DropdownMenuRadioItem>)}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <WorkspaceSwitcher workspaces={groups.map(group=>({id:group.workspace.id,label:workspaceLabel(group.workspace)}))} selectedId={selectedWorkspaceId} onSelect={id=>{void onSelectWorkspace(id);}}/>
     {canCreateWorkspaces() ? <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onOpenCreateWorkspace}
       aria-label={t("workspace_list.add_workspace")} title={t("workspace_list.add_workspace")}><Plus className="size-4" /></Button> : null}
     {selected ? <WorkspaceActionsMenu workspace={selected.workspace} className="size-7 shrink-0 text-muted-foreground" />
@@ -984,32 +970,38 @@ export function AppSidebar(props: AppSidebarProps) {
 }
 
 function GlobalPinnedSessions({ entries }: { entries: GlobalPinnedSessionEntry[] }) {
+  const [expanded, setExpanded] = React.useState(true);
   const pinnedIds = useSessionManagementStore(state => state.pinnedIds);
   return (
     <SidebarGroup data-global-pinned-sessions className="pb-0 pt-4">
       <SidebarGroupContent>
-        <div className="flex h-6 items-center pe-2 ps-2.5">
-          <span className={SIDEBAR_SECTION_LABEL}>{t("session_management.pinned")}</span>
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuSub>
-              <SessionReorderList
-                sessionIds={entries.map(entry => entry.session.id)}
-                orderIds={pinnedIds}
-                onReorder={ids => useSessionManagementStore.getState().reorderPins(ids)}
-              >
-                {entries.map((entry) => (
-                  <SessionMenuItem
-                    key={`${entry.group.workspace.id}:${entry.session.id}`}
-                    session={entry.session}
-                    workspaceId={entry.group.workspace.id}
-                    isPinned
-                    draggable
-                    workspaceName={workspaceLabel(entry.group.workspace)}
-                  />
-                ))}
-              </SessionReorderList>
+            <SidebarMenuSub className="[&_[data-sidebar=menu-sub-button]]:ps-1!">
+              <Collapsible render={<li />} open={expanded} onOpenChange={setExpanded}>
+                <SessionGroupSeparator label={t("session_management.pinned")} count={entries.length}
+                  expanded={expanded} onToggle={() => setExpanded(value => !value)} />
+                <CollapsibleContent>
+                  <SidebarMenuSub className="ms-0 translate-x-0 border-0 ps-0 rtl:translate-x-0">
+                    <SessionReorderList
+                      sessionIds={entries.map(entry => entry.session.id)}
+                      orderIds={pinnedIds}
+                      onReorder={ids => useSessionManagementStore.getState().reorderPins(ids)}
+                    >
+                      {entries.map((entry) => (
+                        <SessionMenuItem
+                          key={`${entry.group.workspace.id}:${entry.session.id}`}
+                          session={entry.session}
+                          workspaceId={entry.group.workspace.id}
+                          isPinned
+                          draggable
+                          workspaceName={workspaceLabel(entry.group.workspace)}
+                        />
+                      ))}
+                    </SessionReorderList>
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </Collapsible>
             </SidebarMenuSub>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -1156,12 +1148,12 @@ function WorkspaceSidebarGroup({
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarMenuItem>
-              <SidebarMenuSub>
+              <SidebarMenuSub className="[&_[data-sidebar=menu-sub-button]]:ps-1!">
                 <Collapsible render={<li />} open={recentExpanded} onOpenChange={setRecentExpanded} data-workspace-recent-sessions={workspace.id}>
                   <SessionGroupSeparator label={t("session_management.recent_label")} count={activeRootCount}
                     expanded={recentExpanded} onToggle={() => setRecentExpanded(value => !value)} />
                   <CollapsibleContent>
-                    <SidebarMenuSub className="ms-0 border-0 ps-0">
+                    <SidebarMenuSub className="ms-0 translate-x-0 border-0 ps-0 rtl:translate-x-0">
                 {group.status === "loading" && group.sessions.length === 0 ? <li className="space-y-2 px-2 py-2" aria-busy="true" aria-label={t("workspace.loading_tasks")}><div className="h-6 animate-pulse rounded bg-muted" /><div className="h-6 animate-pulse rounded bg-muted" /></li> : activeSessions.length > 0 || ((wsGroups.length > 0 || workspaceDraft.hasDraft) && group.status !== "error") ? (
                   <>
                     {wsGroups.length > 0 ? (

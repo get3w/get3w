@@ -86,3 +86,52 @@ test("pending startup reload recovers automatically before refreshing the model 
     expect(fixture.statusCalls()).toBe(2);
   } finally { await fixture.cleanup(); }
 }, 10_000);
+
+test("account web settings opens the exact URL and reports browser failures", async () => {
+  const fixture = await setup();
+  const { setLocale, t } = await import("../src/i18n");
+  const { openGet3wSignIn } = await import("../src/react-app/domains/cloud/get3w-account");
+  const opened: string[] = [];
+  let fail = false;
+  Reflect.set(window, "__OPENWORK_ELECTRON__", { shell: { openExternal: async (url: string) => {
+    opened.push(url);
+    return fail ? { ok: false, error: "Browser unavailable" } : { ok: true };
+  } } });
+  try {
+    setLocale("zh");
+    await fixture.mount();
+    await act(async () => { openGet3wSignIn(); });
+    const button = Array.from(document.querySelectorAll("button")).find(node => node.textContent === t("ui.ed077f3d8125"));
+    expect(button).toBeDefined();
+    expect(document.body.textContent).not.toContain(t("ui.06faeb0780a2"));
+    expect(document.body.textContent).not.toContain(t("ui.3dbaf78b6b8a"));
+    expect(document.body.textContent).not.toContain(t("ui.3e2d8350575b"));
+    expect(document.body.textContent).not.toContain(t("ui.55ad0e203a01"));
+    await act(async () => { button?.click(); });
+    expect(opened).toEqual(["https://get3w.com/settings"]);
+    fail = true;
+    await act(async () => { button?.click(); });
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(t("ui.4c468a5e8fa3"));
+    fail = false;
+    await act(async () => { button?.click(); });
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  } finally {
+    delete window.__OPENWORK_ELECTRON__;
+    await fixture.cleanup();
+  }
+});
+
+test("returning from web settings publishes the updated account name and avatar", async () => {
+  const fixture = await setup();
+  const { readGet3wAccount } = await import("../src/react-app/domains/cloud/get3w-account");
+  try {
+    await fixture.mount();
+    const user = { id: "fixture", name: "Updated name", avatar_url: "https://get3w.com/avatar-new.png" };
+    fixture.setResult({ ...fixture.account, user });
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(readGet3wAccount().user).toEqual(user);
+    fixture.setResult({ ...fixture.account, user: { ...user, name: "Another device" } });
+    await act(async () => { window.dispatchEvent(new Event("focus")); });
+    expect(readGet3wAccount().user?.name).toBe("Another device");
+  } finally { await fixture.cleanup(); }
+});

@@ -164,7 +164,7 @@ function DestinationWorkspaceAvatar({ workspaceId, label }: { workspaceId: strin
 }
 
 /** Only a draft to discard and nowhere else to send it. */
-function DraftActionsMenu({ disabled, onDiscard }: { disabled: boolean; onDiscard: () => void }) {
+export function DraftActionsMenu({ disabled, onDiscard }: { disabled: boolean; onDiscard: () => void }) {
   return (
     <span className="min-w-0 max-w-full text-muted-foreground">
       <DropdownMenu>

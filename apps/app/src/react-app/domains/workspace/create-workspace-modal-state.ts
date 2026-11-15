@@ -1,9 +1,7 @@
 import type { SetStateAction } from "react";
 
-import type { CreateWorkspaceScreen } from "./types";
 
 export type CreateWorkspaceLocalState = {
-  screen: CreateWorkspaceScreen;
   selectedFolder: string | null;
   pickingFolder: boolean;
   showProgressDetails: boolean;
@@ -18,7 +16,6 @@ type CreateWorkspaceLocalAction<K extends keyof CreateWorkspaceLocalState = keyo
 
 export function createInitialWorkspaceLocalState(): CreateWorkspaceLocalState {
   return {
-    screen: "chooser",
     selectedFolder: null,
     pickingFolder: false,
     showProgressDetails: false,

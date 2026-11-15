@@ -130,10 +130,11 @@ export function classifyOpenTarget(value: string, kind: OpenTargetKind): OpenTar
   if ([".csv", ".tsv", ".xlsx"].includes(ext)) return "sheet";
   if ([".ppt", ".pptx", ".pptm", ".pot", ".potx", ".odp", ".key", ".sxi"].includes(ext)) return "slides";
   if (ext === ".docx") return "document";
-  if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"].includes(ext)) return "image";
+  if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".bmp"].includes(ext)) return "image";
   if ([".mp4", ".m4v", ".mov", ".webm", ".ogv"].includes(ext)) return "video";
   if (ext === ".pdf") return "pdf";
   if ([".html", ".htm"].includes(ext)) return "html";
+  if (!ext || [".gitignore", ".env", ".example", ".npmrc", ".editorconfig"].includes(ext)) return "text";
   if (CODE_EXTENSIONS.has(ext)) return "code";
   if ([".txt", ".log"].includes(ext)) return "text";
   return "external";

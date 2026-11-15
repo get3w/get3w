@@ -1,8 +1,10 @@
-import {saveModelOutput,readOutputFile,indexOutputFiles} from "../model-output-files.js";
+import {deliverableKey,planDeliverable,registerDeliverable,resolveDeliverable,relocateDeliverables,resolveDeliverableAlias} from "../workspace-deliverables.js";
+import {saveModelOutput,readOutputFile,indexOutputFiles,trustedOutputUrl} from "../model-output-files.js";
+import {fileURLToPath} from "node:url";
 import { createReadStream } from "node:fs";
-import { readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, realpath, readdir, rename, rm, stat, writeFile, lstat, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, extname, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { recordAudit } from "../audit.js";
 import { ApiError } from "../errors.js";
@@ -124,6 +126,7 @@ async function parseMultipartFormData(request: Request): Promise<FormData> {
 
 export function isSupportedWorkspaceTextFilePath(relativePath: string): boolean {
   const lowered = relativePath.toLowerCase();
+  if (!basename(lowered).includes(".") || [".gitignore", ".env", ".env.example", ".npmrc", ".editorconfig"].includes(basename(lowered))) return true;
   return [
     ".md",
     ".mdx",
@@ -194,6 +197,23 @@ function resolveSafeChildPath(root: string, child: string): string {
   return candidate;
 }
 
+/** File browser paths never traverse links, including links in parent folders. */
+async function resolveBrowserPath(root: string, path: string, allowMissing = false) {
+  const normalized = normalizeWorkspaceRelativePath(path, { allowSubdirs: true });
+  const target = resolveSafeChildPath(root, normalized);
+  let current = resolve(root);
+  for (const part of normalized.split("/")) {
+    current = join(current, part);
+    try {
+      if ((await lstat(current)).isSymbolicLink()) throw new ApiError(400, "invalid_path", "Symbolic links cannot be followed");
+    } catch (error) {
+      if (allowMissing && error instanceof Error && "code" in error && error.code === "ENOENT") break;
+      throw error;
+    }
+  }
+  return target;
+}
+
 function encodeArtifactId(path: string): string {
   return Buffer.from(path, "utf8").toString("base64url");
 }
@@ -219,6 +239,9 @@ function contentTypeForPath(path: string): string {
   if (lowered.endsWith(".jpg") || lowered.endsWith(".jpeg")) return "image/jpeg";
   if (lowered.endsWith(".gif")) return "image/gif";
   if (lowered.endsWith(".webp")) return "image/webp";
+  const mediaTypes: Record<string, string> = { mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime", webm: "video/webm", ogv: "video/ogg", mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac", opus: "audio/ogg", aiff: "audio/aiff", avif: "image/avif", bmp: "image/bmp" };
+  const mediaType = mediaTypes[lowered.split(".").at(-1) ?? ""];
+  if (mediaType) return mediaType;
   if (lowered.endsWith(".pdf")) return "application/pdf";
   if (lowered.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   if (lowered.endsWith(".csv")) return "text/csv; charset=utf-8";
@@ -382,7 +405,7 @@ export async function findWorkspaceFileBySuffix(
 export async function resolveWorkspaceArtifactTargets(
   workspaceRoot: string,
   input: unknown,
-  options: { conversationDirectory?: () => Promise<string | null>; search?: boolean; homeDir?: string } = {},
+  options: { conversationDirectory?: () => Promise<string | null>; search?: boolean; homeDir?: string; resolveAlias?:(path:string)=>Promise<string> } = {},
 ): Promise<Array<Record<string, unknown>>> {
   const targets = Array.isArray(input) ? input.slice(0, 80) : [];
   const results = new Map<string, Record<string, unknown>>();
@@ -395,7 +418,14 @@ export async function resolveWorkspaceArtifactTargets(
     if (!item || typeof item !== "object") continue;
     const target = item as ArtifactTargetInput;
     const kind = target.kind === "url" ? "url" : "file";
-    const rawValue = typeof target.value === "string" ? target.value.trimStart() : "";
+    let rawValue = typeof target.value === "string" ? target.value.trimStart() : "";
+    if(kind==="file"&&options.resolveAlias){
+      const root=await realpath(workspaceRoot);
+      let path=rawValue;
+      if(path.startsWith("file:")){try{path=fileURLToPath(path);}catch{/* Normal resolver reports an invalid URL. */}}
+      if(isAbsolute(path)){const rel=relative(root,path);if(rel&&!rel.startsWith("..")&&!isAbsolute(rel))path=rel;}
+      if(!isAbsolute(path)&&!(await exists(join(root,path)))){const alias=await options.resolveAlias(path);if(alias!==path)rawValue=alias;}
+    }
     if (!rawValue.trim()) continue;
     const confidence = typeof target.confidence === "number" && Number.isFinite(target.confidence) ? target.confidence : 0;
     const reason = typeof target.reason === "string" ? target.reason : "server";
@@ -722,21 +752,54 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
       return jsonResponse({items:items.slice(0,10000),truncated:result.truncated});
     }
     if (body.action === "read" && typeof body.path === "string") {
+      if(typeof body.fileId==="string"){
+        const file=await resolveDeliverable(config,workspace,body.fileId);
+        return jsonResponse(await readOutputFile(workspace.path,file.path));
+      }
       const directory = typeof body.sessionId === "string" && resolveSessionDirectory
         ? await resolveSessionDirectory(workspace, body.sessionId) : workspace.path;
       if(!directory)throw new ApiError(404,"session_unavailable","Conversation directory unavailable");
-      return jsonResponse(await readOutputFile(directory, body.path));
+      return jsonResponse(await readOutputFile(directory, await resolveDeliverableAlias(config,workspace,body.path)));
     }
     if (body.action === "save" && typeof body.key === "string" && typeof body.url === "string") {
       ensureWritable(config);
       const directory = typeof body.sessionId === "string" && resolveSessionDirectory
         ? await resolveSessionDirectory(workspace, body.sessionId) : workspace.path;
       if(!directory)throw new ApiError(404,"session_unavailable","Conversation directory unavailable");
-      return jsonResponse({...await saveModelOutput(directory, body.key, body.url),rootPath:directory});
+      return jsonResponse({...await saveModelOutput(directory, body.key, body.url,undefined,{
+        config,workspace,request:{sessionId:typeof body.sessionId==="string"?body.sessionId:undefined,taskName:typeof body.taskName==="string"?body.taskName:undefined,filename:typeof body.filename==="string"?body.filename:undefined,directory:typeof body.directory==="string"?body.directory:undefined,sourcePath:typeof body.sourcePath==="string"?body.sourcePath:undefined},
+      })});
+    }
+    if(body.action==="plan"&&typeof body.key==="string"&&Array.isArray(body.urls)){
+      ensureWritable(config);
+      if(typeof body.sessionId==="string"&&resolveSessionDirectory&&!await resolveSessionDirectory(workspace,body.sessionId))throw new ApiError(404,"session_unavailable","Conversation directory unavailable");
+      const plans=[];
+      for(const value of body.urls){
+        if(typeof value!=="string")throw new ApiError(400,"invalid_url","Invalid result URL");
+        const url=trustedOutputUrl(value);
+        plans.push(await planDeliverable(config,workspace,{key:deliverableKey(body.key,value),extension:extname(url.pathname).toLowerCase(),sessionId:typeof body.sessionId==="string"?body.sessionId:undefined,taskName:typeof body.taskName==="string"?body.taskName:undefined,filename:typeof body.filename==="string"?body.filename:undefined,directory:typeof body.directory==="string"?body.directory:undefined,sourcePath:typeof body.sourcePath==="string"?body.sourcePath:undefined}));
+      }return jsonResponse({plans});
+    }
+    if(body.action==="resolve"&&Array.isArray(body.files)){
+      return jsonResponse({files:await Promise.all(body.files.map(async(file:unknown)=>{
+        if(!file||typeof file!=="object"||!("path" in file)||typeof file.path!=="string")throw new ApiError(400,"invalid_file","Invalid file");
+        if(!("fileId" in file)||typeof file.fileId!=="string")return file;
+        try{return {...file,...await resolveDeliverable(config,workspace,file.fileId),missing:false};}catch{return {...file,missing:true};}
+      }))});
     }
     throw new ApiError(400,"invalid_output_request","Invalid output operation");
   });
 
+
+  // A shared allocation/registration API for local document, spreadsheet and script outputs.
+  addRoute(routes,"POST","/workspace/:id/files/deliverables","client",async ctx=>{
+    ensureWritable(config);requireClientScope(ctx,"collaborator");
+    const workspace=await resolveWorkspace(config,ctx.params.id),body=await readJsonBody(ctx.request);
+    if(body.action==="register"&&typeof body.fileId==="string")return jsonResponse(await registerDeliverable(config,workspace,body.fileId));
+    if(body.action!=="plan"||typeof body.key!=="string"||typeof body.extension!=="string")throw new ApiError(400,"invalid_payload","A result identity and extension are required");
+    await requireApproval(ctx,{workspaceId:workspace.id,action:"workspace.deliverable.plan",summary:"Choose a workspace result location",paths:[workspace.path]});
+    return jsonResponse(await planDeliverable(config,workspace,{key:body.key,extension:body.extension,sessionId:typeof body.sessionId==="string"?body.sessionId:undefined,taskName:typeof body.taskName==="string"?body.taskName:undefined,filename:typeof body.filename==="string"?body.filename:undefined,directory:typeof body.directory==="string"?body.directory:undefined,sourcePath:typeof body.sourcePath==="string"?body.sourcePath:undefined}));
+  });
 
   // A conversation that moved into a worktree writes its files there, and its
   // replies name them relative to that folder.
@@ -749,11 +812,11 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
 
   // Legacy callers prefer the workspace copy; scoped callers retain the exact
   // root selected by artifact resolution for reads, downloads and writes.
-  const resolveConversationFilePath = (workspace: WorkspaceInfo, relativePath: string, sessionId: unknown, fileScope: unknown): Promise<string> =>
-    resolveScopedWorkspaceFilePath(workspace.path, relativePath, {
-      fileScope,
-      conversationDirectory: () => conversationDirectory(workspace, sessionId),
-    });
+  const resolveConversationFilePath = async (workspace: WorkspaceInfo, relativePath: string, sessionId: unknown, fileScope: unknown): Promise<string> => {
+    const alias=await resolveDeliverableAlias(config,workspace,relativePath);
+    if(alias!==relativePath&&!(await exists(join(workspace.path,relativePath))))return resolveBrowserPath(workspace.path,alias);
+    return fileScope==="workspace"?resolveBrowserPath(workspace.path,relativePath,true):resolveScopedWorkspaceFilePath(workspace.path,relativePath,{fileScope,conversationDirectory:()=>conversationDirectory(workspace,sessionId)});
+  };
 
   const serializeFileSession = (session: {
     id: string;
@@ -922,8 +985,86 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
     const items = await resolveWorkspaceArtifactTargets(workspace.path, body.targets, {
       conversationDirectory: () => conversationDirectory(workspace, body.sessionId),
       search: body.search === true,
+      resolveAlias:path=>resolveDeliverableAlias(config,workspace,path),
     });
     return jsonResponse({ items });
+  });
+
+  // Direct directory pages avoid scanning the entire workspace for each expansion.
+  addRoute(routes, "GET", "/workspace/:id/files/browser", "client", async (ctx) => {
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    const directory = ctx.url.searchParams.get("directory") ?? "";
+    const query = (ctx.url.searchParams.get("query") ?? "").trim().toLocaleLowerCase();
+    const showSystem = ctx.url.searchParams.get("showSystem") === "true";
+    const after = ctx.url.searchParams.get("after") ?? "";
+    const limit = parseCatalogLimit(ctx.url.searchParams.get("limit"));
+    const root = directory ? await resolveBrowserPath(workspace.path, directory) : workspace.path;
+    const items: FileSessionCatalogEntry[] = [];
+    const skippedDirectories: string[] = [];
+    let hasMore = false;
+    let pastCursor = !after;
+    const walk = async (abs: string, prefix: string): Promise<void> => {
+      let children;
+      try { children = await readdir(abs, { withFileTypes: true }); }
+      catch (error) {
+        if (!prefix || prefix === directory) throw error;
+        skippedDirectories.push(prefix); return;
+      }
+      // Code-unit ordering matches the cursor comparison on every platform.
+      children.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      for (const child of children) {
+        if (hasMore) return;
+        if (child.isSymbolicLink() || (!child.isFile() && !child.isDirectory())) continue;
+        if (!showSystem && child.isDirectory() && FILE_BROWSER_EXCLUDED_DIRECTORIES.has(child.name)) continue;
+        const path = prefix ? prefix + "/" + child.name : child.name;
+        const include = pastCursor;
+        if (path === after) pastCursor = true;
+        if (include && (!query || path.toLocaleLowerCase().includes(query))) {
+          if (items.length >= limit) { hasMore = true; return; }
+          try {
+            const info = await lstat(join(abs, child.name));
+            if (info.isSymbolicLink()) continue;
+            items.push({ path, kind: child.isDirectory() ? "dir" : "file", size: info.size, mtimeMs: info.mtimeMs, revision: fileRevision(info) });
+          } catch (error) {
+            if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+          }
+        }
+        if (query && child.isDirectory()) await walk(join(abs, child.name), path);
+      }
+    };
+    // Search traverses in path order, so pagination must use that same order.
+    await walk(root, directory);
+    if (after && !pastCursor) throw new ApiError(409, "stale_cursor", "Directory changed. Refresh the file list.");
+    return jsonResponse({ items, total: items.length, truncated: hasMore, nextAfter: hasMore ? items.at(-1)?.path : undefined, incomplete: skippedDirectories.length > 0, skippedDirectories });
+  });
+
+  addRoute(routes, "POST", "/workspace/:id/files/browser/ops", "client", async (ctx) => {
+    ensureWritable(config);
+    requireClientScope(ctx, "collaborator");
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    const body = await readJsonBody(ctx.request);
+    const type = body.type;
+    if (!["create", "mkdir", "rename", "delete"].includes(String(type))) throw new ApiError(400, "invalid_operation", "Unsupported file operation");
+    const path = normalizeWorkspaceRelativePath(String(body.path ?? ""), { allowSubdirs: true });
+    const source = await resolveBrowserPath(workspace.path, path, type === "create" || type === "mkdir");
+    const to = type === "rename" ? normalizeWorkspaceRelativePath(String(body.to ?? ""), { allowSubdirs: true }) : null;
+    if (to && (to === path || to.startsWith(path + "/"))) throw new ApiError(400, "invalid_path", "Cannot move a folder into itself");
+    const destination = to ? await resolveBrowserPath(workspace.path, to, true) : source;
+    if ((type === "create" || type === "mkdir" || type === "rename") && await exists(destination)) throw new ApiError(409, "already_exists", "A file or folder already exists at the destination");
+    await requireApproval(ctx, { workspaceId: workspace.id, action: "workspace.files.browser.ops", summary: `${type} ${path}`, paths: to ? [source, destination] : [source] });
+    // Approval may take time; validate again immediately before mutation.
+    await resolveBrowserPath(workspace.path, path, type === "create" || type === "mkdir");
+    if (to) {
+      await resolveBrowserPath(workspace.path, to, true);
+      if (await exists(destination)) throw new ApiError(409, "already_exists", "A file or folder already exists at the destination");
+    }
+    if (type === "create") await writeFile(source, "", { flag: "wx" });
+    else if (type === "mkdir") await mkdir(source);
+    else if (type === "rename") await rename(source, destination);
+    else await rm(source, { recursive: body.recursive === true, force: false });
+    if(type==="rename"||type==="delete")await relocateDeliverables(config,workspace,path,to??undefined);
+    recordWorkspaceFileEvent(workspace.id, { type: type === "create" ? "write" : type === "mkdir" ? "mkdir" : type === "rename" ? "rename" : "delete", path, ...(to ? { toPath: to } : {}) });
+    return jsonResponse({ ok: true });
   });
 
   addRoute(routes, "POST", "/workspace/:id/files/sessions", "client", async (ctx) => {
@@ -1051,6 +1192,7 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
             continue;
           }
           await rm(absPath, { recursive: op.recursive === true, force: false });
+          await relocateDeliverables(config,workspace,path);
           recordWorkspaceFileEvent(workspace.id, { type: "delete", path });
           items.push({ ok: true, type, path });
           continue;
@@ -1067,6 +1209,7 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
           }
           await ensureDir(dirname(toAbs));
           await rename(fromAbs, toAbs);
+          await relocateDeliverables(config,workspace,from,to);
           recordWorkspaceFileEvent(workspace.id, { type: "rename", path: from, toPath: to });
           items.push({ ok: true, type, from, to });
           continue;
@@ -1180,7 +1323,7 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
       throw new ApiError(400, "invalid_path", "Path must point to a file");
     }
     const beforeUpdatedAt = before ? before.mtimeMs : null;
-    if (!force && beforeUpdatedAt !== null && baseUpdatedAt !== null && beforeUpdatedAt !== baseUpdatedAt) {
+    if (!force && baseUpdatedAt !== null && beforeUpdatedAt !== baseUpdatedAt) {
       throw new ApiError(409, "conflict", "File changed since it was loaded", { baseUpdatedAt, currentUpdatedAt: beforeUpdatedAt });
     }
 
@@ -1244,7 +1387,7 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
       throw new ApiError(400, "invalid_path", "Path must point to a file");
     }
     const beforeUpdatedAt = before ? before.mtimeMs : null;
-    if (!force && beforeUpdatedAt !== null && baseUpdatedAt !== null && beforeUpdatedAt !== baseUpdatedAt) {
+    if (!force && baseUpdatedAt !== null && beforeUpdatedAt !== baseUpdatedAt) {
       throw new ApiError(409, "conflict", "File changed since it was loaded", {
         baseUpdatedAt,
         currentUpdatedAt: beforeUpdatedAt,

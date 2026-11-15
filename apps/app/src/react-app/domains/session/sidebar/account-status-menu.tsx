@@ -1,3 +1,4 @@
+import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
 import { openGet3wSignIn, useGet3wAccount } from "../../cloud/get3w-account";
 /** @jsxImportSource react */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { currentLocale, t } from "@/i18n";
 import { usePlatform } from "../../../kernel/platform";
@@ -187,8 +189,11 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
   }) : null;
   return <div className="flex min-w-0 flex-1 items-center gap-1">
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" className="min-w-0 flex-1 justify-start" data-testid="account-status-menu" data-runtime-state={status?.variant} />}>
-        <UserRound className="size-4 shrink-0" />
+      <DropdownMenuTrigger render={<Button variant="ghost" className="h-12 min-w-0 flex-1 justify-start gap-3 px-2 text-sm font-normal" data-testid="account-status-menu" data-runtime-state={status?.variant} />}>
+        <Avatar className="size-7 after:border-0">
+          {user ? <AvatarImage src={user.avatar_url || resolveExtensionIconSrc("/default-avatar.png")} alt="" /> : null}
+          <AvatarFallback>{user ? accountInitials(user.name, "") : <UserRound className="size-4" />}</AvatarFallback>
+        </Avatar>
         <span className="truncate">{user?.name || t("account.sign_in")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="w-64">
@@ -199,5 +204,8 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
         {config.feedbackButton && props.onSendFeedback ? <DropdownMenuItem onClick={props.onSendFeedback}><MessageCircleMore className="size-4" />{t("status.feedback")}</DropdownMenuItem> : null}
       </DropdownMenuContent>
     </DropdownMenu>
+    {props.showSettingsButton !== false ? <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground"
+      data-testid="account-settings-button" aria-label={t("status.settings")} title={t("status.settings")}
+      onClick={props.onOpenAccountSettings}><Settings className="size-4" /></Button> : null}
   </div>;
 }

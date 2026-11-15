@@ -160,6 +160,7 @@ contextBridge.exposeInMainWorld("__OPENWORK_I18N__", { setLanguage: language => 
 contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {
   modelTasks: (input) => ipcRenderer.invoke("get3w:auth", "modelTasks", input),
   outputs: (input) => ipcRenderer.invoke("get3w:auth", "outputs", input),
+  taskPermissions: (input) => ipcRenderer.invoke("get3w:auth", "taskPermissions", input),
   modelApprovals: (input) => ipcRenderer.invoke("get3w:auth", "modelApprovals", input),
   managedMcp: (input) => ipcRenderer.invoke("get3w:auth", "managedMcp", input),
   managedModels: (input) => ipcRenderer.invoke("get3w:auth", "managedModels", input),

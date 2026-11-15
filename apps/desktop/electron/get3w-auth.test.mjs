@@ -8,6 +8,7 @@ import { createGet3wAuth } from "./get3w-auth.mjs";
 async function fixture() {
   const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-auth-"));
   let available = true, approved = false, revoked = false, offline = false, time = 0, refreshes = 0, origin;
+  let profile = {id:"u",name:"Test"};
   const calls = [], urls = [];
   const safeStorage = {
     isAsyncEncryptionAvailable: async () => available,
@@ -26,10 +27,11 @@ async function fixture() {
     }
     if (op === "refresh") { refreshes++; return revoked ? Response.json({}, {status:401}) : Response.json({access_token:"new-access",refresh_token:"new-refresh",expires_in:600}); }
     if (op === "capabilities") return Response.json({contract_version:"personal-account-v1"});
-    if (op === "me") return revoked ? Response.json({}, {status:401}) : Response.json({user:{id:"u",name:"Test"}});
+    if (op === "me") return revoked ? Response.json({}, {status:401}) : Response.json({user:profile});
     return Response.json({ok:true});
   }};
   return { userData, deps, calls, urls, set: values => {
+    if ("profile" in values) profile=values.profile;
     if ("available" in values) available=values.available;
     if ("approved" in values) approved=values.approved;
     if ("revoked" in values) revoked=values.revoked;
@@ -372,4 +374,17 @@ test("definitive submission conflicts preserve a correction instead of a connect
   await auth.begin();h.set({approved:true});await auth.poll();
   await assert.rejects(auth.submitPersonal({userId:'u',arguments:{slug:'p/m/run',inputs:{},quote_id:'q',idempotency_key:'k',session_id:'session'}}),error=>error.definitive===true && error.code==='idempotency_conflict' && /new key unique/.test(error.message));
  }finally{await h.cleanup();}
+});
+
+
+test("status refreshes web profile changes without requiring a new desktop login", async () => {
+  const h = await fixture();
+  try {
+    const auth = createGet3wAuth(h.deps);
+    await auth.begin(); h.set({approved:true}); await auth.poll();
+    const profile = {id:"u",name:"New web name",avatar_url:"https://get3w.com/new-avatar.png"};
+    h.set({profile});
+    assert.deepEqual((await auth.status()).user, profile);
+    assert.equal(h.refreshes(), 0);
+  } finally { await h.cleanup(); }
 });

@@ -1,3 +1,6 @@
+import { taskPermissionSettings, setTaskPermissionMode, initializeTaskPermissionMode } from "./task-permission-modes.js";
+import { listThreadApprovals, rememberThreadApproval, revokeThreadApproval } from "./thread-approvals.js";
+import {planDeliverable,registerDeliverable,resolveDeliverable,resolveDeliverableAlias} from "./workspace-deliverables.js";
 import { captureTaskLogExchange } from "./task-log-capture.js";
 import { rememberGenerationPolicy, generationPolicyFor, generationPolicyFromMessages } from "./generation-policies.js";
 import { GET3W_CHAT_TOOLS } from "./get3w-chat-tools.js";
@@ -1522,6 +1525,10 @@ async function forwardOpencodeV2Request(input: {
     if (!synced.ok) throw new ApiError(502, "engine_instruction_sync_failed", "Get3W instructions could not be updated");
   }
 
+  if (method !== "GET" && method !== "HEAD" && /^\/api\/permission\/saved(?:\/|$)/.test(forwardedPath)) {
+    throw new ApiError(403, "permission_settings_private", "Use Desktop chat permission controls");
+  }
+
   const requestBody = method === "GET" || method === "HEAD"
     ? undefined
     : await input.request.arrayBuffer().then((buffer) => buffer.byteLength > 0 ? buffer : undefined);
@@ -1534,6 +1541,30 @@ async function forwardOpencodeV2Request(input: {
       rememberGenerationPolicy(input.workspace.id,sessionId,prompt.id,openwork?.generationPolicy);
     }
   }
+  if (method === "PATCH" && sessionId && forwardedPath === `/api/session/${sessionId}` && requestBody) {
+    const patch: unknown = JSON.parse(new TextDecoder().decode(requestBody));
+    if (isRecord(patch) && "permissions" in patch) throw new ApiError(403, "permission_settings_private", "Use Desktop permission settings");
+  }
+  const permissionReply = method === "POST" && sessionId ? /\/permission\/([^/]+)\/reply$/.exec(forwardedPath) : null;
+  let rememberedGrant: { permission: string; patterns: string[] } | undefined;
+  if (permissionReply && requestBody) {
+    const reply: unknown = JSON.parse(new TextDecoder().decode(requestBody));
+    if (isRecord(reply) && (reply.decision === "always" || reply.reply === "always")) {
+      const pending = await readNative(`/api/session/${encodeURIComponent(sessionId!)}/permission`);
+      const rows = isRecord(pending) ? pending.data : pending;
+      const item = Array.isArray(rows) ? rows.find((entry: unknown) => isRecord(entry) && entry.id === permissionReply[1]) : null;
+      if (!isRecord(item) || typeof item.action !== "string" || !Array.isArray(item.resources)) throw new ApiError(409, "permission_unavailable", "Permission is no longer pending");
+      const patterns = Array.isArray(item.save) && item.save.length ? item.save : item.resources;
+      if (!patterns.every((entry: unknown) => typeof entry === "string")) throw new ApiError(400, "invalid_permission", "Invalid permission scope");
+      rememberedGrant = { permission: item.action, patterns };
+      body = JSON.stringify({ ...reply, decision: "once", reply: "once" });
+      headers.delete("content-length");
+    }
+  }
+  if (method === "POST" && /^\/api\/(?:experimental\/)?session\/import$/.test(forwardedPath) && requestBody) {
+    const imported: unknown = JSON.parse(new TextDecoder().decode(requestBody));
+    if (isRecord(imported) && isRecord(imported.info) && Array.isArray(imported.info.permissions) && imported.info.permissions.length) throw new ApiError(403, "permission_settings_private", "Imported permissions require Desktop approval");
+  }
   if (method === "POST" && forwardedPath === "/api/session") {
     let sessionInput: unknown = {};
     if (requestBody) {
@@ -1544,12 +1575,14 @@ async function forwardOpencodeV2Request(input: {
       }
     }
     if (!isRecord(sessionInput)) throw new ApiError(400, "invalid_body", "Expected a JSON object");
+    if ("permissions" in sessionInput) throw new ApiError(403, "permission_settings_private", "Use Desktop permission settings");
     // Unlike reads, v2 session creation binds its location from the body.
     body = JSON.stringify({ ...sessionInput, location: { directory: input.workspace.path } });
     headers.delete("content-length");
     headers.set("content-type", "application/json");
   }
   const response = await engineFetch(target.toString(), { method, headers, body, signal });
+  if (response.ok && rememberedGrant && sessionId) await rememberThreadApproval(input.config, input.workspace.id, sessionId, rememberedGrant);
   if (method === "GET" && /^\/api\/skill(?:\/|$)/.test(decodeURIComponent(forwardedPath))
     && input.actor.scope !== "owner" && response.ok) {
     // A shared client token is not authorization to bulk-read the owner's Cloud
@@ -1788,7 +1821,10 @@ async function forwardOpencodeV2Request(input: {
     || (method === "POST" && (forwardedPath === "/api/session" || forwardedPath.endsWith("/fork"))))) {
     const payload: unknown = await response.json();
     const session = nativeSession(payload);
-    if (method === "POST" && typeof session?.id === "string") await homes.created(session.id, expectedHome);
+    if (method === "POST" && typeof session?.id === "string") {
+      await homes.created(session.id, expectedHome);
+      await initializeTaskPermissionMode(input.config, session.id, typeof session.parentID === "string" ? session.parentID : undefined, forwardedPath.endsWith("/fork"));
+    }
     const data = isRecord(payload) && "data" in payload ? payload.data : payload;
     return jsonResponse({ data: await homes.project(data) });
   }
@@ -3180,6 +3216,26 @@ function createRoutes(
     return response;
   });
 
+  addRoute(routes,"POST","/experimental/workspace-file","client",async ctx=>{
+    if(ctx.request.headers.get("X-Get3W-Host-Token")!==config.hostToken)throw new ApiError(401,"host_only","Host bridge required");
+    const body=await ctx.request.json();
+    if(!isRecord(body)||!isRecord(body.input)||!isRecord(body.caller)||typeof body.caller.directory!=="string"||typeof body.sessionId!=="string")throw new ApiError(400,"invalid_payload","Conversation required");
+    const callerDirectory=body.caller.directory;
+    const workspace=config.workspaces.find(item=>item.path===callerDirectory);
+    if(!workspace||!await resolveV2SessionExecutionDirectory(config,engineV2Preview,workspace,body.sessionId))throw new ApiError(403,"invalid_session","Conversation unavailable");
+    ensureWritable(config);
+    const input=body.input;
+    if(input.action==="resolve"){
+      if(typeof input.file_id==="string")return jsonResponse(await resolveDeliverable(config,workspace,input.file_id));
+      if(typeof input.path==="string")return jsonResponse({path:await resolveDeliverableAlias(config,workspace,input.path),rootPath:workspace.path});
+      throw new ApiError(400,"invalid_payload","File identity or workspace path required");
+    }
+    if(input.action==="register"&&typeof input.file_id==="string")return jsonResponse(await registerDeliverable(config,workspace,input.file_id));
+    if(input.action!=="plan"||typeof input.task_name!=="string"||typeof input.filename!=="string"||typeof input.extension!=="string")throw new ApiError(400,"invalid_payload","Name and extension required");
+    if(opencodeSessionIsStopping(config,{directory:workspace.path,sessionID:body.sessionId}))throw new ApiError(409,"session_stopped","Conversation stopped");
+    return jsonResponse(await planDeliverable(config,workspace,{key:`document:${body.sessionId}:${String(input.task_key??input.task_name)}:${input.filename}:${input.extension}`,sessionId:body.sessionId,taskName:input.task_name,filename:input.filename,extension:input.extension,directory:typeof input.directory==="string"?input.directory:undefined,sourcePath:typeof input.source_path==="string"?input.source_path:undefined}));
+  });
+
   addRoute(routes, "POST", "/experimental/model-call", "client", async (ctx) => {
     if (ctx.request.headers.get("X-Get3W-Host-Token") !== config.hostToken) throw new ApiError(401,"host_only","Host bridge required");
     const body = await ctx.request.json();
@@ -3604,6 +3660,44 @@ function createRoutes(
     }
 
     return jsonResponse({ updatedAt: Date.now() });
+  });
+
+  addRoute(routes, "POST", "/task-permissions", "host-token", async (ctx) => {
+    const body = await readJsonBody(ctx.request);
+    const sessionId = typeof body.sessionId === "string" ? body.sessionId : undefined;
+    const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId : undefined;
+    if (sessionId && (!workspaceId || !/^[\w-]{1,256}$/.test(sessionId))) throw new ApiError(400, "invalid_scope", "Invalid task scope");
+    let workspace: WorkspaceInfo | undefined;
+    if (workspaceId) workspace = await resolveWorkspace(config, workspaceId);
+    if (sessionId && workspace) {
+      const connection = engineV2Preview.connection();
+      if (!connection) throw new ApiError(503, "engine_unavailable", "Permission settings could not be verified");
+      const url = new URL(`/api/session/${encodeURIComponent(sessionId)}`, connection.url);
+      url.searchParams.set("location[directory]", workspace.path);
+      const result = await loopbackFetch(url, { headers: { authorization: `Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}` }, signal: AbortSignal.timeout(5000) });
+      if (!result.ok) throw new ApiError(404, "session_unavailable", "Task is unavailable");
+      const payload: unknown = await result.json();
+      const session = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+      const homes = createV2SessionHomes(config, async path => {
+        const target = new URL(path, connection.url);
+        const result = await loopbackFetch(target, { headers: { authorization: `Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}` }, signal: AbortSignal.timeout(5000) });
+        if (!result.ok) throw new ApiError(404, "session_unavailable", "Task is unavailable");
+        return result.json();
+      });
+      if (await homes.resolve(session) !== await homes.canonical(workspace.path)) throw new ApiError(403, "invalid_scope", "Task belongs to another workspace");
+    }
+    if (body.action === "set") {
+      if (body.mode !== "default" && body.mode !== "full_access") throw new ApiError(400, "invalid_mode", "Invalid permission mode");
+      if (body.mode === "full_access" && body.confirmed !== true) throw new ApiError(400, "confirmation_required", "Confirm full access first");
+      await setTaskPermissionMode(config, body.mode, sessionId);
+    } else if (body.action === "revoke" && sessionId && workspaceId && Number.isInteger(body.index) && typeof body.index === "number" && body.index >= 0) {
+      // New chat grants are host-owned; native receives only a one-time reply,
+      // so each subsequent operation consults this record without an engine cache.
+      const expected = body.grant;
+      if (!isRecord(expected) || typeof expected.permission !== "string" || !Array.isArray(expected.patterns) || !expected.patterns.every((value: unknown) => typeof value === "string")) throw new ApiError(400, "invalid_grant", "Permission scope is required");
+      await revokeThreadApproval(config, workspaceId, sessionId, body.index, {permission: expected.permission, patterns: expected.patterns});
+    } else if (body.action !== "read") throw new ApiError(400, "invalid_action", "Invalid permission operation");
+    return jsonResponse({ ...await taskPermissionSettings(config, sessionId), grants: sessionId && workspaceId ? await listThreadApprovals(config, workspaceId, sessionId) : [] });
   });
 
   registerOperationRoutes({

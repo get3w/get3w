@@ -40,7 +40,7 @@ test("personal v1 and v2 registries offer local context without retired cloud fi
     tool: { async transform(callback) { callback({ get: () => undefined, update() {}, add: tool => { names.push(tool.name); } }); return { async dispose() {} }; } },
   });
   try {
-    expect(names).toEqual(["openwork_context", "openwork_query", "openwork_execute"]);
+    expect(names).toEqual(["openwork_context", "openwork_query", "openwork_execute", "workspace_file"]);
     expect(Object.keys(plugin.tool).some(name => /drive_|gmail|outlook/.test(name))).toBe(false);
     expect(Object.keys(plugin.tool)).toContain("openwork_context");
   } finally { await stop(); plugin.dispose(); }

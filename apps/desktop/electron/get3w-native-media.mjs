@@ -193,6 +193,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
  }
  async function generate(input,host,signal){
   if(!record(input)||typeof input.preparation_id!=='string'||!record(input.inputs))return failure('invalid_input','Provide a preparation and its media inputs');
+  if(input.output!==undefined&&(!record(input.output)||Object.entries(input.output).some(([key,value])=>!['task_name','filename','directory','source_path'].includes(key)||typeof value!=='string'||value.length>500)))return failure('invalid_output','Provide short output names and workspace-relative paths');
   if(input.output_overrides!==undefined&&(!record(input.output_overrides)||Object.keys(input.output_overrides).some(name=>!outputFieldNames.includes(name))))return failure('invalid_input','Output overrides must contain only output settings explicitly requested by the user');
   // Local references must be uploaded in prepare, before the input is frozen.
   // Never send a filesystem path to a model API as if it were a public URL.
@@ -210,6 +211,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   const expected=merged(row,{});
   const conflicts=Object.keys(row.defaults).filter(name=>Object.hasOwn(expected,name)&&Object.hasOwn(input.inputs,name)&&!Object.hasOwn(input.output_overrides??{},name)&&String(input.inputs[name]).toLowerCase()!==String(expected[name]).toLowerCase());
   if(conflicts.length)return failure('output_preference_conflict','Omit conflicting output settings to use the saved preferences. Use output_overrides for settings explicitly requested in the active project brief or subsequent user instructions, including earlier turns. Preserve the brief instead of falling back to conflicting preferences.',{expected:Object.fromEntries(conflicts.map(name=>[name,expected[name]]))});
+  if(input.output&&!row.output)await serial(async()=>{row.output=input.output;await save();});
   let inputs=merged(row,values),fingerprint=hash(inputs);
   if(row.inputHash&&row.inputHash!==fingerprint)return failure('input_conflict','These inputs differ from the existing task. Prepare a new task to change them');
   if(active.has(row.id)){const running=active.get(row.id);return running.fingerprint===fingerprint?running.pending:failure('input_conflict','A different input is already being submitted for this preparation');}
@@ -241,7 +243,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
    await serial(async()=>{row.inputHash=fingerprint;row.inputs=inputs;await save();});
    const key=`native-${row.id}`;
    // Always restore quote evidence into this connection's guard on restart.
-   const submitHost={...host,nativeMedia:{preparationId:row.id,traceId:row.traceId,catalogVersion:row.catalogVersion,inputHash:row.inputHash,model:row.model}};
+   const submitHost={...host,nativeMedia:{output:row.output??input.output??{task_name:String(inputs.prompt??row.name??"任务成果").slice(0,48),filename:row.taskType?.includes("video")?"生成视频":row.taskType?.includes("image")?"生成图片":row.taskType?.includes("music")?"生成音乐":"生成音频"},preparationId:row.id,traceId:row.traceId,catalogVersion:row.catalogVersion,inputHash:row.inputHash,model:row.model}};
    let result;
    for(let attempt=0;attempt<2;attempt++){
     const quote=await measure(row.traceId,'quote',()=>capability('get3w.quote',{slug:row.model,inputs},submitHost,signal,`quote-${row.id}-${attempt}`));

@@ -1,3 +1,4 @@
+import { searchWorkspaceMentionFiles } from "../domains/session/surface/composer/workspace-file-search";
 /** @jsxImportSource react */
 import { ensureGet3wTaskTools, requireGet3wSignIn, useGet3wAccount } from "@/react-app/domains/cloud/get3w-account";
 import { openComposerModelPickerEvent } from "@/app/lib/model-picker-events";
@@ -1787,19 +1788,10 @@ export function SessionRoute() {
       onSelectAgent: setNewTaskAgent,
       listCommands: listSlashCommands,
       recentFiles: [],
-      searchFiles: async (query: string) => {
-        const trimmed = query.trim();
-        if (!trimmed) return [];
-        const result = unwrap(
-          await opencodeClient.find.files({
-            query: trimmed,
-            dirs: "true",
-            limit: 50,
-            directory: selectedWorkspaceRoot || undefined,
-          }),
-        );
-        return result;
-      },
+      searchFiles: (query: string) => searchWorkspaceMentionFiles(selectedWorkspaceEndpoint?.client ?? null, selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId, query, async () => {
+        if (!query.trim() || !opencodeClient) return [];
+        return unwrap(await opencodeClient.find.files({ query: query.trim(), dirs: "true", limit: 50, directory: selectedWorkspaceRoot || undefined }));
+      }),
       onRevertToMessage: async (messageId: string, sessionId: string) => {
         const targetSessionId = sessionId.trim() || selectedSessionId;
         if (!targetSessionId) return false;
@@ -1992,16 +1984,10 @@ export function SessionRoute() {
         void engineReloadVersion;
         return unwrap(await workspaceOpencodeClient.app.agents()).filter(isLibraryAgent);
       },
-      searchFiles: async (query: string) => {
-        const trimmed = query.trim();
-        if (!trimmed) return [];
-        return unwrap(await workspaceOpencodeClient.find.files({
-          query: trimmed,
-          dirs: "true",
-          limit: 50,
-          directory: workspaceRoot || undefined,
-        }));
-      },
+      searchFiles: (query: string) => searchWorkspaceMentionFiles(endpoint.client, endpoint.workspaceId, query, async () => {
+        if (!query.trim()) return [];
+        return unwrap(await workspaceOpencodeClient.find.files({ query: query.trim(), dirs: "true", limit: 50, directory: workspaceRoot || undefined }));
+      }),
       environmentRuntimeKey,
       onApplyEnvironmentChanges: undefined,
       onSendDraft: async (draft: ComposerDraft, sessionId: string, onPrepared?: (text?: string) => void, agent?: string | null): Promise<CloudMcpSubmissionResult> => {
@@ -2326,19 +2312,10 @@ export function SessionRoute() {
       listAgents,
       onSelectAgent: setNewTaskAgent,
       listCommands: listSlashCommands,
-      searchFiles: async (query: string) => {
-        const trimmed = query.trim();
-        if (!trimmed || !opencodeClient) return [];
-        const result = unwrap(
-          await opencodeClient.find.files({
-            query: trimmed,
-            dirs: "true",
-            limit: 50,
-            directory: selectedWorkspaceRoot || undefined,
-          }),
-        );
-        return result;
-      },
+      searchFiles: (query: string) => searchWorkspaceMentionFiles(selectedWorkspaceEndpoint?.client ?? null, selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId, query, async () => {
+        if (!query.trim() || !opencodeClient) return [];
+        return unwrap(await opencodeClient.find.files({ query: query.trim(), dirs: "true", limit: 50, directory: selectedWorkspaceRoot || undefined }));
+      }),
       onOpenSettingsSection: (section: ComposerSettingsSection) => {
         openComposerConfigure(section, {
           openLibrary: handleOpenExtensions,
@@ -3469,7 +3446,7 @@ export function SessionRoute() {
     setCreateWorkspaceBusy(true);
     setCreateWorkspaceError(null);
     try {
-      const workspaceName = folderNameFromPath(folder);
+      const workspaceName = projectLabel || folderNameFromPath(folder);
       let list: WorkspaceList | null = null;
       let createdOnServer = false;
       if (client) {
@@ -3840,7 +3817,7 @@ export function SessionRoute() {
           />
         </WorkspaceProvider>,
       } : undefined}
-      primarySlot={activityRouteActive ? <ActivityPage onTrySkill={trySkillInNewSession} /> : outputsRouteActive ? <OutputsPage workspaceRoot={selectedWorkspaceRoot} workspaceId={selectedWorkspaceId} sessionId={selectedSessionId ?? ""} /> : remoteTaskRouteActive && remoteThreadKey ? (
+      primarySlot={activityRouteActive ? <ActivityPage onTrySkill={trySkillInNewSession} /> : outputsRouteActive ? <OutputsPage client={selectedWorkspaceEndpoint?.client ?? null} workspaceRoot={selectedWorkspaceRoot} workspaceId={selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId} localWorkspace={isDesktopRuntime()} /> : remoteTaskRouteActive && remoteThreadKey ? (
         <RemoteSessionSurface key={remoteThreadKey} threadKey={remoteThreadKey} navigation={remoteHelperNavigation} />
       ) : pendingConversation ? <PendingConversationView conversation={pendingConversation} composer={newTaskComposerContext} /> : appsRouteActive ? (
         <WorkspaceProvider

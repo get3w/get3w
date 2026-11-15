@@ -30,6 +30,7 @@ export function createModelTaskJournal({userData,limitUsd}) {
       slug: row.arguments?.slug ?? null,
       status: row.result?.status ?? row.status,
       files: row.outputEntry?.files ?? [],
+      plannedFiles: row.outputEntry?.plannedFiles ?? [],
       downloadError: row.outputEntry?.downloadError ?? null,
       outputs: Array.isArray(row.result?.outputs) ? row.result.outputs : [],
       structured: row.result ?? null,

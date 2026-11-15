@@ -160,7 +160,7 @@ export function WelcomeRoute() {
       const projectLabel = options?.projectLabel?.trim() ?? "";
       dispatch({ type: "create:start" });
       try {
-        const workspaceName = folderNameFromPath(folder);
+        const workspaceName = projectLabel || folderNameFromPath(folder);
         let list: WorkspaceList | null = null;
         let sessionBaseUrl = "";
         let sessionToken = "";

@@ -10,10 +10,10 @@ const canonical = value => Array.isArray(value) ? value.map(canonical) : value &
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const fingerprint = value => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 
-// Early releases persisted account ownership before configuration fingerprints.
-// Adopt only that account's exact generated legacy shape, never arbitrary providers.
-function recoverableLegacyProvider(provider, record, userId) {
-  if (record.fingerprint || !record.enabled || record.account !== fingerprint(userId)) return false;
+// Recognize only known generated shapes for the recorded account. Legacy
+// receipts and conflicting migrated databases must never authorize user options.
+function generatedAccountProvider(provider, record, userId) {
+  if (!record.enabled || record.account !== fingerprint(userId)) return false;
   if (!provider || Object.keys(provider).sort().join() !== "models,name,npm,options"
     || provider.name !== "Get3W Models" || provider.npm !== "@ai-sdk/openai-compatible") return false;
   const options = provider.options;
@@ -23,8 +23,16 @@ function recoverableLegacyProvider(provider, record, userId) {
     || Number(new URL(options.baseURL).port) > 65535) return false;
   const models = provider.models;
   return models && typeof models === "object" && !Array.isArray(models) && Object.keys(models).length > 0
-    && Object.values(models).every(model => model && Object.keys(model).sort().join() === "name,tool_call"
-      && typeof model.name === "string" && model.tool_call === true);
+    && Object.values(models).every(model => {
+      if (!model || typeof model.name !== "string" || model.tool_call !== true) return false;
+      const keys = Object.keys(model).sort().join();
+      if (keys === "name,tool_call") return true;
+      return keys === "attachment,modalities,name,tool_call" && typeof model.attachment === "boolean"
+        && model.modalities && Object.keys(model.modalities).sort().join() === "input,output"
+        && Array.isArray(model.modalities.input) && model.modalities.input.length > 0
+        && model.modalities.input.every(value => ["text", "image", "audio", "video", "pdf"].includes(value))
+        && Array.isArray(model.modalities.output) && model.modalities.output.join() === "text";
+    });
 }
 
 /** Own only the exact provider definition we wrote. Never touch user providers. */
@@ -86,15 +94,26 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
       record.legacyFingerprint=fingerprint(legacy);await save();
     }
     const current=providers[GET3W_MANAGED_PROVIDER];
+    let preservedProvider;
+    // Directory migration can retain an existing target runtime DB while the
+    // profile receipt still belongs to the legacy DB. Preserve the conflicting
+    // generated definition under a stable, non-colliding ID before reconnecting.
+    if (enabled && current && record.fingerprint && fingerprint(current) !== record.fingerprint
+      && generatedAccountProvider(current, record, userId)) {
+      const base = `get3w-recovered-${fingerprint(current).slice(0, 16)}`;
+      let id = base;
+      for (let suffix = 1; providers[id] && fingerprint(providers[id]) !== fingerprint(current); suffix++) id = `${base}-${suffix}`;
+      preservedProvider = { [id]: current };
+    }
     if (!enabled) {
       await closeProxy();await removeOwned(target,current);
       if (legacy) await request(target,"PATCH",{"openwork-account":null});
       record={};await save();return {enabled:false,state:"disconnected"};
     }
-    if (current && canRecoverLegacy && recoverableLegacyProvider(current, record, userId)) {
+    if (current && canRecoverLegacy && generatedAccountProvider(current, record, userId)) {
       record.fingerprint=fingerprint(current);await save();
     }
-    if (current && (!record.fingerprint || fingerprint(current)!==record.fingerprint)) throw new Error("Get3W account provider was edited locally. Rename it before connecting.");
+    if (current && !preservedProvider && (!record.fingerprint || fingerprint(current)!==record.fingerprint)) throw new Error("Get3W account provider was edited locally. Rename it before connecting.");
     if (enabled && (!record.enabled || record.account !== fingerprint(userId))) {
       record.enabled=true;record.account=fingerprint(userId);await save();
     }
@@ -132,7 +151,7 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     } catch (error) {
       // The previous identity's proxy is closed. Do not leave its dead URL in
       // the engine, where an access denial becomes endless retries.
-      await removeOwned(target,current);
+      if (!preservedProvider) await removeOwned(target,current);
       providerState="unavailable";
       throw error;
     }
@@ -142,14 +161,14 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     // Write ownership first so a timeout after the server applies the patch is recoverable.
     record.fingerprint=fingerprint(definition);await save();
     try {
-      const result=await request(target,"PATCH",{[GET3W_MANAGED_PROVIDER]:definition,...(legacy ? {"openwork-account":null} : {})});
+      const result=await request(target,"PATCH",{...preservedProvider,[GET3W_MANAGED_PROVIDER]:definition,...(legacy ? {"openwork-account":null} : {})});
       delete record.legacyFingerprint;await save();
       providerState=result.reload==="deferred"?"pending":"connected";
       return {enabled:true,state:providerState};
     } catch(error) {
       await closeProxy();
       const actual=(await request(target,"GET")).provider?.[GET3W_MANAGED_PROVIDER];
-      if (actual && fingerprint(actual)===previous) {record.fingerprint=previous;await save();}
+      if (actual && (fingerprint(actual)===previous || (preservedProvider && fingerprint(actual)===fingerprint(current)))) {record.fingerprint=previous;await save();}
       throw error;
     }
   }

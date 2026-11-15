@@ -79,6 +79,12 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     const snapshot=await auth.status();
     if(snapshot.status!=="signed_in"||snapshot.user?.id!==input.userId)throw Error("Get3W account changed.");
   }
+  function outputNaming(row){const output=row.nativeMedia?.output??{};return {taskName:output.task_name??String(row.arguments?.inputs?.prompt??"任务成果").slice(0,48),filename:output.filename??"生成结果",directory:output.directory,sourcePath:output.source_path};}
+  async function planOutputs(scope,row,urls){
+    if(row.outputEntry?.plannedFiles?.length===urls.length)return;
+    const planned=await outputRequest(scope,{action:"plan",key:row.key,urls,sessionId:row.scope.sessionId,...outputNaming(row)});
+    if(planned?.plans){await journal.updateOutput(row.scope,row.key,{plannedFiles:planned.plans});row.outputEntry={...row.outputEntry,plannedFiles:planned.plans};}
+  }
   const downloading=new Set();
   async function syncOutputs(scope,retry=false,onlyKey) {
     for(const row of await journal.listConnection(scope)){
@@ -88,8 +94,10 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       if(!retry&&files.length===urls.length)continue;
       downloading.add(row.key);const downloadStarted=Date.now();
       try{
+        const naming=outputNaming(row);
+        await planOutputs(scope,row,urls);
         const saved=[];
-        for(const url of urls)saved.push(await outputRequest(scope,{action:"save",key:row.key,url,sessionId:row.scope.sessionId}));
+        for(const url of urls)saved.push(await outputRequest(scope,{action:"save",key:row.key,url,sessionId:row.scope.sessionId,...naming}));
         await journal.updateOutput(row.scope,row.key,{files:saved,downloadError:null});
         await globalThis.__get3wTaskLogs?.captureOutput?.(row.scope,saved,row.result).catch(()=>{});
       }catch{await journal.updateOutput(row.scope,row.key,{downloadError:"Download failed. Retry or refresh the result."});}
@@ -158,12 +166,26 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       if(input.action==="retryDownload")await syncOutputs(scope,true,input.key);
       else void syncOutputs(scope).catch(()=>{});
       const rows=input.action==="listAll" ? await journal.listConnection(scope) : await journal.list(scope);
+      for(const row of rows){
+        if(row.status==="completed"&&!row.outputEntry?.files?.length){
+          const urls=(row.result?.outputs??[]).flatMap(value=>typeof value==="string"?[value]:value&&typeof value.url==="string"?[value.url]:[]).filter(value=>value.startsWith("https://"));
+          if(urls.length)try{await planOutputs(scope,row,urls);}catch{/* Download retry retains the remote result when allocation is unavailable. */}
+        }
+        if(!row.outputEntry?.files?.some(file=>file.fileId))continue;
+        try{
+          const resolved=await outputRequest(scope,{action:"resolve",files:row.outputEntry.files});
+          if(Array.isArray(resolved.files)){
+            row.outputEntry.files=resolved.files;
+            await journal.updateOutput(row.scope,row.key,{files:resolved.files});
+          }
+        }catch{/* Keep last verified file locations when the local server is temporarily unavailable. */}
+      }
       // Keep submission inputs in main; expose only scoped state and result outputs.
       return {items:rows.map(row=>({key:row.key,messageId:row.messageId??null,createdAt:row.createdAt,submittedAt:row.submittedAt,estimatedDuration:row.estimatedDuration,slug:row.arguments.slug,status:row.status,requestId:row.requestId,updatedAt:row.updatedAt,sessionId:row.scope.sessionId,outputs:row.result?.outputs??[],reservedUsd:row.quote?.amountUsd??null,chargedUsd:row.result?.billing?.charged?.usd??null,error:row.result?.error?{code:row.result.error.code}:null,outputEntry:row.outputEntry??null}))};
     }),
     outputs:async input=>{
       if(!input||!/^[-\w]{1,100}$/.test(input.workspaceId??"")||!["index","read"].includes(input.action))throw Error("Invalid output scope.");
-      const value=await outputRequest(input,{action:input.action,path:input.path,sessionId:input.sessionId});
+      const value=await outputRequest(input,{action:input.action,path:input.path,sessionId:input.sessionId,fileId:input.fileId});
       if(input.action==="index"){
         const filename=path.join(userData,`get3w-output-index-${fingerprint([input.userId,undefined,input.workspaceId])}.json`);
         const temporary=`${filename}.${randomUUID()}.tmp`;

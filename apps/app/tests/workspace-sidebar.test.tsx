@@ -24,7 +24,7 @@ test('current workspace remains visible with legacy feed preference and collapse
  await click('[data-global-archived-sessions] button');expect(host.textContent).toContain('a 归档任务');expect(host.textContent).not.toContain('b 归档任务');
 });
 test('toolbar switches workspace and dispatches create and workspace menu actions',async()=>{
- const {host,actions}=await mount();await click('[aria-label="切换工作区"]');const choice=[...document.querySelectorAll('[role="menuitemradio"]')].find(node=>node.textContent?.includes('财务项目'));expect(choice).toBeDefined();await act(async()=>choice?.dispatchEvent(new MouseEvent('click',{bubbles:true})));expect(actions).toContain('select:b');expect(host.textContent).toContain('b 当前任务');expect(host.textContent).not.toContain('a 当前任务');
+ const {host,actions}=await mount();await click('[aria-label="切换工作区"]');const choice=[...document.querySelectorAll('[data-workspace-option]')].find(node=>node.textContent?.includes('财务项目'));expect(choice).toBeDefined();await act(async()=>choice?.dispatchEvent(new MouseEvent('click',{bubbles:true})));expect(actions).toContain('select:b');expect(host.textContent).toContain('b 当前任务');expect(host.textContent).not.toContain('a 当前任务');
  const rows=[...host.querySelectorAll<HTMLElement>('[data-session-tab-id]')];
  for(const row of rows)Object.defineProperty(row,'getClientRects',{value:()=>[{width:100,height:32}]});
  const targets=readVisibleSessionNumberShortcutTargets(document);
@@ -80,3 +80,49 @@ test('Recent container does not propagate session-row hover and menu states to e
   expect(row.parentElement?.closest('.group\\/menu-sub-item')).toBeNull();
  }
 });
+
+
+test('footer avatar and username share the account menu while settings opens directly',async()=>{
+ const {host,actions}=await mount();
+ const account=host.querySelector('[data-testid="account-status-menu"]');
+ expect(account?.querySelector('[data-slot="avatar"]')).not.toBeNull();
+ expect(account?.querySelector('span.truncate')?.textContent).toBeTruthy();
+ const settings=host.querySelector('[data-testid="account-settings-button"]');
+ expect(settings).not.toBeNull();expect(account?.contains(settings)).toBe(false);
+ await click('[data-testid="account-settings-button"]');
+ expect(actions).toContain('settings:general');expect(document.querySelector('[role="menu"]')).toBeNull();
+ await click('[data-testid="account-status-menu"] [data-slot="avatar"]');
+ expect(document.querySelector('[role="menu"]')).not.toBeNull();
+ await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+ await click('[data-testid="account-status-menu"] span.truncate');
+ expect(document.querySelector('[role="menu"]')).not.toBeNull();
+});
+
+test('workspace search filters results, retains selection and reports an empty result',async()=>{
+ const {actions}=await mount();await click('[aria-label="切换工作区"]');
+ const input=document.querySelector<HTMLInputElement>('[aria-label="搜索工作区"]');expect(input).not.toBeNull();
+ expect(document.querySelectorAll('[data-workspace-option]').length).toBe(2);
+ expect(document.querySelector('[data-workspace-option="a"]')?.hasAttribute('data-selected')).toBe(true);
+ const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+ async function search(value:string){await act(async()=>{setter?.call(input,value);input?.dispatchEvent(new Event('input',{bubbles:true}));});}
+ await search('财务');expect(document.querySelectorAll('[data-workspace-option]').length).toBe(1);expect(document.querySelector('[data-workspace-option="b"]')).not.toBeNull();
+ await search('不存在');expect(document.querySelectorAll('[data-workspace-option]').length).toBe(0);expect(document.querySelector('[role="status"]')?.textContent).toContain('未找到匹配的工作区');
+ await search('');await click('[data-workspace-option="a"]');expect(actions).not.toContain('select:a');
+ await click('[aria-label="切换工作区"]');expect(document.querySelector<HTMLInputElement>('[aria-label="搜索工作区"]')?.value).toBe('');
+});
+
+ test('Pinned uses the same counted collapsible header as Recent and settled sections',async()=>{
+ const {host}=await mount();
+ const pinned=host.querySelector('[data-global-pinned-sessions]');
+ const toggle=pinned?.querySelector('[role="button"]');
+ const recent=host.querySelector('[data-workspace-recent-sessions="a"] [role="button"]');
+ expect(toggle?.textContent).toContain('已固定');expect(toggle?.textContent).toContain('1');
+ expect(toggle?.className).toBe(recent?.className);
+ expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+ await act(async()=>toggle?.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})));
+ expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+ expect(recent?.getAttribute('aria-expanded')).toBe('true');
+ await act(async()=>toggle?.dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true})));
+ expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+ expect(pinned?.textContent).toContain('a 置顶任务');
+ });

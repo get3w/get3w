@@ -16,12 +16,18 @@ export function outputKind(path:string):"image"|"video"|"audio"|"document"|"3d"|
  if(["pdf","docx","html","htm"].includes(extension??""))return "document";
  return "text";
 }
-export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(value:{dataBase64:string;mimeType:string;sizeBytes:number})=>boolean|Promise<boolean>;compact?:boolean;file:OutputFile;read:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
+export function OutputPreview({file,read,compact=false,hideImage,remoteUrl,displayName,hideRemoteImage=false}:{hideImage?:(value:{dataBase64:string;mimeType:string;sizeBytes:number})=>boolean|Promise<boolean>;remoteUrl?:string;displayName?:string;hideRemoteImage?:boolean;compact?:boolean;file:OutputFile;read?:()=>Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>}){
  const locale=useLocale();
  const containerRef=useRef<HTMLDivElement>(null);
  const [inView,setInView]=useState(false);
- const [src,setSrc]=useState(""),[text,setText]=useState(""),[error,setError]=useState(false),[expanded,setExpanded]=useState(false),[attempt,setAttempt]=useState(0);
+ const [localSrc,setSrc]=useState(""),[text,setText]=useState(""),[error,setError]=useState(false),[expanded,setExpanded]=useState(false),[attempt,setAttempt]=useState(0);
  const kind=outputKind(file.path);
+ const name=displayName??(compact?file.path.split("/").at(-1)??file.path:file.path);
+ let remotePreview="";
+ try{const url=new URL(remoteUrl??"");if(url.protocol==="https:"&&url.hostname==="xianchou.com"&&!url.port&&!url.username&&!url.password&&["image","video","audio"].includes(kind))remotePreview=remoteUrl??"";}catch{/* Only trusted media URLs render inline. */}
+ const src=localSrc||remotePreview;
+ const downloadSrc=localSrc||remoteUrl;
+ const hasLocalRead=Boolean(read);
  const [imageData,setImageData]=useState<{dataBase64:string;mimeType:string;sizeBytes:number}|null>(null);
  const [imageHidden,setImageHidden]=useState(false);
  useEffect(()=>{
@@ -39,7 +45,7 @@ export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(v
   return()=>observer.disconnect();
  },[]);
  useEffect(()=>{
-  if(!inView)return;
+  if(!inView||!read)return;
   let stopped=false,url="";setError(false);setSrc("");setText("");setImageData(null);
   void read().then(value=>{
    if(stopped)return;
@@ -49,11 +55,11 @@ export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(v
    if(kind==="text"||/\.html?$/i.test(file.path))setText(new TextDecoder().decode(bytes));
   }).catch(()=>{if(!stopped)setError(true);});
   return()=>{stopped=true;if(url)URL.revokeObjectURL(url);};
- },[file.path,attempt,inView]);
+ },[file.path,attempt,inView,hasLocalRead]);
  return <div ref={containerRef} className="space-y-2" >
-  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate" title={file.path}>{compact?file.path.split("/").at(-1):file.path}</span>{!compact?<span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>:null}{src?<a href={src} download={file.path.split("/").at(-1)} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
-  {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&!src?<div className={compact?"h-28 w-40 animate-pulse rounded bg-muted":"h-20 animate-pulse rounded bg-muted"} aria-busy="true"/>:null}
-  {src&&kind==="image"&&!imageHidden?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={file.path} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={file.path} open={expanded} onOpenChange={setExpanded}/></>:null}
+  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate" title={file.path}>{name}</span>{!compact?<span>{(file.sizeBytes/1024).toFixed(1)} KiB</span>:null}{downloadSrc?<a href={downloadSrc} target={localSrc?undefined:"_blank"} rel="noreferrer" download={localSrc?file.path.split("/").at(-1):name} className="underline">{t("personal.copy.download_file")}</a>:null}</div>
+  {error?<div role="alert">{t("personal.copy.could_not_open_file")}<Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.retry")}</Button></div>:inView&&hasLocalRead&&!src?<div className={compact?"h-28 w-40 animate-pulse rounded bg-muted":"h-20 animate-pulse rounded bg-muted"} aria-busy="true"/>:null}
+  {src&&kind==="image"&&!(localSrc?imageHidden:hideRemoteImage)?<><Button variant="ghost" className="h-auto p-0" onClick={()=>setExpanded(true)} aria-label={t("personal.copy.enlarge_image")}><img src={src} alt={name} loading="lazy" decoding="async" className={compact?"max-h-40 max-w-40 rounded-md object-contain":"max-h-64 max-w-full object-contain"}/></Button><ImageLightbox src={src} alt={name} open={expanded} onOpenChange={setExpanded}/></>:null}
   {src&&kind==="video"?<VideoPreview src={src} compact={compact}/>:null}
   {src&&kind==="audio"?<AudioPreview src={src}/>:null}
   {src&&/\.pdf$/i.test(file.path)?<PdfPreview title={file.path} url={src} className="h-80 w-full"/>:null}
@@ -63,7 +69,7 @@ export function OutputPreview({file,read,compact=false,hideImage}:{hideImage?:(v
   {src&&kind==="3d"?<p className="text-xs text-muted-foreground">{t("personal.copy.download_to_open_in_a_3d_viewer")}</p>:null}
  </div>;
 }
-function DocxPreview({source}:{source:string}){
+export function DocxPreview({source}:{source:string}){
  const [text,setText]=useState("");
  useEffect(()=>{let active=true;void (async()=>{
   const mammoth=await import("mammoth/mammoth.browser");

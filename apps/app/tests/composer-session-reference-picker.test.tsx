@@ -15,6 +15,7 @@ mock.module("../src/react-app/domains/connections/use-org-mcp-connections", () =
 // The composer's import graph reaches Lexical through a cycle; load it first.
 await import("lexical");
 await import("@lexical/react/LexicalComposer.js");
+const {setLocale}=await import("../src/i18n"); setLocale("en");
 const { act, useState } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
@@ -90,7 +91,7 @@ function composerProps(draft: string, onDraftChange: (value: string) => void, on
   };
 }
 
-async function mountComposer(initial = "") {
+async function mountComposer(initial = "", searchFiles: ComposerProps["searchFiles"] = asyncEmpty) {
   const host = document.createElement("div");
   document.body.append(host);
   const drafts: string[] = [];
@@ -104,7 +105,7 @@ async function mountComposer(initial = "") {
     return (
       <QueryClientProvider client={new QueryClient()}>
         <SessionReferenceProvider inventories={inventories} onOpenReference={(reference) => opened.push(reference.sessionId)}>
-          <ReactSessionComposer {...composerProps(draft, (value) => { current = value; drafts.push(value); setDraft(value); }, () => sent.push(current))} />
+          <ReactSessionComposer {...composerProps(draft, (value) => { current = value; drafts.push(value); setDraft(value); }, () => sent.push(current))} searchFiles={searchFiles} />
         </SessionReferenceProvider>
       </QueryClientProvider>
     );
@@ -271,4 +272,18 @@ test("a sent reference shows the current title and opens the task; a missing tas
   const unavailable = [...host.querySelectorAll<HTMLElement>("[data-composer-badge='session']")].filter((chip) => !chip.closest("a"));
   expect(unavailable.map((chip) => chip.textContent)).toEqual(["Deleted taskUnavailable", "Login secretsUnavailable"]);
   await act(async () => { root.unmount(); });
+});
+
+test("@ searches generated workspace files and Enter inserts the file reference", async () => {
+  const queries: string[] = [];
+  const view = await mountComposer("", async query => { queries.push(query); return ["output-7802333.jpg"]; });
+  try {
+    await view.typeText(view.editor, "use @out");
+    const fileOptions = [...document.querySelectorAll<HTMLElement>("[data-composer-suggestions] [role='option']")];
+    expect(fileOptions.some(option => option.textContent?.includes("output-7802333.jpg"))).toBe(true);
+    expect(queries).toContain("out");
+    await press(view.editor, "Enter");
+    expect(view.draft()).toContain("@output-7802333.jpg");
+    expect(view.sent).toHaveLength(0);
+  } finally { await act(async () => view.root.unmount()); }
 });

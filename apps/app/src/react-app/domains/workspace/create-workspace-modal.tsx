@@ -5,16 +5,13 @@ import {
   useReducer,
   type SetStateAction,
 } from "react";
-import { ArrowLeft, FolderPlus, Loader2 } from "lucide-react";
 
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { t } from "../../../i18n";
 import { CreateWorkspaceLocalPanel } from "./create-workspace-local-panel";
 import {
@@ -23,16 +20,7 @@ import {
   shouldTickWorkspaceElapsedClock,
   type CreateWorkspaceLocalState,
 } from "./create-workspace-modal-state";
-import {
-  modalBodyClass,
-  pillGhostClass,
-  tagClass,
-} from "./modal-styles";
-import { WorkspaceOptionCard } from "./option-card";
-import type {
-  CreateWorkspaceModalProps,
-  CreateWorkspaceScreen,
-} from "./types";
+import type { CreateWorkspaceModalProps } from "./types";
 
 export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
   const [localState, dispatchLocal] = useReducer(
@@ -41,7 +29,6 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
     () => createInitialWorkspaceLocalState(),
   );
   const {
-    screen,
     selectedFolder,
     pickingFolder,
     showProgressDetails,
@@ -52,7 +39,6 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
     key: K,
     value: SetStateAction<CreateWorkspaceLocalState[K]>,
   ) => dispatchLocal({ type: "set", key, value });
-  const setScreen = (value: SetStateAction<CreateWorkspaceScreen>) => setLocal("screen", value);
   const setSelectedFolder = (value: SetStateAction<string | null>) => setLocal("selectedFolder", value);
   const setPickingFolder = (value: SetStateAction<boolean>) => setLocal("pickingFolder", value);
   const setShowProgressDetails = (value: SetStateAction<boolean>) => setLocal("showProgressDetails", value);
@@ -81,24 +67,6 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
     return Math.max(0, Math.floor((now - progress.startedAt) / 1000));
   }, [now, progress]);
 
-  const headerTitle = (() => {
-    switch (screen) {
-      case "local":
-        return t("dashboard.create_local_workspace_title");
-      default:
-        return props.title ?? t("dashboard.create_workspace_title");
-    }
-  })();
-
-  const headerSubtitle = (() => {
-    switch (screen) {
-      case "local":
-        return t("dashboard.create_local_workspace_subtitle");
-      default:
-        return props.subtitle ?? t("dashboard.create_workspace_subtitle");
-    }
-  })();
-
   // Reset state when the modal opens.
   useEffect(() => {
     if (!props.open) return;
@@ -123,7 +91,7 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
   }, [progress?.startedAt, props.open, submitting]);
 
   const handlePickFolder = async () => {
-    if (pickingFolder) return;
+    if (pickingFolder || submitting || props.localDisabled) return;
     setPickingFolder(true);
     try {
       await new Promise((resolve) =>
@@ -140,6 +108,7 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
   };
 
   const handleLocalSubmit = async () => {
+    if (!hasSelectedFolder || submitting || props.localDisabled) return;
     props.onConfirm(preset, selectedFolder, {
       projectLabel: projectLabel.trim() || null,
     });
@@ -154,75 +123,16 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
     >
       <DialogContent
         showCloseButton={showClose}
-        className="flex max-h-[90vh] min-h-0 w-full max-w-xl flex-col overflow-hidden sm:max-w-xl"
+        aria-describedby={undefined}
+        className="flex gap-5 max-h-[90vh] min-h-0 w-full max-w-xl flex-col overflow-hidden sm:max-w-xl"
       >
-        <DialogHeader className="flex-row">
-          {screen !== "chooser" ? (
-            <Button
-              onClick={() => setScreen("chooser")}
-              disabled={submitting}
-              variant="ghost"
-              size="icon"
-              aria-label={t("dashboard.modal_back")}
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-          ) : null}
-          <div className="min-w-0 flex flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <DialogTitle>{headerTitle}</DialogTitle>
-            </div>
-            <DialogDescription>{headerSubtitle}</DialogDescription>
-          </div>
+        <DialogHeader>
+          <DialogTitle>{props.title ?? t("dashboard.create_workspace_title")}</DialogTitle>
         </DialogHeader>
 
-        {screen === "chooser" ? (
-          <div className={modalBodyClass}>
-            <div className="space-y-3">
-              <WorkspaceOptionCard
-                title={t("dashboard.create_local_workspace_title")}
-                description={
-                  props.localDisabled
-                    ? props.localDisabledReason?.trim() ||
-                      t("dashboard.chooser_local_desc")
-                    : t("dashboard.chooser_local_desc")
-                }
-                icon={FolderPlus}
-                onClick={() => setScreen("local")}
-                disabled={props.localDisabled}
-                endAdornment={
-                  props.localDisabled ? (
-                    <span className={tagClass}>
-                      {t("dashboard.desktop_badge")}
-                    </span>
-                  ) : undefined
-                }
-              />
-              {props.onImportConfig ? (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => props.onImportConfig?.()}
-                    disabled={props.importingConfig}
-                    className={pillGhostClass}
-                  >
-                    {props.importingConfig ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 size={14} className="animate-spin" />
-                        {t("dashboard.importing")}
-                      </span>
-                    ) : (
-                      t("dashboard.import_config")
-                    )}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {screen === "local" ? (
           <CreateWorkspaceLocalPanel
+            disabled={Boolean(props.localDisabled)}
+            disabledReason={props.localDisabledReason}
             selectedFolder={selectedFolder}
             hasSelectedFolder={hasSelectedFolder}
             pickingFolder={pickingFolder}
@@ -254,7 +164,6 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
               setShowProgressDetails((prev) => !prev)
             }
           />
-        ) : null}
 
       </DialogContent>
     </Dialog>

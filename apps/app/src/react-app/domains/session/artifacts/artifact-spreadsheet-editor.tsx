@@ -14,6 +14,9 @@ type ArtifactSpreadsheetEditorProps = {
   name: string;
   content: Data;
   saving?: boolean;
+  readOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+  onDraftChange?: (content: Data) => void;
   onSave: (payload: Data) => void | Promise<void>;
 };
 
@@ -87,6 +90,13 @@ function useSpreadsheet({ name, content, onSave }: UseSpreadsheetProps) {
 export function ArtifactSpreadsheetEditor(props: ArtifactSpreadsheetEditorProps) {
   const { rows, error, isLoading, updateCell, addRow, addColumn, discard, isDirty, save, isSaving } = useSpreadsheet(props);
   const saving = props.saving || isSaving;
+  useEffect(() => { props.onDirtyChange?.(isDirty); }, [isDirty, props.onDirtyChange]);
+  useEffect(() => {
+    if (!isDirty || !props.onDraftChange) return;
+    let active = true;
+    void serializeSpreadsheet(props.name, rows).then(content => { if (active) props.onDraftChange?.(content); }).catch(() => { /* Keep the dirty grid intact; the Save action reports serialization failures. */ });
+    return () => { active = false; };
+  }, [rows, isDirty, props.name, props.onDraftChange]);
 
   if (isLoading) {
     return (
@@ -106,13 +116,13 @@ export function ArtifactSpreadsheetEditor(props: ArtifactSpreadsheetEditorProps)
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", props.className)}>
-      <div className="flex shrink-0 items-center gap-2 px-3 py-2 border-b border-border">
+      {!props.readOnly ? <div className="flex shrink-0 items-center gap-2 px-3 py-2 border-b border-border">
         <Button variant="ghost" size="xs" onClick={addRow}><Plus className="size-3" /> {t("ui.95110d74c4c0")}</Button>
         <Button variant="ghost" size="xs" onClick={addColumn}><Plus className="size-3" /> {t("ui.3fdc9a587693")}</Button>
         <div className="min-w-0 flex-1" />
         <Button variant="ghost" size="xs" onClick={discard} disabled={!isDirty || saving}>{t("ui.eb1a70e39274")}</Button>
         <Button variant="default" size="xs" onClick={() => save()} disabled={!isDirty || saving}>{saving ? t("ui.096b73624b09") : t("settings.environment.save")}</Button>
-      </div>
+      </div> : null}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-collapse text-xs">
           <tbody>
@@ -122,6 +132,7 @@ export function ArtifactSpreadsheetEditor(props: ArtifactSpreadsheetEditorProps)
                   <td key={columnIndex} className="border-b not-first:border-l border-border p-0 align-top">
                     <input
                       className="h-8 w-full min-w-[120px] bg-transparent px-2 text-foreground outline-none focus:bg-muted/50"
+                      readOnly={props.readOnly}
                       value={cell}
                       onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
                     />

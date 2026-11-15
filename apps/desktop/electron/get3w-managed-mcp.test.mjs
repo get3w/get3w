@@ -118,12 +118,14 @@ test('output download failures retry without submission and local reads stay off
  const manager=createGet3wManagedMcp({userData,auth:{outputIdentity:()=>identity,status:async()=>{cloud++;return {status:'signed_in',user:{id:'u'}};}},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client'}),fetchImpl:async(url,options)=>{
   assert.ok(url.endsWith('/model-outputs'));
   const body=JSON.parse(options.body);
+  if(body.action==='plan')return Response.json({plans:[{fileId:'stable',path:'任务成果/生成图片.png',rootPath:'/fixture'}]});
   if(body.action==='save'){saves++;assert.equal(body.sessionId,scope.sessionId);return Response.json({path:'image.png',mimeType:'image/png',sizeBytes:3},{status:fail?503:200});}
   return Response.json(body.action==='read'?{dataBase64:'YWJj',mimeType:'image/png',sizeBytes:3}:{items:[],truncated:false});
  }});
  try{
   const failed=await manager.tasks({...scope,action:'retryDownload',key});
   assert.match(failed.items[0].outputEntry.downloadError,/Download failed/);
+  assert.equal(failed.items[0].outputEntry.plannedFiles[0].path,'任务成果/生成图片.png');
   fail=false;const saved=await manager.tasks({...scope,action:'retryDownload',key});
   assert.equal(saved.items[0].outputEntry.files.length,1);assert.equal(saves,2);
   assert.equal(saved.items[0].messageId,'original-message');

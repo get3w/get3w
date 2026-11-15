@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import {planDeliverable,saveDeliverableBytes,resolveDeliverable} from "../workspace-deliverables.js";
+import { resolve, sep } from "node:path";
 
 import { ApiError } from "../errors.js";
 import type { EnvService } from "../env-file.js";
@@ -27,6 +27,7 @@ export const OPENAI_IMAGE_GENERATION_EXTENSION_ACTIONS = [
       type: "object",
       properties: {
         prompt: { type: "string", description: "Image prompt to turn into an artifact." },
+        task_name:{type:"string"},task_key:{type:"string",description:"Stable result identity for retries."},directory:{type:"string"},source_path:{type:"string"},
         filename: { type: "string", description: "Optional output filename without extension." },
       },
       required: ["prompt"],
@@ -43,14 +44,6 @@ function readStringField(value: unknown, key: string): string {
   if (!isRecord(value)) return "";
   const field = value[key];
   return typeof field === "string" ? field.trim() : "";
-}
-
-function slugifyImageArtifactName(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "openwork-image";
 }
 
 async function resolveOpenAiImageApiKey(env: EnvService): Promise<string> {
@@ -94,19 +87,13 @@ function workspaceForContext(config: ServerConfig, context: Record<string, unkno
     if (match) return { ...match, path: resolve(match.path) };
   }
 
-  const workspace = config.workspaces[0];
-  if (!workspace) throw new ApiError(404, "workspace_not_found", "Workspace not found for OpenAI image generation");
-  return { ...workspace, path: resolve(workspace.path) };
+  if(config.workspaces.length!==1)throw new ApiError(400,"workspace_required","Select the workspace for this image");
+  const workspace=config.workspaces[0];
+  if(!workspace)throw new ApiError(404,"workspace_not_found","Workspace not found for OpenAI image generation");
+  return {...workspace,path:resolve(workspace.path)};
 }
 
-function resolveSafeChildPath(root: string, child: string): string {
-  const rootResolved = resolve(root);
-  const candidate = resolve(rootResolved, child);
-  if (candidate === rootResolved || !candidate.startsWith(`${rootResolved}${sep}`)) {
-    throw new ApiError(400, "invalid_path", "Path traversal is not allowed");
-  }
-  return candidate;
-}
+
 
 async function fetchOpenAiImage(input: { apiKey: string; prompt: string }) {
   const controller = new AbortController();
@@ -162,17 +149,17 @@ async function generateOpenAiImageArtifact(config: ServerConfig, env: EnvService
   }
 
   const workspace = workspaceForContext(config, context);
-  const fileName = `${slugifyImageArtifactName(readStringField(args, "filename") || prompt)}.png`;
-  const relativePath = `artifacts/${fileName}`;
-  const outputPath = resolveSafeChildPath(workspace.path, relativePath);
+  const plan=await planDeliverable(config,workspace,{key:`image-extension:${readStringField(args,"task_key")||readStringField(context,"callId")||readStringField(context,"toolCallId")||`${readStringField(context,"sessionId")}:${readStringField(context,"messageId")}:${prompt}:${readStringField(args,"filename")}`}`,sessionId:readStringField(context,"sessionId")||undefined,taskName:readStringField(args,"task_name")||prompt.slice(0,48),filename:readStringField(args,"filename")||"生成图片",directory:readStringField(args,"directory")||undefined,sourcePath:readStringField(args,"source_path")||undefined,extension:".png"});
+  const existing=await resolveDeliverable(config,workspace,plan.fileId);
+  if(existing.state==="saved")return {path:existing.path,fileId:existing.fileId,bytes:0,model:OPENAI_IMAGE_MODEL,workspaceId:workspace.id};
   const payload = await fetchOpenAiImage({ apiKey, prompt });
   const bytes = imageDataFromPayload(payload);
 
-  await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, bytes);
+  const file=await saveDeliverableBytes(config,workspace,plan,bytes);
 
   return {
-    path: relativePath,
+    path: file.path,
+    fileId:file.fileId,
     bytes: bytes.byteLength,
     model: OPENAI_IMAGE_MODEL,
     workspaceId: workspace.id,

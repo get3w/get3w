@@ -1,3 +1,4 @@
+import { createTaskPermissionBridge } from "./task-permissions.mjs";
 import { migrateGet3wStorage, migrateStoragePath } from "./get3w-storage-migration.mjs";
 import { createTaskLogs } from "./task-logs.mjs";
 import { loadStartupUrl } from "./startup-navigation.mjs";
@@ -2658,9 +2659,11 @@ const personalAutomationRunner = createPersonalAutomationRunner({auth:openworkAu
 personalAutomationRunner.start();
 app.on("before-quit",()=>personalAutomationRunner.stop());
 powerMonitor.on("resume",()=>personalAutomationRunner.wake());
+const taskPermissions = createTaskPermissionBridge({ getServerInfo: () => runtimeManager.openworkServerInfo() });
 const openworkModelApprovals = createModelApprovalBridge({ getServerInfo: () => runtimeManager.openworkServerInfo() });
 ipcMain.handle("get3w:auth", async (event, operation, input) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Untrusted sign-in caller");
+  if (operation === "taskPermissions") return taskPermissions(input);
   if (operation === "modelTasks") return openworkManagedMcp.tasks(input);
   if (operation === "outputs") return openworkManagedMcp.outputs(input);
   if (operation === "modelApprovals") return openworkModelApprovals(input);

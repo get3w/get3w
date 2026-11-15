@@ -3810,6 +3810,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
         </div> : null}
         <ModelApprovalCards key={`${props.workspaceId}:${props.sessionId}`} workspaceId={props.workspaceId} sessionId={props.sessionId} />
         <ReactSessionComposer
+        workspaceId={props.workspaceId}
           runModeControl={<WorkspaceRunModeMenu client={props.client} workspaceId={props.workspaceId} busy={composerBusy || preparingCloudTools || Boolean(props.activePermission || props.activeQuestion)} />}
           draft={autoSendPayload ? draft : autoSending ? "" : draft}
           mentions={mentions}

@@ -310,9 +310,9 @@ export function renderOpencodeV2Config(input: {
     // gateway chose for each Smart reply. It only reads `openwork-auto`
     // responses, which exist only while a Smart Router applies to the member.
     ...(input.autoRoutePluginDirectory ? [{ package: pathToFileURL(input.autoRoutePluginDirectory).href }] : []),
-    ...(input.agentPermissionRules?.length && input.agentPermissionsPluginDirectory ? [{
+    ...(input.agentPermissionsPluginDirectory ? [{
       package: pathToFileURL(input.agentPermissionsPluginDirectory).href,
-      options: { rules: input.agentPermissionRules, organizationMcp: input.organizationMcp ?? {} },
+      options: { rules: input.agentPermissionRules ?? [], organizationMcp: input.organizationMcp ?? {}, permissionPolicy: input.contextTools },
     }] : []),
   ];
   // The engine applies the last matching rule, so the managed execution
@@ -510,11 +510,11 @@ async function createManagedOpencodeV2ServerInner(
     return next;
   }
 
-  // The agent permissions plugin is written and loaded only for a member who
-  // has agent permissions; everyone else's engine config stays as it was.
+  // Desktop task modes also need the permission hook when there are no
+  // managed rules. Its authenticated bridge grants no additional capabilities.
   async function agentPermissionsConfig(read: NonNullable<ManagedOpencodeV2ServerOptions["agentPermissions"]>) {
     const { rules, organizationMcp } = await read();
-    if (rules.length === 0) return {};
+    if (rules.length === 0 && !options.contextTools) return {};
     if (!agentPermissionsPluginWritten) {
       await mkdir(agentPermissionsPluginDirectory, { recursive: true, mode: 0o700 });
       await writeFile(join(agentPermissionsPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });

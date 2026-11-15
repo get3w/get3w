@@ -1,7 +1,5 @@
 import type { ComposerAttachment, WorkspacePreset } from "../../../app/types";
 
-export type CreateWorkspaceScreen = "chooser" | "local";
-
 export type CreateWorkspaceOptions = {
   projectLabel?: string | null;
   /** Saved as the first session's composer draft after the workspace is created. */

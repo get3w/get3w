@@ -4,7 +4,7 @@ import { currentLocale, type Language } from "./index";
 // This is a platform conversion rate, not a live foreign-exchange quote.
 export const USD_TO_CNY = 7;
 
-export function formatMoney(amount: string | number, sourceCurrency: string, language: Language = currentLocale()): string {
+export function formatMoney(amount: string | number, sourceCurrency: string, language: Language = currentLocale(), fractionDigits?: number): string {
   if (typeof amount === "string" && !/^[+-]?\d+(?:\.\d+)?$/.test(amount)) return "—";
   const value = Number(amount);
   const source = sourceCurrency.toUpperCase();
@@ -12,6 +12,11 @@ export function formatMoney(amount: string | number, sourceCurrency: string, lan
   const currency = language === "zh" ? "CNY" : "USD";
   const converted = source === currency ? value : source === "USD" ? value * USD_TO_CNY : value / USD_TO_CNY;
   return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", {
-    style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 6,
+    style: "currency", currency, minimumFractionDigits: fractionDigits ?? 2, maximumFractionDigits: fractionDigits ?? 6,
   }).format(converted);
+}
+
+// Web account balances use three fixed decimals (format_cny / format_usd).
+export function formatAccountBalance(amount: string | number, sourceCurrency: string, language: Language = currentLocale()): string {
+  return formatMoney(amount, sourceCurrency, language, 3);
 }

@@ -79,3 +79,40 @@ test("additional generated image and audio formats use native previews",()=>{
  for(const extension of ["avif","bmp"])expect(outputKind(`result.${extension}`)).toBe("image");
  for(const extension of ["flac","aac","opus","aiff"])expect(outputKind(`result.${extension}`)).toBe("audio");
 });
+
+test("remote result keeps its name, download action and preview while the workspace copy loads",async()=>{
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ const previousCreate=URL.createObjectURL,previousRevoke=URL.revokeObjectURL;
+ URL.createObjectURL=()=>"blob:saved-result";URL.revokeObjectURL=()=>{};
+ const remoteUrl="https://xianchou.com/results/cat.png?token=fixture";
+ let finish:((value:{dataBase64:string;mimeType:string;sizeBytes:number})=>void)|undefined;
+ const pending=new Promise<{dataBase64:string;mimeType:string;sizeBytes:number}>(resolve=>{finish=resolve;});
+ try{
+  await act(async()=>root.render(<OutputPreview compact displayName="cat.png" remoteUrl={remoteUrl} file={{path:"cat.png",mimeType:"image/png",sizeBytes:0}}/>));
+  const initial=node.textContent;
+  expect(node.querySelector("a[download]")?.getAttribute("href")).toBe(remoteUrl);
+  expect(node.querySelector("img")?.getAttribute("src")).toBe(remoteUrl);
+  expect(initial).not.toContain("Open result");
+  await act(async()=>root.render(<OutputPreview compact displayName="cat.png" remoteUrl={remoteUrl} file={{path:"output-saved.png",mimeType:"image/png",sizeBytes:1}} read={()=>pending}/>));
+  expect(node.textContent).toBe(initial);
+  expect(node.querySelector("img")?.getAttribute("src")).toBe(remoteUrl);
+  expect(node.querySelector('[aria-busy="true"]')).toBeNull();
+  await act(async()=>finish?.({dataBase64:"AA==",mimeType:"image/png",sizeBytes:1}));
+  expect(node.textContent).toBe(initial);
+  expect(node.querySelector("img")?.getAttribute("src")).toBe("blob:saved-result");
+  expect(node.querySelector("a[download]")?.getAttribute("download")).toBe("output-saved.png");
+ }finally{await act(async()=>root.unmount());node.remove();URL.createObjectURL=previousCreate;URL.revokeObjectURL=previousRevoke;}
+});
+
+test("remote media respects the preview allowlist and duplicate image suppression",async()=>{
+ const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+ try{
+  for(const remoteUrl of ["https://example.com/cat.png","https://xianchou.com:444/cat.png","https://user@xianchou.com/cat.png"]){
+   await act(async()=>root.render(<OutputPreview compact file={{path:"cat.png",mimeType:"image/png",sizeBytes:0}} remoteUrl={remoteUrl}/>));
+   expect(node.querySelector("img")).toBeNull();
+   expect(node.querySelector("a[download]")?.getAttribute("href")).toBe(remoteUrl);
+  }
+  await act(async()=>root.render(<OutputPreview compact hideRemoteImage file={{path:"cat.png",mimeType:"image/png",sizeBytes:0}} remoteUrl="https://xianchou.com/cat.png"/>));
+  expect(node.querySelector("img")).toBeNull();expect(node.querySelector("a[download]")).not.toBeNull();
+ }finally{await act(async()=>root.unmount());node.remove();}
+});

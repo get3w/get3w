@@ -1,84 +1,206 @@
-import {useEffect,useRef,useState} from "react";
-import {openDesktopWorkspaceFile} from "@/app/lib/desktop";
-import {t,useLocale} from "@/i18n";
-import {Button} from "@/components/ui/button";
-import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from "@/components/ui/select";
-import {Input} from "@/components/ui/input";
-import {useGet3wAccount,type ModelTask,type OutputFile} from "./get3w-account";
-import {OutputPreview,outputKind} from "./output-preview";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Copy, Download, Ellipsis, ExternalLink, FolderOpen, PanelRight, Plus, RefreshCw, Search } from "lucide-react";
+import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import { joinDesktopPath, openDesktopWorkspaceFile } from "@/app/lib/desktop";
+import { t } from "@/i18n";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { WorkspaceFileTree } from "../session/artifacts/workspace-file-tree";
+import { WorkspaceFileContent, type FileEditorHandle } from "./workspace-file-content";
+import { fileName, joinFilePath, loadFilePages, parentDirectory } from "./workspace-files-model";
 
-type Filter="all"|"running"|"image"|"video"|"audio"|"document"|"3d"|"text"|"failed"|"detached";
-const filters:Filter[]=["all","running","image","video","audio","document","3d","text","failed","detached"];
-const OUTPUT_PAGE_SIZE=20;
-export function OutputsPage({workspaceId,workspaceRoot}:{workspaceId:string;sessionId?:string;workspaceRoot?:string}){
- const locale=useLocale();
- const account=useGet3wAccount(),userId=account.status==="signed_in"?account.user?.id:undefined;
- const scopeKey=JSON.stringify([userId,workspaceId]);
- const currentScope=useRef(scopeKey);currentScope.current=scopeKey;
- const [loaded,setLoaded]=useState(""),[items,setItems]=useState<ModelTask[]>([]),[files,setFiles]=useState<OutputFile[]>([]);
- const [filter,setFilter]=useState<Filter>("all"),[query,setQuery]=useState(""),[session,setSession]=useState(""),[displayLimit,setDisplayLimit]=useState(OUTPUT_PAGE_SIZE);
- const [error,setError]=useState(false),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false);
- const names:Record<Filter,string>={all:t("personal.copy.all"),running:t("personal.copy.running"),image:t("personal.copy.images"),video:t("personal.copy.video"),audio:t("personal.copy.audio"),document:t("personal.copy.documents"),"3d":"3D",text:t("personal.copy.text"),failed:t("personal.copy.failed"),detached:t("personal.copy.stopped_waiting")};
- const statuses:Record<string,string>={completed:t("personal.copy.completed"),failed:t("personal.copy.failed"),detached:t("personal.copy.stopped_waiting"),processing:t("personal.copy.running"),submitting:t("personal.copy.confirming_submission"),uncertain:t("personal.copy.submission_unconfirmed")};
- useEffect(()=>{
-  setError(false);
-  if(!userId||!workspaceId)return;
-  let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;
-  async function load(){try{
-   if(!window.__GET3W_ACCOUNT__?.modelTasks||!window.__GET3W_ACCOUNT__?.outputs)throw Error("Unavailable");
-   const tasks=await window.__GET3W_ACCOUNT__.modelTasks({userId:userId!,workspaceId,action:"listAll"});
-   const index=await window.__GET3W_ACCOUNT__?.outputs?.({userId:userId!,workspaceId,action:"index"});
-   if(!stopped){setItems(tasks?.items??[]);setFiles(index?.items??[]);setLoaded(scopeKey);setError(false);}
-  }catch{if(!stopped)setError(true);}finally{if(!stopped)timer=setTimeout(()=>void load(),5000);}}
-  void load();return()=>{stopped=true;clearTimeout(timer);};
- },[scopeKey,attempt,userId,workspaceId]);
- useEffect(()=>{setLoaded("");setItems([]);setFiles([]);setSession("");setError(false);setBusy(false);},[scopeKey]);
- useEffect(()=>{setDisplayLimit(OUTPUT_PAGE_SIZE);},[filter,query,session,scopeKey]);
- const valid=loaded===scopeKey;
- const visible=valid?items.filter(item=>{
-  if(session&&(item.outputEntry?.sessionId??item.sessionId)!==session)return false;
-  if(!`${item.slug} ${JSON.stringify(item.outputEntry?.structured??item.outputs)}`.toLowerCase().includes(query.toLowerCase()))return false;
-  if(filter==="all")return true;
-  if(["failed","detached"].includes(filter))return item.status===filter;
-  if(filter==="running")return !["completed","failed","detached"].includes(item.status);
-  return (item.outputEntry?.files??[]).some(file=>outputKind(file.path)===filter)||(item.outputs??[]).some(value=>typeof value==="string"&&outputKind(value)===filter);
- }).sort((a,b)=>b.updatedAt-a.updatedAt):[];
- const fileIdentity=(file:OutputFile)=>`${file.rootPath??workspaceRoot??""}:${file.path}`;
- const sessions=[...new Set([...items.map(item=>item.outputEntry?.sessionId??item.sessionId),...files.map(file=>file.sessionId)].filter((value):value is string=>Boolean(value)))];
- const saved=new Set(items.flatMap(item=>item.outputEntry?.files.map(file=>fileIdentity(file))??[]));
- const historical=valid&&!["running","failed","detached"].includes(filter)?files.filter(file=>!saved.has(fileIdentity(file))&&(!session||file.sessionId===session)&&file.path.toLowerCase().includes(query.toLowerCase())&&(filter==="all"||outputKind(file.path)===filter)):[];
- const sortedHistorical=historical.sort((a,b)=>(b.updatedAt??0)-(a.updatedAt??0));
- const totalCount=visible.length+sortedHistorical.length;
- const renderedVisible=visible.slice(0,displayLimit);
- const renderedHistorical=sortedHistorical.slice(0,Math.max(0,displayLimit-renderedVisible.length));
- const hasMore=displayLimit<totalCount;
- const loadMore=()=>{if(hasMore)setDisplayLimit(value=>Math.min(value+OUTPUT_PAGE_SIZE,totalCount));};
- async function change(item:ModelTask,action:"retryDownload"|"refreshResult"){
-  if(!userId||!(item.outputEntry?.sessionId??item.sessionId))return;
-  const startedScope=scopeKey;setBusy(true);
-  try{await window.__GET3W_ACCOUNT__?.modelTasks?.({userId,workspaceId,sessionId:item.outputEntry?.sessionId??item.sessionId,key:item.key,action});if(currentScope.current===startedScope)setAttempt(value=>value+1);}catch{if(currentScope.current===startedScope)setError(true);}finally{if(currentScope.current===startedScope)setBusy(false);}
- }
- function preview(file:OutputFile,sessionId?:string){return <div key={file.path} className="space-y-2">{workspaceRoot?<Button size="sm" variant="ghost" onClick={()=>void openDesktopWorkspaceFile(file.rootPath??workspaceRoot,file.path,{reveal:true}).catch(()=>setError(true))}>{t("personal.copy.show_in_workspace")}</Button>:null}<OutputPreview file={file} read={async()=>{
-  if(!userId||!window.__GET3W_ACCOUNT__?.outputs)throw Error("Unavailable");
-  return window.__GET3W_ACCOUNT__.outputs({userId,workspaceId,sessionId:sessionId??file.sessionId,action:"read",path:file.path});
- }}/></div>;}
- return <main onScroll={event=>{const element=event.currentTarget;if(element.scrollTop+element.clientHeight>=element.scrollHeight-240)loadMore();}} className="mx-auto flex h-full w-full max-w-5xl flex-col gap-4 overflow-auto p-4" aria-label={t("personal.outputs.title")}>
-  <div className="flex items-center justify-between"><h1 className="text-xl font-semibold">{t("personal.outputs.title")}</h1><Button size="sm" variant="ghost" onClick={()=>setAttempt(value=>value+1)}>{t("personal.copy.refresh")}</Button></div>
-  <Input value={query} onChange={event=>setQuery(event.target.value)} aria-label={t("personal.copy.search_outputs")} placeholder={t("personal.copy.search_outputs")}/>
-  <div className="flex flex-wrap gap-1" role="toolbar" aria-label={t("personal.copy.filter_outputs")}>{filters.map(value=><Button key={value} size="sm" variant={filter===value?"secondary":"ghost"} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{names[value]}</Button>)}</div>
-  <Select value={session||"__all"} onValueChange={value=>setSession(value==="__all"?"":value??"")}><SelectTrigger aria-label={t("personal.copy.filter_by_conversation")}><SelectValue>{session?`${t("personal.copy.conversation")} ${sessions.indexOf(session)+1}`:t("personal.copy.all_conversations")}</SelectValue></SelectTrigger><SelectContent><SelectItem value="__all">{t("personal.copy.all_conversations")}</SelectItem>{sessions.map((value,index)=><SelectItem key={value} value={value}>{t("personal.copy.conversation")} {index+1}</SelectItem>)}</SelectContent></Select>
-  {account.status==="checking"?<div className="h-32 animate-pulse rounded bg-muted" aria-label={t("personal.account.checking")} aria-busy="true"/>:null}
-  {account.status==="unavailable"?<p role="alert">{t("personal.account.unavailable")}</p>:null}
-  {account.status==="signed_out"?<p>{t("personal.copy.sign_in_to_view_outputs")}</p>:null}
-  {error?<p role="alert">{t("personal.copy.could_not_update_outputs_showing_last_known_results_refresh_to_re")}</p>:null}
-  {!valid&&!error&&userId?<div className="h-32 animate-pulse rounded bg-muted" aria-busy="true"/>:null}
-  {valid&&!visible.length&&!historical.length?<p className="text-sm text-muted-foreground">{t("personal.copy.no_matching_outputs_generate_a_file_to_see_it_here")}</p>:null}
-  <div className="divide-y">{renderedVisible.map(item=><article key={`${scopeKey}:${item.key}`} className="space-y-3 py-3">
-   <div className="flex flex-wrap justify-between gap-2"><strong className="text-sm">{item.slug}</strong><span className="text-xs text-muted-foreground">{statuses[item.status]??t("personal.copy.running")} · {new Date(item.updatedAt).toLocaleString(locale)}</span></div>
-   {item.outputEntry?.files.map(file=>preview(file,item.outputEntry?.sessionId??undefined))}
-   {item.outputEntry?.downloadError?<div className="flex flex-wrap items-center gap-2 text-sm"><span>{t("personal.copy.download_failed_remote_results_retained")}</span><Button size="sm" variant="outline" disabled={busy} onClick={()=>void change(item,"retryDownload")}>{t("personal.copy.retry_download")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={()=>void change(item,"refreshResult")}>{t("personal.copy.refresh_result_links")}</Button></div>:null}
-   {!item.outputEntry?.files.length?item.outputs.filter((value):value is string=>typeof value==="string"&&value.startsWith("https://")).map((url,index)=><a key={url} href={url} target="_blank" rel="noreferrer" className="mr-3 text-sm underline">{t("personal.copy.open_remote_result")} {index+1}</a>):null}
-   {item.outputEntry?.structured?<details><summary className="cursor-pointer text-xs text-muted-foreground">{t("personal.copy.structured_result")}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-xs">{JSON.stringify(item.outputEntry.structured,null,2)}</pre><Button size="sm" variant="ghost" onClick={()=>void navigator.clipboard.writeText(JSON.stringify(item.outputEntry?.structured,null,2))}>{t("personal.copy.copy_result")}</Button></details>:null}
-  </article>)}{renderedHistorical.map(file=><article key={`${scopeKey}:${fileIdentity(file)}`} className="py-3">{preview(file)}</article>)}</div>{hasMore?<div className="py-4 text-center text-xs text-muted-foreground" aria-live="polite">{t("settings.loading")}…</div>:null}
- </main>;
+type Props = { workspaceId: string; workspaceRoot?: string; client: OpenworkServerClient | null; localWorkspace?: boolean };
+type Entry = OpenworkWorkspaceCatalogEntry;
+type Operation = { type: "create" | "mkdir" | "rename" | "move" | "delete"; entry?: Entry; directory?: string };
+
+export function OutputsPage(props: Props) {
+  return <WorkspaceFiles key={JSON.stringify([props.workspaceId, props.workspaceRoot])} {...props} />;
+}
+function WorkspaceFiles({ client, workspaceId, workspaceRoot = "", localWorkspace }: Props) {
+  const [directories, setDirectories] = useState<Record<string, Entry[]>>({});
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Entry[]>([]);
+  const [showSystem, setShowSystem] = useState(false);
+  const [selected, setSelected] = useState<Entry | null>(null);
+  const [activeEntry, setActiveEntry] = useState<Entry | null>(null);
+  const [treeOpen, setTreeOpen] = useState(true);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [operation, setOperation] = useState<Operation | null>(null);
+  const [name, setName] = useState("");
+  const [destination, setDestination] = useState("");
+  const [destinationEntries, setDestinationEntries] = useState<Entry[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [pending, setPending] = useState<(() => void) | null>(null);
+  const [fileActionsContainer, setFileActionsContainer] = useState<HTMLDivElement | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const editor = useRef<FileEditorHandle | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  const alive = useRef(true);
+  const generation = useRef(0);
+  const directoryRef = useRef(directories); directoryRef.current = directories;
+  const inflight = useRef(new Set<string>());
+  const onEditor = useCallback((value: FileEditorHandle | null) => { editor.current = value; setDirty(Boolean(value?.dirty)); }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++; }; }, []);
+
+  const guard = (action: () => void) => {
+    if (editor.current?.dirty) setPending(() => action);
+    else action();
+  };
+  // The app uses declarative routers. Capture shell navigation before it changes
+  // workspace or route, then replay the original control after handling drafts.
+  useEffect(() => {
+    if (!dirty) return;
+    let replaying = false;
+    const click = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest("a,button,[role=menuitem]") : null;
+      if (replaying || !target || rootRef.current?.contains(target) || target.closest("[role=dialog]")) return;
+      if (!(target instanceof HTMLElement)) return;
+      event.preventDefault(); event.stopPropagation();
+      setPending(() => () => { replaying = true; target.click(); replaying = false; });
+    };
+    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    document.addEventListener("click", click, true);
+    window.addEventListener("beforeunload", unload);
+    return () => { document.removeEventListener("click", click, true); window.removeEventListener("beforeunload", unload); };
+  }, [dirty]);
+
+  const loadDirectory = useCallback(async (directory: string, refresh = false) => {
+    if (!client || inflight.current.has(directory) || (!refresh && directoryRef.current[directory])) return;
+    const owner = generation.current;
+    inflight.current.add(directory);
+    try {
+      const result = await loadFilePages(client, workspaceId, { directory, showSystem });
+      if (!alive.current || owner !== generation.current) return;
+      setDirectories(previous => ({ ...previous, [directory]: result.items }));
+      if (result.incomplete) setError(t("files.incomplete"));
+      setSelected(previous => previous && parentDirectory(previous.path) === directory ? result.items.find(entry => entry.path === previous.path) ?? { ...previous, mtimeMs: -1, revision: "missing" } : previous);
+    } catch (cause) { if (alive.current && owner === generation.current) setError(String(cause)); }
+    finally { if (owner === generation.current) inflight.current.delete(directory); }
+  }, [client, workspaceId, showSystem]);
+  const refresh = useCallback(() => {
+    setError(""); setRefreshVersion(value => value + 1);
+    for (const directory of new Set(["", ...Object.keys(directoryRef.current)])) void loadDirectory(directory, true);
+  }, [loadDirectory]);
+  useEffect(() => {
+    generation.current++; inflight.current.clear(); setDirectories({}); directoryRef.current = {}; setSearchResults([]);
+    void loadDirectory("");
+  }, [loadDirectory]);
+  useEffect(() => {
+    const tick = () => { if (document.visibilityState !== "hidden") refresh(); };
+    const timer = window.setInterval(tick, 5000);
+    window.addEventListener("focus", tick);
+    return () => { clearInterval(timer); window.removeEventListener("focus", tick); };
+  }, [refresh]);
+  useEffect(() => {
+    if (!client || !query.trim()) { setSearchResults([]); setLoading(false); return; }
+    let active = true;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      void loadFilePages(client, workspaceId, { query, showSystem }).then(result => {
+        if (active) { setSearchResults(result.items); if (result.incomplete) setError(t("files.incomplete")); }
+      }).catch(cause => { if (active) setError(String(cause)); }).finally(() => { if (active) setLoading(false); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [client, workspaceId, query, showSystem, refreshVersion]);
+  const entries = useMemo(() => [...new Map((query.trim() ? searchResults : Object.values(directories).flat()).map(entry => [entry.path, entry])).values()], [query, searchResults, directories]);
+  const selectedDirectory = activeEntry?.kind === "dir" ? activeEntry.path : activeEntry ? parentDirectory(activeEntry.path) : "";
+
+  function startOperation(type: Operation["type"], entry?: Entry) {
+    guard(() => { setError(""); setName(type === "rename" && entry ? fileName(entry.path) : ""); setDestination(""); setOperation({ type, entry, directory: selectedDirectory }); });
+  }
+  useEffect(() => {
+    if (operation?.type !== "move" || !client) return;
+    let active = true;
+    void loadFilePages(client, workspaceId, { directory: destination, showSystem }).then(result => { if (active) setDestinationEntries(result.items.filter(entry => entry.kind === "dir")); }).catch(cause => { if (active) setError(String(cause)); });
+    return () => { active = false; };
+  }, [operation, destination, client, workspaceId, showSystem]);
+  async function applyOperation() {
+    if (!operation || !client || busy) return;
+    const current = operation;
+    setBusy(true); setError("");
+    try {
+      if (current.type !== "delete" && current.type !== "move" && (!name.trim() || /[/\\]/.test(name) || [".", ".."].includes(name))) throw new Error(t("files.invalidName"));
+      const path = current.entry?.path ?? joinFilePath(current.directory ?? "", name);
+      const to = current.type === "move" ? joinFilePath(destination, fileName(path)) : current.type === "rename" ? joinFilePath(parentDirectory(path), name) : undefined;
+      await client.operateWorkspaceFile(workspaceId, { type: current.type === "move" ? "rename" : current.type, path, to, recursive: current.entry?.kind === "dir" });
+      if (!alive.current) return;
+      if (selected && (selected.path === path || selected.path.startsWith(path + "/"))) {
+        if (to) setSelected({ ...selected, path: to + selected.path.slice(path.length) });
+        else if (current.type === "delete") setSelected(null);
+      }
+      setOperation(null); setActiveEntry(null);
+      // Remove cached descendants after moving/deleting a directory.
+      setDirectories(previous => Object.fromEntries(Object.entries(previous).filter(([directory]) => directory !== path && !directory.startsWith(path + "/"))));
+      refresh(); if (to) void loadDirectory(parentDirectory(to), true);
+      if (current.type === "create") { await loadDirectory(parentDirectory(path), true); setSelected({ path, kind: "file", size: 0, mtimeMs: Date.now(), revision: "" }); }
+    } catch (cause) { if (alive.current) setError(String(cause)); }
+    finally { if (alive.current) setBusy(false); }
+  }
+  async function external(entry: Entry, reveal = false) {
+    try { const absolutePath = await joinDesktopPath(workspaceRoot, entry.path); const result = await openDesktopWorkspaceFile(workspaceRoot, absolutePath, { reveal }); if (result === "unavailable") throw Error(t("files.unavailable")); }
+    catch (cause) { setError(String(cause)); }
+  }
+  async function download(entry: Entry) {
+    if (!client || entry.kind !== "file") return;
+    try {
+      const result = await client.downloadWorkspaceFile(workspaceId, entry.path, { fileScope: "workspace" });
+      if (!alive.current) return;
+      const url = URL.createObjectURL(new Blob([result.data], { type: result.contentType ?? "application/octet-stream" }));
+      const anchor = document.createElement("a"); anchor.href = url; anchor.download = fileName(entry.path); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) { setError(String(cause)); }
+  }
+  const actions = [
+    { id: "copy", label: t("files.copyPath"), run: (entry: Entry) => void navigator.clipboard.writeText(entry.path).catch(cause => setError(String(cause))) },
+    { id: "rename", label: t("files.rename"), run: (entry: Entry) => startOperation("rename", entry) },
+    { id: "move", label: t("files.move"), run: (entry: Entry) => startOperation("move", entry) },
+    { id: "delete", label: t("files.delete"), run: (entry: Entry) => startOperation("delete", entry) },
+    { id: "download", label: t("files.download"), run: (entry: Entry) => void download(entry) },
+    ...(localWorkspace ? [{ id: "reveal", label: t("files.reveal"), run: (entry: Entry) => void external(entry, true) }, { id: "open", label: t("files.openExternal"), run: (entry: Entry) => void external(entry) }] : []),
+  ];
+  const title = operation ? t(`files.${operation.type === "create" ? "newFile" : operation.type === "mkdir" ? "newFolder" : operation.type}`) : "";
+  return <main ref={rootRef} className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background" aria-label={t("personal.outputs.title")}>
+    <header className="flex h-12 shrink-0 items-center gap-1 border-b px-3">
+      <nav aria-label={t("files.path")} className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-sm">
+        <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setQuery(""); setActiveEntry(null); }}>{fileName(workspaceRoot) || t("personal.outputs.title")}</Button>
+        {selected?.path.split("/").map((part, index, parts) => <span key={index} className="flex min-w-0 items-center gap-1"><span className="text-muted-foreground">›</span><button className="truncate rounded px-1 py-1 hover:bg-muted" title={part} onClick={() => { const path = parts.slice(0, index + 1).join("/"); if (index < parts.length - 1) { setActiveEntry({ path, kind: "dir", size: 0, mtimeMs: 0, revision: "" }); void loadDirectory(path); } }}>{part}</button></span>)}
+      </nav>
+      <div ref={setFileActionsContainer} className="shrink-0" />
+      {selected ? <>
+        <Button variant="ghost" size="icon-sm" aria-label={t("files.copyPath")} onClick={() => void navigator.clipboard.writeText(selected.path).catch(cause => setError(String(cause)))}><Copy /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label={t("files.download")} onClick={() => void download(selected)}><Download /></Button>
+        {localWorkspace ? <Button variant="ghost" size="sm" onClick={() => void external(selected)}><ExternalLink />{t("files.openExternal")}</Button> : null}
+        <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("files.actions")} />}><Ellipsis /></DropdownMenuTrigger><DropdownMenuContent align="end">{actions.map(action => <DropdownMenuItem key={action.id} onClick={() => action.run(selected)}>{action.label}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>
+      </> : null}
+      <Button variant="ghost" size="icon-sm" aria-label={t("files.toggleTree")} aria-pressed={treeOpen} onClick={() => setTreeOpen(value => !value)}><PanelRight /></Button>
+    </header>
+    {error ? <p role="alert" className="shrink-0 border-b px-3 py-2 text-sm">{error}</p> : null}
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
+      <ResizablePanel minSize="30%">
+        {client && selected ? <WorkspaceFileContent key={selected.path} client={client} workspaceId={workspaceId} entry={selected} draftScope={workspaceRoot} actionsContainer={fileActionsContainer} onEditor={onEditor} onSaved={refresh} /> : <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground"><FolderOpen className="size-10" /><span className="text-base font-medium text-foreground">{t("files.openFile")}</span><span className="text-sm">{client ? t("files.chooseFile") : t("files.unavailable")}</span></div>}
+      </ResizablePanel>
+      {treeOpen ? <><ResizableHandle /><ResizablePanel defaultSize="28%" minSize="22%" maxSize="60%">
+        <aside className="flex h-full min-h-0 flex-col" aria-label={t("personal.outputs.title")}>
+          <div className="flex h-11 shrink-0 items-center gap-1 border-b px-2">
+            <Search className="size-4 shrink-0 text-muted-foreground" /><Input className="h-7 min-w-0 border-0 shadow-none" aria-label={t("files.filter")} placeholder={t("files.filter")} value={query} onChange={event => setQuery(event.target.value)} />
+            <Button variant="ghost" size="icon-xs" aria-label={t("files.refresh")} onClick={refresh}><RefreshCw /></Button>
+            <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label={t("files.new")} />}><Plus /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => startOperation("create")}>{t("files.newFile")}</DropdownMenuItem><DropdownMenuItem onClick={() => startOperation("mkdir")}>{t("files.newFolder")}</DropdownMenuItem><DropdownMenuItem onClick={() => setShowSystem(value => !value)}>{showSystem ? t("files.hideSystem") : t("files.showSystem")}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+          </div>
+          {loading ? <div role="status" className="px-3 py-1 text-xs text-muted-foreground">{t("files.searching")}</div> : null}
+          {client ? <div className="min-h-0 flex-1"><WorkspaceFileTree managed client={client} workspaceId={workspaceId} workspaceName={fileName(workspaceRoot)} entries={entries} filter={query} selectedPath={selected?.path ?? ""} onSelectEntry={setActiveEntry} onOpenFile={entry => { if (selected?.path !== entry.path) guard(() => setSelected(entry)); }} onExpandDirectory={path => { void loadDirectory(path); }} fileActions={actions} /></div> : null}
+          {!entries.length && client && !loading ? <p className="px-3 py-2 text-xs text-muted-foreground">{query ? t("files.noMatches") : t("files.empty")}</p> : null}
+        </aside>
+      </ResizablePanel></> : null}
+    </ResizablePanelGroup>
+    <Dialog open={Boolean(operation)} onOpenChange={open => { if (!open && !busy) setOperation(null); }}><DialogContent><DialogTitle>{title}</DialogTitle>
+      {operation?.type === "delete" ? <p className="break-all text-sm">{operation.entry?.path} · {t("files.deleteWarning")}</p> : operation?.type === "move" ? <div className="max-h-64 space-y-1 overflow-auto"><p className="break-all text-xs text-muted-foreground">/{destination}</p>{destination ? <Button variant="ghost" size="sm" onClick={() => setDestination(parentDirectory(destination))}>..</Button> : null}{destinationEntries.filter(entry => entry.path !== operation.entry?.path && !entry.path.startsWith((operation.entry?.path ?? "\0") + "/")).map(entry => <Button className="w-full justify-start" variant="ghost" key={entry.path} onClick={() => setDestination(entry.path)}><FolderOpen />{fileName(entry.path)}</Button>)}</div> : <Input autoFocus aria-label={t("files.name")} value={name} onChange={event => setName(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void applyOperation(); }} />}
+      {error ? <p role="alert" className="text-sm">{error}</p> : null}
+      <DialogFooter><Button variant="ghost" disabled={busy} onClick={() => setOperation(null)}>{t("files.cancel")}</Button><Button disabled={busy || (operation?.type === "move" && joinFilePath(destination, fileName(operation.entry?.path ?? "")) === operation.entry?.path)} onClick={() => void applyOperation()}>{title}</Button></DialogFooter>
+    </DialogContent></Dialog>
+    <Dialog open={Boolean(pending)} onOpenChange={open => { if (!open) setPending(null); }}><DialogContent><DialogTitle>{t("files.unsaved")}</DialogTitle><DialogFooter><Button variant="ghost" onClick={() => setPending(null)}>{t("files.cancel")}</Button><Button variant="outline" onClick={() => { editor.current?.discard(); const action = pending; setPending(null); action?.(); }}>{t("files.discard")}</Button><Button onClick={async () => { if (await editor.current?.save()) { const action = pending; setPending(null); action?.(); } }}>{t("files.save")}</Button></DialogFooter></DialogContent></Dialog>
+  </main>;
 }

@@ -1,19 +1,13 @@
 /** @jsxImportSource react */
 import {
-  ChartNoAxesColumnIncreasing,
-  Check,
   FolderPlus,
   Loader2,
   XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Input } from "@/components/ui/input";
+import { useId } from "react";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import type { WorkspacePreset } from "../../../app/types";
 import { t } from "../../../i18n";
@@ -23,10 +17,7 @@ import {
   modalBodyClass,
   pillGhostClass,
   pillSecondaryClass,
-  sectionBodyClass,
-  sectionTitleClass,
   softCardClass,
-  surfaceCardClass,
   tagClass,
   warningBannerClass,
 } from "./modal-styles";
@@ -48,6 +39,8 @@ export type CreateWorkspaceProgressSnapshot = {
 };
 
 export type CreateWorkspaceLocalPanelProps = {
+  disabled: boolean;
+  disabledReason?: string | null;
   selectedFolder: string | null;
   hasSelectedFolder: boolean;
   pickingFolder: boolean;
@@ -107,114 +100,35 @@ export function CreateWorkspaceLocalPanel(
   props: CreateWorkspaceLocalPanelProps,
 ) {
   const progress = props.progress;
-  const hasProjectLabel = props.projectLabel.trim().length > 0;
+  const projectId = useId();
 
   return (
     <>
-      <div
-        className={`${modalBodyClass} transition-opacity duration-300 ${props.submitting ? t("ui.92ce631f00b9") : "opacity-100"}`}
-      >
-        <div className="space-y-4">
-          <div className={surfaceCardClass}>
-            <div className={sectionTitleClass}>
-              {t("welcome.folder_title")}
-            </div>
-            <div className={`${sectionBodyClass} mt-2`}>
-              {t("welcome.folder_explanation")}
-            </div>
-            <ul className="mt-3 space-y-1.5 pl-1">
-              <li className="flex items-start gap-2 text-[13px] text-dls-secondary">
-                <Check size={14} className="mt-0.5 shrink-0 text-emerald-10" />
-                {t("welcome.folder_read")}
-              </li>
-              <li className="flex items-start gap-2 text-[13px] text-dls-secondary">
-                <Check size={14} className="mt-0.5 shrink-0 text-emerald-10" />
-                {t("welcome.folder_write")}
-              </li>
-              <li className="flex items-start gap-2 text-[13px] text-dls-secondary">
-                <Check size={14} className="mt-0.5 shrink-0 text-emerald-10" />
-                {t("welcome.folder_anything")}
-              </li>
-            </ul>
-            <div className="mt-2 text-[12px] text-dls-secondary italic">
-              {t("welcome.folder_drop_hint")}
-            </div>
-
-            <div className="mt-4 rounded-[20px] border border-dls-border bg-dls-hover px-4 py-3">
-              {props.hasSelectedFolder ? (
-                <span className="block truncate font-mono text-[12px] text-dls-text">
-                  {props.selectedFolder}
-                </span>
-              ) : (
-                <span className="text-[14px] text-dls-secondary">
-                  {t("ui.7bb9a22801ee")}
-                </span>
-              )}
-            </div>
-
-            {props.showProjectLabel ? (
-              <Accordion
-                multiple
-                defaultValue={hasProjectLabel ? ["analytics"] : []}
-                className="mt-4 overflow-hidden rounded-[20px] border-dls-border bg-dls-hover/60 shadow-none before:hidden"
-              >
-                <AccordionItem value="analytics" className="border-b-0">
-                  <AccordionTrigger className="items-center px-4 py-4 hover:no-underline focus-visible:ring-2 focus-visible:ring-[rgba(var(--dls-accent-rgb),0.18)]">
-                    <span className="flex min-w-0 flex-1 items-start gap-3">
-                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-dls-border bg-dls-surface text-dls-text">
-                        <ChartNoAxesColumnIncreasing size={17} className="shrink-0 text-current" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[14px] font-semibold text-dls-text">
-                          {t("ui.781e773de559")}
-                        </span>
-                        <span className="mt-1 block text-[12px] leading-5 text-dls-secondary">
-                          {t("ui.27ba4e9630fc")}
-                        </span>
-                      </span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 px-4 pb-4">
-                    <div>
-                      <label className="text-[13px] font-medium text-dls-text">
-                        {t("ui.25498193b898")} <span className="text-dls-secondary">{t("ui.0059798b7f70")}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={props.projectLabel}
-                        onChange={(event) => props.onProjectLabelInput(event.currentTarget.value)}
-                        placeholder={t("ui.63b0599976b3")}
-                        disabled={props.submitting}
-                        className="mt-2 w-full rounded-[20px] border border-dls-border bg-dls-surface px-4 py-3 text-[14px] text-dls-text outline-none placeholder:text-dls-secondary transition-colors focus:border-dls-accent disabled:cursor-not-allowed disabled:opacity-60"
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ) : null}
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={props.onPickFolder}
-                disabled={props.pickingFolder || props.submitting}
-                className={pillSecondaryClass}
-              >
-                {props.pickingFolder ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <FolderPlus size={14} />
-                )}
-                {props.hasSelectedFolder
-                  ? t("dashboard.change")
-                  : t("ui.2ed6bf93669d")}
-              </button>
-            </div>
+      <div className={`${modalBodyClass} space-y-4`}>
+        {props.showProjectLabel ? <div className="space-y-2">
+          <label htmlFor={projectId} className="block text-sm font-medium">
+            {t("ui.25498193b898")} <span className="font-normal text-muted-foreground">{t("ui.0059798b7f70")}</span>
+          </label>
+          <Input id={projectId} value={props.projectLabel}
+            onChange={event=>props.onProjectLabelInput(event.currentTarget.value)}
+            placeholder={t("ui.63b0599976b3")} disabled={props.submitting || props.disabled}/>
+        </div> : null}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">{t("welcome.folder_title")}</div>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground" title={props.selectedFolder??undefined}>
+              {props.hasSelectedFolder ? props.selectedFolder : t("ui.7bb9a22801ee")}
+            </span>
+            <Button variant="outline" onClick={props.onPickFolder} disabled={props.pickingFolder || props.submitting || props.disabled}>
+              {props.pickingFolder ? <Loader2 className="size-4 animate-spin"/> : <FolderPlus className="size-4"/>}
+              {props.hasSelectedFolder ? t("dashboard.change") : t("ui.2ed6bf93669d")}
+            </Button>
           </div>
-
+          {props.disabled && props.disabledReason ? <p className="text-xs text-muted-foreground">{props.disabledReason}</p> : null}
         </div>
       </div>
 
-    <DialogFooter className="flex-col gap-3">
+    <DialogFooter className="flex-col gap-3 px-6 py-4">
         {props.submitting && progress ? (
           <div className={softCardClass}>
             <div className="flex items-start justify-between gap-3">
@@ -346,7 +260,7 @@ export function CreateWorkspaceLocalPanel(
           </div>
         ) : null}
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-2">
           <DialogClose
             disabled={props.submitting}
             render={<Button variant="outline" disabled={props.submitting} />}
@@ -388,7 +302,7 @@ export function CreateWorkspaceLocalPanel(
           <Button
             type="button"
             onClick={() => void props.onSubmit()}
-            disabled={!props.selectedFolder || props.submitting}
+            disabled={!props.selectedFolder || props.submitting || props.disabled}
             title={
               !props.selectedFolder
                 ? t("dashboard.choose_folder_continue")

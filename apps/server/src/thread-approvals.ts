@@ -18,6 +18,7 @@ import type { EnginePoolConnection, EnginePoolLogger } from "./engine-pool.js";
 import { BoundedSseFrameBuffer } from "./engine-pool.js";
 import { buildEngineAuthProbeHeader } from "./engine-registry.js";
 import { loopbackFetch } from "./server-fetch.js";
+import { runtimeDbPath } from "./runtime-db.js";
 import type { ServerConfig } from "./types.js";
 import { createWorkspaceKvStore, isRecord } from "./workspace-kv-store.js";
 
@@ -88,6 +89,14 @@ export async function listThreadApprovals(
   return stored?.sessions[sessionId] ?? [];
 }
 
+const approvalQueues = new Map<string, Promise<unknown>>();
+function serializeApproval<T>(config: ServerConfig, workspaceId: string, run: () => Promise<T>): Promise<T> {
+  const key = `${runtimeDbPath(config)}:${workspaceId}`;
+  const next = (approvalQueues.get(key) ?? Promise.resolve()).catch(() => undefined).then(run);
+  approvalQueues.set(key, next);
+  return next.finally(() => { if (approvalQueues.get(key) === next) approvalQueues.delete(key); });
+}
+
 export async function rememberThreadApproval(
   config: ServerConfig,
   workspaceId: string,
@@ -95,15 +104,17 @@ export async function rememberThreadApproval(
   grant: ThreadApprovalGrant,
 ): Promise<void> {
   if (grant.patterns.length === 0) return;
-  const stored = (await threadApprovalStore.get(config, workspaceId)) ?? { sessions: {} };
-  const current = stored.sessions[sessionId] ?? [];
-  const duplicate = current.some((entry) =>
-    entry.permission === grant.permission
-    && entry.patterns.length === grant.patterns.length
-    && entry.patterns.every((pattern, index) => pattern === grant.patterns[index]));
-  if (duplicate) return;
-  await threadApprovalStore.set(config, workspaceId, {
-    sessions: { ...stored.sessions, [sessionId]: [...current, grant] },
+  return serializeApproval(config, workspaceId, async () => {
+    const stored = (await threadApprovalStore.get(config, workspaceId)) ?? { sessions: {} };
+    const current = stored.sessions[sessionId] ?? [];
+    const duplicate = current.some((entry) =>
+      entry.permission === grant.permission
+      && entry.patterns.length === grant.patterns.length
+      && entry.patterns.every((pattern, index) => pattern === grant.patterns[index]));
+    if (duplicate) return;
+    await threadApprovalStore.set(config, workspaceId, {
+      sessions: { ...stored.sessions, [sessionId]: [...current, grant] },
+    });
   });
 }
 
@@ -310,4 +321,14 @@ export function startThreadApprovalReplayer(options: ThreadApprovalReplayerOptio
       active?.abort();
     },
   };
+}
+
+export async function revokeThreadApproval(config: ServerConfig, workspaceId: string, sessionId: string, index: number, expected?: ThreadApprovalGrant): Promise<void> {
+  return serializeApproval(config, workspaceId, async () => {
+    const stored = await threadApprovalStore.get(config, workspaceId);
+    const current = stored?.sessions[sessionId] ?? [];
+    const grant = current[index];
+    if (!grant || (expected && JSON.stringify(grant) !== JSON.stringify(expected))) throw Error("Permission changed; refresh and retry");
+    await threadApprovalStore.set(config, workspaceId, { sessions: { ...stored?.sessions, [sessionId]: current.filter((_, i) => i !== index) } });
+  });
 }
