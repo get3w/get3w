@@ -17,8 +17,8 @@ function uiControlDiscoveryPaths(): string[] {
   const explicit = process.env.GET3W_UI_CONTROL_DISCOVERY?.trim();
   if (explicit) return [explicit];
   return [
-    join(userAppDataDir(), "com.get3w.desktop", "openwork-ui-control.json"),
-    join(userAppDataDir(), "com.get3w.desktop.dev", "openwork-ui-control.json"),
+    join(userAppDataDir(), "com.get3w.desktop", "get3w-ui-control.json"),
+    join(userAppDataDir(), "com.get3w.desktop.dev", "get3w-ui-control.json"),
   ].filter((p): p is string => Boolean(p));
 }
 

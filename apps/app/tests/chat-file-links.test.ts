@@ -184,7 +184,7 @@ describe("rendered chat Markdown", () => {
   test("video download links use decoded link resolution", () => {
     const href = "/Users/me/Library/Application%20Support/Get3W%20Chat/final.mp4";
     const html = renderMarkdownHtml(`[Final](${href})`, "chat");
-    expect(html).toContain(`data-openwork-link-href="${href}"`);
+    expect(html).toContain(`data-get3w-file-actions="${href}"`);
     expect(html).not.toContain(`data-openwork-inline-code-path="${href}"`);
     const target = openTargetForHref(href, [], "/Users/me/Library/Application Support/Get3W Chat");
     expect(target?.value).toBe("/Users/me/Library/Application Support/Get3W Chat/final.mp4");
@@ -194,7 +194,7 @@ describe("rendered chat Markdown", () => {
     const html = renderMarkdownHtml("See `computer-control.test.mjs:813` and [the plan](docs/plan.md:3).", "chat");
     expect(html).toContain("data-openwork-inline-code-path=\"computer-control.test.mjs\"");
     expect(html).toContain(">computer-control.test.mjs:813</code>");
-    expect(html).toContain("data-openwork-link-href=\"docs/plan.md:3\"");
+    expect(html).toContain("data-get3w-file-actions=\"docs/plan.md:3\"");
   });
 
   test("keeps a home-folder video as a reference instead of a player that cannot load", () => {

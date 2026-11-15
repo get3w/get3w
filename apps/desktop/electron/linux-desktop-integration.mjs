@@ -229,7 +229,7 @@ export function createLinuxDesktopIntegration({
     size,
     path.join(resourcesPath ?? "", "icons", "linux", `${size}x${size}.png`),
   ]));
-  const statePath = path.join(configHome, "openwork", "desktop-integration.json");
+  const statePath = path.join(configHome, "get3w", "desktop-integration.json");
 
   async function readState() {
     const raw = await readFile(statePath, "utf8").catch(() => null);

@@ -236,7 +236,7 @@ export function createUiControlServer({
     const address = uiControlServer.address();
     const port = typeof address === "object" && address ? address.port : null;
     if (!port) throw new Error("Could not start Get3W UI control bridge.");
-    uiControlDiscoveryPath = path.join(app.getPath("userData"), "openwork-ui-control.json");
+    uiControlDiscoveryPath = path.join(app.getPath("userData"), "get3w-ui-control.json");
     await writeFile(
       uiControlDiscoveryPath,
       `${JSON.stringify({ version: 2, app: appName, identifier: appIdentifier, platform: process.platform, baseUrl: `http://127.0.0.1:${port}`, token: uiControlToken }, null, 2)}\n`,

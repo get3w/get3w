@@ -12,3 +12,17 @@ test('native menu roles and custom labels follow the selected language', () => {
  assert.throws(()=>setNativeLanguage('fr'));
  setNativeLanguage('zh');
 });
+
+test('native helper language follows app changes and unsubscribes when closed', async () => {
+ const { getNativeLanguage, subscribeNativeLanguage } = await import('./native-i18n.mjs');
+ const seen = [];
+ const unsubscribe = subscribeNativeLanguage(value => seen.push(value));
+ setNativeLanguage('en');
+ assert.equal(getNativeLanguage(), 'en');
+ setNativeLanguage('zh');
+ assert.equal(getNativeLanguage(), 'zh');
+ unsubscribe();
+ setNativeLanguage('en');
+ assert.deepEqual(seen, ['en', 'zh']);
+ setNativeLanguage('zh');
+});

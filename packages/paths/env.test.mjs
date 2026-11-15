@@ -55,6 +55,6 @@ test("path resolvers read copied Windows environments under any spelling", () =>
   assert.equal(openworkEnvStorePath({ env: { get3w_env_store: store }, ...windows }), path.win32.resolve(store));
   assert.equal(
     openworkEnvStorePath({ env: { get3w_env_store: "/tmp/env.json" }, homeDir: "/home/me", ...mac }),
-    "/home/me/.config/openwork/env.json",
+    "/home/me/.config/get3w/env.json",
   );
 });

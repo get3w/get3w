@@ -346,6 +346,7 @@ export type ComputerSnapshot = {
   enabled: boolean;
   /** The app macOS lists in System Settings for these permissions; `ours` when Get3W can reset it. */
   entry: { name: string; ours: boolean };
+  permissionEntries?: Record<"accessibility" | "screenRecording", { name: string; ours: boolean }>;
   request: ComputerRequest | null;
   /** The computer this chat uses, and every computer it could use (this Mac, connected VMs). */
   targetId: string;
@@ -370,7 +371,7 @@ export type ComputerSnapshot = {
 };
 
 /** Settings: the computer every chat uses and whether it is set up. */
-export type ComputerStatus = Pick<ComputerSnapshot, "enabled" | "entry" | "targetId" | "targets" | "placement" | "readiness" | "permissions" | "detail">;
+export type ComputerStatus = Pick<ComputerSnapshot, "enabled" | "entry" | "permissionEntries" | "targetId" | "targets" | "placement" | "readiness" | "permissions" | "detail">;
 
 /** The live watch view: recent redacted frames and dispatched input, never actionable. */
 export type ComputerPresentation = {

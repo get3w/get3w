@@ -15,12 +15,15 @@ import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { getReactQueryClient } from "@/react-app/infra/query-client";
+import { refreshProviderListQueries } from "@/react-app/infra/provider-list-query";
 
 export type Snapshot = {
   status: "checking" | "signed_out" | "signed_in" | "unavailable";
   user: { id: string; name: string; avatar_url?: string | null } | null;
   pending: boolean;
   error: string | null;
+  managedModels?: { enabled?: boolean; state: string; error?: string };
 };
 import { settingsErrorMessage } from "./get3w-settings-policy";
 import type { SettingsDocument } from "./get3w-settings-policy";
@@ -81,7 +84,21 @@ const empty: Snapshot = { status: "checking", user: null, error: null, pending: 
 let current = empty;
 export function readGet3wAccount() { return current; }
 const listeners = new Set<() => void>();
-function publish(next: Snapshot) { const userId = next.status === "signed_in" || next.status === "unavailable" ? next.user?.id : undefined; resetTaskCatalog(userId); current = next; if(userId) void loadTaskCatalog(userId).catch(() => {}); for (const listener of listeners) listener(); }
+function publish(next: Snapshot) {
+  const userId = next.status === "signed_in" || next.status === "unavailable" ? next.user?.id : undefined;
+  resetTaskCatalog(userId);
+  current = next;
+  const queryClient = getReactQueryClient();
+  // Native auth reconciles the model proxy before returning. A query may have
+  // cached an empty catalog before that PATCH/reload, or missed its SSE event.
+  // Revalidate after every successful reconciliation, including focus/online
+  // recovery for the same account. Do not depend on legacy Den/live-sync flags.
+  if (next.status === "signed_in" && next.managedModels?.state === "connected") {
+    void refreshProviderListQueries(queryClient).catch(() => {});
+  }
+  if(userId) void loadTaskCatalog(userId).catch(() => {});
+  for (const listener of listeners) listener();
+}
 export function useGet3wAccount() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => current, () => empty);
 }
@@ -113,8 +130,21 @@ export async function ensureGet3wTaskTools(workspaceId: string, sessionId: strin
   if (!bridge) return;
   const account = readGet3wAccount();
   if (account.status !== "signed_in" || !account.user) throw new Error("请先登录 Get3W。");
-  const result = await bridge.managedMcp({ userId: account.user.id, workspaceId, sessionId, action: "enable" });
-  if (!result.enabled) throw new Error("Get3W 模型连接未就绪，请重试。");
+  const userId = account.user.id;
+  const assertIdentity = () => {
+    const latest = readGet3wAccount();
+    if (window.__GET3W_ACCOUNT__ !== bridge || latest.status !== "signed_in" || latest.user?.id !== userId) {
+      throw new Error("Get3W 账号已变更，请重试。");
+    }
+  };
+  // Startup authentication can succeed before the model proxy has been applied
+  // to the engine. Never consume the draft or register tools against that state.
+  const models = await bridge.managedModels({ userId, action: "status" });
+  assertIdentity();
+  if (!models.enabled || models.state !== "connected") throw new Error("Get3W 模型连接未就绪，请稍后重试。");
+  const result = await bridge.managedMcp({ userId, workspaceId, sessionId, action: "enable" });
+  assertIdentity();
+  if (!result.enabled || result.state !== "configured") throw new Error("Get3W 模型工具未就绪，请稍后重试。");
 }
 
 export function DesktopAccountGate({ children }: { children: ReactNode }) {
@@ -163,6 +193,21 @@ export function Get3wAccount() {
     window.addEventListener("focus", refresh);
     return () => { window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); };
   }, [bridge]);
+  useEffect(() => {
+    if (!bridge || snapshot.status !== "signed_in" || !snapshot.user
+      || !snapshot.managedModels || snapshot.managedModels.state === "connected") return;
+    // The account can be verified while the local engine is still starting or
+    // deferring its reload. Recover without requiring Settings or a manual click.
+    let disposed = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const retry = async () => {
+      await run("status");
+      if (!disposed && ++attempts < 5) timer = setTimeout(retry, 3000);
+    };
+    timer = setTimeout(retry, 3000);
+    return () => { disposed = true; clearTimeout(timer); };
+  }, [bridge, snapshot.status, snapshot.user?.id, snapshot.managedModels?.state]);
   useEffect(() => {
     if (!snapshot.pending || !bridge) return;
     let current = true, inFlight = false;

@@ -209,7 +209,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   // Keep preferences unless a separately declared user override is supplied.
   const expected=merged(row,{});
   const conflicts=Object.keys(row.defaults).filter(name=>Object.hasOwn(expected,name)&&Object.hasOwn(input.inputs,name)&&!Object.hasOwn(input.output_overrides??{},name)&&String(input.inputs[name]).toLowerCase()!==String(expected[name]).toLowerCase());
-  if(conflicts.length)return failure('output_preference_conflict','Omit conflicting output settings to use the saved preferences. Use output_overrides only when the user explicitly requests a change in this message.',{expected:Object.fromEntries(conflicts.map(name=>[name,expected[name]]))});
+  if(conflicts.length)return failure('output_preference_conflict','Omit conflicting output settings to use the saved preferences. Use output_overrides for settings explicitly requested in the active project brief or subsequent user instructions, including earlier turns. Preserve the brief instead of falling back to conflicting preferences.',{expected:Object.fromEntries(conflicts.map(name=>[name,expected[name]]))});
   let inputs=merged(row,values),fingerprint=hash(inputs);
   if(row.inputHash&&row.inputHash!==fingerprint)return failure('input_conflict','These inputs differ from the existing task. Prepare a new task to change them');
   if(active.has(row.id)){const running=active.get(row.id);return running.fingerprint===fingerprint?running.pending:failure('input_conflict','A different input is already being submitted for this preparation');}

@@ -5,8 +5,8 @@ import Foundation
 /// process, which for a plain child is the app that started it. Started by
 /// Get3W, a Screen Recording grant would only apply once Get3W itself
 /// quit. The helper therefore relaunches itself once with responsibility
-/// disclaimed: System Settings lists "Get3W Computer Use", and only this
-/// short-lived helper ever has to restart after a grant.
+/// disclaimed. Accessibility identifies this helper, but Screen Recording can
+/// still resolve a nested bundle to Get3W; its guide must name the containing app.
 ///
 /// The first process stays as a thin parent: it keeps the host's trust check,
 /// shares stdin/stdout/stderr with the relaunched helper, forwards signals and

@@ -54,15 +54,19 @@ test("remote server and edited provider fail closed",async()=>{
 });
 
 test("deferred reload stays pending",async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-provider-'));let patches=0,provider={};
+ const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-provider-'));let patches=0,provider={},reload='deferred',created=0;
  const snapshot={status:'signed_in',user:{id:'a'}};
- const manager=createGet3wManagedProvider({userData,auth:{status:async()=>snapshot,models:async()=>({models:[{id:'test',protocols:['openai']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host'}),createProxy:async()=>({baseURL:'http://127.0.0.1:2345/v1',apiKey:'local',close:async()=>{}}),fetchImpl:async(url,options)=>{
+ const manager=createGet3wManagedProvider({userData,auth:{status:async()=>snapshot,models:async()=>({models:[{id:'test',protocols:['openai']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host'}),createProxy:async()=>{created++;return {baseURL:'http://127.0.0.1:2345/v1',apiKey:'local',close:async()=>{}};},fetchImpl:async(url,options)=>{
+  if(url.endsWith('/health'))return new Response(null,{status:200});
   if(options.method==='PATCH'){patches++;provider={...provider,...JSON.parse(options.body).provider};}
-  return Response.json({provider,reload:'deferred'});
+  return Response.json({provider,reload});
  }});
  try {
   assert.equal((await manager.run({action:'enable',userId:'a'})).state,'pending');
-  assert.equal((await manager.reconcile(snapshot)).state,'pending');assert.equal(patches,1);
+  assert.equal((await manager.reconcile(snapshot)).state,'pending');assert.equal(patches,2);
+  reload='reloaded';
+  assert.equal((await manager.reconcile(snapshot)).state,'connected');assert.equal(patches,3);assert.equal(created,1);
+  await manager.reconcile(snapshot);assert.equal(patches,3);
  }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
 });
 

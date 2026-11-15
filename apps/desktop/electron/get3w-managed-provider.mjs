@@ -111,7 +111,14 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
             method: "GET", redirect: "error", signal: AbortSignal.timeout(2_000),
             headers: { Authorization: `Bearer ${proxy.apiKey}` },
           });
-          if (probe.ok) return {enabled:true,state:providerState};
+          if (probe.ok && providerState !== "pending") return {enabled:true,state:providerState};
+          if (probe.ok) {
+            // Retry the owed engine reload using the same live endpoint. Rotating
+            // it while another turn is draining would strand that turn again.
+            const result=await request(target,"PATCH",{[GET3W_MANAGED_PROVIDER]:current});
+            providerState=result.reload==="deferred"?"pending":"connected";
+            return {enabled:true,state:providerState};
+          }
         } catch {}
         await closeProxy();
       }

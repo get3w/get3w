@@ -101,3 +101,40 @@ test("desktop login cannot be dismissed and gates operations until authenticatio
     delete window.__GET3W_ACCOUNT__;
   }
 });
+
+test("startup submission waits for model reload and tool readiness, and rejects account changes", async () => {
+  const { MemoryRouter } = await import("react-router");
+  const { act } = await import("react");
+  const { createRoot } = await import("react-dom/client");
+  const { Get3wAccount, ensureGet3wTaskTools } = await import("../src/react-app/domains/cloud/get3w-account");
+  const account: Snapshot = {status:"signed_in",user:{id:"startup",name:"Startup"},pending:false,error:null};
+  let resolveModels: (value: {enabled:boolean;state:string}) => void = () => {};
+  let tools = 0;
+  let toolState = "configured";
+  const bridge = {
+    status: async () => account,
+    managedModels: () => new Promise<{enabled:boolean;state:string}>(resolve => {resolveModels=resolve;}),
+    managedMcp: async () => {tools++;return {enabled:true,state:toolState};},
+  };
+  Reflect.set(window,"__GET3W_ACCOUNT__",bridge);
+  const node=document.createElement("div");document.body.append(node);const root=createRoot(node);
+  try {
+    await act(async()=>{root.render(<MemoryRouter><Get3wAccount /></MemoryRouter>);});
+    let sent=0;
+    const first=ensureGet3wTaskTools("workspace","session").then(()=>{sent++;});
+    expect(tools).toBe(0);expect(sent).toBe(0);
+    resolveModels({enabled:true,state:"pending"});
+    await expect(first).rejects.toThrow("模型连接未就绪");expect(tools).toBe(0);expect(sent).toBe(0);
+    const retry=ensureGet3wTaskTools("workspace","session").then(()=>{sent++;});
+    resolveModels({enabled:true,state:"connected"});await retry;
+    expect(tools).toBe(1);expect(sent).toBe(1);
+    toolState="pending";
+    const missingTools=ensureGet3wTaskTools("workspace","session");resolveModels({enabled:true,state:"connected"});
+    await expect(missingTools).rejects.toThrow("模型工具未就绪");
+    const changed=ensureGet3wTaskTools("workspace","session");
+    Reflect.set(window,"__GET3W_ACCOUNT__",{...bridge});resolveModels({enabled:true,state:"connected"});
+    await expect(changed).rejects.toThrow("账号已变更");expect(tools).toBe(2);
+  } finally {
+    await act(async()=>root.unmount());node.remove();delete window.__GET3W_ACCOUNT__;
+  }
+});

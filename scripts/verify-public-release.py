@@ -33,7 +33,7 @@ run('automation-ui', ['bun', 'test', 'apps/app/tests/personal-automations.test.t
 # Navigation mocks replace the account module; keep them isolated from other UI suites.
 run('automation-navigation', ['bun', 'test', 'apps/app/tests/personal-automation-navigation.test.tsx'])
 run('personal-account-native', ['node', '--test', 'apps/desktop/electron/get3w-personal.test.mjs', 'apps/desktop/electron/get3w-artifact-route.test.mjs'])
-run('personal-account-ui', ['bun', 'test', 'apps/app/tests/personal-account-ui.test.tsx', 'apps/app/tests/get3w-sign-in-gate.test.tsx'])
+run('personal-account-ui', ['bun', 'test', 'apps/app/tests/personal-account-ui.test.tsx', 'apps/app/tests/get3w-sign-in-gate.test.tsx', 'apps/app/tests/get3w-account-model-sync.test.tsx'])
 run('model-native-regressions', ['node', '--test', *[str(path.relative_to(root)) for path in sorted((root / 'apps/desktop/electron').glob('get3w-model-*.test.mjs'))], 'apps/desktop/electron/get3w-mcp-proxy-stop.test.mjs'])
 run('model-surface-regressions', ['bun', 'test',
     'apps/app/tests/model-approval-cards.test.tsx', 'apps/app/tests/output-preview.test.tsx', 'apps/app/tests/model-preferences.test.ts',

@@ -1,3 +1,4 @@
+import { migrateGet3wStorage } from "../electron/get3w-storage-migration.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { cpSync, rmSync } from "node:fs";
@@ -9,10 +10,11 @@ const desktopRoot = resolve(__dirname, "..");
 const repoRoot = resolve(desktopRoot, "../..");
 const electronSidecarDir = resolve(desktopRoot, "resources", "sidecars");
 const electronHelperDir = resolve(desktopRoot, "resources", "helpers");
+migrateGet3wStorage({ userDataDir: process.env.GET3W_ELECTRON_USERDATA || resolve(repoRoot, ".get3w-dev-profile") });
 const defaultDevDataDir = resolve(
   process.env.HOME ?? process.env.USERPROFILE ?? repoRoot,
-  ".openwork",
-  "openwork-server-dev",
+  ".get3w",
+  "get3w-server-dev",
 );
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";

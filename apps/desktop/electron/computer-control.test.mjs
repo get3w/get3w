@@ -63,7 +63,7 @@ function fixture(options = {}) {
   };
   /** @type {import("@openwork/computer-use/computer-control").ComputerAdapter} */
   const remote = { ...adapter, id: "vm", label: "VM", placement: "remote" };
-  const control = createComputerControl({ adapters: options.remote ? [adapter, remote] : [adapter], readRemoteFeatureEnabled: options.authority, runProgram: options.runProgram, runScript: options.runScript, onTiming: options.onTiming, browserTask: options.browserTask, onRequest: (_sessionId, value) => { requests.push(value); }, idleMs: options.idleMs ?? 90_000, platform: options.platform });
+  const control = createComputerControl({ permissionEntry: options.permissionEntry, adapters: options.remote ? [adapter, remote] : [adapter], readRemoteFeatureEnabled: options.authority, runProgram: options.runProgram, runScript: options.runScript, onTiming: options.onTiming, browserTask: options.browserTask, onRequest: (_sessionId, value) => { requests.push(value); }, idleMs: options.idleMs ?? 90_000, platform: options.platform });
   return { control, calls, requests, selected, emit: value => emit(value), disconnect: () => disconnect() };
 }
 
@@ -368,7 +368,7 @@ test("a development build names the terminal that started it, which is not ours 
   assert.deepEqual(entry, { name: "Terminal", bundleId: "com.apple.Terminal", ours: false });
 });
 
-test("the helper bundle is its own entry, since it disclaims Get3W's responsibility", async () => {
+test("Accessibility identifies the helper bundle", async () => {
   const helper = "/Applications/Get3W.app/Contents/Resources/helpers/Get3W Computer Use.app";
   const entry = await resolvePermissionEntry({
     helperBundle: helper,
@@ -952,4 +952,38 @@ test("same-named selected files are each shown and each approved", async (t) => 
   await f.control.answerRequest({ sessionId: "chat", answer: "allow", id: card.id });
   assert.equal(payload(await press).status, "dispatched");
   assert.deepEqual(f.acts().at(-1), ["clip.mp4", "clip.mp4"]);
+});
+
+test("Screen Recording for a nested helper identifies the containing desktop", async () => {
+  const helper = "/Applications/Get3W.app/Contents/Resources/helpers/Get3W Computer Use.app";
+  const entry = await resolvePermissionEntry({
+    helperBundle: helper, permission: "screenRecording", pid: 4100,
+    exec: fakeExec({}, {
+      "/Applications/Get3W.app": { CFBundleName: "Get3W", CFBundleIdentifier: "com.get3w.desktop" },
+      [helper]: { CFBundleName: "Get3W Computer Use", CFBundleIdentifier: "com.get3w.desktop.computer-use" },
+    }),
+  });
+  assert.deepEqual(entry, { name: "Get3W", bundleId: "com.get3w.desktop", ours: true });
+});
+
+test("permission snapshots carry separate names and choose the missing permission", async (t) => {
+  const entries = {
+    accessibility: { name: "Get3W Computer Use", ours: true },
+    screenRecording: { name: "Get3W", ours: true },
+  };
+  const permissions = { accessibility: false, screenRecording: false };
+  const f = fixture({
+    permissionEntry: async (permission) => entries[permission],
+    readiness: async () => ({ readiness: "setup-required", detail: "Grant access", permissions }),
+  });
+  t.after(() => f.control.reset(true));
+  await f.control.setFeatureEnabled(true);
+  const status = await f.control.status();
+  assert.deepEqual(status.permissionEntries, entries);
+  assert.equal(status.entry.name, "Get3W");
+  permissions.screenRecording = true;
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  const snapshot = await f.control.snapshot({ sessionId: "chat" });
+  assert.deepEqual(snapshot.permissionEntries, entries);
+  assert.equal(snapshot.entry.name, "Get3W Computer Use");
 });

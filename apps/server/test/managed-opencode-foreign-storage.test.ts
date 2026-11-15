@@ -10,7 +10,7 @@ import { opencodeV1DatabasePath } from "../src/opencode-v2-migration.js";
 // config. These tests run a stand-in engine that exits exactly like v1 does on
 // each collision and record the storage environment every spawn was handed.
 
-type Mode = "healthy" | "v2-database" | "v2-config" | "v2-both" | "project-config";
+type Mode = "healthy" | "slow" | "v2-database" | "v2-config" | "v2-both" | "project-config";
 
 type Spawn = { OPENCODE_DB?: string; XDG_CONFIG_HOME?: string };
 
@@ -32,7 +32,7 @@ const v2Permissions = (path) => "Configuration is invalid at " + path + "\\n\\u2
 if ((mode === "v2-database" || mode === "v2-both") && sharedDatabase) fail("Database is not empty and has no session table");
 if ((mode === "v2-config" || mode === "v2-both") && sharedConfig) fail(v2Permissions(join(env.XDG_CONFIG_HOME, "opencode", "opencode.json")));
 if (mode === "project-config") fail(v2Permissions(join(env.FAKE_PROJECT, "opencode.json")));
-process.stdout.write("opencode server listening on http://127.0.0.1:" + env.FAKE_PORT + "\\n");
+setTimeout(() => process.stdout.write("opencode server listening on http://127.0.0.1:" + env.FAKE_PORT + "\\n"), mode === "slow" ? 16_000 : 0);
 setInterval(() => {}, 1 << 30);
 `;
 
@@ -139,3 +139,14 @@ test("without private storage the collision is reported as before", async () => 
   await expect(w.start({})).rejects.toThrow(/has no session table/);
   expect(await w.spawns()).toHaveLength(1);
 });
+
+test("a cold engine can announce readiness after the former fifteen second deadline", async () => {
+  const w = await world("slow");
+  const server = await w.start();
+  try {
+    expect(server.url).toStartWith("http://127.0.0.1:");
+    expect(await w.spawns()).toHaveLength(1);
+  } finally {
+    await server.close();
+  }
+}, 30_000);

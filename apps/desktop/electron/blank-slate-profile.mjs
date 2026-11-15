@@ -46,7 +46,7 @@ export function prepareBlankSlateProfile({
   const rootPath = createTempRoot(paths.join(temporaryDirectory, "openwork-test-profile-"));
   const userDataPath = paths.join(rootPath, "electron", "user-data");
   const homePath = paths.join(rootPath, "home");
-  const openworkConfigPath = paths.join(rootPath, "openwork", "config");
+  const openworkConfigPath = paths.join(rootPath, "get3w", "config");
   const opencodeDataPath = paths.join(rootPath, "opencode", "data");
   const environment = {
     HOME: homePath,
@@ -63,7 +63,7 @@ export function prepareBlankSlateProfile({
     GET3W_ENV_STORE: paths.join(openworkConfigPath, "env.json"),
     GET3W_TOKEN_STORE: paths.join(openworkConfigPath, "tokens.json"),
     GET3W_RUNTIME_DB: paths.join(openworkConfigPath, "runtime.sqlite"),
-    GET3W_DATA_DIR: paths.join(rootPath, "openwork", "data"),
+    GET3W_DATA_DIR: paths.join(rootPath, "get3w", "data"),
     OPENCODE_CONFIG_DIR: paths.join(rootPath, "opencode", "config"),
     OPENCODE_DB: paths.join(opencodeDataPath, "opencode.db"),
   };

@@ -15,7 +15,7 @@ import {
   opencodeDataDirs as resolveOpencodeDataDirs,
 } from "@openwork/paths";
 
-const BROWSER_SESSION_PARTITION = "persist:openwork-browser";
+const BROWSER_SESSION_PARTITION = "persist:get3w-browser";
 const NUKE_PARTITIONS = ["default", BROWSER_SESSION_PARTITION];
 const PENDING_NUKE_FILENAME = ".nuke-pending.json";
 const WINDOWS_RETRY_CODES = new Set(["EBUSY", "EPERM", "ENOTEMPTY"]);
@@ -32,10 +32,10 @@ const OPENWORK_CONFIG_FILENAMES = [
   "legacy-sweep-state.json",
 ];
 const USERDATA_WORKSPACE_FILENAMES = [
-  "openwork-workspaces.json",
+  "get3w-workspaces.json",
   "workspace-state.json",
-  "openwork-server-tokens.json",
-  "openwork-server-state.json",
+  "get3w-server-tokens.json",
+  "get3w-server-state.json",
 ];
 const LEGACY_ORCHESTRATOR_DIR_NAME = ["openwork", "orchestrator"].join("-");
 const SHIP_IT_CACHE_DOMAIN = "com.get3w.desktop.ShipIt";
@@ -119,7 +119,7 @@ function resolveNukeEnvironment({ env = {}, homedir, platform, userDataPath }) {
   const resolvedUserDataPath = userDataOverride || userDataPath;
 
   if (isTruthyDevMode(env)) {
-    const root = paths.join(resolvedUserDataPath, "openwork-dev-data");
+    const root = paths.join(resolvedUserDataPath, "get3w-dev-data");
     resolvedHome = paths.join(root, "home");
     resolvedEnv.HOME = resolvedHome;
     resolvedEnv.USERPROFILE = resolvedHome;
@@ -162,14 +162,14 @@ function envStorePath(env, homedir, platform, paths) {
 function tokenStorePath(env, serverConfigPath, homedir, paths) {
   const override = envValue(env, "GET3W_TOKEN_STORE");
   if (override) return paths.resolve(override);
-  const configDir = serverConfigPath ? paths.dirname(serverConfigPath) : paths.join(homedir, ".config", "openwork");
+  const configDir = serverConfigPath ? paths.dirname(serverConfigPath) : paths.join(homedir, ".config", "get3w");
   return paths.join(configDir, "tokens.json");
 }
 
 function runtimeDbPath(env, serverConfigPath, homedir, paths) {
   const override = envValue(env, "GET3W_RUNTIME_DB");
   if (override) return paths.resolve(override);
-  const configDir = serverConfigPath ? paths.dirname(serverConfigPath) : paths.join(homedir, ".config", "openwork");
+  const configDir = serverConfigPath ? paths.dirname(serverConfigPath) : paths.join(homedir, ".config", "get3w");
   return paths.join(configDir, "runtime.sqlite");
 }
 
@@ -214,7 +214,7 @@ function orchestratorDataDir(env, homedir, paths) {
 function serverDataDir(env, homedir, paths) {
   const override = envValue(env, "GET3W_DATA_DIR");
   if (override) return override;
-  return paths.join(homedir, ".openwork", "openwork-server");
+  return paths.join(homedir, ".get3w", "get3w-server");
 }
 
 /** Workspace-local state Get3W owns; the rest of the workspace folder is the user's. */
@@ -335,7 +335,7 @@ function resolveNukePlan(input) {
   ];
 
   const openworkConfigRoots = [
-    paths.join(desktopConfigHome(env, homedir, platform, paths), "openwork"),
+    paths.join(desktopConfigHome(env, homedir, platform, paths), "get3w"),
     paths.dirname(serverConfig),
     paths.dirname(runtimeDb),
     paths.dirname(tokens),
@@ -367,7 +367,7 @@ function resolveNukePlan(input) {
   // profile's next launch can never pick up and replay their cleanup.
   const pendingPath = scopeToProfile
     ? paths.join(userDataPath, PENDING_NUKE_FILENAME)
-    : paths.join(desktopConfigHome(env, homedir, platform, paths), "openwork", PENDING_NUKE_FILENAME);
+    : paths.join(desktopConfigHome(env, homedir, platform, paths), "get3w", PENDING_NUKE_FILENAME);
 
   return {
     manifest,

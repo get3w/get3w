@@ -43,10 +43,10 @@ process.once("SIGINT", () => stop(130));
 process.once("SIGTERM", () => stop(143));
 
 async function ready(url) {
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 120_000;
   while (!stopping && Date.now() < deadline) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      const response = await fetch(url, { signal: AbortSignal.timeout(Math.min(30_000, deadline - Date.now())) });
       if (response.ok) return;
     } catch { /* Service is still starting. */ }
     await new Promise(resolve => setTimeout(resolve, 500));

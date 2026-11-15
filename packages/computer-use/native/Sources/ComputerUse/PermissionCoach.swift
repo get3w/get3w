@@ -7,8 +7,6 @@ import UniformTypeIdentifiers
 enum GuidePermission: String, Decodable, Hashable, Sendable {
     case accessibility, screenRecording
 
-    var title: String { self == .accessibility ? "Allow app control" : "Allow window viewing" }
-    var settingsName: String { self == .accessibility ? "Accessibility" : "Screen Recording" }
     var pane: String { self == .accessibility ? "Privacy_Accessibility" : "Privacy_ScreenCapture" }
 }
 
@@ -29,8 +27,9 @@ private enum CoachMessage: Decodable, Sendable {
     case status(CoachReadiness?, CoachPermissions?)
     case request(GuidePermission)
     case close
+    case language(String)
 
-    private enum CodingKeys: String, CodingKey { case type, readiness, permissions, permission }
+    private enum CodingKeys: String, CodingKey { case type, readiness, permissions, permission, language }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         switch try values.decode(String.self, forKey: .type) {
@@ -38,6 +37,7 @@ private enum CoachMessage: Decodable, Sendable {
             self = .status(try? values.decode(CoachReadiness.self, forKey: .readiness),
                            try? values.decode(CoachPermissions.self, forKey: .permissions))
         case "request": self = .request(try values.decode(GuidePermission.self, forKey: .permission))
+        case "language": self = .language(try values.decode(String.self, forKey: .language))
         case "close": self = .close
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: values, debugDescription: "Unknown coach message")
@@ -235,10 +235,10 @@ private final class PermissionCoachTarget: NSView {
 
     required init?(coder: NSCoder) { nil }
 
-    func show(name value: String, icon image: NSImage) {
+    func show(name value: String, icon image: NSImage, label: String) {
         name.stringValue = value
         icon.image = image
-        setAccessibilityLabel("Switch on \(value)")
+        setAccessibilityLabel(label)
     }
 
     /// A few slow breaths of the accent, so the eye lands here first.
@@ -269,14 +269,19 @@ private final class PermissionCoachTarget: NSView {
 
 @MainActor
 final class PermissionCoach: NSObject, NSApplicationDelegate {
+    private var strings = PermissionCoachStrings(language: ProcessInfo.processInfo.environment["GET3W_COMPUTER_USE_LANGUAGE"] ?? Locale.preferredLanguages.first ?? "en")
     private let initialPermission: GuidePermission
     private let hostPID = Responsibility.hostPID
     /// The System Settings entry macOS lists for this request, named by the host.
-    private let entry: String? = {
-        guard let value = ProcessInfo.processInfo.environment["GET3W_COMPUTER_USE_ENTRY"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty, value.count <= 64 else { return nil }
+    static func permissionEntry(_ permission: GuidePermission, environment: [String: String]) -> String? {
+        let key = permission == .screenRecording ? "GET3W_COMPUTER_USE_SCREEN_ENTRY" : "GET3W_COMPUTER_USE_ENTRY"
+        guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty, value.count <= 64 else { return nil }
         return value
-    }()
+    }
+    private var entry: String? {
+        Self.permissionEntry(currentPermission, environment: ProcessInfo.processInfo.environment)
+    }
     /// The app that opened the guide, which System Settings also lists, often just above the entry.
     private lazy var host: NSRunningApplication? = NSRunningApplication(processIdentifier: hostPID)
     /// Workspace icons can arrive as blank placeholders, so read each app's own icon file.
@@ -286,13 +291,13 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
         } ?? host.icon
     }
     /// The icon System Settings shows beside the entry: normally this helper's own bundle.
-    private lazy var entryIcon: NSImage = {
+    private var entryIcon: NSImage {
         let bundle = Bundle.main
         let names = ["CFBundleDisplayName", "CFBundleName"].compactMap { bundle.object(forInfoDictionaryKey: $0) as? String }
         if bundle.bundleURL.pathExtension == "app", let entry, names.contains(entry) { return NSApp.applicationIconImage }
         if let hostIcon, host?.localizedName == entry { return hostIcon }
         return NSWorkspace.shared.icon(for: .applicationBundle)
-    }()
+    }
     private var currentPermission: GuidePermission
     private var permissions: CoachPermissions?
     private var requested: Set<GuidePermission> = []
@@ -313,6 +318,7 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
     private let notHostLabel = NSTextField(wrappingLabelWithString: "")
     private let identityLabel = NSTextField(wrappingLabelWithString: "")
     private let helpLabel = NSTextField(wrappingLabelWithString: "")
+    private var closeButton: NSButton?
     private var primaryButton: NSButton?
     private var helpButton: NSButton?
     private var checkButton: NSButton?
@@ -361,7 +367,7 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
     private func makePanel() {
         let panel = PermissionCoachPanel(contentRect: NSRect(x: 0, y: 0, width: CoachStyle.width, height: 300),
                                          styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "Get3W permissions"
+        panel.title = strings.text("Get3W permissions", "Get3W 权限")
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = true
         panel.level = .floating
@@ -388,14 +394,15 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
         let brand = NSTextField(labelWithString: "Get3W")
         brand.font = .systemFont(ofSize: 13, weight: .semibold)
         brand.textColor = CoachStyle.text
-        let close = PermissionCoachButton(title: "Close", target: self, action: #selector(dismiss))
+        let close = PermissionCoachButton(title: strings.text("Close", "关闭"), target: self, action: #selector(dismiss))
         close.role = .close
-        close.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close permission guide")?
+        close.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: strings.text("Close permission guide", "关闭权限引导"))?
             .withSymbolConfiguration(.init(pointSize: 11, weight: .semibold))
         close.imagePosition = .imageOnly
         close.isBordered = false
-        close.setAccessibilityLabel("Close permission guide")
-        close.toolTip = "Close permission guide"
+        close.setAccessibilityLabel(strings.text("Close permission guide", "关闭权限引导"))
+        close.toolTip = strings.text("Close permission guide", "关闭权限引导")
+        closeButton = close
         let header = NSStackView(views: [mark, brand, NSView(), close])
         header.orientation = .horizontal
         header.alignment = .centerY
@@ -425,13 +432,13 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
         notHostRow.alignment = .top
         notHostRow.spacing = 6
 
-        let primary = PermissionCoachButton(title: "Open settings", target: self, action: #selector(advance))
+        let primary = PermissionCoachButton(title: strings.text("Open settings", "打开设置"), target: self, action: #selector(advance))
         primary.role = .primary
         primary.isBordered = false
-        let help = PermissionCoachButton(title: "Help", target: self, action: #selector(toggleHelp))
+        let help = PermissionCoachButton(title: strings.text("Help", "帮助"), target: self, action: #selector(toggleHelp))
         help.isBordered = false
         help.imagePosition = .imageLeading
-        let check = PermissionCoachButton(title: "Check again", target: self, action: #selector(refresh))
+        let check = PermissionCoachButton(title: strings.text("Check again", "重新检查"), target: self, action: #selector(refresh))
         check.isBordered = false
         let footer = NSStackView(views: [help, NSView(), check])
         footer.orientation = .horizontal
@@ -488,46 +495,53 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
         if let permissions, permissions[currentPermission] && !permissions.ready {
             currentPermission = permissions.accessibility ? .screenRecording : .accessibility
         }
+        panel.title = strings.text("Get3W permissions", "Get3W 权限")
+        closeButton?.setAccessibilityLabel(strings.text("Close permission guide", "关闭权限引导"))
+        closeButton?.toolTip = strings.text("Close permission guide", "关闭权限引导")
         let ready = permissions?.ready == true
-        stepLabel.stringValue = ready ? "2 of 2 complete" : (permissions == nil ? "Permission check" :
-            (permissions?.accessibility == true || permissions?.screenRecording == true ? "Step 2 of 2" : "Step 1 of 2"))
-        let title = ready ? "Ready" : currentPermission.title
+        stepLabel.stringValue = ready ? strings.text("2 of 2 complete", "已完成全部 2 步") : (permissions == nil ? strings.text("Permission check", "检查权限") :
+            (permissions?.accessibility == true || permissions?.screenRecording == true ? strings.text("Step 2 of 2", "第 2 步，共 2 步") : strings.text("Step 1 of 2", "第 1 步，共 2 步")))
+        let title = ready ? strings.text("Ready", "已就绪") : strings.title(currentPermission)
         let stepChanged = titleLabel.stringValue != title
         if stepChanged { scrollView?.contentView.scroll(to: .zero) }
         titleLabel.attributedStringValue = NSAttributedString(string: title, attributes: [
             .font: NSFont.systemFont(ofSize: 19, weight: .semibold), .foregroundColor: CoachStyle.text, .kern: -0.3])
         let showsTarget = entry != nil && permissions != nil && !ready
-        let switchPhrase = entry == nil ? "turn on the app named in the macOS request." : "switch this on:"
+        let switchPhrase = entry == nil ? strings.text("turn on the app named in the macOS request.", "开启 macOS 提示中对应应用的权限。") : strings.text("switch this on:", "开启以下应用的权限：")
         if permissions == nil {
-            taskLabel.stringValue = "Could not check. Try again."
+            taskLabel.stringValue = strings.text("Could not check. Try again.", "无法检查权限，请重试。")
         } else if ready {
-            taskLabel.stringValue = "Return to Get3W to continue."
+            taskLabel.stringValue = strings.text("Return to Get3W to continue.", "返回 Get3W 继续。")
         } else if settingsFallback.contains(currentPermission) {
-            taskLabel.stringValue = "Open System Settings and search for “\(currentPermission.settingsName)”, then \(switchPhrase)"
+            taskLabel.stringValue = strings.text("Open System Settings and search for “\(strings.settings(currentPermission))”, then \(switchPhrase)", "打开系统设置，搜索“\(strings.settings(currentPermission))”，然后\(switchPhrase)")
         } else {
-            taskLabel.stringValue = "In \(currentPermission.settingsName), \(switchPhrase)"
+            taskLabel.stringValue = strings.text("In \(strings.settings(currentPermission)), \(switchPhrase)", "在“\(strings.settings(currentPermission))”中，\(switchPhrase)")
         }
-        if let entry { target.show(name: entry, icon: entryIcon) }
+        if let entry { target.show(name: entry, icon: entryIcon, label: strings.text("Switch on \(entry)", "开启 \(entry) 的权限")) }
         target.isHidden = !showsTarget
         let hostName = host?.localizedName.flatMap { $0.isEmpty || $0 == entry ? nil : $0 }
-        notHostLabel.stringValue = hostName.map { "Not “\($0)”: its switch doesn't turn on computer use." } ?? ""
+        notHostLabel.stringValue = hostName.map { strings.text("Not “\($0)”: its switch doesn't turn on computer use.", "请开启上方应用的权限；“\($0)”的开关不适用于此步骤。") } ?? ""
         notHostRow.isHidden = !showsTarget || hostName == nil
         // A switch that is on but still waits belongs to an older, differently
         // signed copy. Toggling keeps that copy; only removing it replaces it.
-        identityLabel.stringValue = entry.map { "Already on and this still waits? macOS is holding an older copy: select “\($0)”, remove it with −, then add it again with +." }
-            ?? "Turn on the app named in the macOS request."
+        identityLabel.stringValue = entry.map { strings.text("Already on and this still waits? Restart Get3W. If access is still blocked, select “\($0)”, remove it with −, then add the current copy with +.", "已开启但仍在等待？请重启 Get3W。若仍无法访问，选中“\($0)”，点击 − 移除，再点击 + 添加当前版本。") }
+            ?? strings.text("Turn on the app named in the macOS request.", "开启 macOS 提示中对应应用的权限。")
         identityLabel.isHidden = ready
         stack?.setCustomSpacing(ready ? 16 : showsTarget ? 10 : 6, after: taskLabel)
-        primaryButton?.title = permissions == nil ? "Check again" : (ready ? "Back to Get3W" : "Open settings")
+        primaryButton?.title = permissions == nil ? strings.text("Check again", "重新检查") : (ready ? strings.text("Back to Get3W", "返回 Get3W") : strings.text("Open settings", "打开设置"))
+        checkButton?.title = strings.text("Check again", "重新检查")
+        helpButton?.title = strings.text("Help", "帮助")
         checkButton?.isHidden = permissions == nil
         helpButton?.image = NSImage(systemSymbolName: helpExpanded ? "chevron.down" : "chevron.right", accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: 9, weight: .semibold))
-        helpButton?.setAccessibilityLabel(helpExpanded ? "Hide help" : "Show help")
-        var help = "If the pane does not open, search System Settings for “\(currentPermission.settingsName)”."
+        helpButton?.setAccessibilityLabel(helpExpanded ? strings.text("Hide help", "收起帮助") : strings.text("Show help", "展开帮助"))
+        var help = strings.text("If the pane does not open, search System Settings for “\(strings.settings(currentPermission))”.", "如果设置页面未打开，请在系统设置中搜索“\(strings.settings(currentPermission))”。")
         if currentPermission == .screenRecording {
-            help += "\nmacOS may call it “Screen & System Audio Recording”."
+            help += strings.text("\nmacOS may call it “Screen & System Audio Recording”.", "\nmacOS 也可能将其称为“录屏与系统录音”。")
         }
-        help += "\nIf macOS offers Quit & Reopen, either choice is fine: Get3W stays open and checks again on its own."
+        help += currentPermission == .screenRecording
+            ? strings.text("\nAfter enabling access, choose Quit & Reopen if macOS asks to restart Get3W.", "\n开启后，若 macOS 提示重启 Get3W，请选择“退出并重新打开”。")
+            : strings.text("\nGet3W checks again automatically after you enable access.", "\n开启权限后，Get3W 会自动重新检查。")
         helpLabel.stringValue = help
         helpLabel.isHidden = !helpExpanded
         positionPanel()
@@ -614,6 +628,9 @@ final class PermissionCoach: NSObject, NSApplicationDelegate {
             self.permissions = readiness == .ready || readiness == .setupRequired ? permissions : nil
             render()
         case .request(let permission): request(permission)
+        case .language(let language):
+            strings = PermissionCoachStrings(language: language)
+            render()
         case .close: dismiss()
         }
     }

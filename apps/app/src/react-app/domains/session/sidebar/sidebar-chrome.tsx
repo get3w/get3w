@@ -6,7 +6,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { isMacPlatform } from "@/app/utils";
 import { t } from "@/i18n";
 import { NotificationBell } from "../../../shell/notification-center";
-import { useShellConfig } from "../../../shell/shell-config";
+import { useBrandAppName, useBrandLogoUrl } from "../../cloud/brand-theme";
+import { resolveExtensionIconSrc } from "../../../design-system/extension-icon-src";
 
 export type ConversationHistoryControls = {
   canGoBack: boolean;
@@ -58,7 +59,18 @@ export function SidebarTitlebar({ history }: { history?: ConversationHistoryCont
   );
 }
 
-/** One search/bell pair, in the brand row or the main titlebar when hidden. */
+/** Brand beside the current page title, independent of sidebar visibility. */
+export function HeaderBrand() {
+  const logo = useBrandLogoUrl();
+  const name = useBrandAppName();
+  return <div data-header-brand className="flex min-w-0 shrink-0 items-center gap-1.5 max-sm:max-w-24">
+    <img src={logo || resolveExtensionIconSrc("/openwork-sidebar-mark.svg")} alt={logo ? name : ""}
+      className={logo ? "max-h-7 max-w-28 object-contain max-sm:max-w-24" : "size-5 shrink-0 object-contain dark:invert"} />
+    {!logo ? <span className="truncate text-[15px] font-medium tracking-[-0.4px]" title={name}>{name}</span> : null}
+  </div>;
+}
+
+/** Search and activity always live at the right of the main header. */
 export function SidebarActions({ onOpenSessionSearch }: { onOpenSessionSearch?: () => void }) {
   return (
     <div data-sidebar-actions className="flex shrink-0 items-center gap-0.5 titlebar-no-drag">
@@ -75,24 +87,13 @@ export function SidebarActions({ onOpenSessionSearch }: { onOpenSessionSearch?: 
           <TooltipContent>{t("workspace_list.search_sessions")} ({isMacPlatform() ? "⌘⇧F" : "Ctrl+Shift+F"})</TooltipContent>
         </Tooltip>
       ) : null}
-      <NotificationBell align="start" />
+      <NotificationBell align="end" />
     </div>
   );
 }
 
-export function MainSidebarControls({ onOpenSessionSearch }: { onOpenSessionSearch?: () => void }) {
-  const { open, isMobile, openMobile } = useSidebar();
-  const { config } = useShellConfig();
+export function MainSidebarControls() {
+  const { open, isMobile } = useSidebar();
   if (open && !isMobile) return null;
-  return (
-    <div className="flex shrink-0 items-center gap-1 titlebar-no-drag">
-      <SidebarToggle surface="main" />
-      {isMobile && openMobile ? (
-        <div aria-hidden="true" className="flex gap-0.5">
-          {onOpenSessionSearch ? <span className="size-8" /> : null}
-          {config.notifications ? <span className="size-8" /> : null}
-        </div>
-      ) : <SidebarActions onOpenSessionSearch={onOpenSessionSearch} />}
-    </div>
-  );
+  return <div className="flex shrink-0 items-center titlebar-no-drag"><SidebarToggle surface="main" /></div>;
 }

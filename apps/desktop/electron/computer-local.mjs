@@ -1,6 +1,7 @@
 // This Mac as a Computer Use placement: probes the native helper's macOS
 // permissions, runs its floating permission guide, and opens one embedded MCP
 // connection per session. Main process only; the renderer never sees the helper.
+import { getNativeLanguage, subscribeNativeLanguage } from "./native-i18n.mjs";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -66,7 +67,7 @@ async function bounded(work, timeoutMs, signal) {
  *   fileExists?: (candidate: string) => boolean,
  *   spawnChild?: typeof spawn,
  *   onSetupReturn?: () => unknown,
- *   permissionEntry?: () => Promise<string>,
+ *   permissionEntry?: (permission: "accessibility" | "screenRecording") => Promise<string>,
  *   timeouts?: Partial<Record<"probe" | "handshake" | "call" | "close" | "setupPoll" | "setupLifetime", number>>,
  * }} [options]
  */
@@ -231,6 +232,7 @@ export function createLocalComputerAdapter({
     if (!record?.ready || record.lifetime.signal.aborted) return;
     const { readiness, permissions } = state;
     try {
+      await writeSetup(record, { type: "language", language: getNativeLanguage() });
       await writeSetup(record, { type: "status", readiness, ...(permissions ? { permissions } : {}) });
     } catch {
       await stopCompanion(record).catch(() => {});
@@ -265,10 +267,19 @@ export function createLocalComputerAdapter({
       if (record.epoch !== setupEpoch || companion !== record) throw new Error("Computer Use permission setup cancelled.");
       if (!state.binary) throw new Error(state.detail);
       // The guide names the exact System Settings entry macOS will list.
-      const entry = await permissionEntry().catch(() => "");
-      const guideEnv = typeof entry === "string" && entry && entry.length <= 64 ? { ...env, GET3W_COMPUTER_USE_ENTRY: entry } : env;
+      const guideEnv = { ...env, GET3W_COMPUTER_USE_LANGUAGE: getNativeLanguage() };
+      for (const permission of ["accessibility", "screenRecording"]) {
+        const entry = await permissionEntry(permission).catch(() => "");
+        if (typeof entry === "string" && entry && entry.length <= 64) {
+          guideEnv[permission === "accessibility" ? "GET3W_COMPUTER_USE_ENTRY" : "GET3W_COMPUTER_USE_SCREEN_ENTRY"] = entry;
+        }
+      }
       const child = spawnChild(state.binary, ["permissions-guide", permission], { env: guideEnv, stdio: ["pipe", "pipe", "ignore"] });
       record.child = child;
+      const unsubscribeLanguage = subscribeNativeLanguage((language) => {
+        if (record.ready && !record.exited) void writeSetup(record, { type: "language", language }).catch(() => {});
+      });
+      child.once("close", unsubscribeLanguage);
       record.terminated = new Promise((resolve) => {
         child.once("close", () => {
           record.exited = true;

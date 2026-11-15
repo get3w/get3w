@@ -6,9 +6,10 @@ A small macOS 14+ helper that lets Get3W see and use the requested app window wh
 process. It has no model, API key, network listener or clipboard access.
 
 On start the helper relaunches itself once with macOS responsibility
-disclaimed, so System Settings lists **Get3W Computer Use** for
-Accessibility and Screen Recording. A grant then only needs this short-lived
-helper to restart, never Get3W. The first process stays as a thin parent
+disclaimed. Accessibility lists **Get3W Computer Use**. For a helper nested
+inside the desktop bundle, Screen Recording lists the containing **Get3W**
+app and macOS may require Get3W to quit and reopen after a grant. The guide
+names the entry for each permission separately. The first process stays as a thin parent
 that checks the desktop's signature, shares stdio, forwards signals and exits
 with the helper's status; the relaunched helper stops if that parent goes away.
 

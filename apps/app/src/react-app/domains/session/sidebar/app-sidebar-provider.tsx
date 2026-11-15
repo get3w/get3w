@@ -13,8 +13,6 @@ export type SidebarContextValue = {
   sessionStatusById?: Record<string, string>;
   /** Workspaces on OpenCode v2, the only engine settling ships for. */
   settleWorkspaceIds?: ReadonlySet<string>;
-  /** The Feed view and its pinned folders ship with `settledSessions`. */
-  feedEnabled?: boolean;
   /** Why a row needs the person when a delegated child, not the session itself, is asking. */
   sessionAttentionLabelById?: Record<string, string>;
   sessionAttentionSourceById?: Record<string, "child" | "descendant">;
@@ -34,9 +32,6 @@ export type SidebarContextValue = {
   onOpenRenameWorkspace: (workspaceId: string) => void;
   onRevealWorkspace: (workspaceId: string) => void;
   onForgetWorkspace: (workspaceId: string) => void;
-  expandWorkspace: (workspaceId: string) => void;
-  toggleWorkspaceExpanded: (workspaceId: string) => void;
-  expandedWorkspaceIds: Set<string>;
   sessionNumberShortcutOs: SessionNumberShortcutOs;
   sessionNumberShortcutByTarget: ReadonlyMap<string, number>;
 };

@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+import { FileActions } from "./file-actions";
 import { useTaskImageRegistration } from "@/react-app/domains/cloud/model-task-status";
 import { t } from "@/i18n";
 /** @jsxImportSource react */
@@ -72,6 +74,7 @@ function MarkdownBlockInner({
   ...props
 }: MarkdownBlockInnerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const [fileActionHosts, setFileActionHosts] = useState<HTMLElement[]>([]);
   const registerImage = useTaskImageRegistration();
   const imageCleanups = useRef(new Map<HTMLImageElement, () => void>());
   const videoCleanups = useRef(new Map<HTMLVideoElement, () => void>());
@@ -194,6 +197,20 @@ function MarkdownBlockInner({
       stopObserving();
     };
   }, [isEmpty, rendered.kind, streaming, text, presentation, resolveReference]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) { setFileActionHosts([]); return; }
+    const sync = () => {
+      const hosts = Array.from(root.querySelectorAll<HTMLElement>("[data-get3w-file-actions]"))
+        .filter(host => !host.closest("[data-openwork-video-fallback]"));
+      setFileActionHosts(previous => previous.length === hosts.length && previous.every((host, index) => host === hosts[index]) ? previous : hosts);
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [rendered]);
 
   const mermaidDiagrams = useMermaidEnhancer(rootRef, rendered, !streaming);
 
@@ -510,6 +527,7 @@ function MarkdownBlockInner({
           {...props}
         />
       )}
+      {fileActionHosts.map((host, index) => createPortal(<FileActions href={host.dataset.get3wFileActions ?? ""} />, host, String(index)))}
       {linkMenu && onOpenTarget ? (
         <LinkActionMenu
           key={linkMenu.target.value}

@@ -146,3 +146,23 @@ test("song requests use music directly while explicit spoken reading uses speech
   assert.match(connect, /unavailable, report the concrete error instead of falling back to speech/);
   assert.doesNotMatch(buildOpenWorkV2Instructions(false, false).connect, /Songs, singing/);
 });
+
+
+test("video extension retains the actual source video and distinguishes added duration", () => {
+  const { connect } = buildOpenWorkV2Instructions(false, true);
+  assert.match(connect, /requires video-extend/);
+  assert.match(connect, /480x854 is not exact 9:16/);
+  assert.match(connect, /proportional scaling and minimal cropping, never stretching/);
+  assert.match(connect, /Bind the actual source video/);
+  assert.match(connect, /do not substitute first-to-video or image-to-video/);
+  assert.match(connect, /duration means added footage or final total length/);
+  assert.match(connect, /report the concrete error rather than silently replacing/);
+});
+
+test("active brief output requirements survive quote and recovery turns", () => {
+  const instructions = buildOpenWorkV2Instructions(false, true);
+  assert.match(instructions.connect, /active project brief/);
+  assert.match(instructions.connect, /earlier turn or a brief file/);
+  assert.match(instructions.connect, /never silently fall back to defaults to obtain a quote/);
+  assert.doesNotMatch(instructions.connect, /output changes explicitly requested in the current user message/);
+});

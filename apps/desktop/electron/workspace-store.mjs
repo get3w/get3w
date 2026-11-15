@@ -167,22 +167,22 @@ export function createWorkspaceStore({
   function workspaceStatePath() {
     const override = process.env.GET3W_DESKTOP_WORKSPACE_STATE_PATH?.trim();
     if (override) return path.resolve(override);
-    return path.join(app.getPath("userData"), "openwork-workspaces.json");
+    return path.join(app.getPath("userData"), "get3w-workspaces.json");
   }
 
   function openworkServerTokenStorePath() {
     const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
-    return path.join(app.getPath("userData"), "openwork-server-tokens.json");
+    return path.join(app.getPath("userData"), "get3w-server-tokens.json");
   }
 
   function openworkServerConfigPath() {
     return resolveOpenworkServerConfigPath({ env: process.env, homeDir: os.homedir() });
   }
 
-  // Earlier Electron alpha builds copied Tauri's openwork-workspaces.json into
+  // Earlier Electron alpha builds copied Tauri's get3w-workspaces.json into
   // an Electron-only workspace-state.json. Keep importing that file when the
-  // shared canonical file is missing, but write openwork-workspaces.json going
+  // shared canonical file is missing, but write get3w-workspaces.json going
   // forward so Tauri rollback and Electron both read the same desktop state.
   function legacyElectronWorkspaceStatePath() {
     return path.join(app.getPath("userData"), "workspace-state.json");
@@ -197,7 +197,7 @@ export function createWorkspaceStore({
       await mkdir(path.dirname(current), { recursive: true });
       const raw = await readFile(legacy, "utf8");
       await writeFile(current, raw, "utf8");
-      console.info("[migration] copied workspace-state.json to openwork-workspaces.json");
+      console.info("[migration] copied workspace-state.json to get3w-workspaces.json");
       return true;
     } catch (error) {
       console.warn("[migration] legacy Electron workspace-state copy failed", error);
@@ -722,7 +722,7 @@ export function createWorkspaceStore({
     // Recovery and an explicitly saved empty list both take precedence.
     if (state.workspaces.length > 0 || existsSync(workspaceStatePath())) return null;
     const home = process.env.GET3W_DEV_MODE === "1" && process.env.GET3W_DEV_SHARED_STATE !== "1"
-      ? path.join(app.getPath("userData"), "openwork-dev-data", "home")
+      ? path.join(app.getPath("userData"), "get3w-dev-data", "home")
       : os.homedir();
     const folderPath = await normalizeLocalWorkspacePath(path.join(home, "Get3W Chat"));
     try {

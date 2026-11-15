@@ -392,7 +392,7 @@ function renderVideo(href: string, label: string, fallbackHtml: string) {
   // of the sentence floating beside its top edge. When the video cannot load
   // (a bare file name, a deleted file) the box is swapped for the hidden
   // inline fallback, so the sentence reads as if no player had been tried.
-  return `<span data-openwork-video="" class="my-3 flex w-fit max-w-full flex-col items-start gap-1.5"><button type="button" data-openwork-video-preview="" aria-label="${escapeAttribute(label)}" class="relative inline-flex max-w-full overflow-hidden rounded-md bg-muted p-0 focus-visible:ring-2 focus-visible:ring-ring"><video data-openwork-video-path="${escapeAttribute(href)}"${source} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" class="block max-h-40 max-w-60 object-contain"></video><span class="pointer-events-none absolute inset-0 flex items-center justify-center"><span class="flex size-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg></span></span></button><a ${fileLink} class="text-sm text-indigo-10">${escapeHtml(label)}</a><span data-openwork-video-fallback="" hidden>${fallbackHtml}</span></span>`;
+  return `<span data-openwork-video="" class="my-3 flex w-fit max-w-full flex-col items-start gap-1.5"><button type="button" data-openwork-video-preview="" aria-label="${escapeAttribute(label)}" class="relative inline-flex max-w-full overflow-hidden rounded-md bg-muted p-0 focus-visible:ring-2 focus-visible:ring-ring"><video data-openwork-video-path="${escapeAttribute(href)}"${source} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" class="block max-h-40 max-w-60 object-contain"></video><span class="pointer-events-none absolute inset-0 flex items-center justify-center"><span class="flex size-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg></span></span></button>${remote ? `<a ${fileLink} class="text-sm text-indigo-10">${escapeHtml(label)}</a>` : `<span data-get3w-file-actions="${escapeAttribute(href)}"></span>`}<span data-openwork-video-fallback="" hidden>${fallbackHtml}</span></span>`;
 }
 
 function renderLinkedImage(profile: MarkdownProfile, href: string, html: string) {
@@ -421,10 +421,7 @@ function renderLinkHtml(profile: MarkdownProfile, href: string, title: string | 
     }
 
     if (isFilePath) {
-      const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/></svg>`;
-      const chevron = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-muted-foreground"><path d="m6 9 6 6 6-6"/></svg>`;
-
-      return `<span class="inline-flex items-stretch overflow-hidden rounded-md border border-border/60 bg-muted/40 text-xs font-medium text-foreground align-middle"><a href="${safe}" data-openwork-link-href="${originalHref}"${titleAttr} target="_blank" rel="noreferrer noopener" class="inline-flex items-center gap-1 px-1.5 py-0.5 no-underline transition-colors hover:bg-muted">${fileIcon}${text}</a><button type="button" data-openwork-link-chevron="${originalHref}" class="inline-flex items-center border-l border-border/60 px-1 transition-colors hover:bg-muted" aria-label="Open with">${chevron}</button></span>`;
+      return `<span data-get3w-file-actions="${originalHref}"></span>`;
     }
 
     const favicon = faviconUrlForHref(href);

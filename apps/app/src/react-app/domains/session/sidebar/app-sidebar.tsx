@@ -20,11 +20,11 @@ import {
   CheckCheck,
   Folder,
   Clock3,
+  ChevronDown,
+  Settings,
   ChevronRight,
   Columns2,
   FolderPlus,
-  LayoutGrid,
-  ListFilter,
   MoreHorizontal,
   Pencil,
   Pin,
@@ -42,8 +42,7 @@ import { LazyMotion, MotionContext, Reorder, domMax, m, useDragControls } from "
 
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
 import type { WorkspaceInfo } from "../../../../app/lib/desktop";
-import { SidebarActions, SidebarTitlebar, type ConversationHistoryControls } from "./sidebar-chrome";
-import { useUiStateStore } from "../../../shell/ui-state-store";
+import { SidebarTitlebar, type ConversationHistoryControls } from "./sidebar-chrome";
 import type {
   WorkspaceConnectionState,
   WorkspaceSessionGroup,
@@ -54,15 +53,12 @@ import {
   isWindowsPlatform,
 } from "../../../../app/utils";
 import { t } from "../../../../i18n";
-import { resolveExtensionIconSrc } from "../../../design-system/extension-icon-src";
-import { useBrandAppName, useBrandLogoUrl } from "../../cloud/brand-theme";
 import { canCreateWorkspaces } from "../../../../app/lib/workspace-creation-policy";
 
 import {
   Sidebar,
   SidebarGroup,
   SidebarHeader,
-  useSidebar,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
@@ -88,9 +84,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -135,34 +128,24 @@ import {
   isNeedsAttentionSessionStatus,
   isSessionArchived,
   partitionArchivedSessions,
-  workspaceKindLabel,
   workspaceLabel,
 } from "./utils";
 import type { FlattenedSessionRow, GlobalArchivedSessionEntry, GlobalPinnedSessionEntry, SessionListItem } from "./utils";
 import {
-  DEFAULT_FEED_GROUP_BY,
-  DEFAULT_FEED_SORT_BY,
-  FEED_GROUP_BY_OPTIONS,
-  FEED_SORT_BY_OPTIONS,
   useSessionManagementStore,
   usePinnedSessionIds,
   useUnreadSessionIds,
   useSessionOrder,
   useWorkspaceGroups,
-  type FeedGroupBy,
-  type FeedSortBy,
   type SessionGroupDefinition,
-  type SidebarView,
 } from "./session-management-store";
 import { filterSettledSessions, useSessionSettleState, useSettleNow, type SessionSettleState } from "./session-settle";
-import { buildSessionFeed, type FeedEntry, type FeedSection, type SessionFeed } from "./session-feed";
 import { cn } from "@/lib/utils";
 import { getSessionActivityStatusLabel, useSessionActivityStore, type SessionActivityStatus } from "../status/session-activity-store";
 import { SessionDotMatrixLoader } from "./session-dot-matrix-loader";
 import {
   SIDEBAR_ROW_LANE,
   SIDEBAR_SECTION_LABEL,
-  SIDEBAR_SECTION_LANE,
   SidebarGlyphSlot,
   sidebarRowPaddingInlineStart,
 } from "./sidebar-lanes";
@@ -692,9 +675,9 @@ function WorkspaceActionsMenu({ workspace, className }: WorkspaceActionsMenuProp
             onClick={(e) => {
               e.stopPropagation();
             }}
-            aria-label={t("workspace_list.workspace_options")}
+            aria-label={t("workspace_list.workspace_settings")}
           >
-            <MoreHorizontal className="size-4" />
+            <Settings className="size-4" />
           </Button>
         }
       />
@@ -727,6 +710,40 @@ function WorkspaceActionsMenu({ workspace, className }: WorkspaceActionsMenuProp
   );
 }
 
+export function WorkspaceToolbar({ groups, selectedWorkspaceId, onSelectWorkspace, onOpenCreateWorkspace }: {
+  groups: WorkspaceSessionGroup[];
+  selectedWorkspaceId: string;
+  onSelectWorkspace: (workspaceId: string) => Promise<boolean> | boolean | void;
+  onOpenCreateWorkspace: () => void;
+}) {
+  const selected = groups.find(group => group.workspace.id === selectedWorkspaceId);
+  const ctx = useSidebarContext();
+  const connection = ctx.workspaceConnectionStateById[selectedWorkspaceId];
+  const connecting = ctx.connectingWorkspaceId === selectedWorkspaceId || connection?.status === "connecting";
+  return <div data-sidebar-workspace-toolbar className="flex min-w-0 items-center gap-1">
+    {connecting ? <SessionDotMatrixLoader label={t("workspace_list.connecting")} />
+      : selected ? <WorkspaceAvatarPicker workspaceId={selected.workspace.id} label={workspaceLabel(selected.workspace)} /> : null}
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" className="min-w-0 flex-1 justify-start gap-2 px-2" disabled={groups.length === 0}
+        aria-label={t("workspace_list.switch_workspace")} title={selected ? workspaceLabel(selected.workspace) : undefined} />}>
+        <span className="min-w-0 flex-1 truncate text-left">{selected ? workspaceLabel(selected.workspace) : t("workspace_list.select_workspace")}</span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64 max-w-(--available-width)">
+        <DropdownMenuRadioGroup value={selectedWorkspaceId} onValueChange={value => { if (value !== selectedWorkspaceId) void onSelectWorkspace(value); }}>
+          {groups.map(group => <DropdownMenuRadioItem key={group.workspace.id} value={group.workspace.id} closeOnClick>
+            <span className="truncate" title={workspaceLabel(group.workspace)}>{workspaceLabel(group.workspace)}</span>
+          </DropdownMenuRadioItem>)}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    {canCreateWorkspaces() ? <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onOpenCreateWorkspace}
+      aria-label={t("workspace_list.add_workspace")} title={t("workspace_list.add_workspace")}><Plus className="size-4" /></Button> : null}
+    {selected ? <WorkspaceActionsMenu workspace={selected.workspace} className="size-7 shrink-0 text-muted-foreground" />
+      : <Button variant="ghost" size="icon" className="size-7 shrink-0" disabled aria-label={t("workspace_list.workspace_settings")}><Settings className="size-4" /></Button>}
+  </div>;
+}
+
 export type AppSidebarProps = {
   draftScope?: string | null;
   sessionNumberShortcuts: SessionNumberShortcutsState;
@@ -737,8 +754,6 @@ export type AppSidebarProps = {
   showSessionActions?: boolean;
   sessionStatusById?: Record<string, string>;
   settleWorkspaceIds?: ReadonlySet<string>;
-  /** Shows the Workspaces · Feed switch (ships with `settledSessions`). */
-  feedEnabled?: boolean;
   sessionAttentionLabelById?: Record<string, string>;
   sessionAttentionSourceById?: Record<string, "child" | "descendant">;
   connectingWorkspaceId: string | null;
@@ -770,12 +785,9 @@ export type AppSidebarProps = {
   onOpenSessionSearch?: () => void;
   /** Back/forward across recently viewed conversations, rendered at the top of the sidebar. */
   conversationHistory?: ConversationHistoryControls;
-  onReorderWorkspaces?: (workspaceIds: string[]) => void;
   onStartResize?: React.PointerEventHandler<HTMLButtonElement>;
   onOpenAccountSettings?: () => void;
-  onOpenExtensions: () => void;
   mobileChatActions?: React.ReactNode;
-  extensionsActive?: boolean;
   /** Live app status, shown inside the footer account menu. */
   status: Omit<AccountStatusMenuProps, "onOpenAccountSettings">;
 };
@@ -785,17 +797,6 @@ function isSessionActivityStatus(status: string | undefined): status is SessionA
 }
 
 export function AppSidebar(props: AppSidebarProps) {
-  const { open, isMobile } = useSidebar();
-  // Lives in the UI store (not component state) so the open/closed state of
-  // each workspace group survives this sidebar unmounting, e.g. while the
-  // user is in Settings.
-  const expandedWorkspaceIdList = useUiStateStore((state) => state.expandedWorkspaceIds);
-  const expandWorkspace = useUiStateStore((state) => state.expandWorkspace);
-  const toggleWorkspaceExpanded = useUiStateStore((state) => state.toggleWorkspaceExpanded);
-  const expandedWorkspaceIds = React.useMemo(
-    () => new Set(expandedWorkspaceIdList),
-    [expandedWorkspaceIdList],
-  );
   const [previewCountByWorkspaceId, setPreviewCountByWorkspaceId] = React.useState<Record<string, number>>({});
   const previousSessionStatusRef = React.useRef<Record<string, string>>({});
   const sessionNumberShortcutByTarget = React.useMemo(
@@ -830,17 +831,10 @@ export function AppSidebar(props: AppSidebarProps) {
     previousSessionStatusRef.current = statuses;
   }, [props.selectedSessionId, props.sessionStatusById]);
 
-  React.useEffect(() => {
-    const id = props.selectedWorkspaceId.trim();
-    if (!id) return;
-    expandWorkspace(id);
-  }, [props.selectedWorkspaceId, expandWorkspace]);
-
   const previewCount = (workspaceId: string) =>
     previewCountByWorkspaceId[workspaceId] ?? MAX_SESSIONS_PREVIEW;
 
   const showMoreSessions = (workspaceId: string, totalRoots: number) => {
-    expandWorkspace(workspaceId);
     setPreviewCountByWorkspaceId((current) => ({
       ...current,
       [workspaceId]: Math.min((current[workspaceId] ?? MAX_SESSIONS_PREVIEW) + MAX_SESSIONS_PREVIEW, totalRoots),
@@ -855,7 +849,6 @@ export function AppSidebar(props: AppSidebarProps) {
     showSessionActions: props.showSessionActions,
     sessionStatusById: props.sessionStatusById,
     settleWorkspaceIds: props.settleWorkspaceIds,
-    feedEnabled: props.feedEnabled,
     sessionAttentionLabelById: props.sessionAttentionLabelById,
     sessionAttentionSourceById: props.sessionAttentionSourceById,
     newTaskDisabled: props.newTaskDisabled,
@@ -874,31 +867,21 @@ export function AppSidebar(props: AppSidebarProps) {
     onOpenRenameWorkspace: props.onOpenRenameWorkspace,
     onRevealWorkspace: props.onRevealWorkspace,
     onForgetWorkspace: props.onForgetWorkspace,
-    expandWorkspace,
-    toggleWorkspaceExpanded,
-    expandedWorkspaceIds,
     sessionNumberShortcutOs: props.sessionNumberShortcuts.os,
     sessionNumberShortcutByTarget,
   };
 
-  const brandLogoUrl = useBrandLogoUrl();
-  const brandAppName = useBrandAppName();
+  const selectedGroup = props.workspaceSessionGroups.find(group => group.workspace.id === props.selectedWorkspaceId);
+  const visibleGroups = React.useMemo(() => selectedGroup ? [selectedGroup] : [], [selectedGroup]);
   const pinnedIds = useSessionManagementStore((state) => state.pinnedIds);
   const pinnedSessions = React.useMemo(
-    () => buildGlobalPinnedSessions(props.workspaceSessionGroups, pinnedIds),
-    [pinnedIds, props.workspaceSessionGroups],
+    () => buildGlobalPinnedSessions(visibleGroups, pinnedIds),
+    [pinnedIds, visibleGroups],
   );
   const archivedSessions = React.useMemo(
-    () => buildGlobalArchivedSessions(props.workspaceSessionGroups),
-    [props.workspaceSessionGroups],
+    () => buildGlobalArchivedSessions(visibleGroups),
+    [visibleGroups],
   );
-  const sidebarView = useSessionManagementStore((state) => state.sidebarView);
-  const feed = useSessionFeed(props.workspaceSessionGroups, {
-    enabled: props.feedEnabled === true && sidebarView === "feed",
-    statusById: props.sessionStatusById,
-    settleWorkspaceIds: props.settleWorkspaceIds,
-  });
-  const feedView = feed !== null;
 
   return (
     <SidebarContext.Provider value={contextValue}>
@@ -907,27 +890,9 @@ export function AppSidebar(props: AppSidebarProps) {
         className="border-e-0 group-data-[side=left]:border-e-0 mac:**:data-[sidebar=sidebar]:bg-transparent"
       >
         <SidebarTitlebar history={props.conversationHistory} />
-        <div className="flex shrink-0 items-center pr-2 titlebar-drag">
-        {brandLogoUrl ? (
-          <div
-            data-testid="brand-logo"
-            className="flex h-14 min-w-0 flex-1 items-center px-3 pb-3 pt-2 mac:pt-0"
-          >
-            <img
-              src={brandLogoUrl}
-              alt={t("ui.b388a46a37de")}
-              className="max-h-9 w-auto max-w-[min(140px,100%)] object-contain object-left"
-            />
-          </div>
-        ) : (
-          <div data-sidebar-brand className="flex h-11 min-w-0 flex-1 items-center gap-1.5 pl-4 pr-1">
-            <img src={resolveExtensionIconSrc("/openwork-sidebar-mark.svg")} alt="" className="size-5 shrink-0 object-contain dark:invert" />
-            <span className="truncate text-[15px] font-medium tracking-[-0.4px]" title={brandAppName}>{brandAppName}</span>
-          </div>
-        )}
-        {open || isMobile ? <SidebarActions onOpenSessionSearch={props.onOpenSessionSearch} /> : null}
-        </div>
         <SidebarHeader className="mb-0 mt-2">
+          <WorkspaceToolbar groups={props.workspaceSessionGroups} selectedWorkspaceId={props.selectedWorkspaceId}
+            onSelectWorkspace={props.onSelectWorkspace} onOpenCreateWorkspace={props.onOpenCreateWorkspace} />
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -976,12 +941,6 @@ export function AppSidebar(props: AppSidebarProps) {
                 onSelect={props.onOpenAutomations}
               />
             ) : null}
-            <SidebarDestination
-              active={props.extensionsActive === true}
-              icon={LayoutGrid}
-              label={t("settings.tab_extensions")}
-              onSelect={props.onOpenExtensions}
-            />
             {props.mobileChatActions}
           </SidebarMenu>
         </SidebarHeader>
@@ -997,68 +956,10 @@ export function AppSidebar(props: AppSidebarProps) {
             {pinnedSessions.length > 0 ? (
               <GlobalPinnedSessions entries={pinnedSessions} />
             ) : null}
-            {/* A flex item of the scrolling list: without shrink-0 it collapses to its
-                button's height once the list overflows, shifting every row up. */}
-            <div className={cn("group/workspaces-header flex h-6 shrink-0 items-center mt-4", SIDEBAR_SECTION_LANE)}>
-              {props.feedEnabled ? (
-                <SidebarViewSwitch
-                  view={feedView ? "feed" : "workspaces"}
-                  onChange={(view) => useSessionManagementStore.getState().setSidebarView(view)}
-                />
-              ) : (
-                <span className={SIDEBAR_SECTION_LABEL}>
-                  {t("workspace_list.title")}
-                </span>
-              )}
-              {feedView ? (
-                <div className="ml-auto flex items-center gap-0.5">
-                  <FeedOrderMenu />
-                  <button
-                    type="button"
-                    data-sidebar-feed-new-task
-                    className={SIDEBAR_HEADER_ICON_BUTTON}
-                    disabled={props.newTaskDisabled}
-                    onClick={() => props.onCreateTaskInWorkspace(props.selectedWorkspaceId)}
-                    aria-label={t("session.new_task")}
-                    title={t("session.new_task")}
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
-              ) : canCreateWorkspaces() ? (
-                <button
-                  type="button"
-                  className={cn("ml-auto", SIDEBAR_HEADER_ICON_BUTTON)}
-                  onClick={props.onOpenCreateWorkspace}
-                  aria-label={t("workspace_list.add_workspace")}
-                  title={t("workspace_list.add_workspace")}
-                >
-                  <Plus className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-            {feed ? <SessionFeedList feed={feed} /> : <Reorder.Group
-              as="div"
-              axis="y"
-              values={props.workspaceSessionGroups.map((group) => group.workspace.id)}
-              onReorder={(workspaceIds) => props.onReorderWorkspaces?.(workspaceIds)}
-              className="flex flex-col gap-0.5"
-            >
-              {props.workspaceSessionGroups.map((group, index) => (
-                <WorkspaceReorderItem
-                  key={group.workspace.id}
-                  group={group}
-                  className={cn(index === 0 && "mac:pt-0")}
-                  previewCount={previewCount(group.workspace.id)}
-                  showMoreSessions={showMoreSessions}
-                />
-              ))}
-            </Reorder.Group>}
-            {!feed && archivedSessions.length > 0 ? (
-              <GlobalArchivedSessions entries={archivedSessions} />
-            ) : null}
+            {selectedGroup ? <WorkspaceSidebarGroup key={`workspace:${selectedGroup.workspace.id}`} className="pt-2"
+              group={selectedGroup} previewCount={previewCount(selectedGroup.workspace.id)} showMoreSessions={showMoreSessions} /> : null}
+            {archivedSessions.length > 0 ? <GlobalArchivedSessions key={`archived:${props.selectedWorkspaceId}`} entries={archivedSessions} /> : null}
           </m.div>
-          {feed ? <FeedShelfDock feed={feed} archived={archivedSessions} groups={props.workspaceSessionGroups} /> : null}
         </SidebarReorderScope>
 
         <SidebarFooter className="border-t border-sidebar-border/60 p-1.5 pe-0">
@@ -1112,347 +1013,6 @@ function GlobalPinnedSessions({ entries }: { entries: GlobalPinnedSessionEntry[]
             </SidebarMenuSub>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
-
-const SIDEBAR_VIEWS: SidebarView[] = ["feed", "workspaces"];
-
-const SIDEBAR_HEADER_ICON_BUTTON = "flex size-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-sidebar-accent data-popup-open:text-foreground";
-
-/** Replaces the Workspaces label: the tree, or every workspace's sessions in one feed. */
-function SidebarViewSwitch({ view, onChange }: { view: SidebarView; onChange: (view: SidebarView) => void }) {
-  return (
-    <div role="tablist" aria-label={t("workspace_list.sidebar_view")} className="-ms-1.5 flex items-center gap-0.5">
-      {SIDEBAR_VIEWS.map((option) => (
-        <button
-          key={option}
-          type="button"
-          role="tab"
-          aria-selected={view === option}
-          data-sidebar-view={option}
-          className={cn(
-            "rounded-md px-1.5 py-0.5 text-[11px] transition-colors",
-            view === option
-              ? "bg-sidebar-accent font-medium text-sidebar-foreground"
-              : "font-light text-muted-foreground hover:text-sidebar-foreground",
-          )}
-          onClick={() => onChange(option)}
-        >
-          {option === "feed" ? t("workspace_list.feed") : t("workspace_list.title")}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-const FEED_SECTION_LABEL: Record<Exclude<FeedSection, "all">, () => string> = {
-  today: () => t("workspace_list.feed_today"),
-  yesterday: () => t("workspace_list.feed_yesterday"),
-  earlier: () => t("workspace_list.feed_earlier"),
-  active: () => t("workspace_list.feed_active"),
-  inactive: () => t("workspace_list.feed_inactive"),
-};
-
-const FEED_GROUP_BY_LABEL: Record<FeedGroupBy, () => string> = {
-  day: () => t("workspace_list.feed_group_day"),
-  activity: () => t("workspace_list.feed_group_activity"),
-  none: () => t("workspace_list.feed_group_none"),
-};
-
-const FEED_SORT_BY_LABEL: Record<FeedSortBy, () => string> = {
-  activity: () => t("workspace_list.feed_sort_activity"),
-  created: () => t("workspace_list.feed_sort_created"),
-};
-
-/** How the Feed groups and orders its sessions, remembered on the device. */
-function FeedOrderMenu() {
-  const groupBy = useSessionManagementStore((state) => state.feedGroupBy);
-  const sortBy = useSessionManagementStore((state) => state.feedSortBy);
-  const isDefault = groupBy === DEFAULT_FEED_GROUP_BY && sortBy === DEFAULT_FEED_SORT_BY;
-  const choice = (label: string, value: string) => (
-    <>
-      <span className="flex-1">{label}</span>
-      <span className="font-normal text-muted-foreground">{value}</span>
-    </>
-  );
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            type="button"
-            data-sidebar-feed-order
-            className={cn(SIDEBAR_HEADER_ICON_BUTTON, !isDefault && "text-foreground")}
-            aria-label={t("workspace_list.feed_group_and_sort")}
-            title={t("workspace_list.feed_group_and_sort")}
-          >
-            <ListFilter className="size-3.5" />
-          </button>
-        }
-      />
-      <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="w-56">
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>{choice(t("workspace_list.feed_group_by"), FEED_GROUP_BY_LABEL[groupBy]())}</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={groupBy}
-              onValueChange={(value: FeedGroupBy) => useSessionManagementStore.getState().setFeedGroupBy(value)}
-            >
-              {FEED_GROUP_BY_OPTIONS.map((option) => (
-                <DropdownMenuRadioItem key={option} value={option} data-feed-group-by={option}>
-                  {FEED_GROUP_BY_LABEL[option]()}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>{choice(t("workspace_list.feed_sort_by"), FEED_SORT_BY_LABEL[sortBy]())}</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={sortBy}
-              onValueChange={(value: FeedSortBy) => useSessionManagementStore.getState().setFeedSortBy(value)}
-            >
-              {FEED_SORT_BY_OPTIONS.map((option) => (
-                <DropdownMenuRadioItem key={option} value={option} data-feed-sort-by={option}>
-                  {FEED_SORT_BY_LABEL[option]()}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={isDefault}
-          onClick={() => {
-            const store = useSessionManagementStore.getState();
-            store.setFeedGroupBy(DEFAULT_FEED_GROUP_BY);
-            store.setFeedSortBy(DEFAULT_FEED_SORT_BY);
-          }}
-        >
-          {t("workspace_list.feed_order_reset")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** Every workspace's sessions in one Feed, or null outside the Feed view. */
-function useSessionFeed(groups: WorkspaceSessionGroup[], { enabled, statusById, settleWorkspaceIds }: {
-  enabled: boolean;
-  statusById: Record<string, string> | undefined;
-  settleWorkspaceIds: ReadonlySet<string> | undefined;
-}): SessionFeed | null {
-  const pinnedIdList = useSessionManagementStore((state) => state.pinnedIds);
-  const unreadIdList = useSessionManagementStore((state) => state.unreadIds);
-  const settledById = useSessionManagementStore((state) => state.settledById);
-  const autoSettleDays = useSessionManagementStore((state) => state.autoSettleDays);
-  const groupsByWorkspace = useSessionManagementStore((state) => state.groupsByWorkspace);
-  const feedFolders = useSessionManagementStore((state) => state.feedFolders);
-  const groupBy = useSessionManagementStore((state) => state.feedGroupBy);
-  const sortBy = useSessionManagementStore((state) => state.feedSortBy);
-  const now = useSettleNow();
-  return React.useMemo(() => !enabled ? null : buildSessionFeed(groups, {
-    feedFolders,
-    groupsByWorkspace,
-    groupBy,
-    sortBy,
-    pinnedIds: new Set(pinnedIdList),
-    unreadIds: new Set(unreadIdList),
-    settledById,
-    statusById,
-    settleWorkspaceIds,
-    autoSettleDays,
-    now,
-  }), [autoSettleDays, enabled, feedFolders, groupBy, groups, groupsByWorkspace, now, pinnedIdList, settleWorkspaceIds, settledById, sortBy, statusById, unreadIdList]);
-}
-
-/** The workspace, and the group when it has one, stands in for the project on each Feed row. */
-function useFeedSubtitle() {
-  const groupsByWorkspace = useSessionManagementStore((state) => state.groupsByWorkspace);
-  return React.useCallback(({ group, session }: FeedEntry) => {
-    const workspace = workspaceLabel(group.workspace);
-    const state = groupsByWorkspace[group.workspace.id];
-    const groupId = state?.assignments[session.id];
-    const groupLabel = groupId ? state?.groups.find((candidate) => candidate.id === groupId)?.label : undefined;
-    return groupLabel ? `${workspace} · ${groupLabel}` : workspace;
-  }, [groupsByWorkspace]);
-}
-
-/** The scrolling part of the Feed: Needs you, then the chosen sections. */
-function SessionFeedList({ feed }: { feed: SessionFeed }) {
-  const subtitleFor = useFeedSubtitle();
-  const section = (key: string, label: string | null, entries: FeedEntry[], attention = false) => entries.length === 0 ? null : (
-    <SidebarGroup key={key} data-sidebar-feed-section={key} className="pb-0 pt-2">
-      <SidebarGroupContent>
-        {label ? (
-          <div className="flex h-6 items-center gap-1.5 pe-2 ps-2.5">
-            <span className={cn(SIDEBAR_SECTION_LABEL, attention && "font-normal text-warning")}>{label}</span>
-            {attention ? <span className="text-[11px] tabular-nums text-warning">{entries.length}</span> : null}
-          </div>
-        ) : null}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuSub>
-              {entries.map((entry) => (
-                <SessionMenuItem
-                  key={`${entry.group.workspace.id}:${entry.session.id}`}
-                  session={entry.session}
-                  workspaceId={entry.group.workspace.id}
-                  workspaceName={workspaceLabel(entry.group.workspace)}
-                  subtitle={subtitleFor(entry)}
-                />
-              ))}
-            </SidebarMenuSub>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-
-  return (
-    <div data-sidebar-feed className="flex flex-col pb-2">
-      {section("needs-you", t("workspace_list.needs_you"), feed.needsYou, true)}
-      {feed.sections.map(({ section: key, entries }) => section(key, key === "all" ? null : FEED_SECTION_LABEL[key](), entries))}
-      {feed.needsYou.length === 0 && feed.sections.length === 0 ? (
-        <p className="px-5 py-3 text-xs text-muted-foreground">{t("workspace_list.feed_empty")}</p>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Pinned folders, Settled and Archived, fixed below the scrolling Feed so they stay apart from live work. One shelf
- * opens at a time and scrolls on its own.
- */
-function FeedShelfDock({ feed, archived, groups }: {
-  feed: SessionFeed;
-  archived: GlobalArchivedSessionEntry[];
-  groups: WorkspaceSessionGroup[];
-}) {
-  const subtitleFor = useFeedSubtitle();
-  const [openShelf, setOpenShelf] = React.useState<string | null>(null);
-  if (feed.folders.length === 0 && feed.settled.length === 0 && archived.length === 0) return null;
-  const workspaceNames = new Map(groups.map((group) => [group.workspace.id, workspaceLabel(group.workspace)]));
-  const shelfProps = (shelf: string) => ({
-    shelf,
-    subtitleFor,
-    expanded: openShelf === shelf,
-    onExpandedChange: (open: boolean) => setOpenShelf(open ? shelf : null),
-  });
-
-  return (
-    <div data-feed-shelves className="flex shrink-0 flex-col gap-1 border-t border-sidebar-border/60 py-2">
-      {feed.folders.map((folder) => (
-        <FeedShelf
-          key={`${folder.workspaceId}:${folder.groupId}`}
-          {...shelfProps(`folder:${folder.workspaceId}:${folder.groupId}`)}
-          icon={<Folder className="size-3.5 text-muted-foreground" />}
-          label={folder.label}
-          detail={workspaceNames.get(folder.workspaceId)}
-          attention={folder.attention}
-          entries={folder.entries}
-          action={(
-            <button
-              type="button"
-              className="hidden size-5 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-foreground group-hover/separator:flex"
-              aria-label={t("session_management.unpin_from_feed")}
-              title={t("session_management.unpin_from_feed")}
-              onClick={(event) => {
-                event.stopPropagation();
-                useSessionManagementStore.getState().toggleFeedFolder(folder.workspaceId, folder.groupId);
-              }}
-            >
-              <PinOff className="size-3.5" />
-            </button>
-          )}
-        />
-      ))}
-      {feed.settled.length > 0 ? (
-        <FeedShelf
-          {...shelfProps("settled")}
-          icon={<CheckCheck className="size-3.5 text-muted-foreground" />}
-          label={t("session_management.settled_label")}
-          entries={feed.settled}
-        />
-      ) : null}
-      {archived.length > 0 ? (
-        <FeedShelf
-          {...shelfProps("archived")}
-          icon={<Archive className="size-3.5 text-muted-foreground" />}
-          label={t("session_management.archived_label")}
-          entries={archived}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-/** A collapsed shelf below the Feed: a pinned folder, Settled or Archived. Open, it shows about three rows. */
-function FeedShelf({ shelf, icon, label, detail, attention = null, action, entries, subtitleFor, expanded, onExpandedChange }: {
-  shelf: string;
-  icon: React.ReactNode;
-  label: string;
-  detail?: string;
-  attention?: "needs-you" | "unread" | null;
-  action?: React.ReactNode;
-  entries: FeedEntry[];
-  subtitleFor: (entry: FeedEntry) => string;
-  expanded: boolean;
-  onExpandedChange: (open: boolean) => void;
-}) {
-  return (
-    <SidebarGroup data-feed-shelf={shelf} className="py-0">
-      <SidebarGroupContent>
-        <Collapsible open={expanded} onOpenChange={onExpandedChange} className="group/settled">
-          <CollapsibleTrigger
-            render={
-              <button
-                type="button"
-                className={cn("group/separator flex h-6 w-full cursor-pointer items-center gap-2 pe-2 rounded-md transition-colors hover:bg-sidebar-accent/50", SIDEBAR_ROW_LANE)}
-              >
-                <SidebarGlyphSlot>{icon}</SidebarGlyphSlot>
-                <span className={cn("min-w-0 truncate", SIDEBAR_SECTION_LABEL)}>{label}</span>
-                {detail ? <span className="min-w-0 shrink truncate text-[11px] text-muted-foreground/60">{detail}</span> : null}
-                <span className="text-[11px] tabular-nums text-muted-foreground/70">{entries.length}</span>
-                {attention ? (
-                  <span
-                    className="size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: attention === "needs-you" ? OUTCOME_DOT_NEEDS_ACTION : OUTCOME_DOT_UNREAD }}
-                    aria-label={attention === "needs-you" ? t("workspace_list.session_needs_attention") : t("workspace_list.session_unread")}
-                  />
-                ) : null}
-                <span className="ml-auto flex items-center">
-                  {action}
-                  <ChevronRight className="size-3.5 text-muted-foreground transition-transform duration-200 group-data-open/settled:rotate-90" />
-                </span>
-              </button>
-            }
-          />
-          <CollapsibleContent>
-            {/* Three two-line rows (48px each, 2px apart); the rest scroll inside the shelf. */}
-            <div data-feed-shelf-rows className="no-scrollbar max-h-37 overflow-x-hidden overflow-y-auto overscroll-contain">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuSub>
-                    {entries.map((entry) => (
-                      <SessionMenuItem
-                        key={`${entry.group.workspace.id}:${entry.session.id}`}
-                        session={entry.session}
-                        workspaceId={entry.group.workspace.id}
-                        workspaceName={workspaceLabel(entry.group.workspace)}
-                        subtitle={subtitleFor(entry)}
-                      />
-                    ))}
-                  </SidebarMenuSub>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
       </SidebarGroupContent>
     </SidebarGroup>
   );
@@ -1516,121 +1076,11 @@ function GlobalArchivedSessionItem({ group, session }: GlobalArchivedSessionEntr
   );
 }
 
-type WorkspaceReorderItemProps = {
-  className: string;
-  group: WorkspaceSessionGroup;
-  previewCount: number;
-  showMoreSessions: (workspaceId: string, totalRoots: number) => void;
-};
-
-function WorkspaceReorderItem({
-  className,
-  group,
-  previewCount,
-  showMoreSessions,
-}: WorkspaceReorderItemProps) {
-  const dragControls = useDragControls();
-
-  return (
-    <SidebarReorderItem
-      as="div"
-      value={group.workspace.id}
-      id={group.workspace.id}
-      data-sidebar-workspace-id={group.workspace.id}
-      dragListener={false}
-      dragControls={dragControls}
-      className="relative"
-    >
-      <WorkspaceSidebarGroup
-        className={className}
-        group={group}
-        previewCount={previewCount}
-        showMoreSessions={showMoreSessions}
-        onWorkspaceTitlePointerDown={(event) => dragControls.start(event)}
-      />
-    </SidebarReorderItem>
-  );
-}
-
-type WorkspaceHeaderProps = {
-  workspace: WorkspaceInfo;
-  statusLabel: string;
-  isError: boolean;
-  isLoading: boolean;
-  onTitlePointerDown: React.PointerEventHandler<HTMLButtonElement>;
-};
-
-function WorkspaceHeader({
-  workspace,
-  statusLabel,
-  isError,
-  isLoading,
-  onTitlePointerDown,
-}: WorkspaceHeaderProps) {
-  const ctx = useSidebarContext();
-  const label = workspaceLabel(workspace);
-  // Same reveal pattern as task rows: the name fades only where text is
-  // hidden and scrolls into view on mouse hover or keyboard focus.
-  const [isTitleHovered, setIsTitleHovered] = React.useState(false);
-  const [isTitleFocused, setIsTitleFocused] = React.useState(false);
-  const titleIntent = isTitleFocused ? "focus" : isTitleHovered ? "hover" : null;
-
-  const handleSelectWorkspace = () => {
-    void Promise.resolve(ctx.onSelectWorkspace(workspace.id));
-  };
-
-  return (
-    <SidebarMenuButton
-      render={<div />}
-      className={cn(
-        "gap-2 group-hover/workspace-header:bg-sidebar-accent group-hover/workspace-header:text-sidebar-accent-foreground mac:group-hover/workspace-header:bg-black/5 dark:mac:group-hover/workspace-header:bg-white/10",
-        statusLabel && "h-10",
-      )}
-    >
-      <SidebarGlyphSlot>
-        {isLoading ? (
-          <SessionDotMatrixLoader label={t("workspace.loading_tasks")} />
-        ) : (
-          <WorkspaceAvatarPicker workspaceId={workspace.id} label={label} />
-        )}
-      </SidebarGlyphSlot>
-      <button
-        type="button"
-        data-sidebar-workspace-drag-handle
-        data-sidebar-workspace-title
-        // `items-stretch` (not `items-start`) so the title viewport spans the
-        // row up to the reserved action padding instead of shrinking to its
-        // text, which put the fade on the last letters of every name.
-        className="min-w-0 flex h-full flex-1 cursor-grab touch-none flex-col items-stretch justify-center border-0 bg-transparent p-0 text-left text-inherit active:cursor-grabbing pr-8 group-hover/workspace-header:pr-20 group-has-[[data-workspace-actions]:focus-within]/workspace-header:pr-20 group-has-data-popup-open/workspace-header:pr-20"
-        aria-label={statusLabel ? `${label}, ${statusLabel}` : label}
-        onPointerDown={onTitlePointerDown}
-        onPointerEnter={(event) => {
-          if (event.pointerType === "mouse") setIsTitleHovered(true);
-        }}
-        onPointerLeave={() => setIsTitleHovered(false)}
-        onFocus={(event) => setIsTitleFocused(isKeyboardFocus(event.currentTarget))}
-        onBlur={() => setIsTitleFocused(false)}
-        onClick={handleSelectWorkspace}
-      >
-        <span className="flex min-w-0 items-center">
-          <SessionTitle intent={titleIntent} title={label} tooltip={label} />
-        </span>
-        {statusLabel ? (
-          <span className={cn("block text-xs", isError ? "text-destructive" : "text-muted-foreground")}>
-            {statusLabel}
-          </span>
-        ) : null}
-      </button>
-    </SidebarMenuButton>
-  );
-}
-
 type WorkspaceSidebarGroupProps = {
   className: string;
   group: WorkspaceSessionGroup;
   previewCount: number;
   showMoreSessions: (workspaceId: string, totalRoots: number) => void;
-  onWorkspaceTitlePointerDown: React.PointerEventHandler<HTMLButtonElement>;
 };
 
 function WorkspaceSidebarGroup({
@@ -1638,31 +1088,13 @@ function WorkspaceSidebarGroup({
   group,
   previewCount,
   showMoreSessions,
-  onWorkspaceTitlePointerDown,
 }: WorkspaceSidebarGroupProps) {
   const ctx = useSidebarContext();
+  const [recentExpanded, setRecentExpanded] = React.useState(true);
   const workspace = group.workspace;
   const workspaceDraft = useNewSessionDraft(workspace.id);
 
-  const isConnecting = ctx.connectingWorkspaceId === workspace.id;
-  const connectionState: WorkspaceConnectionState = ctx.workspaceConnectionStateById[workspace.id] ?? {
-    status: "idle",
-    message: null,
-  };
-  const isConnectionActionBusy = isConnecting || connectionState.status === "connecting";
   const taskLoadError = getWorkspaceTaskLoadErrorDisplay(group.error);
-  const isExpanded = ctx.expandedWorkspaceIds.has(workspace.id);
-  const isSelected = ctx.selectedWorkspaceId === workspace.id;
-
-  const statusLabel = (() => {
-    if (connectionState.status === "error") return connectionState.message?.trim() || taskLoadError.message;
-    if (group.status === "error") return taskLoadError.label;
-    if (isConnectionActionBusy) return t("workspace_list.connecting");
-    if (!ctx.developerMode) return "";
-    if (isSelected) return t("workspace.selected");
-    return workspaceKindLabel();
-  })();
-
   const pinnedIdList = useSessionManagementStore((state) => state.pinnedIds);
   const pinnedIds = React.useMemo(() => new Set(pinnedIdList), [pinnedIdList]);
   const unreadIdList = useSessionManagementStore((state) => state.unreadIds);
@@ -1691,7 +1123,7 @@ function WorkspaceSidebarGroup({
     autoSettleDays,
     now: settleNow,
   }) : [], [activeSessions, autoSettleDays, ctx.sessionStatusById, pinnedIds, settleEnabled, settleNow, settledById, unreadIds]);
-  // Pinned sessions live in the global Pinned section and settled ones at the
+  // Pinned sessions live in the Pinned section and settled ones at the
   // end of the workspace, so neither appears in the group lists.
   const hiddenRootIds = React.useMemo(
     () => new Set([...pinnedIds, ...settledSessions.map((session) => session.id)]),
@@ -1723,61 +1155,14 @@ function WorkspaceSidebarGroup({
     <SidebarGroup className={className}>
       <SidebarGroupContent>
         <SidebarMenu>
-          <Collapsible
-            render={<SidebarMenuItem />}
-            open={isExpanded}
-            onOpenChange={() => ctx.toggleWorkspaceExpanded(workspace.id)}
-            className="group/collapsible"
-          >
-            <div className="group/workspace-header relative max-md:hidden">
-              <WorkspaceHeader
-                workspace={workspace}
-                statusLabel={statusLabel}
-                isError={group.status === "error"}
-                isLoading={isConnecting}
-                onTitlePointerDown={onWorkspaceTitlePointerDown}
-              />
-              <div
-                data-workspace-actions
-                className="group/workspace-actions absolute right-8 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover/workspace-header:opacity-100 group-hover/workspace-header:pointer-events-auto group-focus-within/workspace-actions:opacity-100 group-focus-within/workspace-actions:pointer-events-auto group-has-data-popup-open/workspace-header:opacity-100 group-has-data-popup-open/workspace-header:pointer-events-auto"
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  data-workspace-new-task
-                  className="size-5 text-muted-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    ctx.onCreateTaskInWorkspace(workspace.id);
-                  }}
-                  aria-label={`${t("session.new_task")} · ${workspaceLabel(workspace)}`}
-                  title={t("session.new_task")}
-                >
-                  <Plus className="size-4" />
-                </Button>
-                <WorkspaceActionsMenu
-                  workspace={workspace}
-                  className="size-5 text-muted-foreground"
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground flex items-center justify-center group/expand-collapse-button"
-                aria-label={isExpanded ? t("sidebar.collapse") : t("sidebar.expand")}
-                aria-expanded={isExpanded}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  ctx.toggleWorkspaceExpanded(workspace.id);
-                }}
-              >
-                <ChevronRight className={cn("size-4 transition-transform duration-200 text-muted-foreground group-hover/expand-collapse-button:text-foreground", isExpanded && "rotate-90")} />
-              </Button>
-            </div>
-
-            <CollapsibleContent className="pt-px">
+          <SidebarMenuItem>
               <SidebarMenuSub>
-                {group.status === "loading" && group.sessions.length === 0 ? null : activeSessions.length > 0 || ((wsGroups.length > 0 || workspaceDraft.hasDraft) && group.status !== "error") ? (
+                <Collapsible render={<li />} open={recentExpanded} onOpenChange={setRecentExpanded} data-workspace-recent-sessions={workspace.id}>
+                  <SessionGroupSeparator label={t("session_management.recent_label")} count={activeRootCount}
+                    expanded={recentExpanded} onToggle={() => setRecentExpanded(value => !value)} />
+                  <CollapsibleContent>
+                    <SidebarMenuSub className="ms-0 border-0 ps-0">
+                {group.status === "loading" && group.sessions.length === 0 ? <li className="space-y-2 px-2 py-2" aria-busy="true" aria-label={t("workspace.loading_tasks")}><div className="h-6 animate-pulse rounded bg-muted" /><div className="h-6 animate-pulse rounded bg-muted" /></li> : activeSessions.length > 0 || ((wsGroups.length > 0 || workspaceDraft.hasDraft) && group.status !== "error") ? (
                   <>
                     {wsGroups.length > 0 ? (
                       <GroupedSessionList
@@ -1846,12 +1231,14 @@ function WorkspaceSidebarGroup({
                     store={store}
                   /> : <NewSessionDraftRow workspaceId={workspace.id} />
                 ) : null}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </Collapsible>
                 {group.status !== "error" ? (
                   <WorkspaceSettledSessions workspaceId={workspace.id} sessions={settledSessions} />
                 ) : null}
               </SidebarMenuSub>
-            </CollapsibleContent>
-          </Collapsible>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
@@ -1933,7 +1320,6 @@ function SessionGroupActions({ group, groups, workspaceId, count }: {
   const [renameLabel, setRenameLabel] = React.useState(group.label);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleteDestination, setDeleteDestination] = React.useState(UNGROUPED_GROUP_ID);
-  const pinnedToFeed = useSessionManagementStore((state) => state.feedFolders.some((folder) => folder.workspaceId === workspaceId && folder.groupId === group.id));
   const otherGroups = groups.filter((candidate) => candidate.id !== group.id);
   const trimmedRenameLabel = renameLabel.trim();
   const deleteDestinationLabel = deleteDestination === UNGROUPED_GROUP_ID
@@ -1956,7 +1342,7 @@ function SessionGroupActions({ group, groups, workspaceId, count }: {
         data-session-group-actions={group.id}
         className={cn(
           "relative ml-auto flex h-5 shrink-0 items-center justify-end overflow-hidden transition-[width] duration-150",
-          expanded ? (ctx.feedEnabled ? "w-20" : "w-15") : "w-4",
+          expanded ? "w-15" : "w-4",
         )}
         onMouseLeave={() => setExpanded(false)}
       >
@@ -1976,21 +1362,6 @@ function SessionGroupActions({ group, groups, workspaceId, count }: {
           </button>
         ) : (
           <span className="flex items-center">
-            {ctx.feedEnabled ? (
-              <button
-                type="button"
-                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  useSessionManagementStore.getState().toggleFeedFolder(workspaceId, group.id);
-                  setExpanded(false);
-                }}
-                aria-label={pinnedToFeed ? t("session_management.unpin_from_feed") : t("session_management.pin_to_feed")}
-                title={pinnedToFeed ? t("session_management.unpin_from_feed") : t("session_management.pin_to_feed")}
-              >
-                {pinnedToFeed ? <PinOff className="size-3" /> : <Pin className="size-3" />}
-              </button>
-            ) : null}
             <button
               type="button"
               className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
@@ -2491,12 +1862,7 @@ export function SessionMenuItem({
     ctx.settleWorkspaceIds?.has(workspaceId) ?? false,
   );
   const relativeTime = formatSessionRelativeTime(session.time?.updated ?? session.time?.created);
-  const feedFolders = useSessionManagementStore((state) => state.feedFolders);
-  const workspaceGroups = useWorkspaceGroups(workspaceId);
-  const moveTargets = React.useMemo(() => !ctx.feedEnabled ? [] : feedFolders
-    .filter((folder) => folder.workspaceId === workspaceId && folder.groupId !== workspaceGroups.assignments[session.id])
-    .flatMap((folder) => workspaceGroups.groups.filter((group) => group.id === folder.groupId)),
-  [ctx.feedEnabled, feedFolders, session.id, workspaceGroups, workspaceId]);
+  const moveTargets: SessionGroupDefinition[] = [];
   const shortcutDigit = ctx.sessionNumberShortcutByTarget.get(
     sessionNumberShortcutTargetKey(workspaceId, session.id),
   );

@@ -1,4 +1,6 @@
+import { migrateGet3wStorage, migrateStoragePath } from "./get3w-storage-migration.mjs";
 import { createTaskLogs } from "./task-logs.mjs";
+import { loadStartupUrl } from "./startup-navigation.mjs";
 import { createAutomationReceiptJournal } from "./get3w-automation-receipts.mjs";
 import { createPersonalAutomationRunner } from "./get3w-automation-runner.mjs";
 import { nativeText, nativeMessage } from "./native-i18n.mjs";
@@ -160,7 +162,7 @@ const baseDesktopDistribution = resolveDesktopDistribution({
   environmentFlavor: process.env.GET3W_DESKTOP_DISTRIBUTION,
 });
 const DESKTOP_DISTRIBUTION = localValidationPackage
-  ? { ...baseDesktopDistribution, appName: "Get3W Local", appIdentifier: "com.openwork.desktop.local", protocolScheme: "openwork-local" }
+  ? { ...baseDesktopDistribution, appName: "Get3W Local", appIdentifier: "com.get3w.desktop.local", protocolScheme: "openwork-local" }
   : baseDesktopDistribution;
 const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
@@ -218,14 +220,13 @@ const COMPUTER_POPOUT_NAME = /^openwork-computer-view-\d+$/;
 
 // Keep each chat's chosen computer in app data outside the workspace.
 const computerTargetsPath = () => path.join(app.getPath("userData"), "computer-use-targets.json");
-// The System Settings entry macOS lists for computer use: the helper's own
-// bundle, which takes responsibility for itself so grants never restart Get3W.
-let computerPermissionEntry = null;
+// TCC uses different identities for Accessibility and Screen Recording.
 const computerHelperBundle = () => [process.resourcesPath, path.resolve(__dirname, "..", "resources")]
   .map((root) => root && path.join(root, "helpers", "Get3W Computer Use.app"))
   .find((candidate) => candidate && existsSync(candidate)) ?? null;
-const readComputerPermissionEntry = () => (computerPermissionEntry ??= resolvePermissionEntry({ helperBundle: computerHelperBundle(), fallbackName: APP_NAME })
-  .catch(() => ({ name: APP_NAME, bundleId: null, ours: false })));
+const readComputerPermissionEntry = (permission = "accessibility") => resolvePermissionEntry({
+  helperBundle: computerHelperBundle(), permission, fallbackName: APP_NAME,
+}).catch(() => ({ name: APP_NAME, bundleId: null, ours: false }));
 const computerControl = createComputerControl({
   // App scripting drives Mac apps; Windows does not offer computer_script.
   // Blender reads the bridge from disk, so packaged builds unpack it beside app.asar.
@@ -244,7 +245,7 @@ const computerControl = createComputerControl({
   }) : createLocalComputerAdapter({
     resourcesPath: process.resourcesPath,
     appRoot: path.resolve(__dirname, ".."),
-    permissionEntry: async () => (await readComputerPermissionEntry()).name,
+    permissionEntry: async (permission) => (await readComputerPermissionEntry(permission)).name,
     onSetupReturn: async () => {
       const window = await createMainWindow();
       if (window.isMinimized()) window.restore();
@@ -270,8 +271,8 @@ const computerControl = createComputerControl({
       await rename(temporary, target);
     },
   },
-  permissionEntry: async () => {
-    const entry = await readComputerPermissionEntry();
+  permissionEntry: async (permission) => {
+    const entry = await readComputerPermissionEntry(permission);
     return { name: entry.name, ours: entry.ours };
   },
   // The chat asks the person when the agent needs computer use it does not have yet.
@@ -364,7 +365,11 @@ const userDataPath = BLANK_SLATE_LAUNCH.userDataPath ?? resolveUserDataPath({
   appIdentifier: APP_IDENTIFIER,
   userDataOverride: process.env.GET3W_ELECTRON_USERDATA,
 });
+if (localValidationPackage && !process.env.GET3W_ELECTRON_USERDATA && !BLANK_SLATE_LAUNCH.enabled) {
+  migrateStoragePath(path.join(app.getPath("appData"), "com.openwork.desktop.local"), userDataPath);
+}
 app.setPath("userData", userDataPath);
+migrateGet3wStorage({ userDataDir: userDataPath });
 // The local package also isolates sidecar config, credentials and history.
 // Electron userData alone does not isolate OpenCode's XDG/global stores.
 if (localValidationPackage) {
@@ -574,7 +579,7 @@ function brandIconWindowsPath() {
 }
 
 function defaultAppWindowsIconPath() {
-  return path.join(app.getPath("userData"), "openwork-stock.ico");
+  return path.join(app.getPath("userData"), "get3w-stock.ico");
 }
 
 let cachedWindowsProgramsPath = null;
@@ -1802,7 +1807,7 @@ const desktopCommandHandlers = {
   },
   "getUiControlBridgeInfo": async (event, ...args) => {
       try {
-        const raw = await readFile(path.join(app.getPath("userData"), "openwork-ui-control.json"), "utf8");
+        const raw = await readFile(path.join(app.getPath("userData"), "get3w-ui-control.json"), "utf8");
         return JSON.parse(raw);
       } catch {
         return null;
@@ -1816,7 +1821,7 @@ const desktopCommandHandlers = {
   },
   "getOpenworkUiMcpEnvironment": async (event, ...args) => {
       return {
-        GET3W_UI_CONTROL_DISCOVERY: path.join(app.getPath("userData"), "openwork-ui-control.json"),
+        GET3W_UI_CONTROL_DISCOVERY: path.join(app.getPath("userData"), "get3w-ui-control.json"),
       };
   },
   "computerSnapshot": async (event, sessionId) => {
@@ -1877,8 +1882,8 @@ const desktopCommandHandlers = {
       assertComputerSender(event);
       if (permission !== "accessibility" && permission !== "screenRecording") throw new Error("Choose Accessibility or Screen Recording.");
       // Clear only Get3W's own stale entry, then ask macOS again with a fresh guide.
-      await resetPermissionEntry(await readComputerPermissionEntry(), permission);
       await computerControl.dismissSetup({});
+      await resetPermissionEntry(await readComputerPermissionEntry(permission), permission);
       return computerControl.setup({ permission });
   },
   "computerEndTurn": async (event, sessionId) => {
@@ -2598,7 +2603,7 @@ async function createMainWindowInner() {
 
   const startUrl = process.env.GET3W_ELECTRON_START_URL?.trim() || process.env.ELECTRON_START_URL?.trim();
   if (startUrl) {
-    await mainWindow.loadURL(startUrl);
+    await loadStartupUrl(mainWindow.webContents, startUrl);
   } else {
     const packagedIndexPath = path.join(process.resourcesPath, "app-dist", "index.html");
     const devIndexPath = path.resolve(__dirname, "../../app/dist/index.html");

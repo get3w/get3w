@@ -222,6 +222,7 @@ export function ComputerUseView() {
           </LayoutSectionHeader>
 
           {permissions().map((permission) => {
+            const permissionEntry = status?.permissionEntries?.[permission.id] ?? status?.entry;
             const on = verified?.[permission.id] === true;
             const openedAt = opened[permission.id];
             const waiting = !on && openedAt !== undefined;
@@ -230,7 +231,7 @@ export function ComputerUseView() {
               <LayoutSectionItem key={permission.id}>
                 <LayoutSectionItemHeader>
                   <LayoutSectionItemTitle>{permission.title}</LayoutSectionItemTitle>
-                  <LayoutSectionItemDescription>{permission.purpose}</LayoutSectionItemDescription>
+                  <LayoutSectionItemDescription>{permission.purpose} · {permissionEntry?.name ?? entry}</LayoutSectionItemDescription>
                   <LayoutSectionItemHeaderActions>
                     <span
                       data-testid={`settings-computer-permission-${permission.id}`}
@@ -246,9 +247,9 @@ export function ComputerUseView() {
                     ) : null}
                   </LayoutSectionItemHeaderActions>
                 </LayoutSectionItemHeader>
-                {stuck ? (status?.entry.ours
+                {stuck ? (permissionEntry?.ours
                   ? <div><Button size="sm" variant="ghost" disabled={busy !== null} aria-busy={busy === "reset"} data-testid={`settings-computer-reset-${permission.id}`} onClick={() => void act("reset", () => desktopBridge.computerResetPermission(permission.id))}>{t("ui.27480a31e56e")}</Button></div>
-                  : <LayoutSectionItemFootnote>{t("ui.5198b10532c5")} {entry} {t("ui.1f077fb2ab35")}</LayoutSectionItemFootnote>) : null}
+                  : <LayoutSectionItemFootnote>{t("ui.5198b10532c5")} {permissionEntry?.name ?? entry} {t("ui.1f077fb2ab35")}</LayoutSectionItemFootnote>) : null}
               </LayoutSectionItem>
             );
           })}

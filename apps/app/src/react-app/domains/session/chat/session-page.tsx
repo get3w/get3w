@@ -11,7 +11,6 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } fro
 import { usePanelRef } from "react-resizable-panels";
 import { ArrowLeft, CheckCheck, Cloud, FileText, Globe, Maximize2, MoreHorizontal, PanelRight, TextSearch, Undo2, X, Zap } from "lucide-react";
 
-import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src";
 import { t } from "../../../../i18n";
 import { type OpenworkServerClient, type OpenworkServerStatus } from "../../../../app/lib/openwork-server";
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
@@ -55,7 +54,7 @@ import { WorkbenchPanelGroup, PRIMARY_PANEL_ID, SECONDARY_PANEL_ID } from "./wor
 import ProviderAuthModal, { type ProviderAuthModalProps } from "../../connections/provider-auth/provider-auth-modal";
 import { RenameSessionModal } from "../modals/rename-session-modal";
 import { AppSidebar } from "../sidebar/app-sidebar";
-import { MainSidebarControls } from "../sidebar/sidebar-chrome";
+import { HeaderBrand, SidebarActions, MainSidebarControls } from "../sidebar/sidebar-chrome";
 import { MobileChatActions, MobileChatNavigation } from "./mobile-chat-navigation";
 import { useSessionManagementStore } from "../sidebar/session-management-store";
 import type { SessionSettleState } from "../sidebar/session-settle";
@@ -172,8 +171,6 @@ export type SessionPageSidebarProps = {
   developerMode: boolean;
   sessionStatusById: Record<string, string>;
   settleWorkspaceIds?: ReadonlySet<string>;
-  /** The Workspaces · Feed switch ships with `settledSessions`. */
-  feedEnabled?: boolean;
   sessionAttentionLabelById?: Record<string, string>;
   sessionAttentionSourceById?: Record<string, "child" | "descendant">;
   connectingWorkspaceId: string | null;
@@ -207,7 +204,6 @@ export type SessionPageSidebarProps = {
   outputsActive?: boolean;
   /** Opens the cross-session message search dialog (Cmd/Ctrl+Shift+F). */
   onOpenSessionSearch?: () => void;
-  onReorderWorkspaces?: (workspaceIds: string[]) => void;
 };
 
 export type SessionPageSurfaceProps = Omit<
@@ -276,7 +272,6 @@ export type SessionPageProps = {
   mcpConnectedCount: number;
   onSendFeedback: () => void;
   onOpenSettings: () => void;
-  onOpenExtensions: () => void;
   sidebar: SessionPageSidebarProps;
   surface?: SessionPageSurfaceProps | null;
   resolvePaneRuntime?: (session: OpenSessionTab) => SessionPagePaneRuntime;
@@ -297,7 +292,6 @@ export type SessionPageProps = {
   mainContentTakeover?: React.ReactNode;
   mainContentTitle?: string;
   mainContentHeaderActionsRef?: React.Ref<HTMLDivElement>;
-  extensionsActive?: boolean;
   onOpenProviderAuth?: () => void;
   /** Chat-first: create a default workspace and start a task from the empty-state composer. */
   onChatFirstTask?: (prompt: string, attachments?: ComposerAttachment[], handoff?: NewTaskComposerHandoff) => Promise<void>;
@@ -1479,7 +1473,6 @@ export function SessionPage(props: SessionPageProps) {
           showSessionActions={Boolean(props.onRenameSession || props.onDeleteSession || props.onArchiveSession)}
           sessionStatusById={props.sidebar.sessionStatusById}
           settleWorkspaceIds={props.sidebar.settleWorkspaceIds}
-          feedEnabled={props.sidebar.feedEnabled}
           sessionAttentionLabelById={props.sidebar.sessionAttentionLabelById}
           sessionAttentionSourceById={props.sidebar.sessionAttentionSourceById}
           connectingWorkspaceId={props.sidebar.connectingWorkspaceId}
@@ -1523,10 +1516,8 @@ export function SessionPage(props: SessionPageProps) {
             canGoForward: canGoForwardInConversationHistory,
             onNavigate: navigateConversationHistory,
           }}
-          onReorderWorkspaces={props.sidebar.onReorderWorkspaces}
           onStartResize={startLeftSidebarResize}
           onOpenAccountSettings={props.onOpenSettings}
-          onOpenExtensions={props.onOpenExtensions}
           mobileChatActions={sidebarOnlyChrome ? (
             <MobileChatActions
               onFind={findButtonSessionId ? () => useSessionFindStore.getState().openFind({ sessionId: findButtonSessionId }) : undefined}
@@ -1536,7 +1527,6 @@ export function SessionPage(props: SessionPageProps) {
               onParent={parentSessionLink ? returnFromChild : undefined}
             />
           ) : undefined}
-          extensionsActive={props.extensionsActive}
           status={{
             clientConnected: props.statusBar?.runtimeConnected ?? props.clientConnected,
             initializing: props.statusBar?.initializing,
@@ -1557,7 +1547,10 @@ export function SessionPage(props: SessionPageProps) {
         >
           <DebugRailProvider>
           <FloatingSlotProvider>
-          {sidebarOnlyChrome ? <MobileChatNavigation /> : <header
+          {sidebarOnlyChrome ? <div className="flex shrink-0 items-center justify-between gap-2 pr-2">
+            <div className="flex min-w-0 items-center gap-2"><MobileChatNavigation /><HeaderBrand /></div>
+            <SidebarActions onOpenSessionSearch={props.sidebar.onOpenSessionSearch} />
+          </div> : <header
             data-session-header
             data-sidebar-hidden={!shellConfig.sidebar || !sidebarOpen || isMobile}
             className={cn(
@@ -1568,7 +1561,8 @@ export function SessionPage(props: SessionPageProps) {
             )}
           >
             <div className="flex min-w-0 items-center gap-3">
-              {shellConfig.sidebar ? <MainSidebarControls onOpenSessionSearch={props.sidebar.onOpenSessionSearch} /> : null}
+              {shellConfig.sidebar ? <MainSidebarControls /> : null}
+              <HeaderBrand />
               {props.primaryHeader && !hasMainContentTakeover ? props.primaryHeader : null}
               {!props.primaryHeader && parentSessionLink && !props.primarySlot && !hasMainContentTakeover ? (
                 <Tooltip>
@@ -1626,6 +1620,8 @@ export function SessionPage(props: SessionPageProps) {
               ) : null}
             </div>
 
+            <div className="flex shrink-0 items-center gap-1.5 titlebar-no-drag">
+            <SidebarActions onOpenSessionSearch={props.sidebar.onOpenSessionSearch} />
             {props.mainContentHeaderActionsRef ? (
               <div ref={props.mainContentHeaderActionsRef} className="shrink-0 titlebar-no-drag" />
             ) : <div className="flex shrink-0 items-center gap-1.5 text-gray-10 titlebar-no-drag">
@@ -1764,6 +1760,7 @@ export function SessionPage(props: SessionPageProps) {
                 <TooltipContent>{sidePanelOpen ? t("ui.952218264350") : t("ui.22ce859a543e")}</TooltipContent>
               </Tooltip>
             </div>}
+            </div>
           </header>}
 
           <div className={cn("flex min-h-0 flex-1 max-lg:p-0", props.primarySurface !== "flat" && "lg:pb-2 lg:pl-2")}>

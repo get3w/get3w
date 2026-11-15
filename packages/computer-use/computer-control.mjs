@@ -151,7 +151,7 @@ function deadline(ms) {
  *   readRemoteFeatureEnabled?: () => Promise<boolean>,
  *   standing?: { read: () => Promise<SavedChoices>, write: (state: SavedChoices) => Promise<void> },
  *   presence?: { name: string, color: string } | null,
- *   permissionEntry?: () => Promise<{ name: string, ours: boolean }>,
+ *   permissionEntry?: (permission: "accessibility" | "screenRecording") => Promise<{ name: string, ours: boolean }>,
  *   onRequest?: (sessionId: string, request: ComputerRequest | null) => void,
  *   requestMs?: number,
  *   runScript?: (request: { app: string, code: string, timeoutMs: number }, signal: AbortSignal) => Promise<ScriptResult>,
@@ -638,7 +638,8 @@ export function createComputerControl({ adapters, runProgram, runScript, onTimin
     return {
       revision: grant.revision, enabled: featureEnabled && (grant.enabled || Boolean(grant.handoff)),
       ...(grant.timing ? { timing: structuredClone(grant.timing) } : {}),
-      entry: await permissionEntry().then(({ name, ours }) => ({ name, ours }), () => ({ name: "Get3W", ours: false })),
+      entry: await permissionEntry(status.permissions?.screenRecording === false ? "screenRecording" : "accessibility").then(({ name, ours }) => ({ name, ours }), () => ({ name: "Get3W", ours: false })),
+      permissionEntries: Object.fromEntries(await Promise.all(["accessibility", "screenRecording"].map(async (permission) => [permission, await permissionEntry(permission).catch(() => ({ name: "Get3W", ours: false }))]))),
       request: (() => {
         const pending = scriptRequests.get(grant.sessionId);
         if (pending) return pending.request;
@@ -666,7 +667,8 @@ export function createComputerControl({ adapters, runProgram, runScript, onTimin
     const status = await readiness(target);
     return {
       enabled: featureEnabled,
-      entry: await permissionEntry().then(({ name, ours }) => ({ name, ours }), () => ({ name: "Get3W", ours: false })),
+      entry: await permissionEntry(status.permissions?.screenRecording === false ? "screenRecording" : "accessibility").then(({ name, ours }) => ({ name, ours }), () => ({ name: "Get3W", ours: false })),
+      permissionEntries: Object.fromEntries(await Promise.all(["accessibility", "screenRecording"].map(async (permission) => [permission, await permissionEntry(permission).catch(() => ({ name: "Get3W", ours: false }))]))),
       targetId: target.id,
       targets: offered().map(({ id, label, placement }) => ({ id, label, placement })),
       placement: target.placement,

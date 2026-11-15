@@ -287,9 +287,9 @@ export function openworkInstallMarkerPaths({ userDataDir, serverConfigPath, env 
     serverConfigPath,
     runtimeDb,
     path.join(path.dirname(runtimeDb), "engine-v2-preview.json"),
-    env.GET3W_SERVER_TOKEN_STORE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_TOKEN_STORE_PATH.trim()) : path.join(userDataDir, "openwork-server-tokens.json"),
-    env.GET3W_SERVER_STATE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_STATE_PATH.trim()) : path.join(userDataDir, "openwork-server-state.json"),
-    path.join(userDataDir, "openwork-workspaces.json"),
+    env.GET3W_SERVER_TOKEN_STORE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_TOKEN_STORE_PATH.trim()) : path.join(userDataDir, "get3w-server-tokens.json"),
+    env.GET3W_SERVER_STATE_PATH?.trim() ? path.resolve(env.GET3W_SERVER_STATE_PATH.trim()) : path.join(userDataDir, "get3w-server-state.json"),
+    path.join(userDataDir, "get3w-workspaces.json"),
     path.join(userDataDir, "workspace-state.json"),
     path.join(userDataDir, "app-recovery.v1.json"),
   ];
@@ -467,7 +467,7 @@ export function snapshotEngineState(state) {
 export function resolveOpenworkServerLogFile(userDataDir, env = process.env) {
   const explicit = String(env.GET3W_SERVER_LOG_FILE ?? "").trim();
   if (explicit) return explicit;
-  return path.join(userDataDir, "logs", "openwork-server.log");
+  return path.join(userDataDir, "logs", "get3w-server.log");
 }
 
 function createOpenworkServerState() {
@@ -1479,13 +1479,13 @@ export function createRuntimeManager({
   function openworkServerTokenStorePath() {
     const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
-    return path.join(userDataDir, "openwork-server-tokens.json");
+    return path.join(userDataDir, "get3w-server-tokens.json");
   }
 
   function openworkServerStatePath() {
     const override = process.env.GET3W_SERVER_STATE_PATH?.trim();
     if (override) return path.resolve(override);
-    return path.join(userDataDir, "openwork-server-state.json");
+    return path.join(userDataDir, "get3w-server-state.json");
   }
 
   function managedOpencodeWorkdir() {
@@ -1577,7 +1577,7 @@ export function createRuntimeManager({
   }
 
   async function ensureDevModePaths() {
-    const root = path.join(userDataDir, "openwork-dev-data");
+    const root = path.join(userDataDir, "get3w-dev-data");
     const paths = {
       homeDir: path.join(root, "home"),
       xdgConfigHome: path.join(root, "xdg", "config"),

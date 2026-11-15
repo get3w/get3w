@@ -3435,28 +3435,7 @@ export function SessionRoute() {
     },
   }), [reloadCoordinator.canReloadWorkspaceEngine, reloadCoordinator.reloadWorkspaceEngine]);
 
-  const handleReorderWorkspaces = useCallback((workspaceIds: string[]) => {
-    const activeWorkspaceIds = new Set(workspacesRef.current.map((workspace) => workspace.id));
-    const nextOrderIds: string[] = [];
-    const nextOrderIdSet = new Set<string>();
 
-    for (const id of workspaceIds) {
-      if (!activeWorkspaceIds.has(id) || nextOrderIdSet.has(id)) continue;
-      nextOrderIds.push(id);
-      nextOrderIdSet.add(id);
-    }
-
-    for (const workspace of workspacesRef.current) {
-      if (nextOrderIdSet.has(workspace.id)) continue;
-      nextOrderIds.push(workspace.id);
-      nextOrderIdSet.add(workspace.id);
-    }
-
-    workspaceOrderIdsRef.current = nextOrderIds;
-    setWorkspaceOrderIds(nextOrderIds);
-    writeWorkspaceOrderIds(nextOrderIds);
-    setWorkspaces((current) => orderRouteWorkspaces(current, nextOrderIds));
-  }, []);
 
   const publishCreatedConversation = useCallback((pending: PendingConversation, { session, endpoint }: Awaited<ReturnType<typeof createRouteSessionOnEngine>>, agent: string | null, workspaceTitle?: string) => {
     const workspaceId = pending.destination.workspaceId;
@@ -3788,7 +3767,6 @@ export function SessionRoute() {
         );
       }}
       onOpenSettings={() => handleOpenSettings("/settings/general")}
-      onOpenExtensions={() => handleOpenExtensions()}
       onOpenProviderAuth={handleOpenProviderAuth}
       onChatFirstTask={handleChatFirstTask}
       chatFirstBusy={createWorkspaceBusy}
@@ -3909,7 +3887,6 @@ export function SessionRoute() {
         developerMode: false,
         sessionStatusById: sidebarSessionStatusById,
         settleWorkspaceIds: settleWorkspaceIdSet,
-        feedEnabled: settledSessionsEnabled,
         sessionAttentionLabelById: sidebarSessionAttention.labelById,
         sessionAttentionSourceById: sidebarSessionAttention.sourceById,
         connectingWorkspaceId: null,
@@ -4009,7 +3986,6 @@ export function SessionRoute() {
         onForgetWorkspace: (id) => void handleForgetWorkspace(id),
         onOpenCreateWorkspace: handleOpenCreateWorkspace,
         onOpenSessionSearch: () => setSessionSearchOpen(true),
-        onReorderWorkspaces: handleReorderWorkspaces,
       }}
       surface={surfaceProps}
       resolvePaneRuntime={resolvePaneRuntime}
@@ -4083,7 +4059,6 @@ export function SessionRoute() {
         : dashboardRouteActive ? setDashboardHeaderActionsTarget
         : automationsRouteActive ? setAutomationsHeaderActionsTarget
         : undefined}
-      extensionsActive={extensionsMainOpen}
       onAccessibleTargetsChange={setPaletteAccessibleTargets}
     />
     <CreateWorkspaceModal

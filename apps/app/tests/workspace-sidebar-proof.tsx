@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {WorkspaceSidebarFixture,fixtureGroups} from './workspace-sidebar-fixture';
+import {useSessionManagementStore} from '../src/react-app/domains/session/sidebar/session-management-store';
+import {setLocale} from '../src/i18n';
+import '../src/app/index.css';
+setLocale('zh');
+const params=new URLSearchParams(location.search);
+document.documentElement.dataset.theme=params.has('dark')?'dark':'light';
+useSessionManagementStore.setState({sidebarView:'feed',pinnedIds:['a-pinned','b-pinned'],autoSettleDays:1});
+createRoot(document.getElementById('root')!).render(<WorkspaceSidebarFixture initialWorkspace={params.get('workspace')??'a'} groups={params.has('empty')?[]:params.has('error')?fixtureGroups.map(group=>({...group,status:'error',error:'Failed to load sessions',sessions:[]})):fixtureGroups} onAction={action=>{document.body.dataset.action=action;}}/>);

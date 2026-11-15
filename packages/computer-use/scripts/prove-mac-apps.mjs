@@ -28,7 +28,7 @@ function option(name) {
 async function bridge() {
   const explicit = process.env.GET3W_UI_CONTROL_DISCOVERY?.trim();
   const base = join(homedir(), "Library", "Application Support");
-  const candidates = explicit ? [explicit] : [join(base, "com.get3w.desktop", "openwork-ui-control.json"), join(base, "com.get3w.desktop.dev", "openwork-ui-control.json")];
+  const candidates = explicit ? [explicit] : [join(base, "com.get3w.desktop", "get3w-ui-control.json"), join(base, "com.get3w.desktop.dev", "get3w-ui-control.json")];
   for (const candidate of candidates) {
     try {
       const parsed = JSON.parse(await readFile(candidate, "utf8"));

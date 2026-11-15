@@ -48,7 +48,7 @@ import {
 
 type SettingsTone = ComponentProps<typeof SettingsStatusBadge>["tone"];
 
-const DESKTOP_BOOTSTRAP_PATH_HINT = "~/.config/openwork/desktop-bootstrap.json";
+const DESKTOP_BOOTSTRAP_PATH_HINT = "~/.config/get3w/desktop-bootstrap.json";
 
 interface RuntimeStatusCardProps {
   icon: ReactNode;

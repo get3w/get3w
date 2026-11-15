@@ -100,7 +100,7 @@ import {
 import { serve, type ServeResult } from "./serve-node.js";
 import { serveStaticUi } from "./static-ui.js";
 import { isAllowedHost } from "./allowed-hosts.js";
-import { externalFetch, loopbackFetch, transferResponseBody } from "./server-fetch.js";
+import { externalFetch, loopbackFetch, modelApprovalFetch, transferResponseBody } from "./server-fetch.js";
 import { registerCoreRoutes } from "./routes/core.js";
 import { registerFileRoutes } from "./routes/files.js";
 import { registerOperationRoutes } from "./routes/operations.js";
@@ -3233,7 +3233,7 @@ function createRoutes(
       rememberGenerationPolicy(workspace.id,body.sessionId,callerMessageId,resolved.policy);
       policy=resolved.policy;parentId=resolved.messageId;receivedAt=resolved.receivedAt;
     }
-    const response = await fetch(url,{method:"POST",redirect:"error",signal:ctx.request.signal,
+    const response = await modelApprovalFetch(url,{method:"POST",redirect:"error",signal:ctx.request.signal,
       headers:{Authorization:String(definition.headers.Authorization),"Content-Type":"application/json",Accept:"application/json, text/event-stream","X-Get3W-Host-Token":config.hostToken},
       body:JSON.stringify({jsonrpc:"2.0",id:body.caller.messageId,method:"tools/call",params:body.input,
         hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,userMessageId:parentId,receivedAt,workspaceDirectory:workspace.path,generationPolicy:policy}})});
@@ -3355,7 +3355,10 @@ function createRoutes(
       env,
       logger: toManagedProviderAuthLogger(logger),
     });
-    const shouldReload = result.changed
+    // The host retries an unchanged managed endpoint when its previous reload
+    // was deferred. An unchanged database row does not prove engine readiness.
+    const shouldReload = Object.prototype.hasOwnProperty.call(providerPatch, "get3w-account")
+      || result.changed
       || templateOwnershipChanged
       || fileResult.changed
       || authResult.delivered.length > 0

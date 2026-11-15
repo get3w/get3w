@@ -1,4 +1,15 @@
+import { Agent } from "undici";
+
 type ExternalFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+// Approval cards can remain open for ten minutes. Node's default five-minute
+// headers timeout must not abandon the native call while that approval is live.
+const modelApprovalDispatcher = new Agent({ headersTimeout: 11 * 60_000, bodyTimeout: 11 * 60_000 });
+
+export function modelApprovalFetch(input: URL, init: RequestInit): Promise<Response> {
+  const options = { ...init, dispatcher: modelApprovalDispatcher };
+  return globalThis.fetch(input, options);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

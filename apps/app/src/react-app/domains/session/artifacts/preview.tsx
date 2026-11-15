@@ -1,6 +1,7 @@
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import type * as React from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -110,6 +111,18 @@ export function ImagePreview({ src, alt, className, ...props }: ImagePreviewProp
 }
 
 interface PreviewUnavailableProps extends React.ComponentProps<"div"> {}
+
+export function VideoPreview({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 overflow-auto bg-muted/30 p-3">
+      <video src={src} controls playsInline preload="metadata" aria-label={title}
+        onError={() => setFailed(true)} onLoadedData={() => setFailed(false)}
+        className="max-h-full max-w-full object-contain" />
+      {failed ? <p role="alert">{t("personal.media.video_unavailable")}</p> : null}
+    </div>
+  );
+}
 
 export function PreviewUnavailable({ className, ...props }: PreviewUnavailableProps) {
   return <div className={cn("p-4 text-sm text-muted-foreground", className)} {...props}>{t("ui.10577dea386e")}</div>;

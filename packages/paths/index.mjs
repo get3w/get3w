@@ -157,11 +157,11 @@ function defaultOpenworkConfigDir(opts) {
   if (platform === "win32") {
     const appData = envValue(env, "APPDATA", opts);
     const root = appData || paths.join(homeDir, "AppData", "Roaming");
-    return paths.join(root, "openwork");
+    return paths.join(root, "get3w");
   }
   const xdgConfigHome = envValue(env, "XDG_CONFIG_HOME", opts);
   const root = xdgConfigHome || paths.join(homeDir, ".config");
-  return paths.join(root, "openwork");
+  return paths.join(root, "get3w");
 }
 
 export function openworkConfigDir(opts) {
@@ -260,9 +260,9 @@ export function desktopBootstrapPath(opts) {
   const override = envValue(env, "GET3W_DESKTOP_BOOTSTRAP_PATH", opts);
   if (override) return override;
   if (envValue(env, "GET3W_DEV_MODE", opts) === "1" && opts?.userDataDir) {
-    return paths.join(opts.userDataDir, "openwork-dev-data", "home", ".config", "openwork", "desktop-bootstrap.json");
+    return paths.join(opts.userDataDir, "get3w-dev-data", "home", ".config", "get3w", "desktop-bootstrap.json");
   }
-  return paths.join(desktopConfigDir(opts), "openwork", "desktop-bootstrap.json");
+  return paths.join(desktopConfigDir(opts), "get3w", "desktop-bootstrap.json");
 }
 
 export function legacyDesktopBootstrapPath(opts) {
@@ -289,7 +289,7 @@ export function openworkServerDataDir(opts) {
   const paths = pathApi(platform);
   const override = envValue(env, "GET3W_DATA_DIR", opts);
   if (override) return expandHomePath(override, opts);
-  return paths.join(optionHomeDir(opts), ".openwork", "openwork-server");
+  return paths.join(optionHomeDir(opts), ".get3w", "get3w-server");
 }
 
 export function opencodeDataDirs(opts) {
