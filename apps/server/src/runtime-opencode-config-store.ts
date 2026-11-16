@@ -201,7 +201,7 @@ function runtimeOpencodeConfigRow(value: unknown): RuntimeOpencodeConfigRow | nu
 }
 
 /** Read all runtime config rows without creating or modifying the runtime DB. */
-export async function listRuntimeOpencodeConfigRows(config: ServerConfig): Promise<RuntimeOpencodeConfigRow[]> {
+export async function listRuntimeOpencodeConfigRows(config: ServerConfig, options: { recover?: boolean } = {}): Promise<RuntimeOpencodeConfigRow[]> {
   const path = runtimeDbPath(config);
   if (!existsSync(path)) return [];
   const sql = `
@@ -212,7 +212,7 @@ export async function listRuntimeOpencodeConfigRows(config: ServerConfig): Promi
     let rows: unknown[];
     if (typeof process.versions.bun === "string") {
       const { Database } = await import("bun:sqlite");
-      const sqlite = new Database(path, { readonly: true, create: false });
+      const sqlite = new Database(path, { readonly: !options.recover, create: false });
       try {
         rows = sqlite.query(sql).all();
       } finally {
@@ -220,7 +220,7 @@ export async function listRuntimeOpencodeConfigRows(config: ServerConfig): Promi
       }
     } else {
       const { DatabaseSync } = await importNodeSqlite();
-      const sqlite = new DatabaseSync(path, { readOnly: true });
+      const sqlite = new DatabaseSync(path, { readOnly: !options.recover });
       try {
         rows = sqlite.prepare(sql).all();
       } finally {
@@ -325,7 +325,10 @@ export async function readEffectiveRuntimeOpencodeConfig(
 export async function migrateWorkspaceRuntimeConfigToEngineGlobal(
   config: ServerConfig,
 ): Promise<{ changed: boolean }> {
-  const rows = await listRuntimeOpencodeConfigRows(config);
+  // Startup migration is a write path. SQLite must be allowed to recover a
+  // hot rollback journal left by an interrupted process before even SELECT
+  // can proceed (SQLITE_READONLY_ROLLBACK). Diagnostic readers stay read-only.
+  const rows = await listRuntimeOpencodeConfigRows(config, { recover: !config.readOnly });
   const workspaceRows = rows.filter((row) =>
     !isEngineGlobalRuntimeConfigId(row.workspaceId)
     && (

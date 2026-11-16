@@ -105,6 +105,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
+      - name: Verify release regressions
+        if: matrix.platform == 'mac'
+        run: python3 scripts/verify-public-release.py
       - name: Rebuild native modules and build Desktop
         run: |
           pnpm --dir apps/desktop exec electron-rebuild --force --which-module better-sqlite3

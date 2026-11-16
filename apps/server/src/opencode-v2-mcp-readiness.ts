@@ -15,8 +15,8 @@ export function mcpBindingsReady(current: readonly McpPublishedTool[], server: s
   const native = server === "get3w-account";
   const marker = mcpToolId(server, "native_media_ready");
   const published = new Set(current.filter(tool => tool.options?.namespace === mcpNamespace(server)
-    || native && ["media_prepare", "media_generate"].includes(tool.id)).map(tool => tool.id));
-  const wanted = new Set(desired.flatMap(id => native && id === marker ? ["media_prepare", "media_generate"] : [id]));
+    || native && ["media_prepare", "media_generate", "resource_upload"].includes(tool.id)).map(tool => tool.id));
+  const wanted = new Set(desired.flatMap(id => native && id === marker ? ["media_prepare", "media_generate", "resource_upload"] : [id]));
   return [...wanted].every(id => published.has(id)) && previous.every(id => wanted.has(id) || !published.has(id));
 }
 

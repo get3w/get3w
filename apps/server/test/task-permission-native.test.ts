@@ -1,3 +1,4 @@
+import {readCostRun,costRunKey,setTaskCostSettings} from "../src/task-cost-settings.js";
 import {test,expect} from "bun:test";
 import {mkdtemp,mkdir,writeFile} from "node:fs/promises";
 import {join,resolve} from "node:path";
@@ -59,6 +60,13 @@ test("real pinned engine evaluates per-task mode and keeps explicit denials",asy
   for(let i=0;i<80&&(await taskPermissionSettings(config,c.id)).mode!=="full_access";i++)await Bun.sleep(50);
   expect((await taskPermissionSettings(config,c.id)).mode).toBe("full_access");
   expect((await ask(c.id)).effect).toBe("allow");
+  await setTaskCostSettings(config,{enabled:true,amount:"1",currency:"USD"},c.id);
+  // The actual inbox event must retain the host-chosen message id.
+  await request(`/api/session/${c.id}/prompt`,{id:"msg_costnativefixture",text:"Isolated cost admission fixture",delivery:"steer"});
+  const costKey=costRunKey(workspaceIdForPath(workspace),c.id,"msg_costnativefixture");
+  for(let i=0;i<100&&!await readCostRun(config,costKey);i++)await Bun.sleep(20);
+  expect((await readCostRun(config,costKey))?.policy.amount).toBe("1");
+
   expect((await taskPermissionSettings(config,b.id)).mode).toBe("default");
   const childTask=await request("/api/session",{location:{directory:workspace},parentID:b.id,title:"Child"});
   expect((await ask(childTask.id)).effect).toBe("ask");

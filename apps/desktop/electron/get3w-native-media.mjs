@@ -1,5 +1,7 @@
+import {fetchImageDimensions,sourceImageSettings} from './source-image-settings.mjs';
+import {createResourceUploader,resolveResourceReferences} from './get3w-resource-upload.mjs';
 import {createHash,randomUUID} from 'node:crypto';
-import {readFile,mkdir,open,rename,realpath,stat} from 'node:fs/promises';
+import {readFile,mkdir,open,rename} from 'node:fs/promises';
 import path from 'node:path';
 import {resolveSetting,outputFieldNames} from './model-settings.mjs';
 import {Ajv2020} from 'ajv/dist/2020.js';
@@ -31,7 +33,7 @@ function conciseSchema(value){
 }
 
 /** Host-owned media workflow. No model-controlled quotes, identities or keys. */
-export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=Date.now,onTiming=(_event)=>{}}){
+export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=Date.now,onTiming=(_event)=>{},readImageDimensions=fetchImageDimensions}){
  const file=directory&&path.join(directory,'native-media-preparations.json');
  let records,capabilityCatalogVersion,queue=Promise.resolve();const preparing=new Map(),active=new Map(),capabilities=new Map(),schemas=new Map();
  /** @template T @param {()=>Promise<T>} fn @returns {Promise<T>} */
@@ -65,7 +67,12 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
  }
  function defaults(model,policy,cat){
   const tasks=cat.desktop_defaults?.tasks??{};
-  return {...(tasks[category(model.type)]??tasks[model.type])?.fields,...policy.outputs?.[model.type]};
+  const result={...(tasks[category(model.type)]??tasks[model.type])?.fields,...policy.outputs?.[model.type]};
+  if(model.type==='image-to-image'){
+   delete result.aspect_ratio;delete result.resolution;
+   result.preserve_source_dimensions=true;
+  }
+  return result;
  }
  function inputSchema(schema,inputs){
   const result=structuredClone(schema);delete result.$schema;
@@ -103,6 +110,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
  function merged(row,values){
   const result={...Object.fromEntries(Object.entries(row.defaults).filter(([name,value])=>Object.hasOwn(row.schema.properties??{},name)&&value!=='auto')),...row.references,...values};
   for(const [name,property] of Object.entries(row.schema.properties??{})){
+   if(result.preserve_source_dimensions&&['aspect_ratio','resolution','size'].includes(name)&&!(row.schema.required??[]).includes(name))continue;
    if(result[name]===undefined&&property.default!==undefined)result[name]=structuredClone(property.default);
    if(result[name]!==undefined&&Array.isArray(property.enum)){
     const typed=property.enum.find(option=>String(option).toLowerCase()===String(result[name]).toLowerCase());
@@ -110,6 +118,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
    }
   }
   for(const [name,property] of Object.entries(row.schema.properties??{})){
+   if(result.preserve_source_dimensions&&['aspect_ratio','resolution','size'].includes(name)&&!(row.schema.required??[]).includes(name))continue;
    const resolved=resolveSetting({options:property.enum?.map(value=>({value})),defaultValue:property.default,channelOptions:property['x-channel-options'],resolutionOptions:property['x-resolution-options'],showChannels:property['x-show-channels'],showResolutions:property['x-show-resolutions'],apiOnly:property['x-api-only']},result);
    if(!resolved){
     if(values[name]===undefined&&row.references[name]===undefined)delete result[name];
@@ -122,24 +131,8 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   }
   return result;
  }
- async function referenceValue(value,host,signal,trace){
-  if(Array.isArray(value))return Promise.all(value.map(item=>referenceValue(item,host,signal,trace)));
-  if(typeof value!=='string'||(!path.isAbsolute(value)&&!value.startsWith('file:')))return value;
-  if(!host.workspaceDirectory)throw Error('Select a workspace before uploading local references');
-  const root=await realpath(host.workspaceDirectory);
-  const filename=await realpath(value.startsWith('file:')?new URL(value):value);
-  const relative=path.relative(root,filename);
-  if(relative.startsWith('..'+path.sep)||relative==='..'||path.isAbsolute(relative))throw Error('Copy the reference into the current workspace before generating');
-  const info=await stat(filename);
-  if(!info.isFile()||info.size<1||info.size>200*1024*1024)throw Error('Choose a media file smaller than 200 MB');
-  const ticket=await capability('get3w.media.upload',{filename:path.basename(filename),size_bytes:info.size},host,signal,`upload-${trace}-${randomUUID()}`);
-  const target=new URL(ticket.upload?.url);
-  if(target.protocol!=='https:'||ticket.upload.method!=='PUT'||typeof ticket.download_url!=='string')throw Error('The reference upload destination could not be verified');
-  await verify();signal.throwIfAborted();
-  const response=await fetch(target,{method:'PUT',headers:ticket.upload.headers,body:await readFile(filename),signal,redirect:'error'});
-  if(!response.ok)throw Error('Reference upload failed. Retry preparing this task');
-  return ticket.download_url;
- }
+ const uploadResource=createResourceUploader({verify,ticket:(args,host,signal)=>capability('get3w.media.upload',args,host,signal,`upload-${randomUUID()}`)});
+ const referenceValue=(value,host,signal)=>resolveResourceReferences(value,uploadResource,host,signal);
  async function prepare(input,host,signal){
   if(!record(input)||typeof input.task_type!=='string'||!input.task_type)return failure('invalid_input','Choose the media task type');
   if(input.task_key!==undefined&&(typeof input.task_key!=='string'||!input.task_key.trim()||input.task_key.length>120))return failure('invalid_input','Use a stable task_key of 1 to 120 characters for each independent candidate');
@@ -173,7 +166,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   const schema=referenceRequirements(model.type,schemaResult?.input_schema??{});
   if(!record(schema)||!record(schema.properties))return failure('invalid_schema','The model input definition is unavailable');
   const sourceReferences=input.references??{};
-  if(Object.keys(sourceReferences).some(name=>!Object.hasOwn(schema.properties,name)))return failure('invalid_references','Use reference fields supported by this model');
+  if(Object.keys(sourceReferences).some(name=>!Object.hasOwn(schema.properties,name)))return failure('invalid_references','Use reference fields supported by this model. Retry with the returned parameter schema; do not guess field names',{parameters:conciseSchema(schema),unsupported_fields:Object.keys(sourceReferences).filter(name=>!Object.hasOwn(schema.properties,name))});
   const prior=await serial(async()=>{await load();return records.find(item=>hash(item.owner)===hash(identity(host))&&item.model===model.model_id&&(item.taskKey??'')===(input.task_key??'')&&hash(item.sourceReferences??item.references)===hash(sourceReferences));});
   if(prior)return {status:missingInputs(prior.schema,merged(prior,{})).length>0?'needs_input':'ready',preparation_id:prior.id,model:{id:prior.model,name:prior.name},parameters:conciseSchema(inputSchema(prior.schema,merged(prior,{}))),defaults:prior.defaults,missing_inputs:missingInputs(prior.schema,merged(prior,{})),trace_id:prior.traceId};
   const references=Object.fromEntries(await Promise.all(Object.entries(sourceReferences).map(async([name,value])=>[name,await measure(trace,'reference_upload',()=>referenceValue(value,host,signal,trace))])));
@@ -195,21 +188,39 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   if(!record(input)||typeof input.preparation_id!=='string'||!record(input.inputs))return failure('invalid_input','Provide a preparation and its media inputs');
   if(input.output!==undefined&&(!record(input.output)||Object.entries(input.output).some(([key,value])=>!['task_name','filename','directory','source_path'].includes(key)||typeof value!=='string'||value.length>500)))return failure('invalid_output','Provide short output names and workspace-relative paths');
   if(input.output_overrides!==undefined&&(!record(input.output_overrides)||Object.keys(input.output_overrides).some(name=>!outputFieldNames.includes(name))))return failure('invalid_input','Output overrides must contain only output settings explicitly requested by the user');
-  // Local references must be uploaded in prepare, before the input is frozen.
-  // Never send a filesystem path to a model API as if it were a public URL.
-  const localFields=Object.entries(input.inputs).filter(([name,value])=>{
-   if(!/(image|video|audio|reference|file|url)/i.test(name))return false;
-   const local=item=>typeof item==='string'&&(path.isAbsolute(item)||item.startsWith('file:'));
-   return Array.isArray(value)?value.some(local):local(value);
-  }).map(([name])=>name);
-  if(localFields.length)return failure('references_require_preparation','Prepare local media references before generating',{missing_inputs:localFields});
   const row=await serial(async()=>{await load();return records.find(item=>item.id===input.preparation_id&&hash(item.owner)===hash(identity(host)));});
   if(!row)return failure('preparation_unavailable','Prepare this media task in the current conversation');
-  const values={...input.inputs,...input.output_overrides};
+  // Resolve resource fields before validation, quote and the durable input hash.
+  // Persist substitutions so retries/restarts keep the exact quoted URLs.
+  const resolvedInputs={...input.inputs};
+  for(const [name,value] of Object.entries(resolvedInputs)) {
+   if(!/(image|video|audio|reference|file|url|mask)/i.test(name)||!Object.hasOwn(row.schema.properties??{},name))continue;
+   const key=hash([name,value]);
+   const resolved=row.uploadedInputs?.[key]??await referenceValue(value,host,signal);
+   if(hash(value)!==hash(resolved))await serial(async()=>{row.uploadedInputs??={};row.uploadedInputs[key]??=resolved;await save();});
+   resolvedInputs[name]=row.uploadedInputs?.[key]??resolved;
+  }
+  let values={...resolvedInputs,...input.output_overrides};
+  const sizeOverride=['aspect_ratio','resolution','size'].some(name=>Object.hasOwn(input.output_overrides??{},name));
+  if(row.taskType==='image-to-image'&&row.schema.properties?.preserve_source_dimensions){
+   if(Object.hasOwn(input.inputs,'preserve_source_dimensions'))return failure('invalid_input','Source dimensions are managed by the host. Use output_overrides only for a size explicitly requested by the user');
+   values.preserve_source_dimensions=!sizeOverride;
+  }
+  if(row.taskType==='image-to-image'&&!sizeOverride&&row.schema.properties?.aspect_ratio?.enum) {
+   const references={...row.references,...resolvedInputs};
+   const images=references.image_urls??references.images??references.image_url??references.image;
+   const source=Array.isArray(images)?images[0]:images;
+   if(typeof source!=='string')return failure('source_image_required','Provide the source image before generating an image edit');
+   const selection=merged(row,values);
+   const dimensions=row.sourceImage?.url===source?row.sourceImage:await readImageDimensions(source,signal);
+   const settings=sourceImageSettings(dimensions,row.schema,selection);
+   await serial(async()=>{row.sourceImage={url:source,width:dimensions.width,height:dimensions.height};await save();});
+   values={...values,...settings};
+  }
   // Tool arguments are authored by the model, not evidence of user intent.
   // Keep preferences unless a separately declared user override is supplied.
   const expected=merged(row,{});
-  const conflicts=Object.keys(row.defaults).filter(name=>Object.hasOwn(expected,name)&&Object.hasOwn(input.inputs,name)&&!Object.hasOwn(input.output_overrides??{},name)&&String(input.inputs[name]).toLowerCase()!==String(expected[name]).toLowerCase());
+  const conflicts=Object.keys(row.defaults).filter(name=>!(row.taskType==='image-to-image'&&!sizeOverride&&['aspect_ratio','resolution'].includes(name))&&name!=='preserve_source_dimensions'&&Object.hasOwn(expected,name)&&Object.hasOwn(input.inputs,name)&&!Object.hasOwn(input.output_overrides??{},name)&&String(input.inputs[name]).toLowerCase()!==String(expected[name]).toLowerCase());
   if(conflicts.length)return failure('output_preference_conflict','Omit conflicting output settings to use the saved preferences. Use output_overrides for settings explicitly requested in the active project brief or subsequent user instructions, including earlier turns. Preserve the brief instead of falling back to conflicting preferences.',{expected:Object.fromEntries(conflicts.map(name=>[name,expected[name]]))});
   if(input.output&&!row.output)await serial(async()=>{row.output=input.output;await save();});
   let inputs=merged(row,values),fingerprint=hash(inputs);
@@ -277,7 +288,7 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
   active.set(row.id,{fingerprint,pending});return pending;
  }
  return {async call(name,input,host,signal){
-  try{await verify();if(!host.userMessageId||!host.workspaceId)return failure('context_unavailable','The original conversation message could not be verified');signal.throwIfAborted();if(!['media_prepare','media_generate'].includes(name))return failure('unknown_tool','The native media tool is unavailable');if(name==='media_generate')return await generate(input,host,signal);
+  try{await verify();if(!host.userMessageId||!host.workspaceId||!host.sessionId)return failure('context_unavailable','The original conversation message could not be verified');signal.throwIfAborted();if(name==='resource_upload'){if(!record(input)||typeof input.path!=='string'||Object.keys(input).some(key=>key!=='path'))return failure('invalid_input','Provide the workspace resource path');return {status:'ready',resource:await uploadResource(input.path,host,signal)};}if(!['media_prepare','media_generate'].includes(name))return failure('unknown_tool','The native media tool is unavailable');if(name==='media_generate')return await generate(input,host,signal);
    const key=hash([identity(host),input]);
    if(preparing.has(key))return await preparing.get(key);
    const started=now();

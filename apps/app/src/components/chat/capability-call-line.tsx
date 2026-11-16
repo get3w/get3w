@@ -243,7 +243,7 @@ export function DetailsToggle({ open, onToggle, label, alwaysVisible = false }: 
  * another service ("mcp:", "native:", "plugin:") is that service's, never ours.
  */
 export function isOpenWorkActivity(part: DynamicToolUIPart): boolean {
-  if (OPENWORK_NATIVE_TOOL.test(part.toolName)) return true
+  if (OPENWORK_NATIVE_TOOL.test(part.toolName) || ["media_prepare", "media_generate", "resource_upload"].includes(part.toolName)) return true
   if (!/^(?:openwork|openwork-cloud)_/.test(part.toolName)) return false
   const input = part.input
   const name = typeof input === "object" && input !== null && "name" in input && typeof input.name === "string" ? input.name : ""

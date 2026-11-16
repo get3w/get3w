@@ -81,7 +81,7 @@ export default {
         const mcp = yield* nativeCatalog;
         const discovered = (yield* mcp.tools()).filter(tool => tool.server === server).map(tool => mcpToolId(server, tool.name));
         const registered = yield* ctx.tool.list();
-        const published = registered.filter(tool => tool.options?.namespace === mcpNamespace(server)||server==='get3w-account'&&['media_prepare','media_generate'].includes(tool.id)).map(tool => tool.id);
+        const published = registered.filter(tool => tool.options?.namespace === mcpNamespace(server)||server==='get3w-account'&&['media_prepare','media_generate','resource_upload'].includes(tool.id)).map(tool => tool.id);
         return { tools: [...new Set([...discovered, ...published])].filter(id => server !== 'get3w-account' || id !== mcpToolId(server,'native_media_ready')).sort() };
       }),
       waitForTools: Effect.fn("OpenWorkMcp.waitForTools")(function* (input: unknown) {

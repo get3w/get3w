@@ -1,8 +1,7 @@
 /** @jsxImportSource react */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Download, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../components/ui/tooltip";
 import { t } from "../../../../i18n";
 import { useLocal } from "../../../kernel/local-provider";
 import { useDesktopConfig } from "../../cloud/desktop-config-provider";
@@ -70,7 +69,7 @@ export function DesktopUpdaterProvider({ children }: { children: ReactNode }) {
   return <DesktopUpdaterContext.Provider value={updater}>{children}</DesktopUpdaterContext.Provider>;
 }
 
-export function DesktopUpdateButton() {
+export function DesktopUpdateBanner() {
   const updater = useContext(DesktopUpdaterContext);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
@@ -78,7 +77,6 @@ export function DesktopUpdateButton() {
   // Discovery and download run quietly; only a staged update needs attention.
   if (!updater || status?.state !== "ready") return null;
   if (updater.updateEnv?.supported === false) return null;
-  const title = t("settings.update_restart_button");
   const update = async () => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -86,23 +84,36 @@ export function DesktopUpdateButton() {
     try { await updater.updateAndRestart(); }
     finally { inFlight.current = false; setBusy(false); }
   };
-  return <Tooltip>
-    <TooltipTrigger render={
+  return <DesktopUpdateNotice version={status.version} busy={busy} onRestart={() => void update()} />;
+}
+
+export function DesktopUpdateNotice({ version, busy, onRestart }: {
+  version?: string;
+  busy: boolean;
+  onRestart: () => void;
+}) {
+  const title = t("settings.update_restart_button");
+  return (
+    <div
+      data-update-banner
+      role="status"
+      className="mac:titlebar-no-drag me-1.5 flex min-w-0 items-center justify-between gap-3 rounded-[var(--dls-radius)] border border-border bg-background px-3 py-2.5 text-foreground"
+    >
+      <span className="min-w-0 truncate text-sm font-medium" title={version}>
+        {version ? t("settings.update_new_version", { version }) : t("settings.update_new_version_available")}
+      </span>
       <Button
-        variant="ghost"
-        size="icon-sm"
+        size="sm"
         data-update-button
         aria-label={title}
         aria-busy={busy}
         disabled={busy}
-        onClick={() => void update()}
-        className="mac:titlebar-no-drag shrink-0 rounded-full bg-blue-9 text-primary-foreground hover:bg-blue-10 hover:text-primary-foreground disabled:opacity-70"
+        onClick={onRestart}
+        className="shrink-0 rounded-lg disabled:opacity-70"
       >
-        {busy
-          ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" />
-          : <Download className="size-4" strokeWidth={1.5} aria-hidden="true" />}
+        {busy ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" strokeWidth={1.5} aria-hidden="true" /> : null}
+        {title}
       </Button>
-    } />
-    <TooltipContent side="top">{title}</TooltipContent>
-  </Tooltip>;
+    </div>
+  );
 }

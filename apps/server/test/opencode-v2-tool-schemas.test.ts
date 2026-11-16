@@ -56,5 +56,11 @@ test("native media tools distinguish songs from spoken lyrics in provider-visibl
   assert.ok(prepare.description.includes(NATIVE_MEDIA_TASK_SELECTION));
   assert.deepEqual(providerSchemaProblems(prepare.input), []);
   assert.deepEqual(providerSchemaProblems(tools.find(tool => tool.name === "media_generate")?.input), []);
+  const upload = tools.find(tool => tool.name === "resource_upload");
+  assert.ok(upload);
+  assert.deepEqual(providerSchemaProblems(upload.input), []);
+  assert.deepEqual(upload.input.required, ["path"]);
+  assert.match(upload.description, /public file URL/);
+  assert.equal((await registeredTools()).some(tool => tool.name === "resource_upload"), false);
   assert.equal((await registeredTools()).some(tool => tool.name === "media_prepare"), false);
 });

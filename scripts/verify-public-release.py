@@ -43,12 +43,22 @@ run('personal-regressions', ['bun', 'test', *['apps/app/tests/' + n for n in [
     'get3w-settings-policy.test.ts', 'get3w-settings-lifecycle.test.tsx', 'personal-desktop-config.test.tsx',
     'personal-chat-submit.test.tsx', 'personal-mcp-maintenance.test.ts', 'local-provider-engine-state.test.tsx',
     'session-history.test.tsx', 'chat-file-links.test.ts']], 'apps/server/test/personal-runtime-boundary.test.ts'])
+run('signing-regressions', ['node', '--test', 'apps/desktop/scripts/electron-after-sign.test.cjs'])
+run('resource-and-runtime-regressions', ['node', '--test', *['apps/desktop/electron/' + name + '.test.mjs' for name in [
+    'get3w-resource-upload', 'source-image-settings', 'generation-policy', 'get3w-native-media',
+    'native-i18n', 'computer-control']], 'apps/server/test/runtime-config-recovery.test.mjs', 'scripts/close-local.test.mjs'])
+run('cost-and-composer-regressions', ['bun', 'test',
+    'apps/server/test/task-cost-settings.test.ts', 'apps/server/test/task-permission-native.test.ts',
+    'apps/server/test/opencode-v2-mcp-readiness.test.ts', 'apps/server/test/opencode-v2-tool-schemas.test.ts',
+    'apps/app/tests/task-cost-control.test.tsx', 'apps/app/tests/pending-message-order.test.ts',
+    'apps/app/tests/composer-caret-refocus.test.tsx', 'apps/app/tests/desktop-update-button.test.tsx',
+    'apps/app/tests/openwork-activity.test.tsx', 'apps/app/tests/task-permission-control.test.tsx'])
 if a.desktop:
     if os.uname().sysname != 'Darwin':
         raise SystemExit('--desktop currently requires macOS; no cross-platform acceptance implied')
     run('native-rebuild', ['pnpm', '--dir', 'apps/desktop', 'exec', 'electron-rebuild', '--force', '--which-module', 'better-sqlite3'])
-    run('desktop-build', ['pnpm', 'build'])
-    env = {**os.environ, 'CSC_IDENTITY_AUTO_DISCOVERY': 'false', 'GET3W_COMPUTER_USE_CODESIGN_IDENTITY': '-'}
+    env = {**os.environ, 'CSC_IDENTITY_AUTO_DISCOVERY': 'false', 'GET3W_COMPUTER_USE_SIGN_IDENTITY': '-', 'GET3W_COMPUTER_USE_CODESIGN_IDENTITY': '-'}
+    run('desktop-build', ['pnpm', 'build'], env)
     command = ['pnpm', '--dir', 'apps/desktop', 'exec', 'electron-builder', '--config', 'electron-builder.yml', '--mac', '--x64', '--dir', '--publish', 'never']
     # Optional verified official Electron unpacked distribution, useful offline.
     if os.environ.get('GET3W_VERIFIED_ELECTRON_DIST'):

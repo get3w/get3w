@@ -242,6 +242,7 @@ export function getCapabilityCallSentence(
   options?: { includeQuery?: boolean; connectionName?: string | null },
 ): CapabilityCallSentence {
   const toolName = part.toolName
+  if(toolName === "resource_upload") return {service:null,present:t("personal.resource.uploading"),past:t("personal.resource.uploaded"),failure:t("personal.resource.upload_failed")}
   if(toolName === "media_prepare") return {service:null,present:t("personal.media.preparing"),past:t("personal.media.prepared"),failure:t("personal.media.prepare_failed")}
   if(toolName === "media_generate") return {service:null,present:t("personal.media.starting"),past:t("personal.media.started"),failure:t("personal.media.start_failed")}
   if (getConnectionStatusProbeId(part)) {

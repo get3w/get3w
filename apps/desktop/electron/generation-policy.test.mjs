@@ -46,3 +46,11 @@ test('category system defaults select the contextual variant and enforce its out
   assert.doesNotThrow(()=>validateGenerationCall(context(variant.model_id,{num_images:2}),null,grouped));
  }
 });
+
+test('source-preserving image edits do not inherit unrelated geometry defaults',()=>{
+ const edit={model_id:'edit',type:'image-to-image',api_schema:{api_schemas:[{request_schema:{properties:{aspect_ratio:{enum:['16:9','4:5']},resolution:{enum:['2K','4K']}}}}]}};
+ const cat={models:[edit],desktop_defaults:{tasks:{image:{fields:{aspect_ratio:'16:9',resolution:'4K'}}}}};
+ assert.doesNotThrow(()=>validateGenerationCall(context('edit',{preserve_source_dimensions:true}),{outputs:{}},cat));
+ assert.throws(()=>validateGenerationCall(context('edit',{}),{outputs:{}},cat),/output_preferences_required/);
+ assert.doesNotThrow(()=>validateGenerationCall(context('edit',{aspect_ratio:'4:5',resolution:'2K'}),{outputs:{}},cat));
+});

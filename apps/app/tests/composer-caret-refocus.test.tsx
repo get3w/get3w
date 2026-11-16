@@ -94,3 +94,36 @@ test("after a send clears the prompt, coming back leaves a working caret and the
   expect(root.textContent).toContain("Slack");
   await act(async () => { reactRoot.unmount(); });
 });
+
+test("attachment has an editable trailing position and preserves draft offsets", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const ref = createRef<Handle>();
+  const reactRoot = createRoot(host);
+  const { useState } = await import("react");
+  const values: string[] = [];
+  function Fixture() {
+    const [value, setValue] = useState("将图片[attachment test]");
+    return <LexicalPromptEditor ref={ref} value={value} mentions={{}} attachments={[{id:"test", name:"test.png", kind:"image", previewUrl:"data:image/png;base64,fixture"}]} submitDisabled={false} placeholder="" onChange={next => {values.push(next);setValue(next);}} onSubmit={() => {}} />;
+  }
+  await act(async () => { reactRoot.render(<Fixture/>); });
+  await settle();
+  const root = host.querySelector<HTMLElement>("[contenteditable='true']")!;
+  const chip = root.querySelector<HTMLElement>("[data-attachment-id]")!;
+  expect(chip.hasAttribute("data-lexical-text")).toBe(false);
+  // A real space (not an empty node or BR) is the macOS IME landing pad.
+  expect(chip.nextSibling?.textContent).toBe(" ");
+  // Place the caret at the paragraph boundary after the non-text attachment.
+  root.focus();
+  const range = document.createRange();
+  range.setStartAfter(chip);range.collapse(true);
+  window.getSelection()?.removeAllRanges();window.getSelection()?.addRange(range);
+  document.dispatchEvent(new Event("selectionchange"));
+  await settle();
+  expect(ref.current?.draftOffsetAtSelection()).toBe("将图片[attachment test]".length);
+  ref.current?.insertConnectorAtSelection("Slack");
+  await settle();
+  expect(values.at(-1)).toBe("将图片[attachment test][connector Slack]  ");
+  expect(root.querySelectorAll("[data-attachment-id]").length).toBe(1);
+  await act(async () => { reactRoot.unmount(); });host.remove();
+});

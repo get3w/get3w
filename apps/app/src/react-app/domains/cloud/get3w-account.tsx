@@ -52,14 +52,15 @@ export type TaskCatalogSnapshot = {
   offline: boolean;
   executionAllowed?: false;
 };
-export type ModelApproval = { id: string; workspaceId: string; modelTask: {quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number} };
+export type ModelApproval = { id: string; workspaceId: string; modelTask: {quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number; budget?:{committedUsd:string;projectedUsd:string;limit:CostPolicy|null}} };
 export type OutputFile = {fileId?:string;missing?:boolean;sessionId?:string;rootPath?:string;path:string;mimeType:string;sizeBytes:number;updatedAt?:number};
 export type OutputEntry = {id:string;userId:string;workspaceId:string;sessionId:string|null;messageId:string|null;requestId:string|null;slug:string|null;status:string;files:OutputFile[];plannedFiles?:{fileId:string;path:string;rootPath:string}[];outputs:unknown[];structured:unknown;charged:number|string|null;createdAt:number;updatedAt:number;downloadError?:string|null};
 export type ModelTask = {submittedAt?:number;estimatedDuration?:number;reservedUsd?:string|null;chargedUsd?:string|null;error?:{code?:string}|null;messageId?:string|null;createdAt?:number;key:string;slug:string;status:string;requestId:string|null;updatedAt:number;sessionId?:string;outputs:unknown[];outputEntry?:OutputEntry|null};
+export type CostPolicy = {enabled:boolean;amount:string|null;currency:"USD"|"CNY"};
 export type TaskPermissionMode = "default" | "full_access";
-export type TaskPermissionSnapshot = { mode: TaskPermissionMode; defaultMode: TaskPermissionMode; grants: {permission: string; patterns: string[]}[] };
+export type TaskPermissionSnapshot = { mode: TaskPermissionMode; defaultMode: TaskPermissionMode; grants: {permission: string; patterns: string[]}[]; cost?:{policy:CostPolicy}; costRun?:{messageId:string;committedUsd:string;policy:CostPolicy}|null };
 type AccountBridge = {
-  taskPermissions?: (input: { action: "read" | "set" | "revoke"; workspaceId?: string; sessionId?: string; mode?: TaskPermissionMode; confirmed?: boolean; index?: number; grant?: {permission: string; patterns: string[]} }) => Promise<TaskPermissionSnapshot>;
+  taskPermissions?: (input: { action: "read" | "set" | "revoke" | "cost-set"; workspaceId?: string; sessionId?: string; mode?: TaskPermissionMode; confirmed?: boolean; index?: number; policy?:CostPolicy; grant?: {permission: string; patterns: string[]} }) => Promise<TaskPermissionSnapshot>;
   automations?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   artifacts?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   modelTasks?: (input: {userId:string;workspaceId:string;sessionId?:string;action:"list"|"listAll"|"detach"|"retrieve"|"retryDownload"|"refreshResult";key?:string})=>Promise<{items:ModelTask[]}>;

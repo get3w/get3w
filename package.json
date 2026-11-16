@@ -12,7 +12,8 @@
     "build:ui": "pnpm --filter ./apps/app build",
     "typecheck": "pnpm --filter ./apps/app typecheck && pnpm --filter ./apps/server typecheck",
     "check:public-workspace": "python3 scripts/check-public-workspace.py",
-    "dev:ui": "pnpm --filter ./apps/app dev"
+    "dev:ui": "pnpm --filter ./apps/app dev",
+    "close:local": "node scripts/close-local.mjs"
   },
   "devDependencies": {
     "@stoplight/spectral-cli": "6.16.3",

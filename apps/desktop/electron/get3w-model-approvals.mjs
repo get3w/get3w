@@ -14,7 +14,7 @@ export function createModelApprovalBridge({getServerInfo, fetchImpl=fetch}) {
     }
     const pending=await request('/approvals');
     if (!Array.isArray(pending.items)) throw Error('Invalid approval response.');
-    const items=pending.items.filter(item=>item.action==='model.submit' && item.workspaceId===input.workspaceId && item.modelTask?.sessionId===input.sessionId);
+    const items=pending.items.filter(item=>item.action==='model.submit' && item.workspaceId===input.workspaceId && (item.modelTask?.approvalSessionId ?? item.modelTask?.sessionId)===input.sessionId);
     if (input.action==='respond') {
       if (!['allow','deny'].includes(input.reply) || !items.some(item=>item.id===input.id)) throw Error('Approval does not belong to this conversation.');
       await request(`/approvals/${encodeURIComponent(input.id)}`,{reply:input.reply});

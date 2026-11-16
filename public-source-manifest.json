@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "fc8e9c2b7fa34375e9a1dfd5273ec1ce2cff5a58d2f7ecc59fee2548a0abda0f"
+      "sha256": "671b2ebe9b92a874b10e4eb60380c4130613a86cbcd475cca8d624d859f03ec9"
     },
     {
       "path": ".gitignore",
@@ -53,7 +53,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "f3f560d3383a9c24913aeeccdddceebc9584df57a3e39c5f4fab88d72970d7b4"
+      "sha256": "764eea3ad5577fd08864743226c4fa46d9db2699757216f00c43abdf27339ca6"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -66,6 +66,14 @@
     {
       "path": "apps/app/components.json",
       "sha256": "597fb9bf7b3d83cd08a4701787dd9c9246e9bd8b8e87702cdb726d5cddcb4685"
+    },
+    {
+      "path": "apps/app/composer-full-input-proof.html",
+      "sha256": "6feabee48bbceb38bf3cf1f0a0cd7ce1a76bd87c63beb611149a8fd33ec411db"
+    },
+    {
+      "path": "apps/app/composer-input-proof.html",
+      "sha256": "4e42fc4b4a7c9ad00db003f1f2483fa83088863a275930a1bcb1809ca7e14098"
     },
     {
       "path": "apps/app/create-workspace-proof.html",
@@ -589,7 +597,7 @@
     },
     {
       "path": "apps/app/src/components/chat/capability-call-line.tsx",
-      "sha256": "3688b637384c886c38afa432c84bf13f3d2728141df324655692c95a6dce5e0b"
+      "sha256": "d448ab85d05a65b46b303a5e8bb89554666f555047d624aa6e382bdcda2078f1"
     },
     {
       "path": "apps/app/src/components/chat/code-mode-tool.tsx",
@@ -717,7 +725,7 @@
     },
     {
       "path": "apps/app/src/components/chat/task-recovery.tsx",
-      "sha256": "83f4362d7c312f2f59144e229c4af47354d10a53539a0345667026a1d51852d1"
+      "sha256": "861a81565811dfb53f61de6fa32528d8a5df3b55c22775aac16560deac4a136d"
     },
     {
       "path": "apps/app/src/components/chat/task-suggestions.tsx",
@@ -1093,11 +1101,11 @@
     },
     {
       "path": "apps/app/src/i18n/locales/en.ts",
-      "sha256": "f9fcc2a1392d34741558571007cdb18c59c8249d5880337e93c97d79e4ad1567"
+      "sha256": "1658101dbac7827683f27aaf36e6585ec2c57ffe933077c9652a288287612e6f"
     },
     {
       "path": "apps/app/src/i18n/locales/zh.ts",
-      "sha256": "e57c5c8467b1153c7eb4e7e9c87b44dd8a3c60a404bae897ef3cb9282a72743b"
+      "sha256": "4255721a80fe706c4d4a4e6ca4d55c1230bababa64cd10b95286dc1513be0d00"
     },
     {
       "path": "apps/app/src/i18n/money.ts",
@@ -1121,7 +1129,7 @@
     },
     {
       "path": "apps/app/src/lib/capability-call.ts",
-      "sha256": "cc8f3ecac7f328487797154f4101ee5691f0e1f61a8bfe933c8ae96fa3333da0"
+      "sha256": "567ff9de099672d053436a0a364578692cf98b1a733330c6f012d6df5b22b487"
     },
     {
       "path": "apps/app/src/lib/child-navigation.ts",
@@ -1169,7 +1177,7 @@
     },
     {
       "path": "apps/app/src/lib/openwork-native-activity.ts",
-      "sha256": "7f07d139f85dda8debcc4f4d5179a0061b89c4a20eb459d5e483b48a6331022d"
+      "sha256": "d2c5d87032e09b6f0440a1704972e62c81cae8712765f0dffd240c9c0b7f0062"
     },
     {
       "path": "apps/app/src/lib/remote-session-answers.ts",
@@ -1421,7 +1429,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-account.tsx",
-      "sha256": "58200556cb41182ae537d700c826e88bd93996479ac122e88fee6b6b40367d0f"
+      "sha256": "18ea8b388f737ab081a2288b091b52831e5c932dc0a6a9283aebe383a60ec8bb"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/get3w-balance.tsx",
@@ -1457,11 +1465,11 @@
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/model-approval-cards.tsx",
-      "sha256": "0deac5c63b9276483536f1c6764f1a612fc133e7808880d144da3d13f06d23fa"
+      "sha256": "fbb3aec92e0277f16227b7d2fc5ecc8c0dbd86d296209a9ca9f86ff34157cdd6"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/model-preferences-panel.tsx",
-      "sha256": "9d0a2277e9514d96a90c9873766e7bad0d608d643cf9a623b07f312d62608e06"
+      "sha256": "06e7d776a3f09ea84693f059e4e1b30c66ecbbed3d17d0d4d49c2d93d62f8247"
     },
     {
       "path": "apps/app/src/react-app/domains/cloud/model-preferences.ts",
@@ -1900,8 +1908,12 @@
       "sha256": "868a35e4e241932c5555556ef5fbd5a6171d7265b5d0d5f3f5687dda548fb647"
     },
     {
+      "path": "apps/app/src/react-app/domains/session/chat/task-cost-control.tsx",
+      "sha256": "ca3d7bec044d874b5cfca98b88a0b419e993e3a44625eda5404e91cbd72e65f5"
+    },
+    {
       "path": "apps/app/src/react-app/domains/session/chat/task-permission-control.tsx",
-      "sha256": "79283a0a4075503dd59afdc012d32fd0b698042be465ca2c8a5315172899bba5"
+      "sha256": "75ccc4301af199896ed381349202bab500bb0636121cd7e691f80f4fcd751e29"
     },
     {
       "path": "apps/app/src/react-app/domains/session/chat/workbench-pane-focus.ts",
@@ -2097,7 +2109,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/app-sidebar.tsx",
-      "sha256": "d63e0caff69ba00a5e5c30ecab63ae9cad61aaebae0bc9c76133a35dd9b82fd7"
+      "sha256": "26db1d5dcb303266eebf1bee75ccfa506571188ae6b6ecc4ce9f48e059cadf17"
     },
     {
       "path": "apps/app/src/react-app/domains/session/sidebar/remote-task-sidebar-rows.tsx",
@@ -2277,7 +2289,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/composer/editor.tsx",
-      "sha256": "620cfaa7dc1521aaa626eee65703be479aa40d27d3f92f935145220dec87704e"
+      "sha256": "26f9e46ad9be2555f589257c1320f951ed542b24a5c0fa68930970191db98b39"
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/composer/line-boundary-keys.ts",
@@ -2433,7 +2445,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/session-surface.tsx",
-      "sha256": "097a833105a6cbf8e60059b364a1e6d79e061f487172f111fede6ecc7b606e87"
+      "sha256": "5dcea8134a8901490e05f8ccda6cd0e0a0f6f39678b1cbd525608cb9952f3a18"
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/text-highlights.ts",
@@ -2441,7 +2453,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/use-displayed-messages.ts",
-      "sha256": "7fa38460b31d890f447b469779b769406dd7a6ab2397cc52f23533da21a4c193"
+      "sha256": "01b36669fb236d7cf46238edec2a0b107192029e50e52e8412585106d6185fa2"
     },
     {
       "path": "apps/app/src/react-app/domains/session/surface/use-model-behavior.ts",
@@ -2797,7 +2809,7 @@
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/desktop-updater-provider.tsx",
-      "sha256": "911543c2f12c586891ff8dd9e0c2b3994b33d039547d1fc702a97be044e32a46"
+      "sha256": "d45e5e7f2f70b445ad505cc36611b4c1d1f43d64c73033c4c6583d09589d7687"
     },
     {
       "path": "apps/app/src/react-app/domains/settings/state/electron-updater-state.ts",
@@ -3333,7 +3345,15 @@
     },
     {
       "path": "apps/app/tests/composer-caret-refocus.test.tsx",
-      "sha256": "05f025e3df2391c1bc42a7d9acb6188e70688accf90f3054df281d2fd9b08d4a"
+      "sha256": "8d0065dc43889f579ebf0f434cb80cb77512392d5f150cbbf1400c5a81bf83f3"
+    },
+    {
+      "path": "apps/app/tests/composer-full-input-proof.tsx",
+      "sha256": "aad43a854b54600d8700755e386b9c09e70a391ff0eeda845de74ff754ac207f"
+    },
+    {
+      "path": "apps/app/tests/composer-input-proof.tsx",
+      "sha256": "103cee5a0f942d9acc5e22d577d957088e686aadd01141ce90efdbab1622fc5b"
     },
     {
       "path": "apps/app/tests/composer-remote-follow-up.test.tsx",
@@ -3417,7 +3437,7 @@
     },
     {
       "path": "apps/app/tests/desktop-update-button.test.tsx",
-      "sha256": "3163291f2552611b55b7376cfae5ac58b0ecd8f7a275e1746a6fe15344104f97"
+      "sha256": "1e03da5d2bebb31d7003e058615c8a33ded12ee33be7f02a4d0b234942149e3f"
     },
     {
       "path": "apps/app/tests/electron-updater-check-now.test.ts",
@@ -3609,7 +3629,7 @@
     },
     {
       "path": "apps/app/tests/model-approval-cards.test.tsx",
-      "sha256": "6adb2db0a55cc4f3b1a36d2a82cb5c104fce5f3efd2e9fa895d13bd82903f0d6"
+      "sha256": "ec9465d1123ae5c249f46a00c3cc4dd623e419ade7b8b3ea479b7594d1915359"
     },
     {
       "path": "apps/app/tests/model-display-memory.test.ts",
@@ -3733,11 +3753,15 @@
     },
     {
       "path": "apps/app/tests/openwork-activity.test.tsx",
-      "sha256": "e27d074bcfb6707b1a06d32dc276e4f7be5b2f07a85a21fbe4fba83702533a99"
+      "sha256": "9d93f95834231cb050370cd4b3044c4f67acb8a3822e30c71ef225aaecc5e705"
     },
     {
       "path": "apps/app/tests/output-preview.test.tsx",
       "sha256": "92a6b196dfa0d90bdd0bc5da59c8580656c4d6a616f886ea8daa5fea51d8be65"
+    },
+    {
+      "path": "apps/app/tests/pending-message-order.test.ts",
+      "sha256": "d06f7b6cad1b561fb8540f547b646c0b50137925690af3c75cd1836dd53a7b74"
     },
     {
       "path": "apps/app/tests/personal-account-proof.tsx",
@@ -3920,12 +3944,16 @@
       "sha256": "f3088be3fb8787f7679ec41f3dec86fbbeb068fb1769d6b0c6c6356053f03b6e"
     },
     {
+      "path": "apps/app/tests/task-cost-control.test.tsx",
+      "sha256": "5a72ff9e84862c77c29e56200f98664d12c5ed64ec0ff12fff4453a3f7dc20fa"
+    },
+    {
       "path": "apps/app/tests/task-permission-control.test.tsx",
-      "sha256": "a46db26e9f48ff9f792242986c906d2d5d56447b60147e31a79c14028bde99d5"
+      "sha256": "1647cbea41cbde78b9edfada5e2f7327db5ede2bd23a73dbc44e3c282685bc3e"
     },
     {
       "path": "apps/app/tests/task-permission-proof.tsx",
-      "sha256": "9136d3df3ae05229978af85e5d90dd2899c528f4704ac6fb9d4dea1d4f134bfa"
+      "sha256": "7a4edb67399f927c0ab943102c2274dbd3c15e5ea08aed028bb4f34edf71ba4c"
     },
     {
       "path": "apps/app/tests/text-activity-rail-render.test.tsx",
@@ -4156,6 +4184,14 @@
       "sha256": "3ea5328eb4a3e2941d4b1fe79f7ac8e781b86391b4a97cf9f408bfd211ff47ca"
     },
     {
+      "path": "apps/desktop/electron/generation-policy.mjs",
+      "sha256": "2edcc192c8456fb8ec41471b34a466013d9b83bf40e4e64a58090fb978b38eeb"
+    },
+    {
+      "path": "apps/desktop/electron/generation-policy.test.mjs",
+      "sha256": "db2053afda4b42b958d4bebb819cab2ed5614b1afb5920d16cacde155cba64a6"
+    },
+    {
       "path": "apps/desktop/electron/get3w-artifact-route.mjs",
       "sha256": "3b610db6e887e13596cb2880ee82ba3f99c5581827a10839eb0d6810e1db5b67"
     },
@@ -4217,11 +4253,11 @@
     },
     {
       "path": "apps/desktop/electron/get3w-managed-mcp.mjs",
-      "sha256": "f10bc859b2347c699e492dcd37d0736b16b346e20917b51a670970fefa69a6ed"
+      "sha256": "b5a5c56547b11adfb2a3a3e375640ddf0bc445dd6863fb0c9b5a89f2a661a768"
     },
     {
       "path": "apps/desktop/electron/get3w-managed-mcp.test.mjs",
-      "sha256": "8067ec6713720852e72e78b5dfa11ae69dc13ee2a8475100f1abd72dd194c0d1"
+      "sha256": "61a8f991c7c9bccd732e95d82c4c9a437a43a11a87790810c862f7ea5765a0b5"
     },
     {
       "path": "apps/desktop/electron/get3w-managed-provider.mjs",
@@ -4237,7 +4273,15 @@
     },
     {
       "path": "apps/desktop/electron/get3w-mcp-proxy.mjs",
-      "sha256": "c41e750ee217eec0bf44208768cf69f629c812709403d14f4ab7ebef46ac7ddd"
+      "sha256": "a189c6747aaa59c346c5bcaa0ce1bbabb0a912c23e89b057b83b5f0a242fa558"
+    },
+    {
+      "path": "apps/desktop/electron/get3w-model-approvals.mjs",
+      "sha256": "fe265215e63a99942518e5bd0bf44f7dc0da347edbd7e68609dccfdc951d6c91"
+    },
+    {
+      "path": "apps/desktop/electron/get3w-model-approvals.test.mjs",
+      "sha256": "d15f28f4570c5dc03210369c9e776ceff458f5d19eba5668e91d742b26751193"
     },
     {
       "path": "apps/desktop/electron/get3w-model-name.mjs",
@@ -4265,15 +4309,23 @@
     },
     {
       "path": "apps/desktop/electron/get3w-native-media.mjs",
-      "sha256": "916918dda276cfb1d026a143c263922eca723b98333785275cbf962faed21884"
+      "sha256": "cd05402aca4b673751999c9cf4d16b62c1814912f8e0eff77546e8f579e28d13"
     },
     {
       "path": "apps/desktop/electron/get3w-native-media.test.mjs",
-      "sha256": "319218a485d30b9ae1f8ea0cd200c0097d76b30e9c501f1f1f4384891921da0e"
+      "sha256": "08cd4fade7fe04d1dc7d90fd741f0bba9878d28325b1d9d4bf02714bd9d1ceda"
     },
     {
       "path": "apps/desktop/electron/get3w-personal.test.mjs",
       "sha256": "b0c22a46a2ed67559901456c43b898f2b626606b9e56dbb95ce739f066b93322"
+    },
+    {
+      "path": "apps/desktop/electron/get3w-resource-upload.mjs",
+      "sha256": "b015ceffc1b2612b411568040f23460cef9b106aa381310b42b5214e61fd1386"
+    },
+    {
+      "path": "apps/desktop/electron/get3w-resource-upload.test.mjs",
+      "sha256": "c7d9572f5057528288186d4e0787525aee2fdbfa1ff2275665beabcfcffae56a"
     },
     {
       "path": "apps/desktop/electron/get3w-service-defaults.test.mjs",
@@ -4420,6 +4472,14 @@
       "sha256": "d6fa50a38204d6b42165d2d578fdc13e9ae613081e0edb085a4833c66cc2308f"
     },
     {
+      "path": "apps/desktop/electron/source-image-settings.mjs",
+      "sha256": "e68bdba49286c54a17e31a0be5190e14412537935030c87a1dbdc6842d7afb65"
+    },
+    {
+      "path": "apps/desktop/electron/source-image-settings.test.mjs",
+      "sha256": "4fe30e9b9fbcbd1a820ec71f1d2bc11b52382fa9ac3a2af1a5df0a1f899695e5"
+    },
+    {
       "path": "apps/desktop/electron/startup-log.mjs",
       "sha256": "2010ea96a5fc41f8e93ba54023927eb9bd124125bd533f455071250f6a02c155"
     },
@@ -4449,7 +4509,7 @@
     },
     {
       "path": "apps/desktop/electron/task-permissions.mjs",
-      "sha256": "424e307a8ed2a8c29c1b845a8d3537a7034b675c4a0e359ce06feb16ac8f966f"
+      "sha256": "6c68216a52bdc950df90bf91188e95bbf3ecd2def85cf40c1c3956be4e33d49e"
     },
     {
       "path": "apps/desktop/electron/task-permissions.test.mjs",
@@ -4521,7 +4581,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "0f8635527b3839a16722b654fe38c3318931af6540e17203ffe39cacefc58fa9"
+      "sha256": "70bcd0617ecf786eaefef05b6452416a7088821b0372903b9521c6fa6238d199"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -4836,6 +4896,10 @@
       "sha256": "eb912711ea12449de4ffa1b9668571cd64ac14f3f91af89584b6f8034b5cf488"
     },
     {
+      "path": "apps/server/src/cost-run-context.ts",
+      "sha256": "b240cc4034f8a8d913bb9a39078772b25b246cd5ad7a1467af879866d706e299"
+    },
+    {
       "path": "apps/server/src/diagnostic-sanitizer.ts",
       "sha256": "f2233e817b5c76fe2a4b65cc6c0520f32fc77bc37b7b68ce0669ed8068ed0c18"
     },
@@ -4925,7 +4989,7 @@
     },
     {
       "path": "apps/server/src/get3w-chat-tools.ts",
-      "sha256": "fba38d23fee3eff8e50edd030a6d5993f70e43174ebefb64bf16e740a1a99420"
+      "sha256": "84229fd01e0912f4df49ad36f287ef25525c32d29a67e258f6e29b0eca65eb2e"
     },
     {
       "path": "apps/server/src/index.ts",
@@ -4993,7 +5057,7 @@
     },
     {
       "path": "apps/server/src/native-media-instructions.ts",
-      "sha256": "339ca66a667e983b24aba9e390949395986301bac72229d0f808f1ab0b0f9019"
+      "sha256": "68928349d7a6e9be27bec1d64342fca46679dab39cf1993329d525755ebc80c7"
     },
     {
       "path": "apps/server/src/opencode-config-error.ts",
@@ -5017,7 +5081,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-agent-permissions-v2.ts",
-      "sha256": "a3dc538e3d2ca6e0aa14f198612881fb6564ad6e8e473a80de5910530978e606"
+      "sha256": "9f9c59b79fd20b36d9224749ff827d8d043ce3d10b9dd721073697f5dd222208"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-anthropic-adaptive-thinking.ts",
@@ -5049,7 +5113,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-context-v2.ts",
-      "sha256": "bad435cec39c7ab0234122bbb92e2c1f796c54da6fa0e0db743869e0bc9ab658"
+      "sha256": "5d3351154472ed6d50382fb806cdfbe84fa6239a49ff9e8d05c99e200f5dccc6"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-extensions-preview-steering.ts",
@@ -5069,7 +5133,7 @@
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-mcp-readiness-v2.ts",
-      "sha256": "8180fc3e523347a4b6eaa19516fa521d35abfaa00c31f135e824fa7c8fc07759"
+      "sha256": "78a6f588696755cfd4c346175218e832d77ce952a708d3d00dd888df70f78cf6"
     },
     {
       "path": "apps/server/src/opencode-plugins/openwork-mcp-results-v2.ts",
@@ -5149,7 +5213,7 @@
     },
     {
       "path": "apps/server/src/opencode-v2-context-bridge.ts",
-      "sha256": "2afe474b21155a58c7e7dd85a872ef0ab5ef09266ea18c3a5fbdba90bb69b66f"
+      "sha256": "e2d25bee4e9c980fc8fc54ec3bfc1129710c90e07a45f39f02e87b983f8dbe2b"
     },
     {
       "path": "apps/server/src/opencode-v2-history-lock.ts",
@@ -5169,7 +5233,7 @@
     },
     {
       "path": "apps/server/src/opencode-v2-mcp-readiness.ts",
-      "sha256": "94f41a4e3a963ea1adeff125a77b4e66723886e1b8f0ad8a1bf21918cf2f63a7"
+      "sha256": "5c8f9a32911aa40e8d9808ddd308869f2d69805976664eda34d105f4191b6fbd"
     },
     {
       "path": "apps/server/src/opencode-v2-migration-process.ts",
@@ -5273,7 +5337,7 @@
     },
     {
       "path": "apps/server/src/routes/operations.ts",
-      "sha256": "6c70860b3d4dbf12c2a50bd1282b4bb0da75d4a3b2c33eeebe0b4a262f21cb40"
+      "sha256": "daf68189a02c7a8c162b236ad7a7c45dc28c1f0f45edcb1a7309bae2ee2b99fa"
     },
     {
       "path": "apps/server/src/routes/registry.ts",
@@ -5301,7 +5365,7 @@
     },
     {
       "path": "apps/server/src/runtime-opencode-config-store.ts",
-      "sha256": "018b778357463ac1c099fa98b4ae3675c0ffbd3ecf5476ba33d244f9efdf2164"
+      "sha256": "5f2b22e71ea69d23707d34c1a0c8ad1cdf667773ee877d18dfe72e1476fddb92"
     },
     {
       "path": "apps/server/src/selfhost-web.ts",
@@ -5321,7 +5385,7 @@
     },
     {
       "path": "apps/server/src/server.ts",
-      "sha256": "d9fa850bf2d32172e50a14b615dbefb510559f3faf58d946a9e809f88291fe88"
+      "sha256": "af0673c7b1b24212c763c7b18272f061ec52abd6f0acdcd8350d64eaa83b646d"
     },
     {
       "path": "apps/server/src/session-groups.ts",
@@ -5338,6 +5402,10 @@
     {
       "path": "apps/server/src/static-ui.ts",
       "sha256": "d12976b56ed646b57aeb38040cc6ea13252b0a64cfc29362f22ecbc95da6dea0"
+    },
+    {
+      "path": "apps/server/src/task-cost-settings.ts",
+      "sha256": "c7dafdeddd61b3fdd8ff955f100c238fe554d99e451161687e18f1a0798d2a9f"
     },
     {
       "path": "apps/server/src/task-log-capture.ts",
@@ -5365,7 +5433,7 @@
     },
     {
       "path": "apps/server/src/types.ts",
-      "sha256": "cb93d7ba191e9d3e8ff39ded024996a934cb2a4c012081d2763aee8447867a0a"
+      "sha256": "ad64687416a59b283cbce22bfedcc877592b3aa46df01aa3a80e8cea23b93f9b"
     },
     {
       "path": "apps/server/src/ui-control.ts",
@@ -5544,6 +5612,10 @@
       "sha256": "9c48f342b10f5772a5d930625e6d28bdc20cdc91602d6633863c693bd967f6a2"
     },
     {
+      "path": "apps/server/test/model-approval-bridge.test.ts",
+      "sha256": "2178306dc2cc4ec6fd8d988aa050ee68c59c9a9059fc693302b1670af1361fbd"
+    },
+    {
       "path": "apps/server/test/model-approval-fetch.test.ts",
       "sha256": "499a858eeaeb2edb7ca75a724e71e11b51af30f01e3f9daebf2cc77e136438ab"
     },
@@ -5597,7 +5669,7 @@
     },
     {
       "path": "apps/server/test/opencode-v2-mcp-readiness.test.ts",
-      "sha256": "44204da567851e6ebaf79f4ba0f3dbfb376bd17c0846634f2577a0bdc691653c"
+      "sha256": "f178a979abe0b95fe825e621db4d0d35d95c2100caad4bad8600724341576913"
     },
     {
       "path": "apps/server/test/opencode-v2-message-paging-native.test.ts",
@@ -5617,7 +5689,7 @@
     },
     {
       "path": "apps/server/test/opencode-v2-tool-schemas.test.ts",
-      "sha256": "4630cdc2eb34371a2406320d3e5a162bb02550e1372c70f352be2f322524fddf"
+      "sha256": "43f34676122b97f9c8f024e4ef99ff6a4fd527e25d29db16d7b7c98cb59354dc"
     },
     {
       "path": "apps/server/test/openwork-affordance-args.test.ts",
@@ -5684,8 +5756,16 @@
       "sha256": "df1948576e87f3494d6ee749c7547b7083eaeacf21291560d390770ea870c8ee"
     },
     {
+      "path": "apps/server/test/runtime-config-recovery.test.mjs",
+      "sha256": "448fab4ca6032b48871ceb2971d6eb9867b6d8ac159d1e5ef19d63ad0971ab19"
+    },
+    {
       "path": "apps/server/test/session-title-sigv4.vitest.test.ts",
       "sha256": "77debf9ea0f710366e481746d720d26f5659bec9f5a5a786b05deb825e74ddec"
+    },
+    {
+      "path": "apps/server/test/task-cost-settings.test.ts",
+      "sha256": "64a0913e56e273526901ec6b0b544cb8e6dfd80419bed2efac93fcc84e70eb51"
     },
     {
       "path": "apps/server/test/task-log-capture.test.ts",
@@ -5697,7 +5777,7 @@
     },
     {
       "path": "apps/server/test/task-permission-native.test.ts",
-      "sha256": "e73bbd83c7c5ebb9121868ed0ecc58cfd51f0c72a9ae58adf8905bbacfcce6e3"
+      "sha256": "360e374e2ab914a927b7cb851e08c01fccc675b83071869b9bf578f6d6c98d8c"
     },
     {
       "path": "apps/server/test/task-permission-plugin.test.ts",
@@ -5745,11 +5825,11 @@
     },
     {
       "path": "docs/release-notes.md",
-      "sha256": "9fb24bf8f1bc018658bef0abe96decdbd41528894e3cba26ec47e2503a666b9f"
+      "sha256": "d22970c138d72283d343a5279b48f627724534176f076cc537c46a6260bd2993"
     },
     {
       "path": "package.json",
-      "sha256": "9e6639382b888c83a0ea2df26b3f8b92916ec89216341c494fcd1913d2e63d59"
+      "sha256": "da05844ab791e4879a91edfe3288cf3774770fc59d4d737b023e0fe52dbf6453"
     },
     {
       "path": "packages/browser-tabs/README.md",
@@ -6892,6 +6972,14 @@
       "sha256": "b8b3bca9476bcf95e6e502e7d7d17c4473c6efcc05592d447823ad011781b5b3"
     },
     {
+      "path": "scripts/close-local.mjs",
+      "sha256": "3bf525674f4ee586a7cea7520ff7d20f30476666d975a61656269f19d63b7d0b"
+    },
+    {
+      "path": "scripts/close-local.test.mjs",
+      "sha256": "b4500845d3acd48d0cd0cc31e43cf9b00910b1894b71f5b131d50051b14ea38a"
+    },
+    {
       "path": "scripts/dev-local.mjs",
       "sha256": "12ca700dd140e99b8ba6615e016f5811fb6656faf428507c49c472bedb742baa"
     },
@@ -6921,7 +7009,7 @@
     },
     {
       "path": "scripts/verify-public-release.py",
-      "sha256": "c05a3f1441f2912959f646618802b571cfea8d76d73c915ad746dd8fe570c214"
+      "sha256": "05030b19194803e9bf9bf226edac7ef0f8d75b8bcdaba56910d9bb2449664131"
     },
     {
       "path": "scripts/verify-public-source.py",

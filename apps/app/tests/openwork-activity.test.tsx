@@ -5,9 +5,12 @@ import { createRoot, type Root } from "react-dom/client"
 import type { DynamicToolUIPart, UIMessage } from "ai"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
+import { setLocale } from "../src/i18n"
+import { getCapabilityCallSentence } from "../src/lib/capability-call"
 import { openWorkNativeFailure, openWorkNativeSentence } from "../src/lib/openwork-native-activity"
 
 GlobalRegistrator.register({ url: "https://web.example/" })
+setLocale("en")
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT")
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true)
 afterAll(() => {
@@ -29,6 +32,12 @@ function native(toolName: string, input: Record<string, unknown>, output?: unkno
 }
 
 describe("Get3W's own app tools read as sentences", () => {
+  test("resource uploads have native activity labels and failures remain visible", () => {
+    const upload = native("resource_upload", { path: "/workspace/source.png" }, { status: "ready", resource: { url: "https://files.test/source.png" } })
+    expect(getCapabilityCallSentence(upload)).toMatchObject({ present: "Uploading resource", past: "Uploaded resource", failure: "Resource upload failed" })
+    expect(openWorkNativeFailure(upload)).toBeNull()
+    expect(openWorkNativeFailure(native("resource_upload", {}, { status: "error", error: { message: "Resource upload failed; retry uploading" } }))).toBe("Resource upload failed; retry uploading")
+  })
   test("queries and commands name what the person sees, never affordance or group ids", () => {
     const search = native("openwork_query", { id: "session.search", args: { query: "quarterly plan" } }, { results: [] })
     expect(openWorkNativeSentence(search)?.past).toBe("Searched your chats for “quarterly plan”")

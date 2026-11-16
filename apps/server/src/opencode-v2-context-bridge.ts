@@ -1,3 +1,4 @@
+import { captureCostRun, initializeTaskCostSettings } from "./task-cost-settings.js";
 import { createV2SessionHomes } from "./opencode-v2-session-home.js";
 import { workspaceIdForPath } from "./workspaces.js";
 import { grantCovers, listThreadApprovals } from "./thread-approvals.js";
@@ -170,6 +171,23 @@ export async function createV2ContextBridge(
   const plugin = await OpenWorkExtensionsPreview();
   const server = await serve({ hostname: "127.0.0.1", port: 0, fetch: async request => {
     if (request.headers.get("authorization") !== `Bearer ${token}`) return new Response(null, { status: 401 });
+    if(request.method==="POST" && new URL(request.url).pathname==="/cost-message" && permissionConfig){
+      const body:unknown=await request.json();
+      const connection=engine?.();
+      if(!connection||!isRecord(body)||typeof body.sessionId!=="string"||typeof body.messageId!=="string")return new Response(null,{status:400});
+      const read=async(path:string)=>{const response=await loopbackFetch(new URL(path,connection.url),{headers:{authorization:`Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}`},signal:AbortSignal.timeout(5000)});if(!response.ok)throw Error("Task unavailable");return response.json();};
+      try{
+        const raw:unknown=await read(`/api/session/${encodeURIComponent(body.sessionId)}`);
+        const session=isRecord(raw)&&isRecord(raw.data)?raw.data:raw;
+        // Child prompts belong to the root's original message and never get a separate allowance.
+        if(isRecord(session)&&(!session.parentID||session.fork!==undefined)){
+          const homes=createV2SessionHomes(permissionConfig,read);
+          const directory=await homes.stored(body.sessionId)??(isRecord(session.location)&&typeof session.location.directory==="string"?session.location.directory:undefined);
+          if(directory){const workspace=permissionConfig.workspaces.find(row=>row.path===directory)?.id??workspaceIdForPath(directory);await captureCostRun(permissionConfig,workspace,body.sessionId,body.messageId);}
+        }
+        return Response.json({ok:true});
+      }catch{return new Response(null,{status:503});}
+    }
     if (request.method === "POST" && new URL(request.url).pathname === "/permission-policy" && permissionConfig) {
       try {
         const body: unknown = await request.json();
@@ -184,7 +202,12 @@ export async function createV2ContextBridge(
         const session = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
         // Engine-created children inherit their parent's recorded mode. Unknown
         // historical roots stay in default mode, regardless of the new-task default.
-        if (body.initialize === true) await initializeTaskPermissionMode(permissionConfig, body.sessionId, isRecord(session) && typeof session.parentID === "string" ? session.parentID : undefined, isRecord(session) && session.fork !== undefined);
+        if (body.initialize === true) {
+          const parentId=isRecord(session)&&typeof session.parentID==="string"?session.parentID:undefined;
+          const fork=isRecord(session)&&session.fork!==undefined;
+          await initializeTaskPermissionMode(permissionConfig,body.sessionId,parentId,fork);
+          await initializeTaskCostSettings(permissionConfig,body.sessionId,parentId,fork);
+        }
         const settings = await taskPermissionSettings(permissionConfig, body.sessionId);
         const directory = isRecord(session) && isRecord(session.location) && typeof session.location.directory === "string" ? session.location.directory : undefined;
         const resources = Array.isArray(body.resources) ? body.resources.filter((entry): entry is string => typeof entry === "string") : [];

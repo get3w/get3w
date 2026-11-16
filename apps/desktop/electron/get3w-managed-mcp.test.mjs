@@ -1,10 +1,18 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,rm,readFile,writeFile} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {createGet3wManagedMcp} from './get3w-managed-mcp.mjs';
+import {createGet3wManagedMcp,mediaOutputNaming} from './get3w-managed-mcp.mjs';
 import {createGet3wMcpProxy} from './get3w-mcp-proxy.mjs';
+
+test('attachment edits save in visible task folders, including restored output metadata',()=>{
+ const source='.opencode/openwork/inbox/chat-attachments/ses_test';
+ assert.deepEqual(mediaOutputNaming({nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:source+'/fixed',source_path:source+'/original.png'}}}),{taskName:'修复杯子',filename:'杯子.png',directory:undefined,sourcePath:undefined});
+ assert.deepEqual(mediaOutputNaming({nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:'产品图',source_path:'产品图/原图.png'}}}),{taskName:'修复杯子',filename:'杯子.png',directory:'产品图',sourcePath:'产品图/原图.png'});
+ // Other invalid destinations still reach the workspace validator unchanged.
+ assert.equal(mediaOutputNaming({nativeMedia:{output:{directory:'../outside'}}}).directory,'../outside');
+});
 
 test('workspace ownership, explicit reconnect, account changes and policy failures',async()=>{
  const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-mcp-'));
@@ -111,13 +119,14 @@ test('output download failures retry without submission and local reads stay off
  const scope={userId:'u',workspaceId:'ws',sessionId:'chat-session-123456'};
  const {createModelTaskJournal}=await import('./get3w-model-task-journal.mjs');
  const journal=createModelTaskJournal({userData});
- const context={type:'get3w.submit',messageId:'original-message',hash:'h',quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
+ const context={type:'get3w.submit',messageId:'original-message',hash:'h',nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:'.opencode/openwork/inbox/chat-attachments/ses_test/fixed'}},quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
  const key=await journal.beforeSubmit(scope,context);
  await journal.observe(scope,context,{result:{structuredContent:{status:'succeeded',result:{request_id:'r',status:'completed',outputs:['https://xianchou.com/image.png']}}}});
  let identity={userId:'u'},fail=true,saves=0,cloud=0;
  const manager=createGet3wManagedMcp({userData,auth:{outputIdentity:()=>identity,status:async()=>{cloud++;return {status:'signed_in',user:{id:'u'}};}},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client'}),fetchImpl:async(url,options)=>{
   assert.ok(url.endsWith('/model-outputs'));
   const body=JSON.parse(options.body);
+  if(['plan','save'].includes(body.action)){assert.equal(body.directory,undefined);assert.equal(body.taskName,'修复杯子');assert.equal(body.filename,'杯子.png');}
   if(body.action==='plan')return Response.json({plans:[{fileId:'stable',path:'任务成果/生成图片.png',rootPath:'/fixture'}]});
   if(body.action==='save'){saves++;assert.equal(body.sessionId,scope.sessionId);return Response.json({path:'image.png',mimeType:'image/png',sizeBytes:3},{status:fail?503:200});}
   return Response.json(body.action==='read'?{dataBase64:'YWJj',mimeType:'image/png',sizeBytes:3}:{items:[],truncated:false});
@@ -158,4 +167,65 @@ test('native artifact endpoint remains scoped and never exposes the general gate
   assert.equal(calls.at(-1).path,'/v1/mcp-apps');
   assert.equal((await fetch(proxy.url+'/apps/'+aid,{method:'POST',headers:{...headers,Origin:'https://evil.test'},body:call})).status,401);
  }finally{await proxy.close();}
+});
+
+test('missing ownership recovers only an exact dead legacy proxy and preserves its config backup', async () => {
+ const {createServer}=await import('node:net');
+ const {readdir}=await import('node:fs/promises');
+ const reserve=createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));
+ const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-orphan-'));
+ const original={type:'remote',url:`http://127.0.0.1:${port}/mcp`,headers:{Authorization:`Bearer ${'a'.repeat(43)}`},oauth:false,enabled:true,timeout:600000};
+ let config=structuredClone(original),writes=0;
+ const deps={userData,auth:{status:async()=>({status:'signed_in',user:{id:'u'}})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client',pid:1}),createProxy:async()=>({url:'http://127.0.0.1:2345/mcp',token:'new-local',close:async()=>{}}),fetchImpl:async(_url,opt)=>{
+  if(opt.method==='POST'){writes++;config=JSON.parse(opt.body).config;}
+  if(opt.method==='DELETE')config=undefined;
+  return Response.json({items:config?[{name:'get3w-account',source:'config.remote',config}]:[]});
+ }};
+ const manager=createGet3wManagedMcp(deps);
+ try {
+  assert.equal((await manager.run({userId:'u',workspaceId:'ws',action:'enable'})).state,'configured');
+  assert.equal(writes,1);assert.equal(config.headers.Authorization,'Bearer new-local');
+  const files=await readdir(path.join(userData,'get3w-mcp-recovery'));
+  assert.deepEqual(JSON.parse(await readFile(path.join(userData,'get3w-mcp-recovery',files[0]),'utf8')).config,original);
+ }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
+});
+
+test('missing ownership never adopts active or custom connections', async () => {
+ const {createServer}=await import('node:net');
+ const listener=createServer(socket=>socket.destroy());await new Promise(resolve=>listener.listen(0,'127.0.0.1',resolve));
+ const port=listener.address().port;
+ for(const override of [{},{url:'https://custom.example/mcp'},{headers:{Authorization:'Bearer custom'}},{timeout:42},{extra:true}]) {
+  const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-unowned-'));let writes=0;
+  const config={type:'remote',url:`http://127.0.0.1:${port}/mcp`,headers:{Authorization:`Bearer ${'a'.repeat(43)}`},oauth:false,enabled:true,timeout:600000,...override};
+  const manager=createGet3wManagedMcp({userData,auth:{status:async()=>({status:'signed_in',user:{id:'u'}})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client',pid:1}),fetchImpl:async(_url,opt)=>{if(opt.method!=='GET')writes++;return Response.json({items:[{name:'get3w-account',source:'config.remote',config}]});}});
+  try{await assert.rejects(manager.run({userId:'u',workspaceId:'ws',action:'enable'}),/edited locally/);assert.equal(writes,0);}
+  finally{await manager.close();await rm(userData,{recursive:true,force:true});}
+ }
+ await new Promise(resolve=>listener.close(resolve));
+});
+
+test('a timed out registration retains ownership when the write commits after the empty read', async () => {
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-late-write-'));let config,pending,fail=true;
+ const manager=createGet3wManagedMcp({userData,auth:{status:async()=>({status:'signed_in',user:{id:'u'}})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client',pid:1}),createProxy:async()=>({url:'http://127.0.0.1:2345/mcp',token:'fixture',close:async()=>{}}),fetchImpl:async(_url,opt)=>{
+  if(opt.method==='POST'){pending=JSON.parse(opt.body).config;if(fail)throw Error('timeout');config=pending;}
+  if(opt.method==='DELETE')config=undefined;
+  return Response.json({items:config?[{name:'get3w-account',source:'config.remote',config}]:[]});
+ }});
+ try{
+  await assert.rejects(manager.run({userId:'u',workspaceId:'ws',action:'enable'}),/timeout/);
+  assert.ok(JSON.parse(await readFile(path.join(userData,'get3w-managed-mcp.json'),'utf8')).ws);
+  config=pending;fail=false;
+  assert.equal((await manager.run({userId:'u',workspaceId:'ws',action:'enable'})).state,'configured');
+ }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
+});
+
+test('a recorded mismatch cannot use legacy recovery even with an exact dead proxy shape', async () => {
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-edited-owned-'));
+ await writeFile(path.join(userData,'get3w-managed-mcp.json'),JSON.stringify({ws:'different-fingerprint'}));
+ const config={type:'remote',url:'http://127.0.0.1:1/mcp',headers:{Authorization:`Bearer ${'a'.repeat(43)}`},oauth:false,enabled:true,timeout:600000};
+ let writes=0;
+ const manager=createGet3wManagedMcp({userData,auth:{status:async()=>({status:'signed_in',user:{id:'u'}})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client',pid:1}),fetchImpl:async(_url,opt)=>{if(opt.method!=='GET')writes++;return Response.json({items:[{name:'get3w-account',source:'config.remote',config}]});}});
+ try{await assert.rejects(manager.run({userId:'u',workspaceId:'ws',action:'enable'}),/edited locally/);assert.equal(writes,0);}
+ finally{await manager.close();await rm(userData,{recursive:true,force:true});}
 });

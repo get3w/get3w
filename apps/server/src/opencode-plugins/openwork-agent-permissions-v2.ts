@@ -22,7 +22,7 @@ type McpEditor = {
   set(name: string, config: Record<string, unknown>): void;
 };
 type Context = {
-  event?: { subscribe(options: {types: ["session.created", "session.forked"]; signal: AbortSignal}): AsyncIterable<{data: {sessionID?: string; id?: string}}> };
+  event?: { subscribe(options: {types: string[]; signal: AbortSignal}): AsyncIterable<{type?: string; data: {sessionID?: string; id?: string; inboxID?: string; item?: {type?: string}}}> };
   options: { rules?: unknown; organizationMcp?: unknown; permissionPolicy?: {url: string; token: string} };
   mcp: { transform(callback: (editor: McpEditor) => void): Promise<Registration> };
   permission: { hook(name: "evaluate", callback: (event: PermissionEvent) => void | Promise<void>): Promise<Registration> };
@@ -64,6 +64,13 @@ export default {
         if (id) { created.add(id); await initialize(id).catch(() => undefined); }
       }
     })().catch(() => undefined);
+    if (policy && context.event) void (async () => {
+      for await (const event of context.event!.subscribe({types:["session.inbox.enqueued"],signal:lifecycle.signal})) {
+        if(event.data.item?.type!=="user" || !event.data.sessionID || !event.data.inboxID)continue;
+        const response=await fetch(new URL("/cost-message",policy.url),{method:"POST",redirect:"error",signal:AbortSignal.timeout(5000),headers:{authorization:`Bearer ${policy.token}`,"content-type":"application/json"},body:JSON.stringify({sessionId:event.data.sessionID,messageId:event.data.inboxID})});
+        if(!response.ok)throw Error("Cost message could not be recorded");
+      }
+    })().catch(()=>undefined);
     // The engine asks about each command of a shell call's line on its own,
     // without the assignments that may name a program (`x=rm; $x -rf dir`), so
     // keep the whole line of recent calls by call id for their evaluation.

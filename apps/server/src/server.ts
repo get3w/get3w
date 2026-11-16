@@ -1,3 +1,5 @@
+import { resolveCostRunContext } from "./cost-run-context.js";
+import { captureCostRun, taskCostSettings, setTaskCostSettings, initializeTaskCostSettings, latestCostRun } from "./task-cost-settings.js";
 import { taskPermissionSettings, setTaskPermissionMode, initializeTaskPermissionMode } from "./task-permission-modes.js";
 import { listThreadApprovals, rememberThreadApproval, revokeThreadApproval } from "./thread-approvals.js";
 import {planDeliverable,registerDeliverable,resolveDeliverable,resolveDeliverableAlias} from "./workspace-deliverables.js";
@@ -1535,10 +1537,12 @@ async function forwardOpencodeV2Request(input: {
   let body: string | ArrayBuffer | undefined = requestBody;
   if(method==="POST"&&sessionId&&forwardedPath.endsWith("/prompt")&&requestBody){
     const prompt:unknown=JSON.parse(new TextDecoder().decode(requestBody));
+    if(isRecord(prompt)&&typeof prompt.id!=="string"){prompt.id=`msg_${shortId()}`;body=JSON.stringify(prompt);headers.delete("content-length");}
     if(isRecord(prompt)&&typeof prompt.id==="string"){
       const metadata=isRecord(prompt.metadata)?prompt.metadata:null;
       const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
       rememberGenerationPolicy(input.workspace.id,sessionId,prompt.id,openwork?.generationPolicy);
+      await captureCostRun(input.config,input.workspace.id,sessionId,prompt.id);
     }
   }
   if (method === "PATCH" && sessionId && forwardedPath === `/api/session/${sessionId}` && requestBody) {
@@ -1824,6 +1828,7 @@ async function forwardOpencodeV2Request(input: {
     if (method === "POST" && typeof session?.id === "string") {
       await homes.created(session.id, expectedHome);
       await initializeTaskPermissionMode(input.config, session.id, typeof session.parentID === "string" ? session.parentID : undefined, forwardedPath.endsWith("/fork"));
+      await initializeTaskCostSettings(input.config, session.id, typeof session.parentID === "string" ? session.parentID : undefined, forwardedPath.endsWith("/fork"));
     }
     const data = isRecord(payload) && "data" in payload ? payload.data : payload;
     return jsonResponse({ data: await homes.project(data) });
@@ -3273,7 +3278,7 @@ function createRoutes(
       const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
       if(openwork?.generationPolicy){rememberGenerationPolicy(workspace.id,body.sessionId,parentId,openwork.generationPolicy);policy=generationPolicyFor(workspace.id,body.sessionId,parentId);}
     }
-    if(!policy||["media_prepare","media_generate"].includes(String(body.input.name))){
+    {
       const callerMessageId=body.caller.messageId;
       const policySessionId=body.sessionId;
       const resolved=await generationPolicyFromMessages(callerMessageId,async cursor=>{
@@ -3289,10 +3294,16 @@ function createRoutes(
       rememberGenerationPolicy(workspace.id,body.sessionId,callerMessageId,resolved.policy);
       policy=resolved.policy;parentId=resolved.messageId;receivedAt=resolved.receivedAt;
     }
+    const costRun=await resolveCostRunContext(config,workspace.id,body.sessionId,body.caller.messageId,async path=>{
+      const target=new URL(path,connection.url);
+      target.searchParams.set("location[directory]",workspace.path);
+      const result=await loopbackFetch(target,{headers:{authorization:`Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}`},signal:ctx.request.signal});
+      if(!result.ok)throw Error("Cost run could not be verified");return result.json();
+    }).catch(()=>undefined);
     const response = await modelApprovalFetch(url,{method:"POST",redirect:"error",signal:ctx.request.signal,
       headers:{Authorization:String(definition.headers.Authorization),"Content-Type":"application/json",Accept:"application/json, text/event-stream","X-Get3W-Host-Token":config.hostToken},
       body:JSON.stringify({jsonrpc:"2.0",id:body.caller.messageId,method:"tools/call",params:body.input,
-        hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,userMessageId:parentId,receivedAt,workspaceDirectory:workspace.path,generationPolicy:policy}})});
+        hostContext:{sessionId:body.sessionId,messageId:body.caller.messageId,userMessageId:parentId,costRunKey:costRun,receivedAt,workspaceDirectory:workspace.path,generationPolicy:policy}})});
     const payload: unknown = await response.json();
     if (!response.ok) throw new ApiError(502,"model_call_failed","Model task could not finish");
     return jsonResponse(payload);
@@ -3696,8 +3707,10 @@ function createRoutes(
       const expected = body.grant;
       if (!isRecord(expected) || typeof expected.permission !== "string" || !Array.isArray(expected.patterns) || !expected.patterns.every((value: unknown) => typeof value === "string")) throw new ApiError(400, "invalid_grant", "Permission scope is required");
       await revokeThreadApproval(config, workspaceId, sessionId, body.index, {permission: expected.permission, patterns: expected.patterns});
+    } else if (body.action === "cost-set") {
+      await setTaskCostSettings(config, body.policy, sessionId);
     } else if (body.action !== "read") throw new ApiError(400, "invalid_action", "Invalid permission operation");
-    return jsonResponse({ ...await taskPermissionSettings(config, sessionId), grants: sessionId && workspaceId ? await listThreadApprovals(config, workspaceId, sessionId) : [] });
+    return jsonResponse({ ...await taskPermissionSettings(config, sessionId), cost:await taskCostSettings(config,sessionId), costRun:sessionId&&workspaceId?await latestCostRun(config,workspaceId,sessionId):null, grants: sessionId && workspaceId ? await listThreadApprovals(config, workspaceId, sessionId) : [] });
   });
 
   registerOperationRoutes({

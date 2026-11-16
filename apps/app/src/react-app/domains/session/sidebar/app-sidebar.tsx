@@ -1,6 +1,6 @@
 import { WorkspaceSwitcher } from "./workspace-switcher";
 /** @jsxImportSource react */
-import { DesktopUpdateButton } from "../../settings/state/desktop-updater-provider";
+import { DesktopUpdateBanner } from "../../settings/state/desktop-updater-provider";
 import { useNewTaskDraftState } from "../sync/draft-store";
 import { newSessionDraftOwnerKey, newSessionDraftSlot } from "../chat/new-session-destination";
 import { persistableComposerDraftText, useComposerStateStore } from "../surface/composer-state-store";
@@ -719,9 +719,11 @@ export function WorkspaceToolbar({ groups, selectedWorkspaceId, onSelectWorkspac
   const ctx = useSidebarContext();
   const connection = ctx.workspaceConnectionStateById[selectedWorkspaceId];
   const connecting = ctx.connectingWorkspaceId === selectedWorkspaceId || connection?.status === "connecting";
-  return <div data-sidebar-workspace-toolbar className="flex min-w-0 items-center gap-1">
-    {connecting ? <SessionDotMatrixLoader label={t("workspace_list.connecting")} />
-      : selected ? <WorkspaceAvatarPicker workspaceId={selected.workspace.id} label={workspaceLabel(selected.workspace)} /> : null}
+  return <div data-sidebar-workspace-toolbar className="flex min-w-0 items-center gap-1 ps-2.5">
+    <div className="flex size-4 shrink-0 items-center justify-center">
+      {connecting ? <SessionDotMatrixLoader label={t("workspace_list.connecting")} />
+        : selected ? <WorkspaceAvatarPicker workspaceId={selected.workspace.id} label={workspaceLabel(selected.workspace)} sizeClass="size-3.5" /> : null}
+    </div>
     <WorkspaceSwitcher workspaces={groups.map(group=>({id:group.workspace.id,label:workspaceLabel(group.workspace)}))} selectedId={selectedWorkspaceId} onSelect={id=>{void onSelectWorkspace(id);}}/>
     {canCreateWorkspaces() ? <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onOpenCreateWorkspace}
       aria-label={t("workspace_list.add_workspace")} title={t("workspace_list.add_workspace")}><Plus className="size-4" /></Button> : null}
@@ -949,9 +951,9 @@ export function AppSidebar(props: AppSidebarProps) {
         </SidebarReorderScope>
 
         <SidebarFooter className="border-t border-sidebar-border/60 p-1.5 pe-0">
+          <DesktopUpdateBanner />
           <div className="flex items-center gap-1 pe-1.5">
             <AccountStatusMenu {...props.status} onOpenAccountSettings={props.onOpenAccountSettings} />
-            <DesktopUpdateButton />
           </div>
         </SidebarFooter>
 

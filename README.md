@@ -38,6 +38,8 @@ pnpm dev
 
 同级目录已有 `api/.venv`、API 开发 `.env` 和已安装依赖的 `web` 时，可运行
 `pnpm dev:local`：启动本地 API（6600）、cloud 服务（6605，`services.cloud.app:app`）、图片/视频任务 worker（celery 队列）、网页（7700）和 Desktop，并为 Desktop 设置 `GET3W_CLOUD_ORIGIN` 和 `GET3W_AUTH_WEB_ORIGIN`。
+
+`pnpm close:local`：停止当前检出目录的 Desktop、API、Cloud、Celery 和 Web 本地开发服务及其子进程；支持 macOS 和 Linux，不按端口停止其他项目的服务。
 个人服务默认可用，无需配置启用开关或密钥。付费提交由用户的账户余额决定，没有服务端单任务或单会话上限。启动前只读检查个人表及共享预算 schema，缺失时停止，不自动建表。首次初始化请在 `../api` 执行 `.venv/bin/python -m scripts.check_personal_schema --apply`；该命令仅创建缺少的个人表，不回填数据，既有 API schema 需单独准备。
 它使用 `api/.env` 中的开发数据库及 Redis；退出时停止本次启动的 API、个人服务、网页和 Desktop。
 

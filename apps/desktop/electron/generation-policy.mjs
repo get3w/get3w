@@ -27,6 +27,8 @@ export function validateGenerationCall(context, policy, catalog) {
   const missing={};
   const outputDefaults={...defaults?.fields,...policy.outputs?.[model.type]};
   for(const [name,value] of Object.entries(outputDefaults)){
+    // Image edits use source-derived geometry, not unrelated global defaults.
+    if(model.type==='image-to-image'&&args.inputs.preserve_source_dimensions===true&&['aspect_ratio','resolution','size'].includes(name))continue;
     if(Object.hasOwn(args.inputs,name))continue;
     const options=schemas.flatMap(schema=>schema.properties?.[name]?.enum??[]);
     const typed=options.find(option=>String(option)===value);

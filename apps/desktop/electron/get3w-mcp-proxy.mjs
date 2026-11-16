@@ -59,6 +59,8 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
     let requestId = null;
     let submittedToCloud = false;
     let ownedSubmission;
+    let context;
+    let paidApproved=false;
     const timing=(host,stage,start)=>{if(host?.nativeMedia?.traceId)onMediaTiming?.({traceId:host.nativeMedia.traceId,stage,startedAt:start,endedAt:Date.now(),durationMs:Date.now()-start});};
     try {
       const chunks = []; let size = 0;
@@ -93,7 +95,7 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
       }
       if(!appId && request.method==="POST") {
         const message=JSON.parse(body.toString("utf8"));
-        if(["media_prepare","media_generate"].includes(message.params?.name)) {
+        if(["media_prepare","media_generate","resource_upload"].includes(message.params?.name)) {
           if(!hostContext||!hostToken||!workspaceId)return fail(403,"Trusted native media context required");
           const value=await nativeMedia.call(message.params.name,message.params.arguments,{...hostContext,workspaceId},controller.signal);
           response.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});
@@ -106,10 +108,9 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
       const nativeList = !appId && workspaceId && hostToken && request.method === "POST"
         && JSON.parse(body.toString("utf8")).method === "tools/list";
       const guard = appId ? null : guardFor(hostContext?.sessionId ?? sessionId);
-      let context;
-      let paidApproved=false;
+
       if(guard && request.method === "POST") {
-        try { const message=JSON.parse(body.toString("utf8"));context=guard.prepare(message,{trustedSession:hostContext!==null});body=Buffer.from(JSON.stringify(message)); if (context) { context.sessionId=hostContext?.sessionId ?? sessionId; context.messageId=hostContext?.messageId;context.nativeMedia=hostContext?.nativeMedia; }
+        try { const message=JSON.parse(body.toString("utf8"));context=guard.prepare(message,{trustedSession:hostContext!==null});body=Buffer.from(JSON.stringify(message)); if (context) { context.sessionId=hostContext?.sessionId ?? sessionId; context.messageId=hostContext?.messageId;context.costRunKey=hostContext?.costRunKey;context.nativeMedia=hostContext?.nativeMedia; }
           if(context&&hostContext&&["get3w.models.schema","get3w.quote","get3w.submit"].includes(context.type)){const catalog=await (auth.mediaCatalog?.({userId})??auth.taskCatalog({userId}));
             // A native preparation already resolved an explicitly requested
             // model against this account's catalog. Generic defaults must not
@@ -144,7 +145,7 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
           const approvalKey = context?.hash;
           let pending = approvalKey && approvalInFlight.get(approvalKey);
           if (!pending) {
-            pending = context?.alreadyApproved ? Promise.resolve(true) : Promise.resolve().then(() => approveSubmit({ userId, sessionId:hostContext?.sessionId ?? sessionId, messageId:hostContext?.messageId, arguments: call.arguments, quote:context?.quote, slug: call.arguments?.slug, quoteId: call.arguments?.quote_id, id: message.id, signal: controller.signal }));
+            pending = context?.alreadyApproved ? Promise.resolve(true) : Promise.resolve().then(() => approveSubmit({ userId, sessionId:hostContext?.sessionId ?? sessionId, messageId:hostContext?.messageId, runKey:hostContext?.costRunKey, arguments: call.arguments, quote:context?.quote, slug: call.arguments?.slug, quoteId: call.arguments?.quote_id, id: message.id, signal: controller.signal }));
             if (approvalKey) approvalInFlight.set(approvalKey, pending);
           }
           let decision;const approvalStarted=Date.now();
@@ -156,8 +157,8 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
             response.end(JSON.stringify({jsonrpc:"2.0",id:message.id ?? null,error:{code:-32003,not_submitted:true,reason:"approval_denied",message:decision?.reason || "Model task approval was denied"}}));
             return;
           }
-          if(await stopped())return;
           paidApproved=true;
+          if(await stopped())return;
           if(guard) guard.approve(context);
           if(journal && context) {await journal.beforeSubmit(context);ownedSubmission=context;}
         }
@@ -169,7 +170,7 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
         let value;const submitStarted=Date.now();
         try { submittedToCloud=true;value=await auth.submitPersonal({userId,arguments:context.call.arguments,signal:controller.signal}); }
         catch(error) {
-          if(error?.definitive) await journal.observe(context,{result:{structuredContent:{status:"succeeded",result:{status:"failed",error:{code:error.code,message:error.message}}}}});
+          if(error?.definitive) { if(["quote_expired","quote_stale","quote_mismatch"].includes(error.code))submittedToCloud=false; await journal.observe(context,{result:{structuredContent:{status:"succeeded",result:{status:"failed",error:{code:error.code,message:error.message}}}}}); }
           if(error?.definitive&&['quote_expired','quote_stale'].includes(error.code)){
             guard.rejectQuote(context);
             submittedToCloud=false;
@@ -232,6 +233,7 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
         else {response.writeHead(502,{"Content-Type":"application/json","Cache-Control":"no-store"});response.end(JSON.stringify({error:{message:submittedToCloud?"The submission is being recovered. Check the original task.":"Get3W Gateway unavailable. Check your account connection.",not_submitted:!submittedToCloud}}));}
       }
     } finally {
+      if(paidApproved && context && !submittedToCloud) await journal?.notSubmitted?.(context).catch(()=>{});
       if(ownedSubmission)journal?.releaseSubmit?.(ownedSubmission);
       release?.(); controllers.delete(controller); response.removeListener("close", abort);
     }

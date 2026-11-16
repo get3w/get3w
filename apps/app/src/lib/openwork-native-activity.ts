@@ -42,7 +42,7 @@ function resultRecord(part: DynamicToolUIPart): Record<string, unknown> | null {
 /** A command that returned `{ ok: false, error }` did not happen, whatever the engine state says. */
 export function openWorkNativeFailure(part: DynamicToolUIPart): string | null {
   const result = resultRecord(part)
-  if (["media_prepare", "media_generate"].includes(part.toolName)) {
+  if (["media_prepare", "media_generate", "resource_upload"].includes(part.toolName)) {
     return result?.status === "error" ? (isRecord(result.error) ? text(result.error.message,140) : null) ?? "Media generation could not continue." : null
   }
   if (!OPENWORK_NATIVE_TOOL.test(part.toolName)) return null

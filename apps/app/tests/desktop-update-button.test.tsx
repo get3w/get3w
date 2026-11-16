@@ -13,6 +13,8 @@ const { createRoot } = await import("react-dom/client");
 let status: SettingsUpdateStatus = null;
 let installs = 0;
 let downloads = 0;
+let supported = true;
+let finishInstall: (() => void) | undefined;
 mock.module("../src/react-app/kernel/local-provider", () => ({
   useLocal: () => ({ prefs: {}, setPrefs: () => {} }),
 }));
@@ -26,25 +28,28 @@ mock.module("../src/react-app/domains/session/status/use-desktop-feature", () =>
 mock.module("../src/react-app/domains/settings/state/electron-updater-state", () => ({
   useElectronUpdaterState: () => ({
     appVersion: "0.18.0",
-    updateEnv: { supported: true },
+    updateEnv: { supported },
     updateStatus: status,
     checkForUpdates: async () => {},
     downloadUpdate: async () => { downloads += 1; },
-    updateAndRestart: async () => { installs += 1; },
+    updateAndRestart: async () => { installs += 1; await new Promise<void>(resolve => { finishInstall = resolve; }); },
     setReleaseChannel: async () => {},
   }),
 }));
-const { DesktopUpdaterProvider, DesktopUpdateButton } = await import("../src/react-app/domains/settings/state/desktop-updater-provider");
+const { DesktopUpdaterProvider, DesktopUpdateBanner } = await import("../src/react-app/domains/settings/state/desktop-updater-provider");
 
-describe("titlebar staged-update restart", () => {
+describe("sidebar staged-update notice", () => {
   let root: ReturnType<typeof createRoot>;
   let host: HTMLDivElement;
   async function render() {
-    await act(async () => { root.render(<DesktopUpdaterProvider><DesktopUpdateButton /></DesktopUpdaterProvider>); });
+    await act(async () => { root.render(<DesktopUpdaterProvider><DesktopUpdateBanner /></DesktopUpdaterProvider>); });
   }
   beforeEach(() => {
     Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { configurable: true, value: true });
     status = null;
+    supported = true;
+    finishInstall = undefined;
+    setLocale("en");
     installs = 0;
     downloads = 0;
     host = document.createElement("div");
@@ -69,9 +74,46 @@ describe("titlebar staged-update restart", () => {
     const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
     expect(button).not.toBeNull();
     expect(button?.getAttribute("aria-label")).toBe("Restart to update");
+    expect(button?.textContent).toBe("Restart to update");
+    expect(host.querySelector("[data-update-banner]")?.textContent).toContain("New version 0.18.5");
     await act(async () => { button?.click(); });
     expect(installs).toBe(1);
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  });
+
+  test("disables restart while installation is pending", async () => {
+    status = { state: "ready", version: "5.11.3" };
+    await render();
+    const button = host.querySelector<HTMLButtonElement>("[data-update-button]");
+    await act(async () => { button?.click(); button?.click(); });
+    expect(installs).toBe(1);
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute("aria-busy")).toBe("true");
+    expect(host.textContent).toContain("New version 5.11.3");
+    await act(async () => { finishInstall?.(); });
+    expect(button?.disabled).toBe(false);
+  });
+
+  test("shows the reference copy in Chinese", async () => {
+    setLocale("zh");
+    status = { state: "ready", version: "5.11.3" };
+    await render();
+    expect(host.textContent).toContain("新版本 5.11.3");
+    expect(host.querySelector("button")?.textContent).toBe("重启更新");
+  });
+
+  test("handles missing version metadata without showing undefined", async () => {
+    status = { state: "ready" };
+    await render();
+    expect(host.textContent).toContain("New version available");
+    expect(host.textContent).not.toContain("undefined");
+  });
+
+  test("stays hidden when updates are unsupported", async () => {
+    supported = false;
+    status = { state: "ready", version: "5.11.3" };
+    await render();
+    expect(host.querySelector("[data-update-banner]")).toBeNull();
   });
 
   test("stays hidden through download progress, then appears when ready", async () => {

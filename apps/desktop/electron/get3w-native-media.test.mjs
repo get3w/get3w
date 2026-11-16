@@ -21,7 +21,7 @@ function fixture(directory,definition=schema){
   if(cap==='get3w.submit'){tasks.push({key:'task',status:'submitted',requestId:'request',arguments:input});result={request_id:'request',status:'submitted'};}
   return {result:{structuredContent:{status:'succeeded',result}}};
  };
- const create=()=>createNativeMedia({auth,userId:'owner',directory,dispatch,findTask:async(_,key)=>tasks.find(row=>row.arguments.idempotency_key===key)});
+ const create=()=>createNativeMedia({auth,userId:'owner',directory,dispatch,readImageDimensions:async()=>({width:2048,height:2560}),findTask:async(_,key)=>tasks.find(row=>row.arguments.idempotency_key===key)});
  return {create,calls,tasks,setIdentity:value=>identity=value,setDenied:value=>denied=value,setVersion:value=>version=value};
 }
 test('all native media types merge defaults and references, submit exact quoted inputs once, and restore after restart',async()=>{
@@ -57,6 +57,17 @@ test('unknown fields, missing parameters, explicit unavailable models, identity 
  assert.equal((await media.call('media_generate',{preparation_id:ready.preparation_id,inputs:{prompt:'cup'}},{...host,userMessageId:'other'},signal)).error.code,'preparation_unavailable');
  f.setIdentity('other');assert.equal((await media.call('media_generate',{preparation_id:ready.preparation_id,inputs:{prompt:'cup'}},host,signal)).status,'error');
  assert.equal(f.tasks.length,0);
+});
+test('unsupported references return the selected model schema without uploading or submitting',async()=>{
+ const f=fixture(),media=f.create(),signal=new AbortController().signal;
+ const result=await media.call('media_prepare',{task_type:'image-to-image',references:{image_urls:['https://example.test/source.png']}},host,signal);
+ assert.equal(result.error.code,'invalid_references');
+ assert.deepEqual(result.error.unsupported_fields,['image_urls']);
+ assert.deepEqual(result.error.parameters.properties.images,schema.properties.images);
+ assert.equal(f.tasks.length,0);
+ assert.ok(!f.calls.some(call=>call.args.name==='get3w.media.upload'||call.args.name==='get3w.quote'));
+ const retry=await media.call('media_prepare',{task_type:'image-to-image',references:{images:['https://example.test/source.png']}},host,signal);
+ assert.equal(retry.status,'needs_input');
 });
 test('personal capability discovery is reused across chats and invalidated by catalog changes',async()=>{
  const f=fixture(),media=f.create(),signal=new AbortController().signal;
@@ -118,6 +129,8 @@ test('native loopback tools preserve the real quote guard, approval, journal and
   const listing=await fetch(proxy.url,{method:'POST',headers:{Authorization:`Bearer ${proxy.token}`,'Content-Type':'application/json'},body:JSON.stringify({id:1,method:'tools/list'})});
   assert.equal((await listing.json()).result.tools.some(tool=>tool.name==='native_media_ready'),true);
   assert.equal((await call('media_prepare',{task_type:'text-to-image'},false)).status,403);
+  assert.equal((await call('resource_upload',{path:'/tmp/private.png'},false)).status,403);
+  assert.equal((await call('resource_upload',{})).payload.result.structuredContent.error.code,'invalid_input');
   const prep=(await call('media_prepare',{task_type:'text-to-image'})).payload.result.structuredContent;
   const input={preparation_id:prep.preparation_id,inputs:{prompt:'cup'}};
   assert.equal((await call('media_generate',input)).payload.result.structuredContent.request_id,'native-request');
@@ -212,11 +225,11 @@ test('published catalog schemas avoid discovery and retain conditional defaults 
  assert.equal(result.status,'submitted');assert.equal(calls.find(row=>row.args.name==='get3w.quote').args.arguments.inputs.quality,'high');
 });
 
-test('local files supplied during generation require preparation before any quote',async()=>{
+test('unreadable local files supplied during generation fail before any quote',async()=>{
  const f=fixture(),media=f.create(),signal=new AbortController().signal;
  const prep=await media.call('media_prepare',{task_type:'image-to-image'},host,signal);
  const result=await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'edit',images:['/tmp/reference.png']}},host,signal);
- assert.equal(result.error.code,'references_require_preparation');assert.deepEqual(result.error.missing_inputs,['images']);
+ assert.equal(result.status,'error');assert.match(result.error.message,/workspace/i);
  assert.equal(f.calls.some(call=>call.args.name==='get3w.quote'),false);assert.equal(f.tasks.length,0);
 });
 
@@ -370,5 +383,33 @@ test('workspace destination metadata remains local and does not alter quoted gen
   assert.equal(submit.arguments.inputs.prompt,'cup');assert.equal(submit.arguments.inputs.output,undefined);
   assert.equal(submit.arguments.output,undefined);
   assert.equal((await media.call('media_generate',{preparation_id:prep.preparation_id,inputs:{prompt:'cup'},output:{filename:42}},host,signal)).error.code,'invalid_output');
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('image edits preserve source pixels by default across refresh and restart; only explicit size overrides disable it',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'native-edit-size-'));
+ const definition=structuredClone(schema);
+ definition.properties.aspect_ratio={type:'string',enum:['auto','16:9','9:16','4:5'],default:'16:9'};
+ definition.properties.resolution={type:'string',enum:['2K','4K'],default:'4K'};
+ definition.properties.preserve_source_dimensions={type:'boolean',default:false};
+ const scope={...host,generationPolicy:{outputs:{'image-to-image':{aspect_ratio:'16:9',resolution:'4K'}}}};
+ const f=fixture(dir,definition),signal=new AbortController().signal;
+ try{
+  for(const explicit of [false,true]){
+   const media=f.create();
+   const prep=await media.call('media_prepare',{task_type:'image-to-image',task_key:String(explicit),references:{images:['https://example.test/source.png']}},scope,signal);
+   assert.equal(prep.defaults.preserve_source_dimensions,true);
+   assert.equal(prep.defaults.aspect_ratio,undefined);
+   if(!explicit)f.setVersion('v2');
+   const input={preparation_id:prep.preparation_id,inputs:{prompt:'repair cup'},...(explicit?{output_overrides:{aspect_ratio:'9:16',resolution:'2K'}}:{})};
+   assert.equal((await f.create().call('media_generate',input,scope,signal)).status,'submitted');
+   const submitted=f.tasks.at(-1).arguments.inputs;
+   assert.equal(submitted.preserve_source_dimensions,!explicit);
+   if(explicit){assert.equal(submitted.aspect_ratio,'9:16');assert.equal(submitted.resolution,'2K');}
+   else {assert.equal(submitted.aspect_ratio,'4:5');assert.equal(submitted.resolution,'2K');}
+   const quote=f.calls.filter(call=>call.args.name==='get3w.quote').at(-1).args.arguments.inputs;
+   assert.deepEqual(quote,submitted);
+   assert.equal((await f.create().call('media_generate',input,scope,signal)).request_id,'request');
+  }
  }finally{await rm(dir,{recursive:true,force:true});}
 });

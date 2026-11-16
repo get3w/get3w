@@ -15,3 +15,9 @@ test('approval bridge scopes both listing and replies without exposing credentia
  assert.equal(writes.length,0);
  await request({...scope,action:'respond',id:'mine',reply:'deny'});assert.equal(writes.length,1);
 });
+test('child budget approvals are shown and answered in their root conversation',async()=>{
+ const request=createModelApprovalBridge({getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'secret'}),fetchImpl:async(url,options)=>options.method==='POST'?Response.json({ok:true}):Response.json({items:[{id:'child',workspaceId:'ws',action:'model.submit',modelTask:{sessionId:'session-child-1234',approvalSessionId:'session-parent-1234'}}]})});
+ assert.equal((await request({workspaceId:'ws',sessionId:'session-parent-1234',action:'list'})).items.length,1);
+ assert.equal((await request({workspaceId:'ws',sessionId:'session-child-1234',action:'list'})).items.length,0);
+ await request({workspaceId:'ws',sessionId:'session-parent-1234',action:'respond',id:'child',reply:'allow'});
+});

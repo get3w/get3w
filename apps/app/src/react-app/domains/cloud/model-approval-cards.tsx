@@ -46,10 +46,11 @@ export function ModelApprovalCards({workspaceId, sessionId}: {workspaceId: strin
   return <section aria-label={t("personal.approval.title")} className="mx-auto mb-2 w-full max-w-3xl space-y-3 px-4" aria-live="polite">
     {items.map(item => <div key={item.id} className="space-y-2 border-t border-border py-3 text-sm">
       <p className="font-medium">{t("personal.approval.run",{model:item.modelTask.slug,amount:formatMoney(item.modelTask.amountUsd,"USD")})}</p>
+      {item.modelTask.budget?<p className="text-muted-foreground">{t("cost.budget",{committed:formatMoney(item.modelTask.budget.committedUsd,"USD"),projected:formatMoney(item.modelTask.budget.projectedUsd,"USD"),limit:item.modelTask.budget.limit?.enabled&&item.modelTask.budget.limit.amount?formatMoney(item.modelTask.budget.limit.amount,item.modelTask.budget.limit.currency):t("cost.always")})}</p>:null}
       <p className="text-muted-foreground">{t("personal.approval.consent")}</p>
       {error ? <p role="alert" className="text-destructive">{t(error)}</p> : null}
       <div className="flex gap-2">
-        <Button size="sm" disabled={busy || Boolean(error)} onClick={() => void respond(item.id, "allow")}>{t("personal.approval.allow")}</Button>
+        <Button size="sm" disabled={busy || Boolean(error)} onClick={() => void respond(item.id, "allow")}>{t("cost.allow_once")}</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void respond(item.id, "deny")}>{t("personal.approval.deny")}</Button>
       </div>
     </div>)}

@@ -3,6 +3,7 @@ import { createModelTaskJournal } from "./get3w-model-task-journal.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
+import { connect } from "node:net";
 import { migrateGet3wStateFile } from "./get3w-state-file.mjs";
 import { createGet3wMcpProxy } from "./get3w-mcp-proxy.mjs";
 
@@ -12,6 +13,37 @@ const canonical = v => Array.isArray(v) ? v.map(canonical) : v && typeof v === "
   ? Object.fromEntries(Object.keys(v).sort().map(k => [k,canonical(v[k])])) : v;
 const fingerprint = v => createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 
+// Attachments are inputs, not a destination for generated deliverables. Apply
+// this to restored tasks too, so retryDownload can recover older failed saves.
+export function mediaOutputNaming(row) {
+  const output=row.nativeMedia?.output??{};
+  const attachmentPath=value=>typeof value==='string'&&value.startsWith('.opencode/openwork/inbox/chat-attachments/');
+  return {taskName:output.task_name??String(row.arguments?.inputs?.prompt??"任务成果").slice(0,48),filename:output.filename??"生成结果",directory:attachmentPath(output.directory)?undefined:output.directory,sourcePath:attachmentPath(output.source_path)?undefined:output.source_path};
+}
+
+// Recovery applies only to our exact historical loopback definition. A known
+// fingerprint mismatch is always a user edit, even if it has this shape.
+function legacyProxyPort(value) {
+  if (!value || Object.keys(value).sort().join() !== "enabled,headers,oauth,timeout,type,url"
+    || value.type !== "remote" || value.enabled !== true || value.oauth !== false || value.timeout !== 600_000
+    || !value.headers || Object.keys(value.headers).join() !== "Authorization"
+    || !/^Bearer [A-Za-z0-9_-]{43}$/.test(value.headers.Authorization)
+    || typeof value.url !== "string") return null;
+  const match = value.url.match(/^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/mcp$/);
+  const port = match ? Number(match[1]) : 0;
+  return port > 0 && port <= 65535 ? port : null;
+}
+
+function proxyIsGone(port) {
+  return new Promise(resolve => {
+    const socket = connect({ host: "127.0.0.1", port });
+    const finish = gone => { socket.destroy(); resolve(gone); };
+    socket.once("connect", () => finish(false));
+    socket.once("error", error => finish(error.code === "ECONNREFUSED"));
+    socket.setTimeout(1000, () => finish(false));
+  });
+}
+
 /** Explicit workspace connection. Only a local bearer is written to the engine. */
 export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fetch,createProxy=createGet3wMcpProxy}) {
   const file=path.join(userData,"get3w-managed-mcp.json"), live=new Map();
@@ -20,10 +52,16 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     findTask:async(host,key)=>(await journal.list({userId,workspaceId,sessionId:host.sessionId})).find(row=>row.arguments.idempotency_key===key),
     isStopped:context=>journal.isStopped({userId,workspaceId,sessionId:context.sessionId ?? sessionId},context),
     beforeSubmit:context=>journal.beforeSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
+    notSubmitted:async context=>{
+      const server=await target();
+      const response=await fetchImpl(`${server.base}/workspace/${encodeURIComponent(workspaceId)}/approvals/model-task/reconcile`,{method:"POST",redirect:"error",signal:AbortSignal.timeout(10000),headers:{"X-Get3W-Host-Token":server.host,"Content-Type":"application/json"},body:JSON.stringify({sessionId:context.quote.sessionId,submissionKey:fingerprint([userId,context.call.arguments.idempotency_key]),quoteId:context.quote.quoteId,result:{},notSubmitted:true})});
+      if(!response.ok)throw Error("Cost reservation could not be released");
+    },
     releaseSubmit:context=>journal.releaseSubmit({userId,workspaceId,sessionId:context.quote.sessionId},context),
     observe:async(context,payload)=>{const scope={userId,workspaceId,sessionId:context.sessionId ?? sessionId};await journal.observe(scope,context,payload);
       const structured=payload?.result?.structuredContent;const result=structured?.result??structured;
       if(result)await globalThis.__get3wTaskLogs?.captureOutput?.(scope,[],result).catch(()=>{});
+      void reconcileCosts(userId,workspaceId).catch(()=>{});
       void syncOutputs({userId,workspaceId}).catch(()=>{});},
   });
   let records,queue=Promise.resolve();
@@ -79,7 +117,7 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     const snapshot=await auth.status();
     if(snapshot.status!=="signed_in"||snapshot.user?.id!==input.userId)throw Error("Get3W account changed.");
   }
-  function outputNaming(row){const output=row.nativeMedia?.output??{};return {taskName:output.task_name??String(row.arguments?.inputs?.prompt??"任务成果").slice(0,48),filename:output.filename??"生成结果",directory:output.directory,sourcePath:output.source_path};}
+  const outputNaming=mediaOutputNaming;
   async function planOutputs(scope,row,urls){
     if(row.outputEntry?.plannedFiles?.length===urls.length)return;
     const planned=await outputRequest(scope,{action:"plan",key:row.key,urls,sessionId:row.scope.sessionId,...outputNaming(row)});
@@ -105,13 +143,25 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     }
   }
   function approvalCallback(server, ws) {
-    return async ({slug,quoteId,sessionId,signal,quote}) => {
+    return async ({slug,quoteId,sessionId,signal,quote,runKey,userId,arguments:args}) => {
       if (!slug || !quoteId || signal?.aborted) return {allowed:false,reason:"A quote is required before submission."};
       const currentServer = await target();
       if(currentServer.scope !== server.scope) return {allowed:false,reason:"Local server changed. Reconnect and retry."};
-      const approval = await requestModelApproval(server, ws, {sessionId,slug,quoteId,quote}, signal).catch(() => null);
+      await reconcileCosts(userId,ws);
+      const approval = await requestModelApproval(server, ws, {sessionId,slug,quoteId,quote,runKey,submissionKey:args?.idempotency_key?fingerprint([userId,args.idempotency_key]):undefined}, signal).catch(() => null);
       return !signal?.aborted && approval && typeof approval.allowed === "boolean" ? approval : {allowed:false,reason:"Host approval is unavailable."};
     };
+  }
+  async function reconcileCosts(userId,workspaceId) {
+    const server=await target();
+    for(const row of await journal.listConnection({userId,workspaceId})) {
+      if(!row.result)continue;
+      const response=await fetchImpl(`${server.base}/workspace/${encodeURIComponent(workspaceId)}/approvals/model-task/reconcile`,{
+        method:"POST",redirect:"error",signal:AbortSignal.timeout(10000),headers:{"X-Get3W-Host-Token":server.host,"Content-Type":"application/json"},
+        body:JSON.stringify({sessionId:row.scope.sessionId,submissionKey:fingerprint([userId,row.arguments.idempotency_key]),quoteId:row.quote?.quoteId,result:row.result,notSubmitted:row.status==="failed"&&!row.requestId&&["quote_expired","quote_stale","quote_mismatch"].includes(row.result?.error?.code)}),
+      });
+      if(!response.ok)throw Error("Cost reservation could not be reconciled");
+    }
   }
   async function current(server,ws) {
     const result=await request(server,ws,"GET");
@@ -124,7 +174,21 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
     }
     const matches=result.items.filter(i=>i.name===GET3W_MCP_NAME);
     if(matches.length>1||matches.some(i=>i.source!=="config.remote"))throw new Error("A Get3W connection already exists in user configuration. Rename it before connecting.");
-    return matches[0]?.config;
+    const value = matches[0]?.config;
+    if (value && !records[ws] && !live.has(ws)) {
+      const port = legacyProxyPort(value);
+      if (port && await proxyIsGone(port)) {
+        // Preserve the original before replacing an orphan left by an older
+        // profile/runtime DB pair. Never send its bearer to the stale endpoint.
+        const backup = path.join(userData, "get3w-mcp-recovery", `${fingerprint([ws,value])}.json`);
+        await mkdir(path.dirname(backup), { recursive: true, mode: 0o700 });
+        await writeFile(backup, JSON.stringify({ workspaceId: ws, config: value }), { mode: 0o600, flag: "wx" })
+          .catch(error => { if (error.code !== "EEXIST") throw error; });
+        records[ws] = fingerprint(value);
+        await save();
+      }
+    }
+    return value;
   }
   function owned(ws,value) {
     if(value&&(!records[ws]||fingerprint(value)!==records[ws]))throw new Error("Get3W connection was edited locally. Rename it before reconnecting.");
@@ -243,14 +307,17 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
       try {
         records[ws]=fingerprint(definition);await save();
         await request(server,ws,"POST",{name:GET3W_MCP_NAME,config:definition});
-        const recovery=createModelTaskRecovery({auth,journal,scope:{userId:input.userId,workspaceId:ws},onResult:()=>syncOutputs({userId:input.userId,workspaceId:ws})});
+        await reconcileCosts(input.userId,ws);
+        const recovery=createModelTaskRecovery({auth,journal,scope:{userId:input.userId,workspaceId:ws},onResult:async()=>{await reconcileCosts(input.userId,ws);await syncOutputs({userId:input.userId,workspaceId:ws});}});
         live.set(ws,{proxy,recovery,userId:input.userId,scope:server.scope,sessionId:proxy.sessionId ?? requestedSession});
         return {enabled:true,state:"configured"};
       }catch(error){
         await proxy.close();
         try {
           const actual=await current(server,ws);
-          if(!actual){delete records[ws];await save();}
+          // A POST may still commit after a timeout, even when this GET is
+          // empty. Keep the write-ahead fingerprint until explicit cleanup.
+          if(!actual){ /* Retain pending ownership for a late commit. */ }
           else if(previous&&fingerprint(actual)===previous){records[ws]=previous;await save();}
         }catch { /* Keep recorded ownership for an explicit retry. */ }
         throw error;

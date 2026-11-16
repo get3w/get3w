@@ -1,5 +1,8 @@
+import { TaskCostControl } from "./task-cost-control";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Folder, Globe, ShieldAlert, ShieldCheck, Terminal } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatMoney } from "@/i18n/money";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,18 +52,31 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
   }
   if (!bridge) return null;
   const full = snapshot?.mode === "full_access";
+  const policy = snapshot?.cost?.policy;
+  const permissionSummary = snapshot && !error ? t(full ? "permissions.full" : "permissions.default") : t("permissions.unverified");
+  const costSummary = policy?.enabled && policy.amount
+    ? t("cost.limit_summary", { amount: formatMoney(policy.amount, policy.currency) })
+    : t(policy ? "cost.manual_summary" : "cost.unverified");
+  const summary = `${permissionSummary} · ${costSummary}`;
   return <>
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger type="button" className="inline-flex h-9 min-w-0 items-center gap-1.5 px-2.5 text-sm text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" disabled={!snapshot && !error}>
-        <ShieldCheck aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5}/><span className="truncate">{snapshot ? t(full ? "permissions.full" : "permissions.default") : t("permissions.unverified")}</span><ChevronDown aria-hidden="true" className="size-3 shrink-0"/>
-      </PopoverTrigger>
+      <Tooltip>
+      <TooltipTrigger render={<PopoverTrigger aria-label={t("permissions.settings")} type="button" className="inline-flex h-9 min-w-0 items-center gap-1.5 px-2.5 text-sm text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" disabled={!snapshot && !error}/>} >
+        <ShieldCheck aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5}/><span className="truncate">{t("permissions.settings")}</span><ChevronDown aria-hidden="true" className="size-3 shrink-0"/>
+      </TooltipTrigger>
+      <TooltipContent>{summary}</TooltipContent>
+      </Tooltip>
       <PopoverContent side="top" align="start" className="w-80">
-        <p className="text-muted-foreground">{t(full ? "permissions.full_description" : "permissions.default_description")}</p>
-        <label className="flex items-center justify-between gap-4 border-t border-border pt-3">
+        <section aria-label={t("permissions.section")} className="space-y-3">
+        <h3 className="text-sm font-medium">{t("permissions.section")}</h3>
+        <label className="flex items-center justify-between gap-4">
           {t("permissions.enable")}<Switch aria-label={t("permissions.enable")} checked={full} disabled={busy || !snapshot || error} onCheckedChange={value => { if (value) {setAccepted(false);setConfirm(true);setOpen(false);} else void update("default"); }}/>
         </label>
+        <p className="text-xs text-muted-foreground">{t(full ? "permissions.full_description" : "permissions.default_description")}</p>
         {sessionId && snapshot?.grants.length ? <details><summary>{t("permissions.grants")}</summary><div className="divide-y divide-border">{snapshot.grants.map((grant, index) => <div key={`${grant.permission}:${index}`} className="flex items-center justify-between gap-2 py-2"><span className="min-w-0 break-all text-xs">{grant.patterns.join(", ")}</span><Button variant="ghost" size="sm" disabled={busy} onClick={() => void update(undefined, index)}>{t("permissions.revoke")}</Button></div>)}</div></details> : null}
         {error ? <div role="alert"><p className="text-destructive">{t("permissions.error")}</p><Button variant="outline" size="sm" disabled={busy} onClick={async () => {const current=generation.current;try { const result=await bridge({action:"read",workspaceId,sessionId});if(current===generation.current){setSnapshot(result);setError(false);}} catch {if(current===generation.current)setError(true);} }}>{t("permissions.retry")}</Button></div> : null}
+        </section>
+        <TaskCostControl workspaceId={workspaceId} sessionId={sessionId}/>
       </PopoverContent>
     </Popover>
     <Dialog open={confirm} onOpenChange={value => { if (!busy) {setConfirm(value);setAccepted(false);} }}>

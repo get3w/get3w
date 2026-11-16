@@ -34,6 +34,8 @@ import {
   type SerializedTextNode,
   type Spread,
   TextNode,
+  DecoratorNode,
+  type SerializedLexicalNode,
   type EditorConfig,
   type LexicalNode,
   type NodeKey,
@@ -740,10 +742,10 @@ type SerializedComposerAttachmentNode = Spread<
     type: "composer-attachment";
     version: 1;
   },
-  SerializedTextNode
+  SerializedLexicalNode
 >;
 
-class ComposerAttachmentNode extends TextNode {
+class ComposerAttachmentNode extends DecoratorNode<null> {
   __attachmentId: string;
   __attachmentName: string;
   __attachmentKind: "image" | "file";
@@ -781,7 +783,7 @@ class ComposerAttachmentNode extends TextNode {
   }
 
   constructor(attachment: ComposerAttachmentToken, key?: NodeKey) {
-    super(`[attachment ${attachment.id}]`, key);
+    super(key);
     this.__attachmentId = attachment.id;
     this.__attachmentName = attachment.name;
     this.__attachmentKind = attachment.kind;
@@ -840,20 +842,16 @@ class ComposerAttachmentNode extends TextNode {
     return false;
   }
 
-  override canInsertTextBefore(): false {
-    return false;
+  override getTextContent() {
+    return `[attachment ${this.__attachmentId}]`;
   }
 
-  override canInsertTextAfter(): false {
-    return false;
-  }
-
-  override isTextEntity(): true {
+  override isInline(): true {
     return true;
   }
 
-  override isToken(): true {
-    return true;
+  override decorate(): null {
+    return null;
   }
 }
 
@@ -880,7 +878,7 @@ function isComposerInlineTokenNode(node: unknown): node is ComposerInlineTokenNo
     || node instanceof ComposerAttachmentNode;
 }
 
-function setSelectionAfterNode(node: TextNode) {
+function setSelectionAfterNode(node: LexicalNode) {
   const parent = node.getParent();
   if (!parent || !$isElementNode(parent)) return;
   const selection = $createRangeSelection();
@@ -995,6 +993,11 @@ function setPrompt(
       }
     }
     paragraph = appendSegmentWithNewlines(paragraph, segment);
+  }
+  // Chromium's macOS IME needs an actual text position after a terminal
+  // non-editable attachment; an element boundary / trailing BR is not enough.
+  if (paragraph.getLastChild() instanceof ComposerAttachmentNode) {
+    paragraph.append($createTextNode(" "));
   }
 }
 
@@ -1221,8 +1224,12 @@ function SyncPlugin(props: {
       // the last paragraph.
       const lastParagraph = $getRoot().getLastChild();
       if ($isElementNode(lastParagraph)) {
-        const childCount = lastParagraph.getChildrenSize();
-        lastParagraph.select(childCount, childCount);
+        const last = lastParagraph.getLastChild();
+        if ($isTextNode(last) && !isComposerInlineTokenNode(last)) last.selectEnd();
+        else {
+          const childCount = lastParagraph.getChildrenSize();
+          lastParagraph.select(childCount, childCount);
+        }
       } else {
         $getRoot().selectEnd();
       }
@@ -1680,6 +1687,15 @@ function attachmentChipButton(target: EventTarget | null) {
   return button instanceof HTMLButtonElement ? button : null;
 }
 
+function AttachmentTypingBoundaryPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => editor.registerNodeTransform(ComposerAttachmentNode, node => {
+    // Also restore the landing pad after deleting all text after the image.
+    if (!node.getNextSibling()) node.insertAfter($createTextNode(" "));
+  }), [editor]);
+  return null;
+}
+
 function AttachmentChipPlugin(props: { onRemoveAttachment?: (id: string) => void; onExpandAttachment?: (id: string) => void }) {
   const [editor] = useLexicalComposerContext();
   const onRemoveAttachmentRef = useRef(props.onRemoveAttachment);
@@ -1796,7 +1812,8 @@ export const LexicalPromptEditor = forwardRef<LexicalPromptEditorHandle, EditorP
   );
 
   const syncPromptFromEditorState = useCallback(
-    (state: Parameters<NonNullable<React.ComponentProps<typeof OnChangePlugin>["onChange"]>>[0]) => {
+    (state: Parameters<NonNullable<React.ComponentProps<typeof OnChangePlugin>["onChange"]>>[0], editor: Parameters<NonNullable<React.ComponentProps<typeof OnChangePlugin>["onChange"]>>[1]) => {
+      if (editor.isComposing()) return;
       state.read(() => {
         onMentionQueryChangeRef.current?.(mentionAtSelection()?.query ?? null);
         onSessionReferenceQueryChangeRef.current?.(sessionReferenceTriggerAtSelection());
@@ -1849,6 +1866,7 @@ export const LexicalPromptEditor = forwardRef<LexicalPromptEditorHandle, EditorP
         <SubmitPlugin onSubmit={props.onSubmit} disabled={props.submitDisabled} />
         <PasteChipPlugin onPasteText={props.onPasteText} />
         <PastedTextExpandPlugin pastedText={props.pastedText} onExpandPastedText={props.onExpandPastedText} />
+        <AttachmentTypingBoundaryPlugin />
         <AttachmentChipPlugin onRemoveAttachment={props.onRemoveAttachment} onExpandAttachment={props.onExpandAttachment} />
         <SessionReferenceChipPlugin onOpenSessionReference={props.onOpenSessionReference} />
         <MentionChipNavigationPlugin />

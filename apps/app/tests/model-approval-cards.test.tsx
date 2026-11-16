@@ -20,7 +20,7 @@ test("a trusted quote renders its cost and sends an explicit scoped reply",async
   expect(container.textContent).toContain("$0.123456");
   await act(async()=>(await import("../src/i18n")).setLocale("zh"));
   expect(container.textContent).toContain("停止等待不会撤销任务");
-  const button=Array.from(container.querySelectorAll("button")).find(el=>el.textContent==="批准费用并运行");
+  const button=Array.from(container.querySelectorAll("button")).find(el=>el.textContent==="允许本次运行");
   expect(button).toBeDefined();
   await act(async()=>button?.click());
   expect(calls).toContainEqual({workspaceId:"ws",sessionId:"chat-session-123456",action:"respond",id:"approval",reply:"allow"});

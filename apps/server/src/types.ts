@@ -223,7 +223,7 @@ export interface Actor {
 }
 
 export interface ApprovalRequest {
-  modelTask?: { quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number };
+  modelTask?: { approvalSessionId?: string; quoteId: string; slug: string; sessionId: string; amountUsd: string; expiresAt: number; budget?: {committedUsd:string;projectedUsd:string;limit:{enabled:boolean;amount:string|null;currency:"USD"|"CNY"}|null} };
   id: string;
   workspaceId: string;
   action: string;

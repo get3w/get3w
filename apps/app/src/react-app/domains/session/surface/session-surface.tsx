@@ -1019,10 +1019,10 @@ function SessionErrorCard({ error, developerMode, onDismiss, onChangeModel, onOp
       actions={<>
         {error.kind === "model-not-found" ? <>
           {error.suggestions?.map((suggestion) => <Button key={`${suggestion.providerID}/${suggestion.modelID}`} variant="ghost" size="xs"
-            onClick={() => { onChangeModel?.(suggestion); onDismiss(); }}>Use {suggestion.providerID}/{suggestion.modelID}</Button>)}
-          <Button variant="ghost" size="xs" onClick={() => { onOpenModelPicker?.(); onDismiss(); }}>Change model</Button>
+            onClick={() => { onChangeModel?.(suggestion); onDismiss(); }}>{t("session.recovery_use_model", { model: `${suggestion.providerID}/${suggestion.modelID}` })}</Button>)}
+          <Button variant="ghost" size="xs" onClick={() => { onOpenModelPicker?.(); onDismiss(); }}>{t("ui.d9a95536e775")}</Button>
         </> : null}
-        <Button variant="ghost" size="xs" aria-label={t("ui.2db046678b9c")} onClick={onDismiss}>Dismiss</Button>
+        <Button variant="ghost" size="xs" aria-label={t("ui.2db046678b9c")} onClick={onDismiss}>{t("ui.48845bff334a")}</Button>
       </>} />
   );
 }
@@ -1692,7 +1692,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
         && !matchedIds.has(message.id)
         && (message.id === (item.serverMessageId ?? pending.messageId) || (!item.serverMessageId && isOpencodeV2BaseUrl(props.opencodeBaseUrl) && !previousMessageIds.includes(message.id)
           && Boolean(acknowledgementText?.trim()) && v2AcknowledgementText(message.parts) === acknowledgementText)));
-      const { parts, attachmentsReady } = pendingMessageParts(text, pending.attachments, match?.parts, pendingDraftTextParts(pending.parts));
+      const { parts, attachmentsReady, layoutPending } = pendingMessageParts(text, pending.attachments, match?.parts, pendingDraftTextParts(pending.parts, pending.text));
       if (!match) {
         const submissionIds = new Set(item.submissionMessageIds);
         const previousIndex = messages.findLastIndex((message) => submissionIds.has(message.id) || precedingPendingIds.has(message.id));
@@ -1706,7 +1706,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       messages[messages.indexOf(match)] = { ...match, parts };
       const textReady = !text.trim()
         || match.parts.some((part) => part.type === "text" && part.text.trim());
-      if (attachmentsReady && textReady && item.settled) return [];
+      if (attachmentsReady && textReady && !layoutPending && item.settled) return [];
       return [item.serverMessageId === match.id ? item : { ...item, serverMessageId: match.id }];
     });
     // A server turn can acknowledge only one pending send, even when two

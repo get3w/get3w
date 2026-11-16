@@ -1,3 +1,4 @@
+import {captureCostRun,readCostRun,setTaskCostSettings} from "../src/task-cost-settings.js";
 import { test, expect } from "bun:test";
 import { ApprovalService } from "../src/approvals.js";
 import { registerOperationRoutes } from "../src/routes/operations.js";
@@ -18,12 +19,12 @@ test("managed proxy reaches the real approval service; explicit allow and deny g
  const routes: Route[] = [];
  registerOperationRoutes({routes,config,jsonResponse:(value,status=200)=>Response.json(value,{status}),readJsonBody:request=>request.json(),requireClientScope:()=>{},resolveWorkspace:async()=>({id:"ws",name:"Test",path:root,workspaceType:"local"}),reloadOpencodeEngine:async()=>{}});
  let definition: {url:string;headers:Record<string,string>} | undefined;
- let cloudCalls=0;
+ let cloudCalls=0;let quoteId="q";
  const manager=createGet3wManagedMcp({userData:root,auth:{status:async()=>({status:"signed_in",user:{id:"u"}}),
  // The model guard verifies every quote and submit against the signed-in catalog.
  taskCatalog:async()=>({models:[{model_id:"p/m/run",type:"text-to-image",api_schema:{api_schemas:[{request_schema:{properties:{prompt:{type:"string"}}}}]}}]}),submitPersonal:async()=>{cloudCalls++;return {request_id:"request"};},mcp:async input=>{const message=JSON.parse(input.body.toString());const call=message.params.arguments;let value;
  if(message.params.name==="search_capabilities") value={data:[{name:"quote",handler:"get3w.quote"},{name:"get3w.submit",handler:"get3w.submit"}]};
- else if(call.name==="quote") value={status:"succeeded",result:{quote_id:"q",slug:"p/m/run",currency:"USD",discounted_price:"0.1",expires_at:Math.floor(Date.now()/1000)+300}};
+ else if(call.name==="quote") value={status:"succeeded",result:{quote_id:quoteId,slug:"p/m/run",currency:"USD",discounted_price:"0.1",expires_at:Math.floor(Date.now()/1000)+300}};
  else {cloudCalls++;value={request_id:"request"};}
  return {response:Response.json({jsonrpc:"2.0",id:7,result:{structuredContent:value}})};}},getServerInfo:async()=>({running:true,baseUrl:"http://127.0.0.1:1234",hostToken:"host",clientToken:"client",pid:1}),fetchImpl:async(url,options)=>{
   const pathname=new URL(url).pathname;
@@ -40,7 +41,8 @@ test("managed proxy reaches the real approval service; explicit allow and deny g
  try {
   await manager.run({action:"enable",userId:"u",workspaceId:"ws",sessionId:"chat-session-123456"});
   let sessionId = "chat-session-123456";
-  const hostContext = () => ({ sessionId, messageId: "message-basic-approval" });
+  let costRunKey:string|undefined;
+  const hostContext = () => ({ costRunKey,sessionId, messageId: "message-basic-approval" });
   // Engine transport credentials alone cannot impersonate the trusted chat host.
   if(!definition) throw Error("Missing proxy");
   const untrusted = await fetch(definition.url,{method:"POST",headers:{...definition.headers,"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:7,method:"tools/call",params:{name:"search_capabilities",arguments:{}}})});
@@ -71,5 +73,23 @@ test("managed proxy reaches the real approval service; explicit allow and deny g
    if(reply==="deny") expect(payload.error.code).toBe(-32003); else expect(payload.result.structuredContent.result.request_id).toBe("request");
   }
   expect(cloudCalls).toBe(1);
+  sessionId="chat-session-auto123";
+  await manager.run({action:"status",userId:"u",workspaceId:"ws",sessionId});
+  await setTaskCostSettings(config,{enabled:true,amount:"0.10",currency:"USD"},sessionId);
+  costRunKey=await captureCostRun(config,"ws",sessionId,"user-auto");
+  const submit=async(key:string)=>{
+    if(!definition)throw Error("Missing proxy");
+    return fetch(definition.url,{method:"POST",headers:{...definition.headers,"X-Get3W-Host-Token":"host","Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:8,hostContext:hostContext(),method:"tools/call",params:{name:"execute_capability",arguments:{name:"get3w.submit",idempotency_key:key,arguments:{slug:"p/m/run",inputs:{prompt:"test"},quote_id:quoteId,session_id:sessionId,idempotency_key:key}}}})});
+  };
+  quoteId="q-auto";await discoverAndQuote();
+  const automatic=await (await submit("auto1")).json();
+  expect(automatic.result.structuredContent.result.request_id).toBe("request");
+  expect(approvals.list()).toHaveLength(0);expect(cloudCalls).toBe(2);
+  expect((await readCostRun(config,costRunKey))?.committedUsd).toBe("0.100000");
+  quoteId="q-excess";await discoverAndQuote();const excess=submit("auto2");
+  for(let i=0;i<100&&!approvals.list().length;i++)await Bun.sleep(5);
+  const pending=approvals.list()[0];expect(pending.modelTask?.budget?.projectedUsd).toBe("0.200000");
+  approvals.respond(pending.id,"deny");expect((await (await excess).json()).error.code).toBe(-32003);expect(cloudCalls).toBe(2);
+
  } finally {await manager.close();await rm(root,{recursive:true,force:true});}
 });
