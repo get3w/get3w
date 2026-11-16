@@ -18,6 +18,7 @@ def run(name, command, env=None, cwd=root):
     (a.output / 'results.json').write_text(json.dumps({'checks': results, 'releaseReady': False}, indent=2) + '\n')
     print(name + ': exit ' + str(result.returncode), flush=True)
     if result.returncode:
+        print((a.output / (name + '.log')).read_text()[-20000:], flush=True)
         raise SystemExit(result.returncode)
 
 run('source', ['python3', 'scripts/verify-public-source.py'])
@@ -44,6 +45,8 @@ run('personal-regressions', ['bun', 'test', *['apps/app/tests/' + n for n in [
     'personal-chat-submit.test.tsx', 'personal-mcp-maintenance.test.ts', 'local-provider-engine-state.test.tsx',
     'session-history.test.tsx', 'chat-file-links.test.ts']], 'apps/server/test/personal-runtime-boundary.test.ts'])
 run('signing-regressions', ['node', '--test', 'apps/desktop/scripts/electron-after-sign.test.cjs'])
+# Fresh CI checkouts lack the built ESM imported by computer-control tests.
+run('computer-use-build', ['pnpm', '--filter', '@openwork/computer-use', 'build'])
 run('resource-and-runtime-regressions', ['node', '--test', *['apps/desktop/electron/' + name + '.test.mjs' for name in [
     'get3w-resource-upload', 'source-image-settings', 'generation-policy', 'get3w-native-media',
     'native-i18n', 'computer-control']], 'apps/server/test/runtime-config-recovery.test.mjs', 'scripts/close-local.test.mjs'])

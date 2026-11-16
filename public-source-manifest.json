@@ -7009,7 +7009,7 @@
     },
     {
       "path": "scripts/verify-public-release.py",
-      "sha256": "05030b19194803e9bf9bf226edac7ef0f8d75b8bcdaba56910d9bb2449664131"
+      "sha256": "ec86b3088acbedd4ea4aeb2701af8d29538516861ccc8005c081cdc7679010c4"
     },
     {
       "path": "scripts/verify-public-source.py",
