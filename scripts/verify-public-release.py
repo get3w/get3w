@@ -50,6 +50,8 @@ run('computer-use-build', ['pnpm', '--filter', '@openwork/computer-use', 'build'
 run('resource-and-runtime-regressions', ['node', '--test', *['apps/desktop/electron/' + name + '.test.mjs' for name in [
     'get3w-resource-upload', 'source-image-settings', 'generation-policy', 'get3w-native-media',
     'native-i18n', 'computer-control']], 'apps/server/test/runtime-config-recovery.test.mjs', 'scripts/close-local.test.mjs'])
+# Permission integration tests launch the pinned engine from a fresh checkout.
+run('prepare-sidecars', ['node', 'apps/desktop/scripts/prepare-sidecar.mjs'])
 run('cost-and-composer-regressions', ['bun', 'test',
     'apps/server/test/task-cost-settings.test.ts', 'apps/server/test/task-permission-native.test.ts',
     'apps/server/test/opencode-v2-mcp-readiness.test.ts', 'apps/server/test/opencode-v2-tool-schemas.test.ts',
