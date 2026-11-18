@@ -7,7 +7,7 @@ import { applyEdits, modify, parse, printParseErrorCode } from "jsonc-parser";
 import { t } from "../../../i18n";
 import {
   getMcpServerName,
-  isBuiltInOpenWorkExtension,
+  isBuiltInGet3WExtension,
   MCP_QUICK_CONNECT,
   type McpDirectoryInfo,
 } from "../../../app/constants";
@@ -30,9 +30,9 @@ import {
   validateMcpServerName,
 } from "../../../app/mcp";
 import {
-  buildOpenworkWorkspaceBaseUrl,
-  type OpenworkServerClient,
-} from "../../../app/lib/openwork-server";
+  buildGet3wWorkspaceBaseUrl,
+  type Get3wServerClient,
+} from "../../../app/lib/get3w-server";
 import type {
   Client,
   McpServerEntry,
@@ -41,9 +41,9 @@ import type {
   ReloadTrigger,
 } from "../../../app/types";
 import { isDesktopRuntime, normalizeDirectoryPath, safeStringify } from "../../../app/utils";
-import { conflictsWithOpenworkConnect } from "./mcp-connection-boundary";
+import { conflictsWithGet3wConnect } from "./mcp-connection-boundary";
 
-import type { OpenworkServerStore } from "./openwork-server-store";
+import type { Get3wServerStore } from "./get3w-server-store";
 import { attemptSilentMcpReauth } from "./mcp-silent-reauth";
 import {
   createMcpStatusSynchronizer,
@@ -52,9 +52,9 @@ import {
 } from "./mcp-status-synchronization";
 type SetStateAction<T> = T | ((current: T) => T);
 
-const LOCAL_OPENWORK_SERVER_RECOVERY_TIMEOUT_MS = 30_000;
+const LOCAL_GET3W_SERVER_RECOVERY_TIMEOUT_MS = 30_000;
 
-async function withLocalOpenworkServerRecoveryTimeout<T>(
+async function withLocalGet3wServerRecoveryTimeout<T>(
   task: Promise<T>,
   timeoutMs: number,
 ): Promise<T> {
@@ -99,10 +99,10 @@ export function createConnectionsStore(options: {
   selectedWorkspaceId: () => string;
   selectedWorkspaceRoot: () => string;
   workspaceType: () => "local";
-  openworkServer: OpenworkServerStore;
+  get3wServer: Get3wServerStore;
   runtimeWorkspaceId: () => string | null;
   ensureRuntimeWorkspaceId?: () => Promise<string | null | undefined>;
-  localOpenworkServerRecoveryTimeoutMs?: number;
+  localGet3wServerRecoveryTimeoutMs?: number;
   setProjectDir?: (value: string) => void;
   developerMode: () => boolean;
   markReloadRequired?: (reason: ReloadReason, trigger?: ReloadTrigger) => void;
@@ -171,13 +171,13 @@ export function createConnectionsStore(options: {
     return `${workspaceType}:${workspaceId}:${root}:${runtimeWorkspaceId}`;
   };
 
-  const getOpenworkSnapshot = () => options.openworkServer.getSnapshot();
+  const getGet3wSnapshot = () => options.get3wServer.getSnapshot();
 
-  const resolveOpenworkWorkspaceId = async () => {
+  const resolveGet3wWorkspaceId = async () => {
     const current = options.runtimeWorkspaceId()?.trim();
     if (current) return current;
-    const openworkSnapshot = getOpenworkSnapshot();
-    if (openworkSnapshot.openworkServerStatus !== "connected" || !openworkSnapshot.openworkServerClient) {
+    const get3wSnapshot = getGet3wSnapshot();
+    if (get3wSnapshot.get3wServerStatus !== "connected" || !get3wSnapshot.get3wServerClient) {
       return null;
     }
     const ensured = (await options.ensureRuntimeWorkspaceId?.())?.trim();
@@ -185,51 +185,51 @@ export function createConnectionsStore(options: {
     return options.workspaceType() === "local" ? options.selectedWorkspaceId().trim() || null : null;
   };
 
-  const resolveConfigOpenworkTarget = async (mode: "read" | "write") => {
-    const openworkSnapshot = getOpenworkSnapshot();
-    const openworkClient = openworkSnapshot.openworkServerClient;
-    const openworkWorkspaceId = await resolveOpenworkWorkspaceId();
-    const hasOpenworkTarget =
-      openworkSnapshot.openworkServerStatus === "connected" &&
-      Boolean(openworkClient && openworkWorkspaceId);
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.config?.[mode] !== false;
+  const resolveConfigGet3wTarget = async (mode: "read" | "write") => {
+    const get3wSnapshot = getGet3wSnapshot();
+    const get3wClient = get3wSnapshot.get3wServerClient;
+    const get3wWorkspaceId = await resolveGet3wWorkspaceId();
+    const hasGet3wTarget =
+      get3wSnapshot.get3wServerStatus === "connected" &&
+      Boolean(get3wClient && get3wWorkspaceId);
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.config?.[mode] !== false;
     return {
-      openworkClient,
-      openworkWorkspaceId,
-      hasOpenworkTarget,
-      canUseOpenworkServer,
+      get3wClient,
+      get3wWorkspaceId,
+      hasGet3wTarget,
+      canUseGet3wServer,
     };
   };
 
-  const resolveMcpOpenworkTarget = async (mode: "read" | "write") => {
-    let openworkSnapshot = getOpenworkSnapshot();
-    let openworkClient = openworkSnapshot.openworkServerClient;
-    let openworkWorkspaceId = await resolveOpenworkWorkspaceId();
-    if ((!openworkClient || !openworkWorkspaceId || openworkSnapshot.openworkServerStatus !== "connected")
+  const resolveMcpGet3wTarget = async (mode: "read" | "write") => {
+    let get3wSnapshot = getGet3wSnapshot();
+    let get3wClient = get3wSnapshot.get3wServerClient;
+    let get3wWorkspaceId = await resolveGet3wWorkspaceId();
+    if ((!get3wClient || !get3wWorkspaceId || get3wSnapshot.get3wServerStatus !== "connected")
       && isDesktopRuntime()
       && options.workspaceType() === "local") {
-      openworkClient = await withLocalOpenworkServerRecoveryTimeout(
-        options.openworkServer.ensureLocalOpenworkServerClient(),
-        options.localOpenworkServerRecoveryTimeoutMs ?? LOCAL_OPENWORK_SERVER_RECOVERY_TIMEOUT_MS,
+      get3wClient = await withLocalGet3wServerRecoveryTimeout(
+        options.get3wServer.ensureLocalGet3wServerClient(),
+        options.localGet3wServerRecoveryTimeoutMs ?? LOCAL_GET3W_SERVER_RECOVERY_TIMEOUT_MS,
       );
-      openworkSnapshot = getOpenworkSnapshot();
-      openworkWorkspaceId = options.runtimeWorkspaceId()?.trim()
+      get3wSnapshot = getGet3wSnapshot();
+      get3wWorkspaceId = options.runtimeWorkspaceId()?.trim()
         || (await options.ensureRuntimeWorkspaceId?.())?.trim()
         || options.selectedWorkspaceId().trim()
         || null;
     }
-    const hasOpenworkTarget =
-      Boolean(openworkClient && openworkWorkspaceId);
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.mcp?.[mode] !== false;
+    const hasGet3wTarget =
+      Boolean(get3wClient && get3wWorkspaceId);
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.mcp?.[mode] !== false;
     return {
-      openworkClient,
-      openworkWorkspaceId,
-      hasOpenworkTarget,
-      canUseOpenworkServer,
+      get3wClient,
+      get3wWorkspaceId,
+      hasGet3wTarget,
+      canUseGet3wServer,
     };
   };
 
@@ -244,14 +244,14 @@ export function createConnectionsStore(options: {
 
   const readMcpConfigFile = async (scope: "project" | "global"): Promise<OpencodeConfigFile | null> => {
     const projectDir = options.projectDir().trim();
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveConfigOpenworkTarget("read");
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveConfigGet3wTarget("read");
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-      return openworkClient.readOpencodeConfigFile(openworkWorkspaceId, scope);
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+      return get3wClient.readOpencodeConfigFile(get3wWorkspaceId, scope);
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       return null;
     }
 
@@ -268,25 +268,25 @@ export function createConnectionsStore(options: {
       return activeClient;
     }
 
-    const openworkSnapshot = getOpenworkSnapshot();
-    const openworkBaseUrl = openworkSnapshot.openworkServerBaseUrl.trim();
-    const token = openworkSnapshot.openworkServerAuth.token?.trim();
-    if (!openworkBaseUrl || !token) {
+    const get3wSnapshot = getGet3wSnapshot();
+    const get3wBaseUrl = get3wSnapshot.get3wServerBaseUrl.trim();
+    const token = get3wSnapshot.get3wServerAuth.token?.trim();
+    if (!get3wBaseUrl || !token) {
       return null;
     }
 
     const mountedBaseUrl =
-      buildOpenworkWorkspaceBaseUrl(openworkBaseUrl, await resolveOpenworkWorkspaceId()) ?? openworkBaseUrl;
+      buildGet3wWorkspaceBaseUrl(get3wBaseUrl, await resolveGet3wWorkspaceId()) ?? get3wBaseUrl;
     activeClient = createClient(`${mountedBaseUrl.replace(/\/+$/, "")}/opencode`, undefined, {
       token,
-      mode: "openwork",
+      mode: "get3w",
     });
     options.setClient(activeClient);
     return activeClient;
   };
 
-  const resolveWritableOpenworkTarget = async () => {
-    return resolveMcpOpenworkTarget("write");
+  const resolveWritableGet3wTarget = async () => {
+    return resolveMcpGet3wTarget("write");
   };
 
   const resolveProjectDir = async (activeClient: Client | null, currentProjectDir: string) => {
@@ -308,29 +308,29 @@ export function createConnectionsStore(options: {
     return resolvedProjectDir;
   };
 
-  const listMcpFromOpenworkServer = async (projectDir: string) => {
-    const openworkSnapshot = getOpenworkSnapshot();
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveMcpOpenworkTarget("read");
-    const canTryOpenworkServer = canUseOpenworkServer;
+  const listMcpFromGet3wServer = async (projectDir: string) => {
+    const get3wSnapshot = getGet3wSnapshot();
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveMcpGet3wTarget("read");
+    const canTryGet3wServer = canUseGet3wServer;
 
     recordPerfLog(options.developerMode(), "mcp.refresh", "server-path-check", {
       workspaceType: options.workspaceType(),
       projectDir: projectDir || null,
-      openworkStatus: openworkSnapshot.openworkServerStatus,
-      hasOpenworkClient: Boolean(openworkClient),
-      openworkWorkspaceId: openworkWorkspaceId ?? null,
-      canReadMcp: openworkSnapshot.openworkServerCapabilities?.mcp?.read ?? null,
-      canTryOpenworkServer,
+      get3wStatus: get3wSnapshot.get3wServerStatus,
+      hasGet3wClient: Boolean(get3wClient),
+      get3wWorkspaceId: get3wWorkspaceId ?? null,
+      canReadMcp: get3wSnapshot.get3wServerCapabilities?.mcp?.read ?? null,
+      canTryGet3wServer,
     });
 
-    if (hasOpenworkTarget && !canTryOpenworkServer) {
+    if (hasGet3wTarget && !canTryGet3wServer) {
       throw new Error("Get3W server cannot read MCP config for this workspace.");
     }
 
-    if (!canTryOpenworkServer || !openworkClient || !openworkWorkspaceId) return null;
+    if (!canTryGet3wServer || !get3wClient || !get3wWorkspaceId) return null;
 
-    const response = await openworkClient.listMcp(openworkWorkspaceId);
+    const response = await get3wClient.listMcp(get3wWorkspaceId);
     const next = response.items.map((entry) => ({
       name: entry.name,
       // The server relays opencode.json entries verbatim; fold a Claude-style
@@ -345,7 +345,7 @@ export function createConnectionsStore(options: {
     // Read through the same workspace mount as configuration. The chat client
     // can still point at the previous/default workspace during restoration.
     try {
-      nextStatuses = filterConfiguredStatuses(await openworkClient.getMcpStatus(openworkWorkspaceId), next);
+      nextStatuses = filterConfiguredStatuses(await get3wClient.getMcpStatus(get3wWorkspaceId), next);
     } catch {
       nextStatuses = {};
     }
@@ -379,9 +379,9 @@ export function createConnectionsStore(options: {
     };
   };
 
-  const resolveDesktopCommand = async (commandName: "getOpenworkUiMcpCommand") => {
+  const resolveDesktopCommand = async (commandName: "getGet3wUiMcpCommand") => {
     try {
-      const command = await window.__OPENWORK_ELECTRON__?.invokeDesktop?.(commandName);
+      const command = await window.__GET3W_ELECTRON__?.invokeDesktop?.(commandName);
       if (Array.isArray(command) && command.every((part) => typeof part === "string") && command.length > 0) {
         return command;
       }
@@ -393,17 +393,17 @@ export function createConnectionsStore(options: {
 
   const resolveLocalMcpCommand = async (entry: McpDirectoryInfo) => {
     const mcpResource = extensionResource(entry.extensionManifest, "mcp");
-    if (mcpResource?.localCommandRef === "openwork.uiMcp" || entry.serverName === "openwork-ui") {
-      const command = await resolveDesktopCommand("getOpenworkUiMcpCommand");
+    if (mcpResource?.localCommandRef === "get3w.uiMcp" || entry.serverName === "get3w-ui") {
+      const command = await resolveDesktopCommand("getGet3wUiMcpCommand");
       return command ?? entry.command;
     }
     return entry.command;
   };
 
   const resolveLocalMcpEnvironment = async (entry: McpDirectoryInfo) => {
-    if (entry.serverName !== "openwork-ui") return undefined;
+    if (entry.serverName !== "get3w-ui") return undefined;
     try {
-      const environment = await window.__OPENWORK_ELECTRON__?.invokeDesktop?.("getOpenworkUiMcpEnvironment");
+      const environment = await window.__GET3W_ELECTRON__?.invokeDesktop?.("getGet3wUiMcpEnvironment");
       if (environment && typeof environment === "object" && !Array.isArray(environment)) {
         return Object.fromEntries(
           Object.entries(environment).filter((entry): entry is [string, string] =>
@@ -412,7 +412,7 @@ export function createConnectionsStore(options: {
         );
       }
     } catch {
-      // Discovery fallback in openwork-ui-mcp still handles normal launches.
+      // Discovery fallback in get3w-ui-mcp still handles normal launches.
     }
     return undefined;
   };
@@ -453,7 +453,7 @@ export function createConnectionsStore(options: {
     const projectDir = options.projectDir().trim();
     try {
       if (isCurrentRefresh()) setStateField("mcpStatus", null);
-      const serverResult = await listMcpFromOpenworkServer(projectDir);
+      const serverResult = await listMcpFromGet3wServer(projectDir);
       if (serverResult) {
         // Surface engine registration failures instead of leaving users
         // staring at an MCP that silently shows as disconnected.
@@ -484,9 +484,9 @@ export function createConnectionsStore(options: {
       recordPerfLog(options.developerMode(), "mcp.refresh", "server-path-error", {
         message: error instanceof Error ? error.message : String(error),
       });
-      const serverTarget = await resolveMcpOpenworkTarget("read").catch(() => null);
+      const serverTarget = await resolveMcpGet3wTarget("read").catch(() => null);
       if (!isCurrentRefresh()) return;
-      if (serverTarget?.hasOpenworkTarget) {
+      if (serverTarget?.hasGet3wTarget) {
         mutateState((current) => ({
           ...current,
           mcpServers: [],
@@ -545,7 +545,7 @@ export function createConnectionsStore(options: {
       // Runtime-DB MCPs (source "config.remote") only exist on the Get3W
       // server. Keep the last-known entries instead of silently dropping them
       // while the server is briefly unreachable (startup race) — otherwise
-      // enabled MCPs like openwork-ui render as "off".
+      // enabled MCPs like get3w-ui render as "off".
       const fileNames = new Set(fileServers.map((entry) => entry.name));
       const runtimeServers = state.mcpServers.filter(
         (entry) => entry.source === "config.remote" && !fileNames.has(entry.name),
@@ -613,7 +613,7 @@ export function createConnectionsStore(options: {
 
   function builtInMcp(name: string) {
     return MCP_QUICK_CONNECT.find((entry) =>
-      isBuiltInOpenWorkExtension(entry) && getMcpServerName(entry) === name,
+      isBuiltInGet3WExtension(entry) && getMcpServerName(entry) === name,
     );
   }
 
@@ -624,14 +624,14 @@ export function createConnectionsStore(options: {
     if (builtIn) entry = builtIn;
     // Cloud repair uses the signed-in organization's reconciler below, not
     // caller-supplied MCP configuration. Existing service access stays usable.
-    if (entry.managedBy !== "openwork-connect") {
+    if (entry.managedBy !== "get3w-connect") {
       const error = mcpMutationDenied(Boolean(builtIn));
       if (error) return { ok: false, error };
     }
     const startedAt = perfNow();
-    const openworkSnapshot = getOpenworkSnapshot();
+    const get3wSnapshot = getGet3wSnapshot();
     // A browser session connected to an Get3W server has no local config to fall back to.
-    const serverOnly = !isDesktopRuntime() && openworkSnapshot.openworkServerStatus === "connected";
+    const serverOnly = !isDesktopRuntime() && get3wSnapshot.get3wServerStatus === "connected";
     const projectDir = options.projectDir().trim();
     const entryType = entry.type ?? "remote";
 
@@ -642,28 +642,28 @@ export function createConnectionsStore(options: {
       projectDir: projectDir || null,
     });
 
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveWritableOpenworkTarget();
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveWritableGet3wTarget();
 
-    if (serverOnly && !canUseOpenworkServer) {
+    if (serverOnly && !canUseGet3wServer) {
       const error = "Get3W server unavailable. MCP config is read-only.";
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
-        reason: "openwork-server-unavailable",
+        reason: "get3w-server-unavailable",
       });
       return { ok: false, error };
     }
 
-    if (hasOpenworkTarget && !canUseOpenworkServer) {
+    if (hasGet3wTarget && !canUseGet3wServer) {
       const error = "Get3W server MCP config is read-only.";
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
-        reason: "openwork-server-read-only",
+        reason: "get3w-server-read-only",
       });
       return { ok: false, error };
     }
 
-    if (!canUseOpenworkServer && !isDesktopRuntime()) {
+    if (!canUseGet3wServer && !isDesktopRuntime()) {
       const error = t("mcp.desktop_required");
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
@@ -672,7 +672,7 @@ export function createConnectionsStore(options: {
       return { ok: false, error };
     }
 
-    if (!serverOnly && !projectDir && !canUseOpenworkServer) {
+    if (!serverOnly && !projectDir && !canUseGet3wServer) {
       const error = t("mcp.pick_workspace_first");
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
@@ -681,8 +681,8 @@ export function createConnectionsStore(options: {
       return { ok: false, error };
     }
 
-    const activeClient = canUseOpenworkServer ? options.client() ?? await ensureActiveClient().catch(() => null) : await ensureActiveClient();
-    if (!activeClient && !canUseOpenworkServer) {
+    const activeClient = canUseGet3wServer ? options.client() ?? await ensureActiveClient().catch(() => null) : await ensureActiveClient();
+    if (!activeClient && !canUseGet3wServer) {
       const error = t("mcp.connect_server_first");
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
@@ -692,7 +692,7 @@ export function createConnectionsStore(options: {
     }
 
     const resolvedProjectDir = activeClient ? await resolveProjectDir(activeClient, projectDir) : projectDir;
-    if (!resolvedProjectDir && !canUseOpenworkServer) {
+    if (!resolvedProjectDir && !canUseGet3wServer) {
       const error = t("mcp.pick_workspace_first");
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
@@ -704,11 +704,11 @@ export function createConnectionsStore(options: {
     const slug = entry.id ?? getMcpServerName(entry);
     const action = snapshot.mcpServers.some((server) => server.name === slug) ? "updated" : "added";
 
-    if (conflictsWithOpenworkConnect(entry)) {
-      const error = t("mcp.name_reserved_openwork_connect");
+    if (conflictsWithGet3wConnect(entry)) {
+      const error = t("mcp.name_reserved_get3w_connect");
       setStateField("mcpStatus", error);
       finishPerf(options.developerMode(), "mcp.connect", "blocked", startedAt, {
-        reason: "openwork-connect-name-reserved",
+        reason: "get3w-connect-name-reserved",
       });
       return { ok: false, error };
     }
@@ -716,7 +716,7 @@ export function createConnectionsStore(options: {
     try {
       mutateState((current) => ({ ...current, mcpStatus: null, mcpConnectingName: entry.name }));
 
-      if (entry.managedBy === "openwork-connect") {
+      if (entry.managedBy === "get3w-connect") {
         throw new Error(t("extensions.cloud_retired"));
       }
 
@@ -727,10 +727,10 @@ export function createConnectionsStore(options: {
         if (entryType !== "remote" || !entry.url) {
           throw new Error("Get3W-managed OAuth requires a remote MCP URL.");
         }
-        if (!canUseOpenworkServer || !openworkClient || !openworkWorkspaceId) {
+        if (!canUseGet3wServer || !get3wClient || !get3wWorkspaceId) {
           throw new Error("The local Get3W server is required for managed MCP sign-in.");
         }
-        const result = await openworkClient.addManagedMcp(openworkWorkspaceId, {
+        const result = await get3wClient.addManagedMcp(get3wWorkspaceId, {
           name: slug,
           url: entry.url,
           oauth: {
@@ -741,8 +741,8 @@ export function createConnectionsStore(options: {
           },
         });
         const connected = await waitForManagedMcpAuthorization(
-          openworkClient,
-          openworkWorkspaceId,
+          get3wClient,
+          get3wWorkspaceId,
           slug,
           result,
         );
@@ -765,9 +765,9 @@ export function createConnectionsStore(options: {
       // Resolve dynamic URLs for built-in MCPs
       let resolvedUrl = entry.url;
       let resolvedHeaders: Record<string, string> | undefined;
-      if (!resolvedUrl && entry.serverName === "openwork-ui") {
+      if (!resolvedUrl && entry.serverName === "get3w-ui") {
         try {
-          const bridgeInfo = await window.__OPENWORK_ELECTRON__?.invokeDesktop?.("getUiControlBridgeInfo");
+          const bridgeInfo = await window.__GET3W_ELECTRON__?.invokeDesktop?.("getUiControlBridgeInfo");
           if (bridgeInfo?.baseUrl) {
             resolvedUrl = `${bridgeInfo.baseUrl}/mcp`;
             if (bridgeInfo.token) {
@@ -816,8 +816,8 @@ export function createConnectionsStore(options: {
         }
       }
 
-      if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-        await openworkClient.addMcp(openworkWorkspaceId, {
+      if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+        await get3wClient.addMcp(get3wWorkspaceId, {
           name: slug,
           config: mcpEntryConfig,
         });
@@ -861,7 +861,7 @@ export function createConnectionsStore(options: {
         }
       }
 
-      if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+      if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
         // The Get3W server is the source of truth for workspace-scoped MCP
         // config in the React port. Avoid also calling the OpenCode SDK's MCP
         // hot-add endpoint here: when the SDK client is rooted at the aggregate
@@ -956,7 +956,7 @@ export function createConnectionsStore(options: {
   }
 
   async function waitForManagedMcpAuthorization(
-    openworkClient: OpenworkServerClient,
+    get3wClient: Get3wServerClient,
     workspaceId: string,
     name: string,
     result: { status: "connected" } | { status: "needs_auth"; authorizeUrl: string },
@@ -965,7 +965,7 @@ export function createConnectionsStore(options: {
     await openDesktopUrl(assertDesktopWebUrl(result.authorizeUrl));
     for (let attempt = 0; attempt < 120; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 1_000));
-      const connection = await openworkClient.getManagedMcp(workspaceId, name);
+      const connection = await get3wClient.getManagedMcp(workspaceId, name);
       if (connection.status === "connected") return true;
       if (connection.status === "reconnect_required") {
         throw new Error(connection.lastError || "MCP sign-in needs to be restarted.");
@@ -978,13 +978,13 @@ export function createConnectionsStore(options: {
   async function authorizeMcp(entry: McpServerEntry) {
     if (entry.managedOAuth) {
       try {
-        const { openworkClient, openworkWorkspaceId, canUseOpenworkServer } = await resolveWritableOpenworkTarget();
-        if (!canUseOpenworkServer || !openworkClient || !openworkWorkspaceId) {
+        const { get3wClient, get3wWorkspaceId, canUseGet3wServer } = await resolveWritableGet3wTarget();
+        if (!canUseGet3wServer || !get3wClient || !get3wWorkspaceId) {
           throw new Error("The local Get3W server is required for managed MCP sign-in.");
         }
         mutateState((current) => ({ ...current, mcpStatus: null, mcpConnectingName: entry.name }));
-        const result = await openworkClient.connectManagedMcp(openworkWorkspaceId, entry.name);
-        const connected = await waitForManagedMcpAuthorization(openworkClient, openworkWorkspaceId, entry.name, result);
+        const result = await get3wClient.connectManagedMcp(get3wWorkspaceId, entry.name);
+        const connected = await waitForManagedMcpAuthorization(get3wClient, get3wWorkspaceId, entry.name, result);
         await refreshMcpServers();
         if (connected) setStateField("mcpStatus", t("mcp.connected"));
       } catch (error) {
@@ -1020,37 +1020,37 @@ export function createConnectionsStore(options: {
   }
 
   async function logoutMcpAuth(name: string) {
-    const openworkSnapshot = getOpenworkSnapshot();
+    const get3wSnapshot = getGet3wSnapshot();
     // A browser session connected to an Get3W server has no local config to fall back to.
-    const serverOnly = !isDesktopRuntime() && openworkSnapshot.openworkServerStatus === "connected";
+    const serverOnly = !isDesktopRuntime() && get3wSnapshot.get3wServerStatus === "connected";
     const projectDir = options.projectDir().trim();
 
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveWritableOpenworkTarget();
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveWritableGet3wTarget();
 
-    if (serverOnly && !canUseOpenworkServer) {
+    if (serverOnly && !canUseGet3wServer) {
       setStateField("mcpStatus", "Get3W server unavailable. MCP auth is read-only.");
       return;
     }
 
-    if (hasOpenworkTarget && !canUseOpenworkServer) {
+    if (hasGet3wTarget && !canUseGet3wServer) {
       setStateField("mcpStatus", "Get3W server MCP auth is read-only.");
       return;
     }
 
-    if (!canUseOpenworkServer && !isDesktopRuntime()) {
+    if (!canUseGet3wServer && !isDesktopRuntime()) {
       setStateField("mcpStatus", t("mcp.desktop_required"));
       return;
     }
 
-    const activeClient = canUseOpenworkServer ? options.client() : await ensureActiveClient();
-    if (!activeClient && !canUseOpenworkServer) {
+    const activeClient = canUseGet3wServer ? options.client() : await ensureActiveClient();
+    if (!activeClient && !canUseGet3wServer) {
       setStateField("mcpStatus", t("mcp.connect_server_first"));
       return;
     }
 
     const resolvedProjectDir = activeClient ? await resolveProjectDir(activeClient, projectDir) : projectDir;
-    if (!resolvedProjectDir && !canUseOpenworkServer) {
+    if (!resolvedProjectDir && !canUseGet3wServer) {
       setStateField("mcpStatus", t("mcp.pick_workspace_first"));
       return;
     }
@@ -1059,8 +1059,8 @@ export function createConnectionsStore(options: {
     setStateField("mcpStatus", null);
 
     try {
-      if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-        await openworkClient.logoutMcpAuth(openworkWorkspaceId, safeName);
+      if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+        await get3wClient.logoutMcpAuth(get3wWorkspaceId, safeName);
       } else {
         if (!activeClient || !resolvedProjectDir) {
           throw new Error(t("mcp.connect_server_first"));
@@ -1088,13 +1088,13 @@ export function createConnectionsStore(options: {
     try {
       setStateField("mcpStatus", null);
 
-      const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-        await resolveWritableOpenworkTarget();
+      const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+        await resolveWritableGet3wTarget();
 
-      if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-        await openworkClient.removeMcp(openworkWorkspaceId, name);
+      if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+        await get3wClient.removeMcp(get3wWorkspaceId, name);
       } else {
-        if (hasOpenworkTarget) {
+        if (hasGet3wTarget) {
           setStateField("mcpStatus", "Get3W server MCP config is read-only.");
           return;
         }
@@ -1165,15 +1165,15 @@ export function createConnectionsStore(options: {
   async function setMcpEnabled(name: string, enabled: boolean) {
     if (mcpMutationDenied(Boolean(builtInMcp(name)))) return;
     try {
-      const { openworkClient, openworkWorkspaceId, canUseOpenworkServer } =
-        await resolveWritableOpenworkTarget();
+      const { get3wClient, get3wWorkspaceId, canUseGet3wServer } =
+        await resolveWritableGet3wTarget();
 
-      if (!canUseOpenworkServer || !openworkClient || !openworkWorkspaceId) {
+      if (!canUseGet3wServer || !get3wClient || !get3wWorkspaceId) {
         setStateField("mcpStatus", t("mcp.toggle_requires_server"));
         return;
       }
 
-      await openworkClient.setMcpEnabled(openworkWorkspaceId, name, enabled);
+      await get3wClient.setMcpEnabled(get3wWorkspaceId, name, enabled);
       options.markReloadRequired?.("mcp", { type: "mcp", name, action: "updated" });
       await refreshMcpServers();
     } catch (error) {
@@ -1245,7 +1245,7 @@ export function createConnectionsStore(options: {
       return;
     }
 
-    if (!isDesktopRuntime() && getOpenworkSnapshot().openworkServerStatus !== "connected") {
+    if (!isDesktopRuntime() && getGet3wSnapshot().get3wServerStatus !== "connected") {
       return;
     }
 

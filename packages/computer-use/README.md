@@ -17,9 +17,9 @@ with the helper's status; the relaunched helper stops if that parent goes away.
 
 | Command | Purpose |
 | --- | --- |
-| `ComputerUse mcp-embedded` | What the signed Get3W desktop app (`com.get3w.desktop`, same team as the helper) launches. Other code the team signs, such as the bundled sidecars, is not a host. MCP over stdio; requested targets open directly; the desktop hosts Take over, Continue and Stop over the private `openwork/ui` channel. |
+| `ComputerUse mcp-embedded` | What the signed Get3W desktop app (`com.get3w.desktop`, same team as the helper) launches. Other code the team signs, such as the bundled sidecars, is not a host. MCP over stdio; requested targets open directly; the desktop hosts Take over, Continue and Stop over the private `get3w/ui` channel. |
 | `ComputerUse mcp` | MCP server with native controls, available only to that same authenticated desktop host. |
-| `ComputerUse --check` | Prints `{ok, accessibility, screenRecording, supported, protocolVersion: "openwork.computer-use/1"}` and exits. |
+| `ComputerUse --check` | Prints `{ok, accessibility, screenRecording, supported, protocolVersion: "get3w.computer-use/1"}` and exits. |
 | `ComputerUse permissions accessibility\|screenRecording` | Triggers the macOS prompt and opens the matching System Settings pane. |
 | `ComputerUse permissions-guide accessibility\|screenRecording` | Floating permission guide driven by its parent over line-delimited JSON (below). |
 
@@ -75,10 +75,10 @@ neither time nor the agent can. Sleep or temporary desktop unavailability
 invalidates observations and releases held input without creating a human
 handoff; fresh target validation is required when the desktop returns.
 
-## Embedded protocol (`openwork/ui`)
+## Embedded protocol (`get3w/ui`)
 
 In `mcp-embedded` mode the helper and host also exchange JSON-RPC
-notifications with method `openwork/ui`:
+notifications with method `get3w/ui`:
 
 - Helper → host: `{kind: "state", id, phase, appName, appID, pid, windowTitle,
   task, mode, status, canContinue, cause?}` where `phase` is `working`, `paused` or `closed`;
@@ -130,7 +130,7 @@ always comes from a fresh `--check`.
 ## Build and verify
 
 ```
-pnpm --filter @openwork/computer-use build:native
+pnpm --filter @get3w/computer-use build:native
 swift test --package-path packages/computer-use/native
 node apps/desktop/scripts/prepare-computer-use-helper.mjs --force --outdir apps/desktop/resources/helpers
 ```
@@ -140,7 +140,7 @@ signs the helper app; desktop dev and packaged builds run it automatically.
 
 Unit tests cannot show that input reaches real apps. To check a signed build
 on your Mac, run it with computer use on, stop any chat using the computer,
-and run `pnpm --filter @openwork/computer-use prove:mac-apps`. It drives
+and run `pnpm --filter @get3w/computer-use prove:mac-apps`. It drives
 Calculator and TextEdit through the desktop's local bridge, broker and helper,
 as the agent does, with a fixed plan and no model. Each scenario checks a real
 outcome (Calculator's display, a file saved on disk) and reports the time of
@@ -154,7 +154,7 @@ them, pointer actions fail explicitly while accessible controls keep working.
 
 On Windows the desktop offers **This PC** instead of This Mac. Its helper is
 `windows/ComputerUse.cs`, compiled with the .NET Framework compiler that ships
-with Windows into `openwork-computer-use.exe` and signed with the rest of the
+with Windows into `get3w-computer-use.exe` and signed with the rest of the
 Windows build. It has no model, API key, network listener or clipboard access.
 `computer-windows-driver.mjs` starts it and speaks its line protocol (one JSON
 object per line on stdin/stdout). The shared runtime in `computer-remote.mjs`
@@ -164,8 +164,8 @@ a Windows chat starts on it.
 
 | Command | Purpose |
 | --- | --- |
-| `openwork-computer-use --check` | Prints `{protocol: "openwork.computer-use.windows/1", ok, reason, supported, session, integrity}` and exits. |
-| `openwork-computer-use serve --host-pid N` | Prints `{"type":"ready",...}`, then answers `windows`, `focus`, `capture`, `input` and `status` in order; `cancel` is answered at once and stops running input. It exits when stdin closes. |
+| `get3w-computer-use --check` | Prints `{protocol: "get3w.computer-use.windows/1", ok, reason, supported, session, integrity}` and exits. |
+| `get3w-computer-use serve --host-pid N` | Prints `{"type":"ready",...}`, then answers `windows`, `focus`, `capture`, `input` and `status` in order; `cancel` is answered at once and stops running input. It exits when stdin closes. |
 
 - Targets are app windows only; there is no whole-screen session. A window is
   identified by its handle, process id and process start time, so a restarted

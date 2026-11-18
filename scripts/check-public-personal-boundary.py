@@ -20,7 +20,7 @@ REMOVED = [
     "apps/server/src/extensions/drive-resumable-upload.ts",
     "apps/server/src/opencode-plugins/drive-file-tools.ts",
     "apps/server/src/opencode-plugins/gmail-attachment-fulfillment.ts",
-    "apps/server/src/opencode-plugins/openwork-cloud-skills-v2.ts",
+    "apps/server/src/opencode-plugins/get3w-cloud-skills-v2.ts",
 
     "apps/server/src/cloud-mcp-health.ts",
     "apps/server/src/cloud-mcp-v2.ts",
@@ -64,7 +64,7 @@ APP = 'apps/app/src/react-app/domains/'
 REMOVED_ORGANIZATION = [
     APP+'settings/cloud/organization-server-affordance.tsx', APP+'cloud/use-org-list-window.ts',
     APP+'cloud/join-organization-input.ts', APP+'cloud/workspace-branding-restart.ts',
-    APP+'cloud/openwork-web-access-state.ts', APP+'cloud/signin-fallback-notice.tsx',
+    APP+'cloud/get3w-web-access-state.ts', APP+'cloud/signin-fallback-notice.tsx',
     'apps/app/src/app/lib/gateway-usage-scope.ts', APP+'cloud/org-onboarding-selection.ts',
     'apps/app/src/app/lib/den-handoff.ts', 'apps/app/src/app/lib/den-org-memory.ts',
     'apps/app/src/app/lib/den-sign-in-intent.ts', 'apps/app/src/app/lib/den-sign-in-return.ts',
@@ -87,10 +87,10 @@ REMOVED_ORGANIZATION = [
     'apps/server/src/opencode-plugins/managed-policy-client.ts',
     'apps/server/src/organization-mcp-names.ts',
 ]
-ORGANIZATION_TOKENS = ['X-Get3W-Organization', 'x-openwork-org-id', 'connectLinkVerify', 'connectLinkAccept',
+ORGANIZATION_TOKENS = ['X-Get3W-Organization', 'x-get3w-org-id', 'connectLinkVerify', 'connectLinkAccept',
     'connect-link-seen.json', 'appendOrganizationPrompts']
 TOKENS = ["/experimental/connect/skills", "/experimental/connect/automations", '/cloud-computer/status', '/cloud-computer/frame', '/cloud-computer/interact', 'startCloudComputerBridge', '/v1/me/desktop-config', 'refreshGatewayUsageAfterCloudSync', 'refreshGatewayUsageAfterCompletion', '/v1/gateway/usage-limits/me', '/v1/gateway/usage-limit-reset-requests',
-          'getGatewayUsageStatus', 'requestGatewayUsageReset', '<GatewayUsageNotice', '<GatewayUsageMenuItem','@openwork/types/models-analytics', '@openwork/types/den/activation',
+          'getGatewayUsageStatus', 'requestGatewayUsageReset', '<GatewayUsageNotice', '<GatewayUsageMenuItem','@get3w/types/models-analytics', '@get3w/types/den/activation',
           'observeModelsTaskEvent', 'noteActivationRunStarted', 'noteActivationRunCompleted',
           '/v1/inference/analytics/', '/v1/me/activation', '<ActivationCard']
 
@@ -128,17 +128,17 @@ def check(root):
         if token in text(store): issues.append({'path': str(store.relative_to(root)), 'reason': 'retired organization provider lifecycle: ' + token})
     for name in ['store.ts', 'use-session-mcp-maintenance.ts', 'use-cloud-mcp-submit-readiness.ts']:
         p = root/'apps/app/src/react-app/domains/connections'/name
-        for token in ['readDenSettings', 'mintCloudControlMcpToken', 'runOpenworkCloudMcpReconciler', 'syncCloudControlMcp']:
+        for token in ['readDenSettings', 'mintCloudControlMcpToken', 'runGet3wCloudMcpReconciler', 'syncCloudControlMcp']:
             if token in text(p): issues.append({'path': str(p.relative_to(root)), 'reason': 'retired Gateway lifecycle: '+token})
     extensions = root/'apps/app/src/react-app/domains/settings/state/extensions-store.ts'
-    for token in ['readDenSettings', 'createDenClient', 'refreshDesktopCloudSync', 'listCloudPlugins(', 'removeCloudPlugin(', 'workspaceOpenworkWrite', 'openwork-den-session-updated']:
+    for token in ['readDenSettings', 'createDenClient', 'refreshDesktopCloudSync', 'listCloudPlugins(', 'removeCloudPlugin(', 'workspaceGet3wWrite', 'get3w-den-session-updated']:
         if token in text(extensions): issues.append({'path': str(extensions.relative_to(root)), 'reason': 'retired organization extension lifecycle: '+token})
     server = root/'apps/server/src/server.ts'
-    for token in ['CloudProviderSync', 'cloudProviderSync', 'parseCloudProviderDenSession', 'providerSession:', 'registerCloudMcpRoutes', 'reconcilePersistedOpenworkCloudMcp', 'migrateOpenworkCloudMcpRuntimeConfig', 'removeOpenworkCloudMcpDesiredConfig']:
+    for token in ['CloudProviderSync', 'cloudProviderSync', 'parseCloudProviderDenSession', 'providerSession:', 'registerCloudMcpRoutes', 'reconcilePersistedGet3wCloudMcp', 'migrateGet3wCloudMcpRuntimeConfig', 'removeGet3wCloudMcpDesiredConfig']:
         if token in text(server): issues.append({'path': str(server.relative_to(root)), 'reason': 'retired server organization sync: ' + token})
     for name in ['engine-v2-preview.ts', 'managed-opencode-v2.ts']:
         p = root/'apps/server/src'/name
-        for token in ['providerSession', 'OPENWORK_PROVIDER_SESSION_FD', 'providerSyncPluginDirectory']:
+        for token in ['providerSession', 'GET3W_PROVIDER_SESSION_FD', 'providerSyncPluginDirectory']:
             if token in text(p): issues.append({'path': str(p.relative_to(root)), 'reason': 'retired private provider channel: '+token})
     for name in ['session/status/use-desktop-feature.ts', 'session/surface/composer/use-native-dictation-feature.ts']:
         p = root/'apps/app/src/react-app/domains'/name

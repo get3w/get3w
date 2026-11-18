@@ -1,4 +1,4 @@
-import type { WorkspaceWire } from "@openwork/types/workspace";
+import type { WorkspaceWire } from "@get3w/types/workspace";
 
 export type WorkspaceType = "local";
 
@@ -123,7 +123,7 @@ export interface Capabilities {
   serverVersion: string;
   opencodeVersion: string;
   providerSync: true;
-  skills: { read: boolean; write: boolean; source: "openwork" | "opencode" };
+  skills: { read: boolean; write: boolean; source: "get3w" | "opencode" };
   plugins: { read: boolean; write: boolean };
   mcp: { read: boolean; write: boolean };
   commands: { read: boolean; write: boolean };

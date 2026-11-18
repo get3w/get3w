@@ -11,7 +11,7 @@ import { create } from "zustand";
 
 import type { ModelRef } from "@/app/types";
 
-export const MODEL_SHORTCUTS_STORAGE_KEY = "openwork.shortcuts.v1";
+export const MODEL_SHORTCUTS_STORAGE_KEY = "get3w.shortcuts.v1";
 
 const modelSwitchAction = z.object({
   type: z.literal("model.switch"),

@@ -1,6 +1,6 @@
-import { startMcpAppTiming } from "@openwork/types/mcp-app-timing";
+import { startMcpAppTiming } from "@get3w/types/mcp-app-timing";
 import { mcpAppResolutionRetryDelayMs } from "./mcp-app-resolution"
-import { OpenworkServerError, type OpenworkMcpAppLaunchReference, type OpenworkMcpAppResource } from "./openwork-server"
+import { Get3wServerError, type Get3wMcpAppLaunchReference, type Get3wMcpAppResource } from "./get3w-server"
 import type { McpAppOrigin } from "../../components/chat/mcp-app-origin"
 
 // Canonical JSON also keeps equivalent React inputs from restarting discovery.
@@ -31,9 +31,9 @@ export function createMcpAppDiscoveryScheduler(now = Date.now) {
   return function schedule(
     origin: McpAppOrigin,
     toolName: string,
-    launch: OpenworkMcpAppLaunchReference | null,
+    launch: Get3wMcpAppLaunchReference | null,
     manual: boolean,
-    receive: (app: OpenworkMcpAppResource | null) => void,
+    receive: (app: Get3wMcpAppResource | null) => void,
     fail: (error: unknown) => void,
     credentialRevision = 0,
   ): () => void {
@@ -95,7 +95,7 @@ export function createMcpAppDiscoveryScheduler(now = Date.now) {
         }, error => {
           resolvedTiming()
           if (cancelled) { finish?.(); return }
-          const auth = error instanceof OpenworkServerError && ["mcp_auth_required", "mcp_access_denied"].includes(error.code)
+          const auth = error instanceof Get3wServerError && ["mcp_auth_required", "mcp_access_denied"].includes(error.code)
           const delay = auth ? null : mcpAppResolutionRetryDelayMs(error, index)
           if (delay === null) { negative({ error }); return }
           timer = window.setTimeout(() => { timer = undefined; attempt(index + 1) }, delay)

@@ -19,7 +19,7 @@ export type SubagentNotice = {
 };
 
 /** The text part metadata key that marks a sub-agent notice row in the transcript. */
-export const SUBAGENT_NOTICE_KEY = "openworkSubagentNotice";
+export const SUBAGENT_NOTICE_KEY = "get3wSubagentNotice";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

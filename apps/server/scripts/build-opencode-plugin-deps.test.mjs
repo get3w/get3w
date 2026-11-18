@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { assertPortablePluginDeps, buildOpencodePluginDeps } from "./build-opencode-plugin-deps.mjs";
 
 test("packs plugin dependencies without a drive-letter archive operand or shell quoting", async () => {
-  const root = await mkdtemp(join(tmpdir(), "openwork plugin archive "));
+  const root = await mkdtemp(join(tmpdir(), "get3w plugin archive "));
   // A colon reproduces GNU tar's remote-host syntax even on non-Windows CI.
   const packageRoot = join(root, process.platform === "win32" ? "drive-path" : "C:", "repo with spaces", "apps", "server");
   const calls = [];
@@ -63,7 +63,7 @@ for (const [name, bytes] of [
   ["pe", Buffer.from("4d5a9000", "hex")],
 ]) {
   test(`rejects unsigned native code in the archive: ${name}`, async () => {
-    const root = await mkdtemp(join(tmpdir(), "openwork-plugin-native-"));
+    const root = await mkdtemp(join(tmpdir(), "get3w-plugin-native-"));
     try {
       const nested = join(root, "nested-package", "prebuilds");
       await mkdir(nested, { recursive: true });

@@ -56,13 +56,13 @@ describe("install re-validates the organization's desktop version policy", () =>
     Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { configurable: true, value: true });
     // Bun aliases import.meta.env to process.env; DEV enables the metadata eval hook.
     process.env.DEV = "true";
-    window.__openworkReadDesktopVersionMetadataEval = () => metadata;
+    window.__get3wReadDesktopVersionMetadataEval = () => metadata;
     installs = 0;
     refreshes = 0;
     statuses = [];
     downloadedConfig = { allowedDesktopVersions: [downloadedVersion] };
     refreshResult = async () => downloadedConfig;
-    Reflect.set(window, "__OPENWORK_ELECTRON__", {
+    Reflect.set(window, "__GET3W_ELECTRON__", {
       updater: {
         getChannel: async () => ({ channel: "stable", currentVersion: installedVersion }),
         setChannel: async (channel: "stable" | "alpha") => ({ channel, currentVersion: installedVersion }),

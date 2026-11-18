@@ -1,7 +1,7 @@
 /**
- * A function-driven client for native OpenWork threads.
+ * A function-driven client for native Get3W threads.
  *
- * Every call goes through OpenWork's workspace-scoped engine mounts, on the
+ * Every call goes through Get3W's workspace-scoped engine mounts, on the
  * engine the server routes chats to, so a headless thread is an ordinary chat:
  *
  * - v1: the OpenCode SDK against `/workspace/:id/opencode`
@@ -25,6 +25,7 @@ import type {
   HeadlessThreadSnapshot,
   HeadlessThreadTranscript,
   HeadlessThreadTurnInput,
+  HeadlessThreadAttachment,
   HeadlessThreadWaitInput,
   HeadlessThreadWaitResult,
   HeadlessThreadWaitingFor,
@@ -165,7 +166,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
 
   const authHeaders: Record<string, string> = {
     Authorization: `Bearer ${options.token}`,
-    ...(options.hostToken === undefined ? {} : { "X-OpenWork-Host-Token": options.hostToken }),
+    ...(options.hostToken === undefined ? {} : { "X-Get3W-Host-Token": options.hostToken }),
   };
 
   const sdkFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -203,8 +204,8 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     throw new HeadlessThreadError({
       code: detail.success ? detail.data.code ?? detail.data.name ?? "request_failed" : "request_failed",
       message: message ?? (result.response
-        ? `OpenWork returned ${result.response.status} for ${method} ${path}`
-        : `OpenWork request failed for ${method} ${path}`),
+        ? `Get3W returned ${result.response.status} for ${method} ${path}`
+        : `Get3W request failed for ${method} ${path}`),
       method,
       path,
       ...(result.response === undefined ? {} : { status: result.response.status }),
@@ -217,7 +218,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     if (parsed.success) return parsed.data;
     throw new HeadlessThreadError({
       code: "invalid_response",
-      message: `OpenWork returned an unexpected payload for ${method} ${path}`,
+      message: `Get3W returned an unexpected payload for ${method} ${path}`,
       method,
       path,
       ...(result.response === undefined ? {} : { status: result.response.status }),
@@ -255,7 +256,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     } catch (error) {
       throw new HeadlessThreadError({
         code: "request_failed",
-        message: `OpenWork request failed for ${method} ${path}`,
+        message: `Get3W request failed for ${method} ${path}`,
         method,
         path,
         body: error instanceof Error ? error.message : error,
@@ -271,7 +272,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
       code: input?.code ?? code ?? "request_failed",
       message: detail.success && detail.data.message !== undefined
         ? detail.data.message
-        : `OpenWork returned ${result.response.status} for ${method} ${path}`,
+        : `Get3W returned ${result.response.status} for ${method} ${path}`,
       method,
       path,
       status: result.response.status,
@@ -285,7 +286,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     if (value.success) return value.data;
     throw new HeadlessThreadError({
       code: "invalid_response",
-      message: `OpenWork returned an unexpected payload for ${method} ${path}`,
+      message: `Get3W returned an unexpected payload for ${method} ${path}`,
       method,
       path,
       status: result.response.status,
@@ -355,7 +356,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     createSession(title: string, model: HeadlessThreadModel | null, signal?: AbortSignal,
       identity?: Pick<CreateThreadInput, "id" | "metadata">): Promise<SessionWire>;
     /** `model` null keeps the session's current model. */
-    submit(threadId: string, prompt: string, model: HeadlessThreadModel | null, messageId: string | undefined, signal?: AbortSignal): Promise<void>;
+    submit(threadId: string, prompt: string, model: HeadlessThreadModel | null, messageId: string | undefined, signal?: AbortSignal, attachments?: HeadlessThreadAttachment[]): Promise<void>;
     messages(threadId: string, signal?: AbortSignal): Promise<MessageWire[]>;
     snapshot(threadId: string, input?: { signal?: AbortSignal; limit?: number }): Promise<HeadlessThreadSnapshot>;
     abort(threadId: string, signal?: AbortSignal): Promise<boolean>;
@@ -379,11 +380,11 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
         `${opencodePath}/session`,
       );
     },
-    async submit(threadId, prompt, model, messageId, signal) {
+    async submit(threadId, prompt, model, messageId, signal, attachments) {
       const path = `${opencodePath}/session/${encodeURIComponent(threadId)}/prompt_async`;
       const result = await opencode.session.promptAsync({
         sessionID: threadId,
-        parts: [{ type: "text", text: prompt }],
+        parts: [{ type: "text", text: prompt }, ...(attachments ?? []).map(file => ({ type: "file" as const, ...file }))],
         ...(messageId === undefined ? {} : { messageID: messageId }),
         ...(model === null ? {} : { model: { providerID: model.providerId, modelID: model.modelId } }),
         ...(model?.variant === undefined ? {} : { variant: model.variant }),
@@ -488,7 +489,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
       const next = page.cursor?.next;
       if (limit !== undefined || !next || page.data.length === 0) break;
       if (seen.has(next)) {
-        throw new HeadlessThreadError({ code: "invalid_response", message: `OpenWork returned a repeating cursor for GET ${path}`, method: "GET", path });
+        throw new HeadlessThreadError({ code: "invalid_response", message: `Get3W returned a repeating cursor for GET ${path}`, method: "GET", path });
       }
       seen.add(next);
       cursor = next;
@@ -525,7 +526,12 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
     },
     // v2 takes a client-chosen prompt `id`, keeps it as the user message id,
     // and admits a repeated id once, so a retried turn never runs twice.
-    async submit(threadId, prompt, model, messageId, signal) {
+    async submit(threadId, prompt, model, messageId, signal, attachments) {
+      const files = attachments?.map(file => {
+        const match = /^data:([^;,]+);base64,([A-Za-z0-9+/]*={0,2})$/.exec(file.url);
+        if (!match || match[1] !== file.mime || match[2].length % 4 !== 0) throw new Error("v2 attachments require matching base64 data URLs");
+        return { uri: file.url, ...(file.filename ? { name: file.filename } : {}) };
+      });
       if (model !== null) {
         const modelPath = `${v2SessionPath(threadId)}/model`;
         const result = await send("POST", modelPath, {
@@ -536,7 +542,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
       }
       const promptPath = `${v2SessionPath(threadId)}/prompt`;
       const result = await send("POST", promptPath, {
-        body: { text: prompt, ...(messageId === undefined ? {} : { id: messageId }) },
+        body: { text: prompt, ...(files?.length ? { files } : {}), ...(messageId === undefined ? {} : { id: messageId }) },
         signal,
       });
       if (!result.response.ok) throw failure("POST", promptPath, result);
@@ -691,7 +697,7 @@ export function createHeadlessThreadClient(options: HeadlessThreadClientOptions)
       modelRequired("POST", `${v2SessionPath(threadId)}/prompt`);
     }
     await requireAvailableModel(engine, model ?? sessionModel, input.signal);
-    await engine.submit(threadId, input.prompt, model, input.messageId, input.signal);
+    await engine.submit(threadId, input.prompt, model, input.messageId, input.signal, input.attachments);
     return {
       threadId,
       acceptedAt: now(),

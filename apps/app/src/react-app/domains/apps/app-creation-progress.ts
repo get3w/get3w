@@ -1,5 +1,5 @@
 import type { DynamicToolUIPart, UIMessage } from "ai";
-import { prepareMcpAppOutputSchema } from "@openwork/types/mcp-app";
+import { prepareMcpAppOutputSchema } from "@get3w/types/mcp-app";
 import { getCapabilityCallSentence } from "@/lib/capability-call";
 import { isToolPartInFlight } from "@/lib/tool-activity";
 import {
@@ -49,7 +49,7 @@ export function appPreparation(part: DynamicToolUIPart | undefined) {
     appBuilderResultFailed(part)
   )
     return null;
-  const result = field(part.callProviderMetadata?.openwork, "mcpResult");
+  const result = field(part.callProviderMetadata?.get3w, "mcpResult");
   const structured = prepareMcpAppOutputSchema.safeParse(
     field(result, "structuredContent"),
   );
@@ -70,7 +70,7 @@ export function appPreparation(part: DynamicToolUIPart | undefined) {
 /** A step that succeeded but whose result an older engine did not record. */
 export function appStepUnrecorded(part: DynamicToolUIPart | undefined): boolean {
   if (!part || part.state !== "output-available") return false;
-  const result = field(part.callProviderMetadata?.openwork, "mcpResult");
+  const result = field(part.callProviderMetadata?.get3w, "mcpResult");
   return field(field(result, "structuredContent"), "unrecorded") === true;
 }
 
@@ -85,7 +85,7 @@ function isAppGuideCall(tool: string, input: unknown): boolean {
 
 export function isAppGuidePart(part: DynamicToolUIPart): boolean {
   if (isAppGuideCall(part.toolName, part.input)) return true;
-  const calls = field(part.callProviderMetadata?.openwork?.codeMode, "calls");
+  const calls = field(part.callProviderMetadata?.get3w?.codeMode, "calls");
   return Array.isArray(calls) && calls.length > 0 && calls.every((call) => {
     const tool = field(call, "tool");
     return typeof tool === "string" && isAppGuideCall(tool, field(call, "input"));
@@ -109,7 +109,7 @@ function codeOf(part: DynamicToolUIPart): string {
 
 /** The App call a Code Mode script being written will make, read from its streamed code. */
 export function appScriptKind(part: DynamicToolUIPart): AppScriptKind | null {
-  if (!part.callProviderMetadata?.openwork?.codeMode) return null;
+  if (!part.callProviderMetadata?.get3w?.codeMode) return null;
   // A script result can arrive before its nested App calls. Keep the same
   // step through that handoff instead of briefly reverting to ordinary tools.
 
@@ -161,7 +161,7 @@ export function appRead(part: DynamicToolUIPart | undefined): { appId: string; t
       output = undefined;
     }
   }
-  const structured = field(field(part.callProviderMetadata?.openwork, "mcpResult"), "structuredContent");
+  const structured = field(field(part.callProviderMetadata?.get3w, "mcpResult"), "structuredContent");
   const title = field(field(structured, "app"), "title") ?? field(field(output, "app"), "title");
   return { appId, title: typeof title === "string" && title.trim() ? title : null };
 }
@@ -250,7 +250,7 @@ export function appCreationRuns(messages: UIMessage[], live = false): AppCreatio
       run.builds.push(part);
       run.script = undefined;
       join(run);
-    } else if (!unfinished(runs.at(-1)) && !part.callProviderMetadata?.openwork?.codeMode) {
+    } else if (!unfinished(runs.at(-1)) && !part.callProviderMetadata?.get3w?.codeMode) {
       leadIn = [];
     }
   }
@@ -264,7 +264,7 @@ export function appCreationRuns(messages: UIMessage[], live = false): AppCreatio
   }
   for (const run of runs) {
     const calls = [...(run.discoveries ?? []), ...(run.preparation ? [run.preparation] : []), ...(run.attempts ?? []), ...run.builds];
-    run.executions = [...parts.values()].filter(part => part.callProviderMetadata?.openwork?.codeMode && calls.some(call => call.toolCallId.startsWith(`${part.toolCallId}:app:`)));
+    run.executions = [...parts.values()].filter(part => part.callProviderMetadata?.get3w?.codeMode && calls.some(call => call.toolCallId.startsWith(`${part.toolCallId}:app:`)));
     // The script still being written belongs to the step, not to the ordinary rows.
     if (run.script) run.executions.push(run.script.part);
   }

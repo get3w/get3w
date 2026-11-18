@@ -97,7 +97,7 @@ export function RemoteThreadTranscriptBody({ entry, conversation, className, chi
 }) {
   const local = useLocal()
   // Same switch the chat reads; it only adds raw details to error cards.
-  const [developerMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("openwork.developerMode") === "1")
+  const [developerMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("get3w.developerMode") === "1")
   const { view, page, transcript, limit, setLimit, readError, read, running, messages } = conversation
   // While it works, the transcript's own Working line says so.
   const showStatusLine = !running || view.lastChecked !== null

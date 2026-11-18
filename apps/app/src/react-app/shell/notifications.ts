@@ -17,7 +17,7 @@ import {
 } from "@/react-app/kernel/notification-store";
 
 /** Window event that asks the notification bell to open its panel. */
-export const openNotificationCenterEvent = "openwork-open-notification-center";
+export const openNotificationCenterEvent = "get3w-open-notification-center";
 
 export function openNotificationCenter(): void {
   if (typeof window === "undefined") return;
@@ -28,7 +28,7 @@ export function notifyEvent(input: NotificationInput): void {
   useNotificationStore.getState().add(input);
 }
 
-const ALERT_TOAST_ID = "openwork-notification-alert";
+const ALERT_TOAST_ID = "get3w-notification-alert";
 const ALERT_BURST_WINDOW_MS = 8000;
 
 let lastAlertAt = 0;

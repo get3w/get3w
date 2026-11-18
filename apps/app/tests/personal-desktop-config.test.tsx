@@ -16,8 +16,8 @@ test("personal policy context neither loads saved enterprise restrictions nor co
   let store: DesktopConfigStore | undefined;
   function Probe() { store = useDesktopConfig(); return <span>{store.freshConfigStatus}</span>; }
   try {
-    localStorage.setItem("openwork.den.desktopConfig:fixture", JSON.stringify({allowControlSettings:false,connectEnabled:false}));
-    const before = localStorage.getItem("openwork.den.desktopConfig:fixture");
+    localStorage.setItem("get3w.den.desktopConfig:fixture", JSON.stringify({allowControlSettings:false,connectEnabled:false}));
+    const before = localStorage.getItem("get3w.den.desktopConfig:fixture");
     await act(async () => root.render(<DesktopConfigProvider><Probe /></DesktopConfigProvider>));
     expect(host.textContent).toBe("ready");
     if (!store) throw new Error("missing context");
@@ -27,7 +27,7 @@ test("personal policy context neither loads saved enterprise restrictions nor co
     await store.refresh();
     expect(await store.refreshFresh()).toEqual({});
     expect(requests).toBe(0);
-    expect(localStorage.getItem("openwork.den.desktopConfig:fixture")).toBe(before);
+    expect(localStorage.getItem("get3w.den.desktopConfig:fixture")).toBe(before);
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = originalFetch;

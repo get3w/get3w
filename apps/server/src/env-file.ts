@@ -1,7 +1,7 @@
 import { platform } from "node:os";
 import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { openworkEnvStorePath } from "@openwork/paths";
+import { get3wEnvStorePath } from "@get3w/paths";
 
 import { ensureDir, exists } from "./utils.js";
 
@@ -19,7 +19,7 @@ const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 // We refuse writes to these and strip them when reading for injection, so a
 // tampered file cannot shadow auth credentials, token paths, or process
 // identity.
-const RESERVED_PREFIXES = ["GET3W_", "OPENWORK_", "OPENCODE_"] as const;
+const RESERVED_PREFIXES = ["GET3W_", "OPENCODE_"] as const;
 const PERSISTABLE_INTERNAL_KEYS = new Set([
   "GET3W_API_KEY",
   "GET3W_MODELS_API_KEY",
@@ -59,7 +59,7 @@ function isInternalEnvKey(key: string, platform: NodeJS.Platform = process.platf
 }
 
 export function resolveDefaultEnvStorePath(): string {
-  return openworkEnvStorePath();
+  return get3wEnvStorePath();
 }
 
 function parseRecord(raw: unknown): EnvRecord | null {

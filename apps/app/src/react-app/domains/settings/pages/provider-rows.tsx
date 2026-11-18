@@ -14,7 +14,7 @@ export type ProviderStatusTone = "ready" | "attention" | "neutral" | "locked" | 
 
 /** A provider mark in a rounded tile; Get3W's own mark sits on a filled tile. */
 export function ProviderTile({ providerId, name, size = "md" }: { providerId: string; name?: string; size?: "sm" | "md" }) {
-  const filled = providerId === "openwork";
+  const filled = providerId === "get3w";
   return (
     <div className={cn(
       "flex shrink-0 items-center justify-center overflow-hidden border shadow-sm",
@@ -22,7 +22,7 @@ export function ProviderTile({ providerId, name, size = "md" }: { providerId: st
       filled ? "border-transparent bg-dls-text text-dls-surface" : "border-dls-border bg-dls-surface text-dls-text",
     )}>
       {filled
-        ? <img src={resolveExtensionIconSrc("/openwork-mark.svg")} alt="" className={cn("brightness-0 invert dark:invert-0", size === "md" ? "size-5" : "size-[18px]")} />
+        ? <img src={resolveExtensionIconSrc("/get3w-mark.svg")} alt="" className={cn("brightness-0 invert dark:invert-0", size === "md" ? "size-5" : "size-[18px]")} />
         : <ProviderIcon providerId={providerId} providerName={name} size={size === "md" ? 20 : 18} />}
     </div>
   );

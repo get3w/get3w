@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import { Freestyle, FreestyleApiError, type VmData, type CreateVmOptions } from "freestyle"
-import { SandboxError, shellQuote, type SandboxProvider, type SandboxHandle, type SandboxRef, type SandboxQuery, type SandboxState, type RunSpec, type RunResult } from "@openwork/sandbox"
+import { SandboxError, shellQuote, type SandboxProvider, type SandboxHandle, type SandboxRef, type SandboxQuery, type SandboxState, type RunSpec, type RunResult } from "@get3w/sandbox"
 
 export type FreestyleProviderOptions = {
   apiKey?: string
@@ -19,8 +19,8 @@ export type FreestyleProviderOptions = {
    */
   endpointDomain?: string
 }
-const ENDPOINT_LABEL = "openwork-endpoint"
-const ENDPOINT_PORTS = "openwork-endpoint-ports"
+const ENDPOINT_LABEL = "get3w-endpoint"
+const ENDPOINT_PORTS = "get3w-endpoint-ports"
 export type FreestyleProviderDeps = { client?: Pick<Freestyle, "vms">; now?: () => number }
 
 export function freestyleError(error: unknown): SandboxError {

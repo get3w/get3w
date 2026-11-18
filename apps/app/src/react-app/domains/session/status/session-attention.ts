@@ -1,4 +1,4 @@
-import type { OpenworkSessionActivityInventory } from "@openwork/types/openwork-affordance";
+import type { Get3wSessionActivityInventory } from "@get3w/types/get3w-affordance";
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
 import { currentLocale, t } from "../../../../i18n";
 import type { SessionActivityStatus, SessionChildIds, SessionWaitingKind } from "./session-activity-store";
@@ -17,7 +17,7 @@ export type SessionAttentionSource = {
   relationship: "child" | "descendant";
 };
 
-export type SessionAttention = OpenworkSessionActivityInventory & {
+export type SessionAttention = Get3wSessionActivityInventory & {
   status: SessionActivityStatus;
   blockedBy: SessionAttentionSource | null;
 };

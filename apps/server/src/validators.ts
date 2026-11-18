@@ -47,7 +47,7 @@ export function validateMcpName(name: string): void {
  * write that defines it could point Smart at any endpoint; such writes are refused. Removing
  * one (`null`) stays allowed.
  */
-const RESERVED_PROVIDER_IDS = new Set(["openwork-auto"]);
+const RESERVED_PROVIDER_IDS = new Set(["get3w-auto"]);
 
 export function isReservedProviderId(id: string): boolean {
   return RESERVED_PROVIDER_IDS.has(id.trim().toLowerCase());
@@ -70,12 +70,12 @@ function hasReservedProviderKey(value: unknown): boolean {
 /**
  * Refuses OpenCode config text (JSON or JSONC) that defines a reserved
  * provider. Keys are checked after JSONC decoding, so escaped spellings
- * (`openwork-\u0061uto`) are caught too.
+ * (`get3w-\u0061uto`) are caught too.
  */
 export function validateUserOpencodeConfigText(content: string): void {
   const parsed: unknown = parseJsonc(content, [], { allowTrailingComma: true, disallowComments: false });
   if (hasReservedProviderKey(parsed)) {
-    throw new ApiError(409, "reserved_provider_id", "openwork-auto is managed by your organization and can't be defined in OpenCode config");
+    throw new ApiError(409, "reserved_provider_id", "get3w-auto is managed by your organization and can't be defined in OpenCode config");
   }
 }
 

@@ -4,7 +4,7 @@ import {
   AUTO_ROUTER_THINKING_LABELS,
   AUTO_ROUTER_THINKING_LEVELS,
   type AutoRouterReplyRoute,
-} from "@openwork/types/den/auto-router";
+} from "@get3w/types/den/auto-router";
 import { AUTO_MODEL_ID, SMART_MODEL_FALLBACK_NAME } from "@/react-app/domains/models/model-catalog";
 
 function field(value: unknown, key: string): unknown {
@@ -50,10 +50,10 @@ export function replyModelProvider(message: UIMessage, autoRoutes: readonly Auto
   const requestedProviderID = text(field(model, "requestedProviderID"));
   const requestedModelID = text(field(model, "requestedModelID"));
   const providerID = text(field(model, "providerID"));
-  if (requestedProviderID === "openwork" || providerID === "openwork"
-    || requestedModelID === AUTO_MODEL_ID) return "openwork";
+  if (requestedProviderID === "get3w" || providerID === "get3w"
+    || requestedModelID === AUTO_MODEL_ID) return "get3w";
   // Opaque gateway ids must not become a monogram or a remote logo request.
-  return providerID?.startsWith("ipr_") || providerID === "openwork-auto" ? undefined : providerID;
+  return providerID?.startsWith("ipr_") || providerID === "get3w-auto" ? undefined : providerID;
 }
 
 export type ReplyModelTitleResolver = (model: { providerID: string; modelID: string }) => string | undefined;
@@ -120,7 +120,7 @@ export function replyModelLabel(
   const providerID = text(field(model, "requestedProviderID")) ?? text(field(model, "providerID"));
   // A Smart Router's replies are named by `autoRoutes` above; without a
   // recorded decision they keep the router's own name ("Smart: Engineering"),
-  // never its `openwork-smart-…` id.
+  // never its `get3w-smart-…` id.
   if (providerID === AUTO_ROUTER_PROVIDER_ID) {
     return publicLabel(resolveTitle?.({ providerID, modelID: requestedModelID })) ?? SMART_MODEL_FALLBACK_NAME;
   }

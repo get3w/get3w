@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, mock, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act } from "react";
 import type { SettingsDocument } from "../src/react-app/domains/cloud/get3w-settings-policy";
-const local = {showThinking:false,desktopNotifications:"off",linkOpenDestination:"openwork",keepAwake:true,apiKey:"private",defaultModel:{modelID:"local"}};
+const local = {showThinking:false,desktopNotifications:"off",linkOpenDestination:"get3w",keepAwake:true,apiKey:"private",defaultModel:{modelID:"local"}};
 let applied=local;
 mock.module("../src/react-app/kernel/local-provider",()=>({useLocal:()=>({prefs:applied,setPrefs:(update:(p:typeof local)=>typeof local)=>{applied=update(applied)}})}));
 let createRoot: typeof import("react-dom/client")["createRoot"];

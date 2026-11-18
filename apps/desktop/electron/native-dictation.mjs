@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-public static class OpenWorkVoiceTyping {
+public static class Get3WVoiceTyping {
   [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT {
     public ushort vk; public ushort scan; public uint flags; public uint time; public UIntPtr extra;
   }
@@ -44,11 +44,11 @@ public static class OpenWorkVoiceTyping {
   }
 }
 '@
-if (-not [OpenWorkVoiceTyping]::Start()) { exit 2 }
+if (-not [Get3WVoiceTyping]::Start()) { exit 2 }
 `;
 }
 
-export const SPEECH_DICTATION_EVENT = "openwork:dictation:event";
+export const SPEECH_DICTATION_EVENT = "get3w:dictation:event";
 const helperEvents = new Set(["ready", "result", "error", "end"]);
 const speechErrors = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
@@ -107,7 +107,7 @@ export function createSpeechDictation({ platform, helperPath, infoPlist, exists,
   }
   return {
     mode,
-    /** @returns {import("@openwork/types/desktop-ipc").DesktopCommandResult<"__startSpeechDictation">} */
+    /** @returns {import("@get3w/types/desktop-ipc").DesktopCommandResult<"__startSpeechDictation">} */
     start(event, window, requestId, language) {
       if (!mode()) return { ok: false, reason: "unavailable" };
       if (!trustedSender(event, window)) return { ok: false, reason: "not_focused" };
@@ -151,7 +151,7 @@ export function createSpeechDictation({ platform, helperPath, infoPlist, exists,
 export function createNativeDictation({ platform, menu, processId, systemRoot, execute = run }) {
   /** @type {{ id: string; sender: unknown; controller: AbortController } | null} */
   let pending = null;
-  /** @returns {Promise<import("@openwork/types/desktop-ipc").DesktopCommandResult<"__startNativeDictation">>} */
+  /** @returns {Promise<import("@get3w/types/desktop-ipc").DesktopCommandResult<"__startNativeDictation">>} */
   async function start(event, window, requestId) {
     if (!trustedSender(event, window)) return { ok: false, reason: "not_focused" };
     if (pending) return { ok: false, reason: "failed" };

@@ -11,13 +11,13 @@ import { useNotificationStore } from "@/react-app/kernel/notification-store";
 import { notifyEvent } from "./notifications";
 import { orgOnboardingVisibilityEvent } from "./reload-coordinator";
 
-const SEEN_KEY = "openwork.seenProviderIds";
+const SEEN_KEY = "get3w.seenProviderIds";
 const NEW_PROVIDERS_DEDUPE_KEY = "new-providers";
 
 /** Custom event to request the model picker to open. */
-export const openModelPickerEvent = "openwork-open-model-picker";
+export const openModelPickerEvent = "get3w-open-model-picker";
 /** Custom event to request the provider auth (connect API keys) modal to open. */
-export const openProviderAuthEvent = "openwork-open-provider-auth";
+export const openProviderAuthEvent = "get3w-open-provider-auth";
 
 function readSeenProviderIds(): Set<string> {
   try {

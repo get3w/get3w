@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Agent } from "@opencode-ai/sdk/v2/client";
 
 import type { CloudImportedPlugin } from "@/app/cloud/import-state";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import type { ComposerAttachment, McpServerEntry, McpStatusMap, ModelOption, ModelRef, SkillCard, SlashCommandOption } from "@/app/types";
 import { t } from "@/i18n";
 import { TaskRecovery } from "@/components/chat/task-recovery";
@@ -38,14 +38,14 @@ import { clearSessionDraft, saveSessionDraft } from "../sync/draft-store";
  * hero creates.
  */
 /** Moves the new-task draft whose `draftOwnerKey` matches to `groupId` (empty for no group). */
-export const MOVE_NEW_TASK_DRAFT_EVENT = "openwork:move-new-task-draft";
+export const MOVE_NEW_TASK_DRAFT_EVENT = "get3w:move-new-task-draft";
 
 export type NewTaskComposerContext = {
   destination?: NewSessionDestination;
   draftSessionId?: string;
   workspaceOptions?: { id: string; label: string }[];
   onChangeDestination?: (source: NewSessionDestination, destination: NewSessionDestination, state: ComposerSessionState) => void;
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string | null;
   /** Stable identity for draft ownership across workspace, group, pane, and account changes. */
   draftOwnerKey?: string;
@@ -61,8 +61,8 @@ export type NewTaskComposerContext = {
   modelPickerOpen: boolean;
   onModelPickerOpenChange: (open: boolean) => void;
   onModelChange: (model: ModelRef, variant?: string | null) => void;
-  openWorkModelsEntitled?: boolean;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsEntitled?: boolean;
+  get3wModelsSyncing?: boolean;
   modelVariantLabel: string;
   modelVariant: string | null;
   modelBehaviorOptions?: { value: string | null; label: string }[];
@@ -274,7 +274,7 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
           name: entry.name,
           config: entry.config as McpServerEntry["config"],
           source: entry.source,
-          origin: entry.name === "openwork-cloud" ? "openwork-connect" : "local",
+          origin: entry.name === "get3w-cloud" ? "get3w-connect" : "local",
         } satisfies McpServerEntry));
         const servers = localServers;
         const statuses: McpStatusMap = {};
@@ -515,8 +515,8 @@ export function NewTaskComposer(props: NewTaskComposerProps) {
       modelPickerOpen={context?.modelPickerOpen ?? false}
       selectedModel={context?.selectedModel ?? FALLBACK_MODEL}
       modelOptions={context?.modelOptions}
-      openWorkModelsEntitled={context?.openWorkModelsEntitled}
-      openWorkModelsSyncing={context?.openWorkModelsSyncing}
+      get3wModelsEntitled={context?.get3wModelsEntitled}
+      get3wModelsSyncing={context?.get3wModelsSyncing}
       onRefreshOrganizationModels={context?.onRefreshOrganizationModels}
       onModelPickerOpenChange={context?.onModelPickerOpenChange ?? noop}
       onModelChange={context?.onModelChange ?? noop}

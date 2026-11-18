@@ -9,7 +9,7 @@ import type { ServerConfig } from "../src/types.js";
 const nativeBinary = process.env.GET3W_OPENCODE2_BIN;
 
 async function profile(run: (config: ServerConfig) => Promise<void>) {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-fresh-forced-failure-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-fresh-forced-failure-"));
   const overrides = {
     HOME: directory,
     USERPROFILE: directory,

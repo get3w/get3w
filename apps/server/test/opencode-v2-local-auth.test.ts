@@ -150,7 +150,7 @@ test("providers without a usable v2 description are skipped with a reason", asyn
 
 test("organization providers and configured providers are never read from the v1 catalog", async () => {
   const reads = providerReads;
-  const local = await localProviderDefinitions(connection(), auth({ lpr_team: "managed", openwork: "managed", openrouter: KEY }), { openrouter: {} });
+  const local = await localProviderDefinitions(connection(), auth({ lpr_team: "managed", get3w: "managed", openrouter: KEY }), { openrouter: {} });
 
   assert.deepEqual(local, { providers: {}, native: [], skipped: [] });
   assert.equal(providerReads, reads);
@@ -197,7 +197,7 @@ test("local metadata reads retain engine authentication and propagate failures w
 });
 
 test("auth.json API keys and sign-ins are told apart", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-local-auth-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-local-auth-"));
   try {
     const path = join(directory, "auth.json");
     await writeFile(path, JSON.stringify({
@@ -290,7 +290,7 @@ test("environment keys reach v2 like v1 reads them, only for providers that need
 });
 
 test("providers written in this computer's OpenCode config file reach v2", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-user-config-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-user-config-"));
   try {
     const path = join(directory, "opencode.jsonc");
     await writeFile(path, `{

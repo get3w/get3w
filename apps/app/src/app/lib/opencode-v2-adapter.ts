@@ -1,4 +1,5 @@
 import { readGet3wAccount } from "@/react-app/domains/cloud/get3w-account";
+import { currentLocale } from "../../i18n";
 import { loadTaskCatalog } from "@/react-app/domains/cloud/task-catalog-store";
 import { resolveGenerationPolicy } from "@/react-app/domains/cloud/generation-policy";
 import { readComposerPill } from "@/react-app/domains/session/surface/composer/composer-pills";
@@ -24,13 +25,13 @@ import type {
 } from "@opencode-ai/sdk/v2/client";
 
 import { createClient, createDesktopFetch, type FieldsResult } from "./opencode";
-import { AUTO_ROUTER_SESSION_ROUTES_KEY, autoRouterReplyRoutes } from "@openwork/types/den/auto-router";
-import type { OpenworkSessionHistory } from "./openwork-server";
+import { AUTO_ROUTER_SESSION_ROUTES_KEY, autoRouterReplyRoutes } from "@get3w/types/den/auto-router";
+import type { Get3wSessionHistory } from "./get3w-server";
 import { isDesktopRuntime } from "./runtime-env";
 import type { McpStatusMap, OpencodeEvent } from "../types";
 import { normalizeDirectoryPath } from "../utils";
 import { dispatchProviderCatalogChanged } from "./provider-events";
-import { attachmentMarker, attachmentNoteFilenames, composeV2Prompt, splitV2Prompt, wrapPastedText, type PromptAttachment } from "./v2-prompt-context";
+import { attachmentMarker, attachmentNoteFilenames, composeV2Prompt, conversationTitleLanguageContext, splitV2Prompt, wrapPastedText, type PromptAttachment } from "./v2-prompt-context";
 import { readShowThinkingPreference } from "../../react-app/kernel/local-preferences-storage";
 import {
   BACKGROUND_SHELL_FINISHED_EVENT,
@@ -77,7 +78,7 @@ type PromptPart = {
 };
 
 function selectedSkill(part: PromptPart): Record<string, unknown> | null {
-  const selection = part.type === "text" && part.synthetic === true ? readRecord(part.metadata, "openworkSelectedSkill") : null;
+  const selection = part.type === "text" && part.synthetic === true ? readRecord(part.metadata, "get3wSelectedSkill") : null;
   // Older drafts marked remote capabilities as native attachments. Preserve
   // their Connect instruction instead of resolving them in the local registry.
   const id = readString(selection, "id");
@@ -110,7 +111,7 @@ function resolveSelectedSkills(selections: readonly Record<string, unknown>[], r
 }
 
 function isPastedText(part: PromptPart): boolean {
-  return isRecord(part.metadata) && part.metadata.openworkPastedText === true;
+  return isRecord(part.metadata) && part.metadata.get3wPastedText === true;
 }
 
 function partText(part: PromptPart): string | null {
@@ -141,7 +142,7 @@ export function v2PromptText(parts: readonly PromptPart[]): string {
 }
 
 function attachmentNames(metadata: unknown): string[] {
-  const attachments = isRecord(metadata) ? metadata.openworkAttachments : undefined;
+  const attachments = isRecord(metadata) ? metadata.get3wAttachments : undefined;
   if (!Array.isArray(attachments)) return [];
   return attachments.flatMap((item) => {
     const filename = readString(item, "filename");
@@ -189,7 +190,7 @@ type SessionUpdateParameters = SessionParameters & {
 };
 
 /** The app's event for a session's recorded Smart Router routing decisions (`properties: { sessionID, routes }`). */
-export const AUTO_ROUTES_EVENT = "openwork.auto-routes.updated";
+export const AUTO_ROUTES_EVENT = "get3w.auto-routes.updated";
 
 export const V2_SESSION_ARCHIVE_UNAVAILABLE = "Archiving needs a newer Get3W on the computer that runs this workspace.";
 
@@ -321,7 +322,7 @@ type TaskSessionAssociations = {
   byCall: Map<string, string>;
 };
 
-const TASK_SESSION_ASSOCIATIONS_STORAGE_KEY = "openwork.v2.task-session-associations.v1";
+const TASK_SESSION_ASSOCIATIONS_STORAGE_KEY = "get3w.v2.task-session-associations.v1";
 const MAX_TASK_SESSION_ASSOCIATIONS = 256;
 const taskSessionAssociationsByScope = new Map<string, Map<string, string>>();
 
@@ -506,7 +507,7 @@ function mapV2Session(value: unknown, directory: string | undefined, eventCreate
     id,
     slug: readString(source, "slug") ?? id,
     projectID: readString(source, "projectID") ?? "v2",
-    directory: readString(source, "openworkHomeDirectory") ?? readString(source, "directory") ?? readString(location, "directory") ?? directory ?? "",
+    directory: readString(source, "get3wHomeDirectory") ?? readString(source, "directory") ?? readString(location, "directory") ?? directory ?? "",
     // Keep native untitled sessions eligible for compatibility title recovery.
     title: readString(source, "title") || `New session - ${new Date(created).toISOString()}`,
     version: readString(source, "version") ?? "v2",
@@ -563,8 +564,8 @@ function toolMetadata(
 ): Record<string, unknown> {
   // Engine progress replaces a running call's saved metadata, so a reload can
   // find only the results plugin's per-call details. Rebuild the call list.
-  if (tool === "execute" && !Array.isArray(metadata.toolCalls) && Array.isArray(metadata.openworkToolDetails)) {
-    return { ...metadata, toolCalls: metadata.openworkToolDetails.flatMap((detail) => isRecord(detail) && typeof detail.tool === "string"
+  if (tool === "execute" && !Array.isArray(metadata.toolCalls) && Array.isArray(metadata.get3wToolDetails)) {
+    return { ...metadata, toolCalls: metadata.get3wToolDetails.flatMap((detail) => isRecord(detail) && typeof detail.tool === "string"
       ? [{ tool: detail.tool, status: detail.status, ...(detail.input === undefined ? {} : { input: detail.input }) }] : []) };
   }
   if (tool !== "subagent") return metadata;
@@ -604,7 +605,7 @@ function toolAttachments(
 
 function toolPartMetadata(tool: string): Pick<ToolPart, "metadata"> {
   // Adapter provenance stays separate from metadata returned by the tool.
-  return tool === "execute" ? { metadata: { openworkV2CodeMode: true } } : {};
+  return tool === "execute" ? { metadata: { get3wV2CodeMode: true } } : {};
 }
 
 function toolOutput(value: unknown, result?: unknown): string {
@@ -673,12 +674,12 @@ function appEntriesFromScript(calls: unknown, output: unknown): Record<string, u
 /**
  * Code Mode runs Get3W Cloud calls inside one `execute`, whose part keeps
  * only `{ tool, status, input }` per call. The server's v2 plugin
- * (openwork-mcp-results-v2) saves the calls that report a connection in
- * `openworkMcpResults`; surface each as the ordinary tool part v1 produces for
+ * (get3w-mcp-results-v2) saves the calls that report a connection in
+ * `get3wMcpResults`; surface each as the ordinary tool part v1 produces for
  * a direct call, so the chat's existing connection card finds it.
  */
 export function codeModeConnectionParts(part: ToolPart): ToolPart[] {
-  if (part.metadata?.openworkV2CodeMode !== true || !("metadata" in part.state) || !("time" in part.state)) return [];
+  if (part.metadata?.get3wV2CodeMode !== true || !("metadata" in part.state) || !("time" in part.state)) return [];
   const { metadata } = part.state;
   const appTool = (tool: string) => /_(?:search_capabilities|prepare_app|create_app|update_app)$/.test(tool);
   const appCallId = (tool: string, index: number) => `${part.callID}:app:${tool}:${index}`;
@@ -704,7 +705,7 @@ export function codeModeConnectionParts(part: ToolPart): ToolPart[] {
   }
   if (part.state.status !== "completed") return [];
   const time = part.state.time;
-  const recorded = metadata?.openworkMcpResults;
+  const recorded = metadata?.get3wMcpResults;
   // When the results plugin recorded nothing (an engine whose inner call
   // names it did not recognise), rebuild the App steps from the script's own
   // call list so a rejected build ends as failed instead of "checking"
@@ -727,7 +728,7 @@ export function codeModeConnectionParts(part: ToolPart): ToolPart[] {
     if (status === "completed") {
       const output = toolOutput(undefined, entry.output);
       return [{ ...base, state: { status, input, output, title: tool, time,
-        metadata: { openworkMcpResult: isRecord(entry.output) && Array.isArray(entry.output.content) ? entry.output : { content: [{ type: "text", text: output }], structuredContent: entry.output, ...(isRecord(entry.output) && isRecord(entry.output.launch) ? { _meta: { "openwork/mcpApp": entry.output.launch } } : {}) } } } }];
+        metadata: { get3wMcpResult: isRecord(entry.output) && Array.isArray(entry.output.content) ? entry.output : { content: [{ type: "text", text: output }], structuredContent: entry.output, ...(isRecord(entry.output) && isRecord(entry.output.launch) ? { _meta: { "get3w/mcpApp": entry.output.launch } } : {}) } } } }];
     }
     const error = readString(entry, "error");
     return status === "error" && error ? [{ ...base, state: { status, input, error, metadata: {}, time } }] : [];
@@ -896,18 +897,18 @@ function mapV2UserPart(part: Part): Part[] {
   const words = segments.map((segment, index): Part => {
     const id = index === 0 ? part.id : `${part.id}:${index}`;
     if (segment.kind !== "attachment") {
-      return { ...part, id, text: segment.text, ...(segment.kind === "pasted" ? { metadata: { openworkPastedText: true } } : {}) };
+      return { ...part, id, text: segment.text, ...(segment.kind === "pasted" ? { metadata: { get3wPastedText: true } } : {}) };
     }
     const at = unplaced.findIndex((item) => item.filename === segment.filename);
     const placed = at < 0 ? [] : unplaced.splice(at, 1);
-    return { ...part, id, text: "", synthetic: true, ...(placed.length ? { metadata: { openworkAttachments: placed } } : {}) };
+    return { ...part, id, text: "", synthetic: true, ...(placed.length ? { metadata: { get3wAttachments: placed } } : {}) };
   });
   return context === null ? words : [...words, {
     ...part,
     id: `${part.id}:context`,
     text: context,
     synthetic: true,
-    ...(unplaced.length ? { metadata: { openworkAttachments: unplaced } } : {}),
+    ...(unplaced.length ? { metadata: { get3wAttachments: unplaced } } : {}),
   }];
 }
 
@@ -1280,7 +1281,7 @@ function refreshMissingV2Message(
   if (kind === "tool"
     ? state.tools.has(toolStreamKey(sessionID, readToolCallID(properties)))
     : state.streams.has(streamKey(properties, sessionID, messageID, kind))) return null;
-  return [{ type: "openwork.message.refresh", properties: { sessionID, messageID } }];
+  return [{ type: "get3w.message.refresh", properties: { sessionID, messageID } }];
 }
 
 function recoverV2TextEvent(
@@ -1301,7 +1302,7 @@ function recoverV2TextEvent(
   // Route native, explicitly addressed deltas there: persisted history can
   // lag an in-progress answer, so reads alone cannot keep its text growing.
   if (delta !== undefined) return [
-    { type: "openwork.message.refresh", properties: { sessionID, messageID, partID } },
+    { type: "get3w.message.refresh", properties: { sessionID, messageID, partID } },
     { type: "message.part.delta", properties: { sessionID, messageID, partID, field: "text", delta } },
   ];
   const time = toolEventTimestamp(value, properties);
@@ -1475,7 +1476,7 @@ function updateToolStreamMetadata(stream: ToolStream, properties: Record<string,
   stream.metadata = { ...previous, ...metadata };
   // Native progress reports call lists as invocation-ordered prefixes. A
   // later partial update must not erase retained results or regress a call.
-  for (const key of ["toolCalls", "openworkToolDetails"]) {
+  for (const key of ["toolCalls", "get3wToolDetails"]) {
     const oldCalls = previous[key];
     const newCalls = metadata[key];
     if (!Array.isArray(oldCalls) || !Array.isArray(newCalls)) continue;
@@ -1484,7 +1485,7 @@ function updateToolStreamMetadata(stream: ToolStream, properties: Record<string,
       const next = newCalls[ordinal];
       if (!isRecord(old)) return next;
       if (!isRecord(next)) return old;
-      if (old.tool !== next.tool || (key === "openworkToolDetails"
+      if (old.tool !== next.tool || (key === "get3wToolDetails"
         && (old.invocationId !== next.invocationId || old.ordinal !== next.ordinal))) return old;
       if ((old.status === "completed" || old.status === "error") && next.status === "running") return old;
       return { ...old, ...next };
@@ -2157,7 +2158,7 @@ function createWebFetch(auth: { token?: string }): typeof globalThis.fetch {
 
 function createV2Fetch(auth: { token?: string }): typeof globalThis.fetch {
   return isDesktopRuntime()
-    ? createDesktopFetch({ mode: "openwork", token: auth.token })
+    ? createDesktopFetch({ mode: "get3w", token: auth.token })
     : createWebFetch(auth);
 }
 
@@ -2244,7 +2245,7 @@ export function mergeV2CommandCatalog(commands: readonly unknown[], skills: read
   for (const command of commands) add(readString(command, "name"), readString(command, "description"), "command");
   for (const skill of skills) {
     const id = readString(skill, "id");
-    if (id?.startsWith("openwork-cloud-")) continue;
+    if (id?.startsWith("get3w-cloud-")) continue;
     add(id, readString(skill, "description"), "skill");
   }
   return items;
@@ -2296,7 +2297,7 @@ export function createClientV2(
 ) {
   const baseUrl = opencode2BaseUrl.replace(/\/+$/, "");
   const fetchImpl = createV2Fetch(auth);
-  const compatibilityClient = createClient(baseUrl, directory, { mode: "openwork", token: auth.token });
+  const compatibilityClient = createClient(baseUrl, directory, { mode: "get3w", token: auth.token });
   const taskSessions = taskSessionAssociations(baseUrl);
   const permissionSessionByRequestID = new Map<string, string>();
   const questionFormsByID = new Map<string, NonNullable<ReturnType<typeof mapV2Question>>>();
@@ -2321,7 +2322,7 @@ export function createClientV2(
   };
 
   // The engine fails every prompt whose agent it does not define, such as
-  // v1's `openwork` kept by migrated chats and their forks, or a saved v1
+  // v1's `get3w` kept by migrated chats and their forks, or a saved v1
   // pick. Those run on the default agent, which the engine lists first.
   // Agents are re-read only for a name the latest read did not answer, and a
   // chat is checked once per client, so later sends cost no request.
@@ -2626,7 +2627,7 @@ export function createClientV2(
     messages: async (
       parameters: SessionParameters & { limit?: number; before?: string },
       options?: RequestOptions,
-    ): Promise<FieldsResult<V2MappedMessage[]> & Pick<OpenworkSessionHistory, "pagination">> => {
+    ): Promise<FieldsResult<V2MappedMessage[]> & Pick<Get3wSessionHistory, "pagination">> => {
       const limit = parameters.limit === undefined ? undefined : Math.min(parameters.limit, 200);
       if ((parameters.limit !== undefined && (!Number.isInteger(parameters.limit) || parameters.limit <= 0))
         || (parameters.before !== undefined && limit === undefined)) {
@@ -2791,15 +2792,17 @@ export function createClientV2(
       if (agentResolution.known) sessionAgents.set(parameters.sessionID, agentResolution.current);
       if (parameters.system !== undefined) {
         const instructions = await request("PUT",
-          `/api/experimental/session/${encodeURIComponent(parameters.sessionID)}/instructions/entries/openwork-context`,
+          `/api/experimental/session/${encodeURIComponent(parameters.sessionID)}/instructions/entries/get3w-context`,
           { value: parameters.system }, options?.signal);
         if (!instructions.response.ok) return failedResult(instructions);
       }
       const account=readGet3wAccount();
-      const selectedModels=(parameters.parts??[]).flatMap(part=>{const pill=part.type==="text"?readComposerPill(readRecord(part,"metadata")?.openworkComposerPill):null;return pill?.kind==="model"?[pill]:[];});
+      const selectedModels=(parameters.parts??[]).flatMap(part=>{const pill=part.type==="text"?readComposerPill(readRecord(part,"metadata")?.get3wComposerPill):null;return pill?.kind==="model"?[pill]:[];});
       const generationPolicy=account.status==="signed_in"&&account.user?resolveGenerationPolicy(account.user.id,parameters.sessionID,await loadTaskCatalog(account.user.id),selectedModels):undefined;
       if(account.status==="signed_in"&&readGet3wAccount().user?.id!==account.user?.id)throw new Error("Account changed. Please send again.");
-      const text = v2PromptText([...(parameters.parts??[]),...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Output defaults apply unless the user explicitly requests a change in this message. Omit defaulted settings from media_generate inputs; only use output_overrides for those explicit user changes. Use native media_prepare and media_generate; the host resolves schema, defaults and quote.`}]:[])]);
+      const text = v2PromptText([...(parameters.parts??[]),
+        {type:"text",synthetic:true,text:conversationTitleLanguageContext(currentLocale())},
+        ...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Output defaults apply unless the user explicitly requests a change in this message. Omit defaulted settings from media_generate inputs; only use output_overrides for those explicit user changes. Use native media_prepare and media_generate; the host resolves schema, defaults and quote.`}]:[])]);
       const promptResult = await request(
         "POST",
         `/api/session/${encodeURIComponent(parameters.sessionID)}/prompt`,
@@ -2810,7 +2813,7 @@ export function createClientV2(
           ...(skills.length ? { skills } : {}),
           // Settings › Show model reasoning. The engine plugin asks the provider
           // for readable reasoning only while this is on.
-          metadata: { openwork: { showReasoning: readShowThinkingPreference(), generationPolicy } },
+          metadata: { get3w: { showReasoning: readShowThinkingPreference(), generationPolicy } },
         },
         options?.signal,
       );
@@ -3176,8 +3179,24 @@ export function createClientV2(
     }));
   };
 
+  const backgroundShellRequest = async (parameters: { shellID: string; sessionID: string }, stop: boolean, options?: RequestOptions): Promise<FieldsResult<string>> => {
+    const query = directory ? `?${new URLSearchParams({ "location[directory]": directory })}` : "";
+    const path = `/api/shell/${encodeURIComponent(parameters.shellID)}`;
+    const current = await request("GET", path + query, undefined, options?.signal);
+    if (!current.response.ok) return failedResult(current);
+    const shell = readEngineShell(responseData(current.payload));
+    if (!shell || shell.sessionID !== parameters.sessionID) throw new Error("The background task does not belong to this conversation.");
+    const result = await request(stop ? "POST" : "GET", (stop ? "/api/rpc/get3w.background-shell/stop" : path + "/output") + query, stop ? { input: parameters } : undefined, options?.signal);
+    if (!result.response.ok) return failedResult(result);
+    const payload = responseData(result.payload);
+    if (!stop && (!isRecord(payload) || typeof payload.output !== "string")) throw new Error("Invalid background task output.");
+    return successfulResult(result, !stop && isRecord(payload) && typeof payload.output === "string" ? payload.output : "");
+  };
+
   const client = Object.assign(compatibilityClient, {
     listRunningShells,
+    readBackgroundShell: (parameters: { shellID: string; sessionID: string }, options?: RequestOptions) => backgroundShellRequest(parameters, false, options),
+    stopBackgroundShell: (parameters: { shellID: string; sessionID: string }, options?: RequestOptions) => backgroundShellRequest(parameters, true, options),
     listSessionsPage: session.list, listMessagesPage: session.messages,
     listSessionQuestions: (parameters: SessionParameters, options?: RequestOptions) => listQuestions(parameters, options),
     replySessionQuestion: (parameters: SessionParameters & { requestID: string; answers: string[][] }, options?: RequestOptions) =>

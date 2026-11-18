@@ -48,7 +48,7 @@ async function freePort(): Promise<number> {
 }
 
 async function world(mode: Mode) {
-  const root = await mkdtemp(join(tmpdir(), "openwork-foreign-storage-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-foreign-storage-"));
   roots.push(root);
   const cwd = join(root, "cwd");
   const sharedXdg = join(root, "home", ".config");

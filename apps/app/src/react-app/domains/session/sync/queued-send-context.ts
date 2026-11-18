@@ -1,4 +1,4 @@
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import type { ModelRef } from "@/app/types";
 
 export type QueuedSendContext = {
@@ -6,8 +6,8 @@ export type QueuedSendContext = {
   workspaceId: string;
   workspaceRoot: string;
   opencodeBaseUrl: string;
-  openworkToken: string;
-  client: OpenworkServerClient;
+  get3wToken: string;
+  client: Get3wServerClient;
   agent: string | null;
   variant: string | null;
   model: ModelRef | null;

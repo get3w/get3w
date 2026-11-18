@@ -1,5 +1,5 @@
 {
-  "name": "@openwork/sandbox-freestyle",
+  "name": "@get3w/sandbox-freestyle",
   "private": true,
   "type": "module",
   "description": "Freestyle compute, processes, files, pause and snapshots for Get3W sandboxes.",
@@ -20,7 +20,7 @@
     "test:live": "tsx --test --test-concurrency=1 src/live.test.ts"
   },
   "dependencies": {
-    "@openwork/sandbox": "workspace:*",
+    "@get3w/sandbox": "workspace:*",
     "freestyle": "0.2.13"
   },
   "devDependencies": {

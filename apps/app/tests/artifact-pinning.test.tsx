@@ -5,7 +5,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { DynamicToolUIPart, UIMessage } from "ai";
-import { mcpAppResourceUri } from "@openwork/types/mcp-app";
+import { mcpAppResourceUri } from "@get3w/types/mcp-app";
 
 const ownedDom = typeof window === "undefined";
 if (ownedDom) GlobalRegistrator.register({ url: "http://localhost/" });
@@ -169,13 +169,13 @@ function builderPart(toolName: string, revision = revisionId): DynamicToolUIPart
   const uri = mcpAppResourceUri(appId, revision);
   return {
     type: "dynamic-tool", toolName, toolCallId: `${toolName}:${revision}`, state: "output-available", input: {}, output: "Ready",
-    callProviderMetadata: { openwork: { mcpResult: {
+    callProviderMetadata: { get3w: { mcpResult: {
       content: [{ type: "text", text: "Ready" }],
       structuredContent: { app: {
         appId, revisionId: revision, pluginId: entry.pluginId, title: "Inventory", description: null,
         textFallback: "Inventory", toolName: "open_app", resourceUri: uri, serverPath: "/mcp/app", tools: [],
       } },
-      _meta: { "openwork/mcpApp": { connectionId: appId, toolName: "open_app", resourceUri: uri, arguments: {} } },
+      _meta: { "get3w/mcpApp": { connectionId: appId, toolName: "open_app", resourceUri: uri, arguments: {} } },
     } } },
   };
 }
@@ -204,7 +204,7 @@ test("failed and incomplete builders do not invalidate the catalog", async () =>
   const created = builderPart("create_app");
   const pending: DynamicToolUIPart = { type: "dynamic-tool", toolName: "create_app", toolCallId: "pending", state: "input-available", input: {} };
   const failed: DynamicToolUIPart = { ...pending, toolCallId: "failed", state: "output-error", errorText: "Failed" };
-  const deniedResult: DynamicToolUIPart = { ...created, callProviderMetadata: { openwork: { mcpResult: { isError: true, content: [] } } } };
+  const deniedResult: DynamicToolUIPart = { ...created, callProviderMetadata: { get3w: { mcpResult: { isError: true, content: [] } } } };
   await render(<BuiltAppCatalogSync messages={messages(pending, failed, deniedResult)} />);
   expect(invalidate).not.toHaveBeenCalled();
 });

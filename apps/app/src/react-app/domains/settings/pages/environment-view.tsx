@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import { t } from "@/i18n";
 import {
   EnvironmentVariableProvider,
@@ -60,7 +60,7 @@ type EnvItem = EnvironmentVariableItem;
 type EnvironmentEditorState = EnvironmentEditorDraft | null;
 
 export type EnvironmentViewProps = {
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   onApplyChanges?: () => Promise<ApplyEnvironmentChangesResult>;
   applyBlocked?: boolean;
   applyBlockedReason?: string | null;
@@ -112,7 +112,7 @@ function EnvironmentViewContent(props: EnvironmentViewProps) {
 }
 
 type EnvironmentSettingsPanelProps = {
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   canEdit: boolean;
   runtimeKey?: string | null;
   onApplyChanges?: () => Promise<ApplyEnvironmentChangesResult>;

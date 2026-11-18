@@ -42,7 +42,8 @@ export async function decodeImageDimensions(bytes) {
 export async function fetchImageDimensions(source,signal,decode=decodeImageDimensions) {
  const url=new URL(source);
  if(!['https:','data:'].includes(url.protocol)||url.username||url.password)throw Error('Use an uploaded HTTPS image reference');
- const response=await fetch(url,{signal:AbortSignal.any([signal,AbortSignal.timeout(30_000)]),redirect:'error'});
+ const {net:electronNet}=await import('electron');
+ const response=await electronNet.fetch(url,{signal:AbortSignal.any([signal,AbortSignal.timeout(30_000)]),redirect:'error'});
  if(!response.ok)throw Error('Cannot read source image dimensions');
  const reader=response.body?.getReader();
  if(!reader)throw Error('Cannot read source image dimensions');

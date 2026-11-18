@@ -4,7 +4,7 @@ import { currentLocale, setLocale } from "../src/i18n";
 let previousLocale: ReturnType<typeof currentLocale>;
 beforeEach(() => { previousLocale = currentLocale(); setLocale("en"); });
 afterEach(() => { setLocale(previousLocale); });
-const prefs = {showThinking:false,desktopNotifications:"off",linkOpenDestination:"openwork",keepAwake:true} satisfies Parameters<typeof pickSyncedPreferences>[0];
+const prefs = {showThinking:false,desktopNotifications:"off",linkOpenDestination:"get3w",keepAwake:true} satisfies Parameters<typeof pickSyncedPreferences>[0];
 test("upload and apply both exclude secrets, models, permissions and paths",()=>{
   const untrusted={...prefs, apiKey:"secret",defaultModel:{modelID:"private"},workspace:"/private",askBeforeOpeningLinks:false};
   expect(pickSyncedPreferences(untrusted)).toEqual(prefs);

@@ -1,17 +1,17 @@
 // This PC as a Computer Use placement on Windows. The bundled helper
 // (packages/computer-use/windows/ComputerUse.cs, shipped as
-// helpers/openwork-computer-use.exe) lists windows, captures the selected one
+// helpers/get3w-computer-use.exe) lists windows, captures the selected one
 // and sends input; the shared runtime adds sessions, receipts, Take over,
 // Continue, Stop and watch frames. It needs no system permissions and does not
 // depend on the remoteComputers rollout. Main process only.
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRemoteComputerAdapter } from "@openwork/computer-use/computer-remote";
-import { createWindowsDriver } from "@openwork/computer-use/computer-windows-driver";
+import { createRemoteComputerAdapter } from "@get3w/computer-use/computer-remote";
+import { createWindowsDriver } from "@get3w/computer-use/computer-windows-driver";
 
 const defaultAppRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const helperName = "openwork-computer-use.exe";
+const helperName = "get3w-computer-use.exe";
 
 /**
  * @param {{

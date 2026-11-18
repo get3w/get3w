@@ -1,5 +1,5 @@
 import {expect,test} from "bun:test";
-import {createOpenworkServerClient} from "../src/app/lib/openwork-server";
+import {createGet3wServerClient} from "../src/app/lib/get3w-server";
 import {searchWorkspaceMentionFiles} from "../src/react-app/domains/session/surface/composer/workspace-file-search";
 
 test("mentions search workspace files including generated outputs without the engine git index",async()=>{
@@ -9,7 +9,7 @@ test("mentions search workspace files including generated outputs without the en
   return Response.json({items:[{path:"generated/output.jpg",kind:"file"},{path:"output folder",kind:"dir"}],truncated:false});
  },{preconnect:original.preconnect});
  try{
-  const client=createOpenworkServerClient({baseUrl:"http://localhost",token:"fixture"});
+  const client=createGet3wServerClient({baseUrl:"http://localhost",token:"fixture"});
   expect(await searchWorkspaceMentionFiles(client,"ws","output",async()=>{fallbackCalls++;return [];})).toEqual(["generated/output.jpg","output folder/"]);
   expect(fallbackCalls).toBe(0);
  }finally{globalThis.fetch=original;}
@@ -17,6 +17,6 @@ test("mentions search workspace files including generated outputs without the en
 test("typing just @ lists workspace root files and unavailable servers fall back",async()=>{
  const original=globalThis.fetch;
  globalThis.fetch=Object.assign(async(input:string|URL|Request)=>{expect(new URL(String(input)).searchParams.has("query")).toBe(false);return Response.json({items:[{path:"photo.jpg",kind:"file"}],truncated:false});},{preconnect:original.preconnect});
- try{const client=createOpenworkServerClient({baseUrl:"http://localhost",token:"fixture"});expect(await searchWorkspaceMentionFiles(client,"ws","",async()=>[])).toEqual(["photo.jpg"]);}finally{globalThis.fetch=original;}
+ try{const client=createGet3wServerClient({baseUrl:"http://localhost",token:"fixture"});expect(await searchWorkspaceMentionFiles(client,"ws","",async()=>[])).toEqual(["photo.jpg"]);}finally{globalThis.fetch=original;}
  expect(await searchWorkspaceMentionFiles(null,"ws","out",async()=>["output.jpg"])).toEqual(["output.jpg"]);
 });

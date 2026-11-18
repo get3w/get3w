@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { OpenworkServerError, type OpenworkServerClient, type WorkspaceDefaultModelRef } from "../../app/lib/openwork-server";
+import { Get3wServerError, type Get3wServerClient, type WorkspaceDefaultModelRef } from "../../app/lib/get3w-server";
 import type { ResolvedWorkspaceEndpoint } from "../../app/lib/workspace-endpoint";
 import type { ModelRef } from "../../app/types";
 
@@ -33,7 +33,7 @@ const defaultScheduleTimer: ScheduleTimer = (run, ms) => {
 
 /** A 404 that is not about the workspace means the server predates the route. */
 function isMissingRoute(error: unknown): boolean {
-  return error instanceof OpenworkServerError && error.status === 404 && error.code !== "workspace_not_found";
+  return error instanceof Get3wServerError && error.status === 404 && error.code !== "workspace_not_found";
 }
 
 export function workspaceDefaultModelPayload(model: ModelRef | null, variant: string | null): WorkspaceDefaultModelRef | null {
@@ -124,7 +124,7 @@ const sharedSync = new WorkspaceDefaultModelSync();
 
 export type UseWorkspaceDefaultModelSyncInput = {
   endpoint: (Pick<ResolvedWorkspaceEndpoint, "baseUrl" | "token" | "workspaceId"> & {
-    client: Pick<OpenworkServerClient, "setWorkspaceDefaultModel">;
+    client: Pick<Get3wServerClient, "setWorkspaceDefaultModel">;
   }) | null;
   /** False while the workspace's server is unreachable; a reconnect writes again. */
   connected: boolean;

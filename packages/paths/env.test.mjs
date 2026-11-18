@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { deleteEnv, envKey, mergeEnv, openworkEnvStorePath, setEnv } from "./index.mjs";
+import { deleteEnv, envKey, mergeEnv, get3wEnvStorePath, setEnv } from "./index.mjs";
 
 const windows = { platform: "win32" };
 const mac = { platform: "darwin" };
@@ -51,10 +51,10 @@ test("other platforms write and delete exact names", () => {
 });
 
 test("path resolvers read copied Windows environments under any spelling", () => {
-  const store = "C:\\Profiles\\openwork\\env.json";
-  assert.equal(openworkEnvStorePath({ env: { get3w_env_store: store }, ...windows }), path.win32.resolve(store));
+  const store = "C:\\Profiles\\get3w\\env.json";
+  assert.equal(get3wEnvStorePath({ env: { get3w_env_store: store }, ...windows }), path.win32.resolve(store));
   assert.equal(
-    openworkEnvStorePath({ env: { get3w_env_store: "/tmp/env.json" }, homeDir: "/home/me", ...mac }),
+    get3wEnvStorePath({ env: { get3w_env_store: "/tmp/env.json" }, homeDir: "/home/me", ...mac }),
     "/home/me/.config/get3w/env.json",
   );
 });

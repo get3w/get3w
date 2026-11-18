@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 import { constants } from "node:fs"
 import { chmod, mkdir, open, rename, unlink } from "node:fs/promises"
 import { join } from "node:path"
-import { emptyJournal, parseJournal } from "@openwork/remote-sessions"
+import { emptyJournal, parseJournal } from "@get3w/remote-sessions"
 
 /** Account identity comes from Den's signed token claims, never a renderer-selected account or credential. */
 export function desktopSessionRunnerPartition(baseUrl, account) {
@@ -19,7 +19,7 @@ export function desktopSessionRunnerPartition(baseUrl, account) {
  * this store; strict core parsing also rejects accidental extra fields. A
  * corrupt journal fails closed rather than forgetting effects and recreating
  * a session. The shared runner serializes every load/save for this partition.
- * @returns {import("@openwork/remote-sessions").JournalStore}
+ * @returns {import("@get3w/remote-sessions").JournalStore}
  */
 export function createDesktopSessionJournal(root, partition) {
   if (!root || !/^[a-f0-9]{64}$/.test(partition)) throw new Error("Invalid session journal location")

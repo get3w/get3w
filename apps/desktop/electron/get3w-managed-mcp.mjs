@@ -4,7 +4,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { connect } from "node:net";
-import { migrateGet3wStateFile } from "./get3w-state-file.mjs";
 import { createGet3wMcpProxy } from "./get3w-mcp-proxy.mjs";
 
 export const GET3W_MCP_NAME = "get3w-account";
@@ -17,7 +16,7 @@ const fingerprint = v => createHash("sha256").update(JSON.stringify(canonical(v)
 // this to restored tasks too, so retryDownload can recover older failed saves.
 export function mediaOutputNaming(row) {
   const output=row.nativeMedia?.output??{};
-  const attachmentPath=value=>typeof value==='string'&&value.startsWith('.opencode/openwork/inbox/chat-attachments/');
+  const attachmentPath=value=>typeof value==='string'&&['.get3w/inbox/chat-attachments/'].some(prefix=>value.replaceAll('\\','/').startsWith(prefix));
   return {taskName:output.task_name??String(row.arguments?.inputs?.prompt??"任务成果").slice(0,48),filename:output.filename??"生成结果",directory:attachmentPath(output.directory)?undefined:output.directory,sourcePath:attachmentPath(output.source_path)?undefined:output.source_path};
 }
 
@@ -69,7 +68,6 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
   const serial=fn=>{const next=queue.then(fn,fn);queue=next.then(()=>{},()=>{});return next;};
   async function load() {
     if(records!==undefined)return;
-    await migrateGet3wStateFile(userData,"get3w-managed-mcp.json","openwork-managed-mcp.json");
     try{records=JSON.parse(await readFile(file,"utf8"));}
     catch(e){if(e.code!=="ENOENT")throw new Error("Could not restore Get3W connection ownership.");records={};}
   }
@@ -166,12 +164,6 @@ export function createGet3wManagedMcp({auth,userData,getServerInfo,fetchImpl=fet
   async function current(server,ws) {
     const result=await request(server,ws,"GET");
     if(!Array.isArray(result.items))throw new Error("Invalid workspace connection response.");
-    const legacy=result.items.filter(i=>i.name==='openwork-account');
-    if(legacy.length) {
-      if(legacy.length!==1||legacy[0].source!=='config.remote')throw new Error("Legacy Get3W connection is not owned by this app.");
-      owned(ws,legacy[0].config);
-      await request(server,ws,"DELETE",undefined,'openwork-account');
-    }
     const matches=result.items.filter(i=>i.name===GET3W_MCP_NAME);
     if(matches.length>1||matches.some(i=>i.source!=="config.remote"))throw new Error("A Get3W connection already exists in user configuration. Rename it before connecting.");
     const value = matches[0]?.config;

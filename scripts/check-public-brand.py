@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Public product boundary: compatibility names and original notices are not rebranded."""
+"""Public product boundary: original notices and blocked upstream service domains are not rebranded."""
 from pathlib import Path
 import json,re
 root=Path(__file__).resolve().parents[1]
 allowed={
- 'apps/app/src/app/lib/den.ts':'legacy URL parser; transport rejects every request',
  'apps/app/src/app/lib/get3w-service-target.ts':'legacy service rejection list',
  'apps/desktop/electron/get3w-egress.mjs':'legacy service rejection list',
 }
-pattern=re.compile(r'(?:openworklabs\.(?:com|ai)|openwork\.(?:com|dev|software|so)(?=[/"\s\x27]|$)|github\.com/different-ai/openwork)')
+pattern=re.compile(r'openwork', re.I)
 issues=[];classified=[]
 for folder in ['apps/app/src','apps/desktop/electron','apps/desktop/scripts','apps/server/src','packages']:
  for p in (root/folder).rglob('*'):

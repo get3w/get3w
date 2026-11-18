@@ -17,7 +17,7 @@ function result(part: DynamicToolUIPart): unknown {
 /** Waiting/denied/failed calls keep their original, actionable chat row. */
 export function isGroupedComputerPart(part: UIMessage["parts"][number]): part is DynamicToolUIPart {
   if (part.type !== "dynamic-tool" || !isComputerToolName(part.toolName)) return false
-  if (part.callProviderMetadata?.openwork?.computerFailure === true) return false
+  if (part.callProviderMetadata?.get3w?.computerFailure === true) return false
   if (part.state !== "input-streaming" && part.state !== "input-available" && part.state !== "output-available") return false
   const output = result(part)
   return !(record(output) && (output.ok === false || output.isError === true))
@@ -76,7 +76,7 @@ export function collectComputerSessionHistory(messages: readonly UIMessage[]): C
     if (message.role !== "assistant") continue
     for (const file of message.parts) {
       if (file.type !== "file" || !isCapture(file)) continue
-      const owner = file.providerMetadata?.openwork?.toolCallId
+      const owner = file.providerMetadata?.get3w?.toolCallId
       const part = typeof owner === "string" ? tools.get(owner) : undefined
       if (!part) continue
       files.add(file)
@@ -86,11 +86,11 @@ export function collectComputerSessionHistory(messages: readonly UIMessage[]): C
     }
   }
   const starts = parts.flatMap(part => {
-    const time = part.callProviderMetadata?.openwork?.toolStartedAt
+    const time = part.callProviderMetadata?.get3w?.toolStartedAt
     return typeof time === "number" && Number.isFinite(time) ? [time] : []
   })
   const ends = parts.flatMap(part => {
-    const time = part.callProviderMetadata?.openwork?.toolCompletedAt
+    const time = part.callProviderMetadata?.get3w?.toolCompletedAt
     return typeof time === "number" && Number.isFinite(time) ? [time] : []
   })
   const durationMs = starts.length === parts.length && ends.length === parts.length

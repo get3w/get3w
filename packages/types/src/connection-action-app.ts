@@ -4,7 +4,7 @@ const idSchema = z.string().trim().min(1).max(160)
 
 export const connectionActionAppSchemaVersion = "1" as const
 // Persisted conversations may still contain this retired resource; never embed it.
-export const legacyConnectionActionAppResourceUri = "ui://openwork/connection-action/v1/view.html"
+export const legacyConnectionActionAppResourceUri = "ui://get3w/connection-action/v1/view.html"
 
 /**
  * Data contract for the native connection card: one live
@@ -23,7 +23,7 @@ export const connectionActionPayloadSchema = z.object({
     "organization_admin",
     "provider_admin",
     "network_admin",
-    "openwork",
+    "get3w",
   ]).nullable(),
   message: z.string().trim().min(1).max(2_000),
   action: z.object({
@@ -34,15 +34,15 @@ export const connectionActionPayloadSchema = z.object({
       "inspect_connection",
       "fix_provider",
       "fix_network",
-      "contact_openwork",
+      "contact_get3w",
     ]),
     label: z.string().trim().min(1).max(255),
     surface: z.enum([
-      "openwork_your_connections",
-      "openwork_organization_connections",
+      "get3w_your_connections",
+      "get3w_organization_connections",
       "provider_admin_console",
       "network_infrastructure",
-      "openwork_support",
+      "get3w_support",
     ]),
     url: z.string().url().optional(),
   }).nullable(),
@@ -50,7 +50,7 @@ export const connectionActionPayloadSchema = z.object({
 
 export type ConnectionActionPayload = z.infer<typeof connectionActionPayloadSchema>
 
-export const connectionActionAppResourceUri = "ui://openwork/connection-action/v2/view.html"
+export const connectionActionAppResourceUri = "ui://get3w/connection-action/v2/view.html"
 export const connectionActionIntentSchema = z.object({
   schemaVersion: z.literal("1"),
   kind: z.literal("connection_action_intent"),

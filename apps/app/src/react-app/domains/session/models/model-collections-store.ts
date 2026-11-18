@@ -22,7 +22,7 @@ export const useModelPickerCatalogStore = create<{
   }),
 }));
 
-const STORAGE_KEY = "openwork.modelCollections.v1";
+const STORAGE_KEY = "get3w.modelCollections.v1";
 export const MAX_RECENT_MODELS = 5;
 
 type StoredCollections = {
@@ -113,7 +113,7 @@ export const useModelCollectionsStore = create<ModelCollectionsStore>((set) => (
     return { favorites };
   }),
   recordRecent: (model) => set((state) => {
-    try { window.localStorage.setItem("openwork.modelChoice.explicit", "1"); } catch {}
+    try { window.localStorage.setItem("get3w.modelChoice.explicit", "1"); } catch {}
     const recent = recordRecentModel(state.recent, model);
     writeStoredCollections({ favorites: state.favorites, recent });
     return { recent };

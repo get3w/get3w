@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Responses of the openwork-server `/workspace/:id/claude-import/*` routes. */
+/** Responses of the get3w-server `/workspace/:id/claude-import/*` routes. */
 
 export const claudeImportItemSchema = z.object({
   sourceId: z.string(),

@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { serve } from "./serve-node.js";
-import { server as browserTools } from "./opencode-plugins/openwork-chrome-devtools.js";
-import { computerToolsOffered, server as computerTools } from "./opencode-plugins/openwork-computer-use.js";
+import { server as browserTools } from "./opencode-plugins/get3w-chrome-devtools.js";
+import { computerToolsOffered, server as computerTools } from "./opencode-plugins/get3w-computer-use.js";
 
 const requestSchema = z.object({
   name: z.string().min(1),

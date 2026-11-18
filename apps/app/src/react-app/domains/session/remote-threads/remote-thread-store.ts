@@ -6,7 +6,7 @@ import {
   REMOTE_SESSION_STATUS_WAIT_MAX_MS,
   type RemoteSessionStatusResult,
   type RemoteSessionThreadStatus,
-} from "@openwork/types/automations"
+} from "@get3w/types/automations"
 
 import { remoteFollowUpMatches, type RemoteThreadFollowUp, type RemoteThreadStart } from "@/lib/remote-session-thread"
 import { remoteThreadFollowUpsInPart } from "@/lib/remote-thread-starts"

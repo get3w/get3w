@@ -5,23 +5,23 @@ import { createElement, useEffect } from "react";
 import {
   engineInfo,
   engineStart,
-  openworkServerInfo,
-  openworkServerRestart,
+  get3wServerInfo,
+  get3wServerRestart,
   resolveWorkspaceListSelectedId,
   runtimeBootstrap,
   workspaceBootstrap,
   workspaceSetRuntimeActive,
   workspaceSetSelected,
   type EngineInfo,
-  type OpenworkServerInfo,
+  type Get3wServerInfo,
   type WorkspaceInfo,
   type WorkspaceList,
 } from "../../app/lib/desktop";
 import { ingestMigrationSnapshotOnElectronBoot } from "../../app/lib/migration";
 import {
-  hydrateOpenworkServerSettingsFromEnv,
-  writeOpenworkServerSettings,
-} from "../../app/lib/openwork-server";
+  hydrateGet3wServerSettingsFromEnv,
+  writeGet3wServerSettings,
+} from "../../app/lib/get3w-server";
 import { isDesktopRuntime, isElectronRuntime, safeStringify } from "../../app/utils";
 import { useServer } from "../kernel/server-provider";
 import { useBootState } from "./boot-state";
@@ -31,7 +31,7 @@ import { useBootState } from "./boot-state";
 // keeps running across the transient unmount.
 let BOOT_STARTED = false;
 
-type BootOpenworkServerInfo = {
+type BootGet3wServerInfo = {
   running?: boolean | null;
   baseUrl?: string | null;
   ownerToken?: string | null;
@@ -40,11 +40,11 @@ type BootOpenworkServerInfo = {
   port?: number | null;
 };
 
-function isOpenworkServerInfoLike(info: unknown): info is BootOpenworkServerInfo {
+function isGet3wServerInfoLike(info: unknown): info is BootGet3wServerInfo {
   return typeof info === "object" && info !== null;
 }
 
-function isOpenworkServerReady(info?: BootOpenworkServerInfo) {
+function isGet3wServerReady(info?: BootGet3wServerInfo) {
   return Boolean(
     info?.running === true &&
       info.baseUrl?.trim() &&
@@ -79,7 +79,7 @@ export function useDesktopRuntimeBoot() {
 
     void (async () => {
       try {
-        const evalFatalFailure = window.__OPENWORK_ELECTRON__?.meta?.evalFatalBootstrapFailure;
+        const evalFatalFailure = window.__GET3W_ELECTRON__?.meta?.evalFatalBootstrapFailure;
         if (evalFatalFailure) throw new Error(evalFatalFailure);
         // On Electron specifically: if the previous Tauri install dropped
         // a migration snapshot, fold it into localStorage before any of
@@ -93,11 +93,11 @@ export function useDesktopRuntimeBoot() {
             console.info(`[migration] hydrated ${hydrated} localStorage keys from Tauri snapshot`);
           }
         }
-        hydrateOpenworkServerSettingsFromEnv();
+        hydrateGet3wServerSettingsFromEnv();
 
-        const publishOpenworkServerInfo = (serverInfo: BootOpenworkServerInfo | null | undefined) => {
+        const publishGet3wServerInfo = (serverInfo: BootGet3wServerInfo | null | undefined) => {
           if (!serverInfo?.baseUrl) return;
-          writeOpenworkServerSettings({
+          writeGet3wServerSettings({
             urlOverride: serverInfo.baseUrl,
             token:
               serverInfo.ownerToken?.trim() ||
@@ -107,7 +107,7 @@ export function useDesktopRuntimeBoot() {
             portOverride: serverInfo.port ?? undefined,
           });
           try {
-            window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+            window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
           } catch {
             /* ignore */
           }
@@ -118,24 +118,24 @@ export function useDesktopRuntimeBoot() {
           // exists in the server registry (workspaces created from the app are
           // server-owned). The server is already serving it: restarting would
           // kill the engine and every in-flight run for nothing.
-          const running = await openworkServerInfo().catch(() => null);
-          if (isOpenworkServerInfoLike(running) && isOpenworkServerReady(running)) {
-            publishOpenworkServerInfo(running);
-            await window.__OPENWORK_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
+          const running = await get3wServerInfo().catch(() => null);
+          if (isGet3wServerInfoLike(running) && isGet3wServerReady(running)) {
+            publishGet3wServerInfo(running);
+            await window.__GET3W_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
             markReady();
             return;
           }
           setPhase("starting-engine", "Starting Get3W server");
-          const serverInfo = await openworkServerRestart({ diagnosticsCause: "startup-recovery" }).catch((error) => {
-            console.warn("[desktop-boot] openworkServerRestart failed:", error);
+          const serverInfo = await get3wServerRestart({ diagnosticsCause: "startup-recovery" }).catch((error) => {
+            console.warn("[desktop-boot] get3wServerRestart failed:", error);
             return null;
           });
-          if (!isOpenworkServerInfoLike(serverInfo) || !isOpenworkServerReady(serverInfo)) {
+          if (!isGet3wServerInfoLike(serverInfo) || !isGet3wServerReady(serverInfo)) {
             setError(t("ui.a99115a3d64f"));
             return;
           }
-          publishOpenworkServerInfo(serverInfo);
-          await window.__OPENWORK_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
+          publishGet3wServerInfo(serverInfo);
+          await window.__GET3W_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
           markReady();
         };
 
@@ -171,7 +171,7 @@ export function useDesktopRuntimeBoot() {
             skipped?: boolean;
             error?: string;
             engine?: { baseUrl?: string | null };
-            openworkServer?: BootOpenworkServerInfo;
+            get3wServer?: BootGet3wServerInfo;
           };
 
           if (boot.ok === false) {
@@ -179,7 +179,7 @@ export function useDesktopRuntimeBoot() {
             return;
           }
 
-          if (!boot.skipped && !isOpenworkServerReady(boot.openworkServer)) {
+          if (!boot.skipped && !isGet3wServerReady(boot.get3wServer)) {
             setError(t("ui.a99115a3d64f"));
             return;
           }
@@ -187,24 +187,24 @@ export function useDesktopRuntimeBoot() {
           if (boot.engine?.baseUrl) {
             setActive(boot.engine.baseUrl);
           }
-          publishOpenworkServerInfo(boot.openworkServer);
-          await window.__OPENWORK_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
+          publishGet3wServerInfo(boot.get3wServer);
+          await window.__GET3W_ELECTRON__?.recovery?.recordHealthy?.().catch(() => undefined);
           markReady();
           return;
         }
 
         // FAST PATH ─────────────────────────────────────────────────────
         // Cheap status probe: if engine is already running just publish the
-        // current openwork-server base URL + token and finish in <1s.
+        // current get3w-server base URL + token and finish in <1s.
         // This mirrors Solid's bootstrap at context/workspace.ts:3883-3907
         // ("localAttachExisting"), which never restarts a running stack.
         try {
           const engine = await engineInfo() as EngineInfo | null;
           if (engine?.running && engine.baseUrl) {
             setActive(engine.baseUrl);
-            const fresh = await openworkServerInfo().catch(() => null) as OpenworkServerInfo | null;
+            const fresh = await get3wServerInfo().catch(() => null) as Get3wServerInfo | null;
             if (fresh?.baseUrl) {
-              writeOpenworkServerSettings({
+              writeGet3wServerSettings({
                 urlOverride: fresh.baseUrl,
                 token:
                   fresh.ownerToken?.trim() ||
@@ -215,7 +215,7 @@ export function useDesktopRuntimeBoot() {
               });
               try {
                 window.dispatchEvent(
-                  new CustomEvent("openwork-server-settings-changed"),
+                  new CustomEvent("get3w-server-settings-changed"),
                 );
               } catch {
                 /* ignore */
@@ -230,7 +230,7 @@ export function useDesktopRuntimeBoot() {
 
         // SLOW PATH ─────────────────────────────────────────────────────
         // No running engine. Tauri now mirrors Electron: engine_start boots
-        // openwork-server and lets that server manage OpenCode.
+        // get3w-server and lets that server manage OpenCode.
         const localPaths = list.workspaces.flatMap((entry: WorkspaceInfo) => {
           const path = entry.path?.trim() ?? "";
           return path ? [path] : [];
@@ -289,9 +289,9 @@ export function useDesktopRuntimeBoot() {
             setActive(engineStartResult.baseUrl);
           }
           try {
-            const freshInfo = await openworkServerInfo() as OpenworkServerInfo | null;
+            const freshInfo = await get3wServerInfo() as Get3wServerInfo | null;
             if (freshInfo?.baseUrl) {
-              writeOpenworkServerSettings({
+              writeGet3wServerSettings({
                 urlOverride: freshInfo.baseUrl,
                 token:
                   freshInfo.ownerToken?.trim() ||
@@ -301,13 +301,13 @@ export function useDesktopRuntimeBoot() {
                 portOverride: freshInfo.port ?? undefined,
               });
               try {
-                window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+                window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
               } catch {
                 /* ignore */
               }
             }
           } catch (error) {
-            console.warn("[desktop-boot] post-engineStart openworkServerInfo failed:", error);
+            console.warn("[desktop-boot] post-engineStart get3wServerInfo failed:", error);
           }
         }
 

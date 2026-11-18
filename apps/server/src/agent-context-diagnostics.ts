@@ -8,7 +8,7 @@ import type {
   AgentContextDiagnosticsRequest,
   AgentContextMcpEvidence,
   AgentContextToolPermission,
-} from "@openwork/types/agent-context-diagnostics";
+} from "@get3w/types/agent-context-diagnostics";
 
 import {
   AGENT_CONTEXT_DIAGNOSTICS_SCHEMA_VERSION,
@@ -49,7 +49,7 @@ import {
   type McpInventoryInspection,
 } from "./mcp.js";
 import { resolveWorkspaceOpencodeConnection } from "./opencode-connection.js";
-import { buildOpenworkRuntimeConfigObjectFromSnapshot } from "./openwork-runtime-config.js";
+import { buildGet3wRuntimeConfigObjectFromSnapshot } from "./get3w-runtime-config.js";
 import {
   ENGINE_GLOBAL_RUNTIME_CONFIG_ID,
   inspectRuntimeOpencodeConfigState,
@@ -62,11 +62,11 @@ import type { McpItem, ServerConfig, WorkspaceInfo } from "./types.js";
 import { exists } from "./utils.js";
 import { opencodeConfigPath } from "./workspace-files.js";
 
-const OPENWORK_CLOUD_MCP_NAME = "openwork-cloud";
+const GET3W_CLOUD_MCP_NAME = "get3w-cloud";
 const CLOUD_MCP_TERMINAL_PATH = "/mcp/agent";
 const REQUIRED_CLOUD_TOOL_IDS = ["search_capabilities", "execute_capability"] as const;
 const REQUIRED_CLOUD_AGENT_TOOL_IDS = REQUIRED_CLOUD_TOOL_IDS.map(
-  (toolId) => `${OPENWORK_CLOUD_MCP_NAME}_${toolId}`,
+  (toolId) => `${GET3W_CLOUD_MCP_NAME}_${toolId}`,
 );
 
 export type McpRegistrationStatus =
@@ -152,30 +152,30 @@ function assessEffectiveToolPolicy(
       unavailableReasons: ["effective_engine_snapshot_unavailable"],
     };
   }
-  const openworkAgent = snapshot.agents.find((agent) => agent.name === "openwork");
-  if (!openworkAgent) {
+  const get3wAgent = snapshot.agents.find((agent) => agent.name === "get3w");
+  if (!get3wAgent) {
     return {
       status: "unavailable",
       decisions: {},
       deniedToolIds: [],
-      unavailableReasons: ["effective_openwork_agent_missing"],
+      unavailableReasons: ["effective_get3w_agent_missing"],
     };
   }
   if (
-    snapshot.defaultAgent !== "openwork"
-    || openworkAgent.hidden
-    || (openworkAgent.mode !== "primary" && openworkAgent.mode !== "all")
+    snapshot.defaultAgent !== "get3w"
+    || get3wAgent.hidden
+    || (get3wAgent.mode !== "primary" && get3wAgent.mode !== "all")
   ) {
     return {
       status: "unavailable",
       decisions: {},
       deniedToolIds: [],
-      unavailableReasons: ["effective_openwork_agent_unusable_as_default"],
+      unavailableReasons: ["effective_get3w_agent_unusable_as_default"],
     };
   }
   const decisions: Record<string, EffectiveToolPolicyDecision> = {};
   for (const toolId of REQUIRED_CLOUD_AGENT_TOOL_IDS) {
-    decisions[toolId] = effectiveToolDecision(openworkAgent.permission, toolId);
+    decisions[toolId] = effectiveToolDecision(get3wAgent.permission, toolId);
   }
 
   const deniedToolIds = REQUIRED_CLOUD_AGENT_TOOL_IDS.filter(
@@ -373,10 +373,10 @@ async function inspectProjectAgent(workspace: WorkspaceInfo, signal?: AbortSigna
     return {
       available: true,
       defaultAgentOverride: typeof data.default_agent === "string",
-      agentConfigOverride: Object.hasOwn(agents, "openwork"),
+      agentConfigOverride: Object.hasOwn(agents, "get3w"),
       agentFileOverride: await Promise.all([
-        exists(join(workspace.path, ".opencode", "agent", "openwork.md")),
-        exists(join(workspace.path, ".opencode", "agents", "openwork.md")),
+        exists(join(workspace.path, ".opencode", "agent", "get3w.md")),
+        exists(join(workspace.path, ".opencode", "agents", "get3w.md")),
       ]).then((values) => values.some(Boolean)),
     };
   } catch {
@@ -421,8 +421,8 @@ async function inspectMcpInventory(
       inventory: await inspectMcpLayersFromRuntimeSnapshot(workspace.path, runtime, {
         signal,
         toolPolicy: {
-          agentName: "openwork",
-          mcpName: OPENWORK_CLOUD_MCP_NAME,
+          agentName: "get3w",
+          mcpName: GET3W_CLOUD_MCP_NAME,
           toolIds: [...REQUIRED_CLOUD_AGENT_TOOL_IDS],
         },
       }),
@@ -456,7 +456,7 @@ function cloudEndpointEvidenceUrl(
   config: Record<string, unknown>,
 ): URL | null {
   if (
-    name !== OPENWORK_CLOUD_MCP_NAME
+    name !== GET3W_CLOUD_MCP_NAME
     || (source !== "config.remote" && source !== "engine.config")
     || typeof config.url !== "string"
   ) return null;
@@ -737,7 +737,7 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
         : exact
         ? "The canonical Get3W Cloud catalog exposes exactly the two required capability tools."
         : "The Get3W Cloud catalog does not match the required two-tool contract.",
-      owner: transientUnauthorizedRecovered ? "network-admin" : exact ? "openwork-server" : "openwork-support",
+      owner: transientUnauthorizedRecovered ? "network-admin" : exact ? "get3w-server" : "get3w-support",
       action: transientUnauthorizedRecovered
         ? "Treat the first 401 as transient unless it repeats or carries a Den revoked-session envelope; inspect proxy and auth-gateway logs for one-off challenges."
         : exact
@@ -749,7 +749,7 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
   let status: AgentContextDiagnosticCheck["status"] = "failed";
   let evidenceKind: AgentContextDiagnosticCheck["evidenceKind"] = probe.performed ? "observed" : "derived";
   let message = "The selected workspace does not have a usable managed Get3W Cloud MCP configuration.";
-  let owner: AgentContextDiagnosticCheck["owner"] = "openwork-server";
+  let owner: AgentContextDiagnosticCheck["owner"] = "get3w-server";
   let action = "Organization services are unavailable in this edition; configure personal MCP services in Settings.";
 
   switch (probe.code) {
@@ -766,11 +766,11 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
       action = "Run diagnostics on the Get3W server that owns the workspace.";
       break;
     case "cloud_mcp_missing":
-      owner = "openwork-client";
+      owner = "get3w-client";
       message = "The selected client workspace has no synced Get3W Cloud MCP entry.";
       break;
     case "cloud_mcp_disabled":
-      owner = "openwork-client";
+      owner = "get3w-client";
       message = "The selected workspace Get3W Cloud MCP entry is disabled.";
       action = "Enable or reconnect Get3W Cloud from Settings > Connect, then rerun diagnostics.";
       break;
@@ -794,7 +794,7 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
       break;
     case "credential_missing":
     case "duplicate_authorization":
-      owner = "openwork-client";
+      owner = "get3w-client";
       message = "The managed Get3W Cloud entry does not contain one unambiguous authentication value.";
       action = "Reconnect Get3W Cloud so the client can replace the managed credential, then rerun diagnostics.";
       break;
@@ -846,7 +846,7 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
       }
       break;
     case "unauthorized":
-      owner = "openwork-client";
+      owner = "get3w-client";
       message = "Get3W Cloud rejected the configured credential during the independent runtime probe.";
       action = "Reconnect Get3W Cloud so the client can replace the managed credential, then rerun diagnostics.";
       break;
@@ -856,13 +856,13 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
       action = "Verify organization membership, workspace scope, and Cloud policy for this credential, then rerun diagnostics.";
       break;
     case "mcp_route_not_found":
-      owner = "openwork-support";
+      owner = "get3w-support";
       message = "The configured service answered, but the MCP agent route was not found; the deployment version or route configuration is implicated.";
       action = "Verify the Get3W Cloud or on-prem Den deployment version exposes the /mcp/agent route, then rerun diagnostics.";
       break;
     case "rate_limited":
       status = "warning";
-      owner = "openwork-support";
+      owner = "get3w-support";
       message = "Get3W Cloud rate-limited the independent runtime probe.";
       action = "Wait before rerunning diagnostics; contact Get3W support if rate limiting persists.";
       break;
@@ -874,7 +874,7 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
     case "probe_busy":
       status = "warning";
       evidenceKind = "unavailable";
-      owner = "openwork-server";
+      owner = "get3w-server";
       message = "The server's bounded diagnostics probe capacity was busy, so no new egress was started.";
       action = "Wait briefly and rerun diagnostics.";
       break;
@@ -889,12 +889,12 @@ export function cloudCatalogCheck(probe: CloudCatalogProbe): AgentContextDiagnos
     case "invalid_session_header":
     case "pagination_unsupported":
     case "invalid_catalog":
-      owner = "openwork-support";
+      owner = "get3w-support";
       message = "Get3W Cloud returned a response that does not satisfy the bounded MCP handshake protocol contract.";
       action = "Review the Get3W Cloud deployment and restore a conformant MCP handshake response.";
       break;
     case "required_tools_missing":
-      owner = "openwork-support";
+      owner = "get3w-support";
       message = "The Get3W Cloud catalog handshake succeeded, but the catalog does not contain both required capability tools.";
       action = "Review the Get3W Cloud deployment and restore the canonical capability catalog.";
       break;
@@ -934,7 +934,7 @@ export function cloudDifferentialCheck(probe: CloudCatalogProbe, engineReachable
       status: "passed",
       evidenceKind: "derived",
       message: "The independent Get3W runtime probe and the engine registration evidence both report the Get3W Cloud endpoint as reachable.",
-      owner: "openwork-server",
+      owner: "get3w-server",
       action: "No action is required.",
     });
   }
@@ -983,7 +983,7 @@ export function cloudDifferentialCheck(probe: CloudCatalogProbe, engineReachable
     status: "skipped",
     evidenceKind: "unavailable",
     message: "The independent runtime probe was not performed, so endpoint availability cannot be compared with the engine registration evidence.",
-    owner: "openwork-server",
+    owner: "get3w-server",
     action: "Address the probe eligibility code reported by the cloud catalog check, then rerun diagnostics.",
   });
 }
@@ -1021,7 +1021,7 @@ export function cloudEndpointTransportCheck(
       evidenceKind: "derived",
       code: "transport_probe_not_required",
       message: "The managed Get3W Cloud MCP registration is connected; the differential check compares runtime and engine reachability, so a separate TLS-layer probe was not needed.",
-      owner: "openwork-server",
+      owner: "get3w-server",
       action: "No action is required.",
       details,
     });
@@ -1033,7 +1033,7 @@ export function cloudEndpointTransportCheck(
       evidenceKind: "observed",
       code: "endpoint_tls_handshake_verified",
       message: "The Get3W Cloud endpoint completed a credential-free TLS handshake; use the differential check for authentication, MCP protocol, and engine-registration attribution.",
-      owner: "openwork-server",
+      owner: "get3w-server",
       action: "Review the cloud-endpoint-differential verdict and catalog evidence for the next failure layer.",
       details,
     });
@@ -1139,7 +1139,7 @@ export function cloudEndpointTransportCheck(
     evidenceKind: probe.skipReason === "invalid_endpoint" || probe.skipReason === "missing_endpoint" ? "unavailable" : "derived",
     code: "transport_probe_not_applicable",
     message: "A credential-free TLS-layer probe was not applicable to this workspace or endpoint configuration; the differential check reports runtime probe eligibility.",
-    owner: "openwork-server",
+    owner: "get3w-server",
     action: "Review the managed Get3W Cloud MCP configuration if transport evidence is needed.",
     details,
   });
@@ -1153,7 +1153,7 @@ function organizationCheck(request: AgentContextDiagnosticsRequest): AgentContex
       evidenceKind: "client-observed",
       code: "organization_connections_unavailable",
       message: "The client could not observe organization connection readiness.",
-      owner: "openwork-client",
+      owner: "get3w-client",
       action: "Verify the Den session and organization access, then rerun diagnostics.",
       details: { connectionCount: 0, reportedConnectionCount: 0, truncated: false, notReadyCount: 0 },
     });
@@ -1168,7 +1168,7 @@ function organizationCheck(request: AgentContextDiagnosticsRequest): AgentContex
       message: remotePrivacy
         ? "Local Den organization topology was intentionally omitted from the remote Get3W diagnostics request."
         : "Organization connection readiness was not observed for this run.",
-      owner: remotePrivacy ? "openwork-client" : "member",
+      owner: remotePrivacy ? "get3w-client" : "member",
       action: remotePrivacy
         ? "No action is required; run diagnostics against a local workspace to include local Den organization readiness."
         : "Sign in to Den and select an organization to include organization readiness.",
@@ -1209,14 +1209,14 @@ function organizationCheck(request: AgentContextDiagnosticsRequest): AgentContex
           ? "One or more shared organization connections need organization administrator setup or repair."
           : "The client-observed organization connections are ready.",
     owner: truncated
-      ? "openwork-client"
+      ? "get3w-client"
       : memberAndAdminAction
       ? "member-and-organization-admin"
       : memberActionCount > 0
         ? "member"
         : organizationAdminActionCount > 0
           ? "organization-admin"
-          : "openwork-client",
+          : "get3w-client",
     action: truncated
       ? "Review organization connection readiness in Den for the complete inventory."
       : memberAndAdminAction
@@ -1316,24 +1316,24 @@ function engineAgentCheck(
       durationMs,
     );
   }
-  const agent = snapshot.agents.find((candidate) => candidate.name === "openwork");
+  const agent = snapshot.agents.find((candidate) => candidate.name === "get3w");
   return diagnosticCheck({
     id: "engine-agent",
     status: agent ? "passed" : "failed",
     evidenceKind: "observed",
-    code: agent ? "effective_openwork_agent_observed" : "effective_openwork_agent_missing",
+    code: agent ? "effective_get3w_agent_observed" : "effective_get3w_agent_missing",
     message: agent
       ? "The selected engine resolved the Get3W agent."
       : "The selected engine did not resolve an Get3W agent.",
-    owner: agent ? "opencode-engine" : "openwork-server",
+    owner: agent ? "opencode-engine" : "get3w-server",
     action: agent
       ? "No action is required."
       : "Restore the Get3W runtime agent injection and restart the selected workspace engine.",
     details: {
       engineApiReadPerformed: true,
       effectiveAgentCount: snapshot.agents.length,
-      openworkAgentPresent: Boolean(agent),
-      openworkAgentHidden: agent?.hidden ?? null,
+      get3wAgentPresent: Boolean(agent),
+      get3wAgentHidden: agent?.hidden ?? null,
       permissionRuleCount: agent?.permission.length ?? null,
       rawPromptIncluded: false,
     },
@@ -1374,7 +1374,7 @@ function runtimeHealthCheck(
     evidenceKind: corrupt ? "unavailable" : "derived",
     code,
     message,
-    owner: corrupt ? "openwork-server" : engineConfigured ? "openwork-server" : "member",
+    owner: corrupt ? "get3w-server" : engineConfigured ? "get3w-server" : "member",
     action: status === "passed"
       ? "No action is required."
       : corrupt
@@ -1452,22 +1452,22 @@ export async function runAgentContextDiagnostics(input: {
   // The injected engine config file is rendered from the ENGINE_GLOBAL row
   // only; the merged per-workspace runtime row informs MCP inventory below
   // but is not part of the injected file.
-  const expectedRuntimeConfig = buildOpenworkRuntimeConfigObjectFromSnapshot(globalRuntimeInspection.config);
+  const expectedRuntimeConfig = buildGet3wRuntimeConfigObjectFromSnapshot(globalRuntimeInspection.config);
   const expectedAgents = isRecord(expectedRuntimeConfig.agent) ? expectedRuntimeConfig.agent : {};
-  const expectedAgent = isRecord(expectedAgents.openwork) ? expectedAgents.openwork : null;
-  const effectiveOpenworkAgent = effectiveEngine?.agents.find((agent) => agent.name === "openwork") ?? null;
-  const effectiveAgentModeUsable = effectiveOpenworkAgent?.mode === "primary"
-    || effectiveOpenworkAgent?.mode === "all";
+  const expectedAgent = isRecord(expectedAgents.get3w) ? expectedAgents.get3w : null;
+  const effectiveGet3wAgent = effectiveEngine?.agents.find((agent) => agent.name === "get3w") ?? null;
+  const effectiveAgentModeUsable = effectiveGet3wAgent?.mode === "primary"
+    || effectiveGet3wAgent?.mode === "all";
   const effectiveAgentUsable = Boolean(
-    effectiveOpenworkAgent
-    && effectiveEngine?.defaultAgent === "openwork"
-    && !effectiveOpenworkAgent.hidden
+    effectiveGet3wAgent
+    && effectiveEngine?.defaultAgent === "get3w"
+    && !effectiveGet3wAgent.hidden
     && effectiveAgentModeUsable,
   );
   const agentEvidenceSource = effectiveEngine ? "effective-engine" as const : "configured-intent" as const;
   const reportedAgent = effectiveEngine
-    ? effectiveOpenworkAgent
-      ? { prompt: effectiveOpenworkAgent.prompt }
+    ? effectiveGet3wAgent
+      ? { prompt: effectiveGet3wAgent.prompt }
       : null
     : expectedAgent;
   const prompt = promptEvidence(reportedAgent);
@@ -1488,7 +1488,7 @@ export async function runAgentContextDiagnostics(input: {
     return label ? [label] : [];
   }))].slice(0, 100);
   const canonicalConnectPluginSpec = expectedPlugins.find(
-    (spec) => pluginLabel(spec) === "openwork-extensions-preview",
+    (spec) => pluginLabel(spec) === "get3w-extensions-preview",
   ) ?? null;
   const canonicalPluginSpecMatched = canonicalConnectPluginSpec !== null
     && reportedPlugins.some(
@@ -1533,7 +1533,7 @@ export async function runAgentContextDiagnostics(input: {
       },
     };
   }
-  const selectedCloudMcpPresent = Object.hasOwn(runtimeMcpMap(runtime), OPENWORK_CLOUD_MCP_NAME);
+  const selectedCloudMcpPresent = Object.hasOwn(runtimeMcpMap(runtime), GET3W_CLOUD_MCP_NAME);
   const branch = expectedConnectBranch(connectSnapshot);
   const crossWorkspaceSteeringDrift = connectSnapshot.cloudMcpPresent && !selectedCloudMcpPresent;
 
@@ -1547,7 +1547,7 @@ export async function runAgentContextDiagnostics(input: {
   const engineConfigItems = effectiveEngine?.mcps.map((item) => ({
     ...item,
     source: "engine.config" as const,
-    disabledByTools: item.name === OPENWORK_CLOUD_MCP_NAME
+    disabledByTools: item.name === GET3W_CLOUD_MCP_NAME
       ? assessEffectiveToolPolicy(effectiveEngine).status === "denied" || undefined
       : undefined,
   }));
@@ -1555,7 +1555,7 @@ export async function runAgentContextDiagnostics(input: {
   const combinedInventoryItems = [...inventory.items, ...(engineConfigItems ?? [])];
   const inventoryItems = combinedInventoryItems.slice(0, 200);
   const runtimeCloudItem = combinedInventoryItems.find((item) =>
-    item.source === "config.remote" && item.name === OPENWORK_CLOUD_MCP_NAME,
+    item.source === "config.remote" && item.name === GET3W_CLOUD_MCP_NAME,
   );
   if (
     runtimeCloudItem
@@ -1576,7 +1576,7 @@ export async function runAgentContextDiagnostics(input: {
     return inspection;
   };
   const mcps = inventoryItems.map((item) => mcpEvidence(item, registrationForItem(item).status, managedMcpNames));
-  const runtimeCloudConfig = runtimeMcpMap(runtime)[OPENWORK_CLOUD_MCP_NAME] ?? null;
+  const runtimeCloudConfig = runtimeMcpMap(runtime)[GET3W_CLOUD_MCP_NAME] ?? null;
   const runtimeCloudRegistration = runtimeCloudItem && runtimeCloudConfig ? registrationForItem(runtimeCloudItem) : null;
   const staticallyDeniedCloudAgentToolIds = new Set(inventory.toolPolicy.deniedToolIds);
   const effectiveToolPolicy = assessEffectiveToolPolicy(effectiveEngine);
@@ -1689,7 +1689,7 @@ export async function runAgentContextDiagnostics(input: {
       evidenceKind: "observed",
       code: "strict_request_validated",
       message: "The request matched the strict diagnostics schema and contained only safe organization summaries.",
-      owner: "openwork-server",
+      owner: "get3w-server",
       action: "No action is required.",
       details: {
         organizationProbeStatus: request.organizationConnectionsProbe.status,
@@ -1713,7 +1713,7 @@ export async function runAgentContextDiagnostics(input: {
         : crossWorkspaceSteeringDrift
           ? "Global Connect steering sees Get3W Cloud, but the selected workspace does not contain that managed MCP."
           : "The expected Connect steering branch is internally consistent for the selected workspace.",
-      owner: !connectSnapshotAvailable || crossWorkspaceSteeringDrift ? "openwork-server" : "openwork-client",
+      owner: !connectSnapshotAvailable || crossWorkspaceSteeringDrift ? "get3w-server" : "get3w-client",
       action: !connectSnapshotAvailable
         ? "Verify the Get3W server runtime state and rerun diagnostics."
         : crossWorkspaceSteeringDrift
@@ -1736,24 +1736,24 @@ export async function runAgentContextDiagnostics(input: {
         ? "observed"
         : runtimeInspection.status === "available" ? "expected" : "unavailable",
       code: effectiveEngine
-        ? !effectiveOpenworkAgent
-          ? "effective_openwork_agent_missing"
-          : effectiveEngine.defaultAgent !== "openwork"
+        ? !effectiveGet3wAgent
+          ? "effective_get3w_agent_missing"
+          : effectiveEngine.defaultAgent !== "get3w"
             ? "effective_default_agent_mismatch"
-            : effectiveOpenworkAgent.hidden
-              ? "effective_openwork_agent_hidden"
+            : effectiveGet3wAgent.hidden
+              ? "effective_get3w_agent_hidden"
               : !effectiveAgentModeUsable
-                ? "effective_openwork_agent_not_primary"
-            : "effective_openwork_agent_selected"
+                ? "effective_get3w_agent_not_primary"
+            : "effective_get3w_agent_selected"
         : projectOverrideDetected
           ? "configured_agent_has_override_layers"
           : "runtime_agent_intent_only",
       message: effectiveEngine
-        ? !effectiveOpenworkAgent
+        ? !effectiveGet3wAgent
           ? "The effective engine configuration does not contain the Get3W agent."
-          : effectiveEngine.defaultAgent !== "openwork"
+          : effectiveEngine.defaultAgent !== "get3w"
             ? "The effective engine default does not select the Get3W agent."
-            : effectiveOpenworkAgent.hidden
+            : effectiveGet3wAgent.hidden
               ? "The effective Get3W agent is hidden and cannot be used as the default agent."
               : !effectiveAgentModeUsable
                 ? "The effective Get3W agent is subagent-only and cannot be used as the default agent."
@@ -1769,10 +1769,10 @@ export async function runAgentContextDiagnostics(input: {
           : "Check the selected workspace engine health and rerun diagnostics.",
       details: {
         configuredAgentPresent: Boolean(expectedAgent),
-        effectiveAgentPresent: effectiveEngine ? Boolean(effectiveOpenworkAgent) : null,
-        effectiveDefaultAgentIsOpenwork: effectiveEngine ? effectiveEngine.defaultAgent === "openwork" : null,
-        effectiveAgentHidden: effectiveOpenworkAgent?.hidden ?? null,
-        effectiveAgentMode: effectiveOpenworkAgent?.mode ?? null,
+        effectiveAgentPresent: effectiveEngine ? Boolean(effectiveGet3wAgent) : null,
+        effectiveDefaultAgentIsGet3w: effectiveEngine ? effectiveEngine.defaultAgent === "get3w" : null,
+        effectiveAgentHidden: effectiveGet3wAgent?.hidden ?? null,
+        effectiveAgentMode: effectiveGet3wAgent?.mode ?? null,
         effectiveAgentUsableAsDefault: effectiveEngine ? effectiveAgentUsable : null,
         projectLayersAvailable: projectAgent.available,
         projectDefaultAgentOverride: projectAgent.defaultAgentOverride,
@@ -1801,7 +1801,7 @@ export async function runAgentContextDiagnostics(input: {
           : effectiveEngine
             ? "The effective Get3W base prompt contains the markers but does not match the canonical configured injection."
             : "The configured Get3W base prompt markers are present, but its digest does not match the canonical generated injection.",
-      owner: effectiveEngine ? "opencode-engine" : "openwork-server",
+      owner: effectiveEngine ? "opencode-engine" : "get3w-server",
       action: promptMatchesCanonicalIntent
         ? "No action is required."
         : "Restore the canonical Get3W runtime agent definition.",
@@ -1837,18 +1837,18 @@ export async function runAgentContextDiagnostics(input: {
           ? "Required Get3W Cloud tool visibility could not be verified from the effective selected-engine agent."
           : "The effective OpenCode agent policy does not deny either required Get3W Cloud candidate tool ID; the live engine tool registry was not read.",
       owner: cloudToolPolicyStatus === "available"
-        ? "openwork-server"
+        ? "get3w-server"
         : cloudToolPolicyStatus === "unavailable"
           ? "opencode-engine"
           : "member",
       action: cloudToolPolicyStatus === "denied"
-        ? "Allow the denied openwork-cloud capability tool IDs in top-level or Get3W agent permission policy, then rerun diagnostics."
+        ? "Allow the denied get3w-cloud capability tool IDs in top-level or Get3W agent permission policy, then rerun diagnostics."
         : cloudToolPolicyStatus === "unavailable"
           ? "Check the selected workspace engine health and rerun diagnostics."
           : "No policy change is required; confirm catalog and registration evidence because this policy check alone does not prove live tool presence.",
       details: {
-        searchCapabilities: reportedToolPermission(`${OPENWORK_CLOUD_MCP_NAME}_search_capabilities`),
-        executeCapability: reportedToolPermission(`${OPENWORK_CLOUD_MCP_NAME}_execute_capability`),
+        searchCapabilities: reportedToolPermission(`${GET3W_CLOUD_MCP_NAME}_search_capabilities`),
+        executeCapability: reportedToolPermission(`${GET3W_CLOUD_MCP_NAME}_execute_capability`),
         deniedRelevantToolCount: cloudToolPolicyStatus === "unavailable" ? null : deniedCloudAgentToolIds.size,
         staticPolicyScope: inventory.toolPolicy.scope,
         staticPolicyLayerStatus: inventory.toolPolicy.status,
@@ -1872,7 +1872,7 @@ export async function runAgentContextDiagnostics(input: {
         : effectiveEngine
           ? "The Connect steering plugin is missing from the effective engine configuration."
           : "The Connect steering plugin is missing from the configured runtime injection intent.",
-      owner: effectiveEngine ? "opencode-engine" : "openwork-server",
+      owner: effectiveEngine ? "opencode-engine" : "get3w-server",
       action: canonicalPluginSpecMatched
         ? "No action is required."
         : "Restore the canonical Get3W runtime plugin bundle.",
@@ -1922,7 +1922,7 @@ export async function runAgentContextDiagnostics(input: {
               : "The server-managed runtime and selected project/global MCP sources were inventoried without claiming complete OpenCode resolution.",
       owner: effectiveEngine
         ? "opencode-engine"
-        : layerHealthProblem ? "member" : inventory.collisions.length > 0 ? "member" : "openwork-server",
+        : layerHealthProblem ? "member" : inventory.collisions.length > 0 ? "member" : "get3w-server",
       action: effectiveEngine
         ? inventoryTotal > 200
           ? "Reduce the configured MCP count or inspect the engine and Get3W runtime sources directly."
@@ -1943,7 +1943,7 @@ export async function runAgentContextDiagnostics(input: {
         globalLayerStatus: inventory.layerStatus.global,
         inventoryScope: effectiveEngine
           ? "engine-merged-config-plus-runtime-managed-injection"
-          : "bounded-openwork-sources",
+          : "bounded-get3w-sources",
         completeDynamicMcpStateClaimed: false,
         engineConfigMcpCount: engineConfigItems?.length ?? 0,
         runtimeManagedMcpCount: inventory.items.filter((item) => item.source === "config.remote").length,
@@ -1993,7 +1993,7 @@ export async function runAgentContextDiagnostics(input: {
           : remoteMcps.length > 0
             ? "Every enabled Get3W-managed MCP has a current connected registration result; configured-disabled entries are not treated as injected tools."
             : "No server-managed MCP registration was available to inspect.",
-      owner: failedRegistrationCount > 0 || missingRegistrationCount > 0 ? "opencode-engine" : "openwork-server",
+      owner: failedRegistrationCount > 0 || missingRegistrationCount > 0 ? "opencode-engine" : "get3w-server",
       action: failedRegistrationCount > 0 || missingRegistrationCount > 0
         ? staleRegistrationFailure
           ? "The engine is reachable and this evidence is stale; rerun diagnostics. No repair is needed unless it persists."
@@ -2043,7 +2043,7 @@ export async function runAgentContextDiagnostics(input: {
       evidenceKind: "derived",
       code: "sanitized_allowlist_report",
       message: "The report contains only allowlisted evidence, bounded sanitized engine error summaries, and credential-free transport metadata; diagnostics did not directly request mutations, provider operations, or capability calls.",
-      owner: "openwork-server",
+      owner: "get3w-server",
       action: engineApiReadPerformed
         ? "Be aware that reading a cold engine may initialize configured bootstrap or plugin hooks whose side effects this report does not inspect."
         : "No action is required.",
@@ -2089,23 +2089,23 @@ export async function runAgentContextDiagnostics(input: {
         effectiveEngine ? effectiveEngine.defaultAgent : expectedRuntimeConfig.default_agent,
         160,
       ) || null,
-      configuredOpenworkAgent: {
+      configuredGet3wAgent: {
         state: effectiveEngine
-          ? effectiveOpenworkAgent ? "present" : "missing"
+          ? effectiveGet3wAgent ? "present" : "missing"
           : expectedAgent?.disable === true
             ? "configured-disabled"
             : expectedAgent
               ? "present"
               : "missing",
-        mode: effectiveOpenworkAgent
-          ? effectiveOpenworkAgent.mode
+        mode: effectiveGet3wAgent
+          ? effectiveGet3wAgent.mode
           : expectedAgent?.mode === "subagent" || expectedAgent?.mode === "primary" || expectedAgent?.mode === "all"
             ? expectedAgent.mode
             : null,
         prompt,
         connectToolPermissions: {
-          searchCapabilities: reportedToolPermission(`${OPENWORK_CLOUD_MCP_NAME}_search_capabilities`),
-          executeCapability: reportedToolPermission(`${OPENWORK_CLOUD_MCP_NAME}_execute_capability`),
+          searchCapabilities: reportedToolPermission(`${GET3W_CLOUD_MCP_NAME}_search_capabilities`),
+          executeCapability: reportedToolPermission(`${GET3W_CLOUD_MCP_NAME}_execute_capability`),
           deniedRelevantToolCount: cloudToolPolicyStatus === "unavailable" ? null : deniedCloudAgentToolIds.size,
         },
       },

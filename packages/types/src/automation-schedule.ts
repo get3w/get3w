@@ -2,7 +2,7 @@ import {
   automationScheduleSchema,
   type AutomationCalendarSchedule,
   type AutomationSchedule,
-} from "@openwork/types/automations"
+} from "@get3w/types/automations"
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 

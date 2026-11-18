@@ -22,20 +22,20 @@ import { AttributionStep, type AttributionSource } from "../domains/onboarding/a
 import { CreateWorkspaceModal } from "../domains/workspace/create-workspace-modal";
 import type { CreateWorkspaceOptions } from "../domains/workspace/types";
 import {
-  getOpenWorkModelsActionUrl,
-  hideOpenWorkModelsPromo,
-  useOpenWorkModelsPromoEligibility,
-  markOpenWorkModelsStartupPromoShown,
-} from "../domains/cloud/openwork-models-promo";
+  getGet3WModelsActionUrl,
+  hideGet3WModelsPromo,
+  useGet3WModelsPromoEligibility,
+  markGet3WModelsStartupPromoShown,
+} from "../domains/cloud/get3w-models-promo";
 import { useDenAuth } from "../domains/cloud/den-auth-provider";
 import { openGet3wSignIn } from "../domains/cloud/get3w-account";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { resolveGet3wConnection } from "./get3w-connection";
 import { captureAnalyticsEvent } from "../../app/lib/analytics";
-import { buildOpenworkWorkspaceBaseUrl, createOpenworkServerClient } from "../../app/lib/openwork-server";
+import { buildGet3wWorkspaceBaseUrl, createGet3wServerClient } from "../../app/lib/get3w-server";
 import { denSettingsChangedEvent } from "../../app/lib/den-session-events";
 import { writeActiveWorkspaceId, writeLastSessionFor, writeWorkspaceProjectDimension } from "./session-memory";
 import { workspaceSessionRoute } from "./workspace-routes";
-import { ensureDesktopLocalOpenworkConnection } from "./desktop-local-openwork";
+import { ensureDesktopLocalGet3wConnection } from "./desktop-local-get3w";
 import { shouldHoldWelcomeForDenSession } from "./welcome-den-session";
 
 function subscribeToDenSettings(onStoreChange: () => void) {
@@ -56,7 +56,7 @@ function folderNameFromPath(path: string) {
 
 function focusPromptSoon() {
   if (typeof window === "undefined") return;
-  const focus = () => window.dispatchEvent(new Event("openwork:focusPrompt"));
+  const focus = () => window.dispatchEvent(new Event("get3w:focusPrompt"));
   [0, 80, 240, 600].forEach((delay) => window.setTimeout(focus, delay));
 }
 
@@ -125,7 +125,7 @@ export function WelcomeRoute() {
   const denAuth = useDenAuth();
   const [state, dispatch] = useReducer(welcomeReducer, initialWelcomeState);
   const [manualFolder, setManualFolder] = useState("");
-  const showOpenWorkModelsPromo = useOpenWorkModelsPromoEligibility();
+  const showGet3WModelsPromo = useGet3WModelsPromoEligibility();
   const denAuthTokenSnapshot = useSyncExternalStore(
     subscribeToDenSettings,
     readDenAuthTokenSnapshot,
@@ -166,14 +166,14 @@ export function WelcomeRoute() {
         let sessionToken = "";
         try {
           const { normalizedBaseUrl, resolvedToken, resolvedHostToken } =
-            await resolveOpenworkConnection();
+            await resolveGet3wConnection();
           if (normalizedBaseUrl && (resolvedToken || resolvedHostToken)) {
-            const openworkClient = createOpenworkServerClient({
+            const get3wClient = createGet3wServerClient({
               baseUrl: normalizedBaseUrl,
               token: resolvedToken || undefined,
               hostToken: resolvedHostToken || undefined,
             });
-            list = await openworkClient.createLocalWorkspace({
+            list = await get3wClient.createLocalWorkspace({
               folderPath: folder,
               name: workspaceName,
               preset: "starter",
@@ -200,12 +200,12 @@ export function WelcomeRoute() {
           writeActiveWorkspaceId(createdId);
         }
         if (targetWorkspace) {
-          await ensureDesktopLocalOpenworkConnection({
+          await ensureDesktopLocalGet3wConnection({
             route: "session",
             workspace: targetWorkspace,
             allWorkspaces: list.workspaces,
           }).catch(() => undefined);
-          const fresh = await resolveOpenworkConnection().catch(() => null);
+          const fresh = await resolveGet3wConnection().catch(() => null);
           if (fresh?.normalizedBaseUrl && fresh.resolvedToken) {
             sessionBaseUrl = fresh.normalizedBaseUrl;
             sessionToken = fresh.resolvedToken;
@@ -215,9 +215,9 @@ export function WelcomeRoute() {
           try {
             const workspacePath = targetWorkspace?.path?.trim() || folder;
             const session = unwrap(await createClient(
-              `${(buildOpenworkWorkspaceBaseUrl(sessionBaseUrl, targetWorkspaceId) ?? sessionBaseUrl).replace(/\/+$/, "")}/opencode`,
+              `${(buildGet3wWorkspaceBaseUrl(sessionBaseUrl, targetWorkspaceId) ?? sessionBaseUrl).replace(/\/+$/, "")}/opencode`,
               workspacePath || undefined,
-              { token: sessionToken, mode: "openwork" },
+              { token: sessionToken, mode: "get3w" },
             ).session.create({ directory: workspacePath || undefined }));
             targetSessionId = session.id;
             captureAnalyticsEvent("task_created", { source: "onboarding", workspace_type: "local" });
@@ -334,20 +334,20 @@ export function WelcomeRoute() {
       />
       {state.providerStep ? (
         <ProviderSelectionStep
-          showOpenWorkModels={showOpenWorkModelsPromo}
-          onOpenWorkModels={() => {
+          showGet3WModels={showGet3WModelsPromo}
+          onGet3WModels={() => {
             // Land on the Get3W Models value-prop page when already
             // signed in to Den; otherwise start sign-up. Previously this
             // always opened a bare sign-up page — payment before value.
-            platform.openLink(getOpenWorkModelsActionUrl(denAuth.isSignedIn, "sign-up"));
+            platform.openLink(getGet3WModelsActionUrl(denAuth.isSignedIn, "sign-up"));
             const route = state.pendingWorkspaceId
               ? workspaceSessionRoute(state.pendingWorkspaceId, state.pendingSessionId)
               : "/session";
             dispatch({ type: "attribution-step", route });
           }}
           onBringYourOwn={() => {
-            markOpenWorkModelsStartupPromoShown();
-            hideOpenWorkModelsPromo();
+            markGet3WModelsStartupPromoShown();
+            hideGet3WModelsPromo();
             const route = state.pendingWorkspaceId
               ? workspaceSessionRoute(state.pendingWorkspaceId, state.pendingSessionId)
               : "/session";

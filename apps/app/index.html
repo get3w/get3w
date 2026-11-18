@@ -12,14 +12,14 @@
     <title>Get3W</title>
 
     <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
-    <link rel="icon" type="image/svg+xml" href="/openwork-mark.svg" />
+    <link rel="icon" type="image/svg+xml" href="/get3w-mark.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <script>
       (function () {
         try {
-          var mode = localStorage.getItem("openwork.themePref") || "system";
+          var mode = localStorage.getItem("get3w.themePref") || "system";
           var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           var resolved = mode === "dark" || (mode === "system" && prefersDark) ? "dark" : "light";
           document.documentElement.dataset.theme = resolved;
@@ -36,7 +36,7 @@
       // before the app's own error monitoring can start. Inert unless the
       // build sets VITE_GET3W_DEPLOYMENT=web and VITE_GET3W_SENTRY_DSN.
       // Once src/app/lib/error-monitoring.ts starts, it takes over via
-      // window.__openworkWebErrorMonitorActive.
+      // window.__get3wWebErrorMonitorActive.
       (function () {
         try {
           var dsn = "%VITE_GET3W_SENTRY_DSN%";
@@ -50,7 +50,7 @@
           var sent = 0;
           function analyticsAllowed() {
             try {
-              var raw = localStorage.getItem("openwork.preferences");
+              var raw = localStorage.getItem("get3w.preferences");
               if (!raw) return true;
               return JSON.parse(raw).analyticsEnabled !== false;
             } catch (e) {
@@ -58,7 +58,7 @@
             }
           }
           function send(type, message) {
-            if (sent >= 3 || window.__openworkWebErrorMonitorActive === true) return;
+            if (sent >= 3 || window.__get3wWebErrorMonitorActive === true) return;
             if (!analyticsAllowed()) return;
             sent += 1;
             var id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())).replace(/-/g, "");

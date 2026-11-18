@@ -41,7 +41,7 @@ export type BackgroundShellNotice = {
 };
 
 /** The text part metadata key that marks a notice row in the transcript. */
-export const BACKGROUND_SHELL_NOTICE_KEY = "openworkBackgroundShell";
+export const BACKGROUND_SHELL_NOTICE_KEY = "get3wBackgroundShell";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -145,5 +145,5 @@ export function backgroundShellNoticeLabel(notice: Pick<BackgroundShellNotice, "
 }
 
 export function runningBackgroundTasksLabel(count: number): string {
-  return `${count} running background ${count === 1 ? "task" : "tasks"}`;
+  return t("backgroundTasks.count", { count });
 }

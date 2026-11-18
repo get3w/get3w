@@ -58,7 +58,7 @@ test("a sub-agent that ends while the chat is open shows one plain row, never th
   expect(events[0]?.properties).toMatchObject({ info: { id: "msg_notice", role: "system", sessionID: SESSION } })
   expect(events[1]?.properties).toMatchObject({ part: {
     type: "text", text: "Sub-agent finished",
-    metadata: { openworkSubagentNotice: { childSessionId: CHILD, description: "Sort the photos", outcome: "finished" } },
+    metadata: { get3wSubagentNotice: { childSessionId: CHILD, description: "Sort the photos", outcome: "finished" } },
   } })
   expect(JSON.stringify(events)).not.toContain("<subagent")
 })

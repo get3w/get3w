@@ -19,22 +19,22 @@
 
 @custom-variant dark (&:is(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 @custom-variant electron {
-  html.openwork-electron & {
+  html.get3w-electron & {
     @slot;
   }
 }
 @custom-variant windows {
-  html.openwork-electron.openwork-platform-windows & {
+  html.get3w-electron.get3w-platform-windows & {
     @slot;
   }
 }
 @custom-variant mac {
-  html.openwork-electron.openwork-platform-mac & {
+  html.get3w-electron.get3w-platform-mac & {
     @slot;
   }
 }
 @custom-variant linux {
-  html.openwork-electron.openwork-platform-linux & {
+  html.get3w-electron.get3w-platform-linux & {
     @slot;
   }
 }
@@ -54,7 +54,7 @@
   --window-controls-left: 0px;
 }
 
-html.openwork-electron.openwork-platform-mac:not([data-window-fullscreen="true"]) {
+html.get3w-electron.get3w-platform-mac:not([data-window-fullscreen="true"]) {
   --window-titlebar-height: 48px;
   --window-controls-left: 88px;
 }
@@ -69,16 +69,16 @@ html.openwork-electron.openwork-platform-mac:not([data-window-fullscreen="true"]
 }
 
 /* The overlay may be on either side, according to the native desktop settings. */
-html.openwork-electron:is(.openwork-platform-windows, .openwork-platform-linux) [data-session-header],
-html.openwork-electron:is(.openwork-platform-windows, .openwork-platform-linux) [data-settings-titlebar] {
+html.get3w-electron:is(.get3w-platform-windows, .get3w-platform-linux) [data-session-header],
+html.get3w-electron:is(.get3w-platform-windows, .get3w-platform-linux) [data-settings-titlebar] {
   padding-right: max(--spacing(3), calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
 }
 
-html.openwork-electron:is(.openwork-platform-windows, .openwork-platform-linux) [data-sidebar-titlebar] {
+html.get3w-electron:is(.get3w-platform-windows, .get3w-platform-linux) [data-sidebar-titlebar] {
   padding-left: max(--spacing(2), env(titlebar-area-x, 0px));
 }
 
-html.openwork-electron:is(.openwork-platform-windows, .openwork-platform-linux) [data-session-header][data-sidebar-hidden="true"] {
+html.get3w-electron:is(.get3w-platform-windows, .get3w-platform-linux) [data-session-header][data-sidebar-hidden="true"] {
   padding-left: max(--spacing(3), env(titlebar-area-x, 0px));
 }
 
@@ -216,7 +216,7 @@ body {
 }
 
 html {
-  font-size: var(--openwork-font-size, 16px);
+  font-size: var(--get3w-font-size, 16px);
 }
 
 body {
@@ -240,21 +240,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.markdown-content [data-openwork-code-block] pre {
+.markdown-content [data-get3w-code-block] pre {
   margin: 0;
   background: transparent !important;
 }
 
-.markdown-content [data-openwork-code-block] .shiki {
+.markdown-content [data-get3w-code-block] .shiki {
   background: transparent !important;
 }
 
-:is(.dark, [data-theme="dark"]) .markdown-content [data-openwork-code-block] .shiki,
-:is(.dark, [data-theme="dark"]) .markdown-content [data-openwork-code-block] .shiki span {
+:is(.dark, [data-theme="dark"]) .markdown-content [data-get3w-code-block] .shiki,
+:is(.dark, [data-theme="dark"]) .markdown-content [data-get3w-code-block] .shiki span {
   color: var(--shiki-dark) !important;
 }
 
-:is(.dark, [data-theme="dark"]) .markdown-content [data-openwork-code-block] .shiki span {
+:is(.dark, [data-theme="dark"]) .markdown-content [data-get3w-code-block] .shiki span {
   font-style: var(--shiki-dark-font-style) !important;
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
@@ -281,7 +281,7 @@ body {
   padding: 0.25rem 0;
 }
 
-.markdown-content [data-openwork-math-error] {
+.markdown-content [data-get3w-math-error] {
   color: var(--color-red-11, inherit);
 }
 
@@ -690,4 +690,10 @@ select:disabled {
 }
 @media (prefers-reduced-motion: reduce) {
   .ow-app-progress-dot, .ow-app-loading-grid { animation: none; }
+}
+
+/* File cards already provide their own vertical spacing; a Markdown soft
+   break between adjacent cards must not add another empty text line. */
+.markdown-content [data-get3w-file-actions] + br:has(+ [data-get3w-file-actions]) {
+  display: none;
 }

@@ -12,7 +12,7 @@ Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
 afterAll(async () => { Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", previousAct); await GlobalRegistrator.unregister(); });
 
 const claude = { providerID: "ipr_claude", modelID: "gwm_opus" };
-const gptFastMedium = "__openwork_fast_v1/variant/medium";
+const gptFastMedium = "__get3w_fast_v1/variant/medium";
 
 function providerList(models: Record<string, Record<string, unknown>>): { all: ProviderListItem[] } {
   const provider = { id: claude.providerID, name: "OW Anthropic", env: [], models: Object.fromEntries(Object.entries(models)
@@ -35,7 +35,7 @@ test("a global setting the default model does not offer is never sent (Variant u
   const result = await render({ providerList: providerList({ [claude.modelID]: { low: {}, medium: {}, high: {} } }),
     defaultModel: claude, modelVariant: gptFastMedium });
   expect(result.modelVariantValue).toBeNull();
-  expect(result.modelVariantLabel).not.toContain("__openwork_fast");
+  expect(result.modelVariantLabel).not.toContain("__get3w_fast");
 });
 
 test("a global setting the default model offers is kept", async () => {

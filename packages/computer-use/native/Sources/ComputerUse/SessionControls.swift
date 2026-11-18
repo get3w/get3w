@@ -90,7 +90,7 @@ final class FocusLease {
 
 @MainActor
 final class SessionControls: NSObject {
-    /// The Get3W desktop hosts Take over, Continue and Stop over openwork/ui.
+    /// The Get3W desktop hosts Take over, Continue and Stop over get3w/ui.
     /// Standalone `mcp` exposes the same controls in a native panel.
     static var embedded = false
     static weak var active: SessionControls?
@@ -109,14 +109,14 @@ final class SessionControls: NSObject {
         hostState["kind"] = "state"
         let fields: Set<String> = ["kind", "id", "phase", "appName", "appID", "pid", "windowTitle", "task", "mode", "status", "canContinue", "cause"]
         hostState = hostState.filter { fields.contains($0.key) }
-        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "openwork/ui", "params": hostState])
+        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "get3w/ui", "params": hostState])
     }
     func frame(_ data: Data, width: Int, height: Int, capturedAt: Int64) {
         guard Self.embedded, Self.active === self, hostState["phase"] as? String == "working",
               MCPOutput.shared.canSendFrame, ProcessInfo.processInfo.systemUptime - lastFrameAt >= 0.2 else { return }
         lastFrameAt = ProcessInfo.processInfo.systemUptime
         frameSequence += 1
-        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "openwork/ui", "params": [
+        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "get3w/ui", "params": [
             "kind": "frame", "id": hostID, "sequence": frameSequence, "capturedAt": capturedAt,
             "width": width, "height": height, "mimeType": "image/png", "data": data.base64EncodedString()
         ]], frame: true)
@@ -128,7 +128,7 @@ final class SessionControls: NSObject {
         inputSequence += 1
         var value = feedback.payload
         value["kind"] = "input"; value["id"] = hostID; value["sequence"] = inputSequence
-        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "openwork/ui", "params": value])
+        MCPOutput.shared.send(["jsonrpc": "2.0", "method": "get3w/ui", "params": value])
     }
     func hostDisconnected() {
         onStop?()

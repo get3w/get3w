@@ -1,8 +1,8 @@
 import { captureAnalyticsEvent, type AnalyticsProperties } from "./analytics";
-import type { EngineV2PreviewStatus } from "./openwork-server";
+import type { EngineV2PreviewStatus } from "./get3w-server";
 import { isDesktopRuntime } from "./runtime-env";
 
-const STORAGE_KEY = "openwork.engine-migration.analytics.v1";
+const STORAGE_KEY = "get3w.engine-migration.analytics.v1";
 const MAX_RECEIPTS = 256;
 export type EngineMigrationAnalyticsStatus = EngineV2PreviewStatus & { engineChangedAt?: string | number };
 type StorageAccess = Pick<Storage, "getItem" | "setItem">;
@@ -86,7 +86,7 @@ export function observeEngineMigrationAnalytics(baseUrl: string, status: EngineM
     appVersion: String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim() || "unknown",
     storage: localStorageAccess(),
     engineChanged: () => {
-      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("openwork-engine-changed"));
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("get3w-engine-changed"));
     },
   });
   observer(baseUrl, status);

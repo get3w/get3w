@@ -17,7 +17,7 @@ test("chat sends without cloud checks, deduplicates the same callback and preser
     return null;
   }
   try {
-    localStorage.setItem("openwork.den.authToken", "legacy-fixture");
+    localStorage.setItem("get3w.den.authToken", "legacy-fixture");
     await act(async () => root.render(createElement(Probe, { workspace: "one" })));
     if (!current) throw new Error("Hook did not mount");
     let sends = 0; let release: (() => void) | undefined;
@@ -38,7 +38,7 @@ test("chat sends without cloud checks, deduplicates the same callback and preser
     expect(await cancelled).toEqual({ outcome: "cancelled", reason: "context_changed" });
     expect(sends).toBe(2);
     expect(network).toBe(0);
-    expect(localStorage.getItem("openwork.den.authToken")).toBe("legacy-fixture");
+    expect(localStorage.getItem("get3w.den.authToken")).toBe("legacy-fixture");
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = originalFetch;

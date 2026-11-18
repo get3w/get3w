@@ -21,12 +21,12 @@ test("semantic search pages real v2 histories of 150, 200, 201, 400 and 450 mess
     return;
   }
   assert.match(spawnSync(binary, ["--version"], { encoding: "utf8", timeout: 15_000 }).stdout, /\bv2\.0\.26\b/);
-  const root = await realpath(await mkdtemp(join(tmpdir(), "openwork-message-paging-")));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "get3w-message-paging-")));
   const overrides = {
     HOME: root, XDG_CONFIG_HOME: join(root, "config"), XDG_DATA_HOME: join(root, "data"),
     XDG_CACHE_HOME: join(root, "cache"), XDG_STATE_HOME: join(root, "state"),
     GET3W_RUNTIME_DB: join(root, "runtime.sqlite"), GET3W_OPENCODE2_BIN: binary,
-    GET3W_ENGINE_V2_PREVIEW: "1", OPENWORK_ENGINE_V2_CHAT: "1", OPENCODE_DISABLE_MODELS_FETCH: "true",
+    GET3W_ENGINE_V2_PREVIEW: "1", GET3W_ENGINE_V2_CHAT: "1", OPENCODE_DISABLE_MODELS_FETCH: "true",
   };
   const previous = new Map(Object.keys(overrides).map(key => [key, process.env[key]]));
   Object.assign(process.env, overrides);
@@ -69,7 +69,7 @@ test("semantic search pages real v2 histories of 150, 200, 201, 400 and 450 mess
   const query = async (id: string, args: Record<string, unknown>): Promise<unknown> => {
     const response = await fetch(bridge.url, { method: "POST",
       headers: { authorization: `Bearer ${bridge.token}`, "content-type": "application/json" },
-      body: JSON.stringify({ name: "openwork_query", input: { id, args } }), signal: AbortSignal.timeout(60_000),
+      body: JSON.stringify({ name: "get3w_query", input: { id, args } }), signal: AbortSignal.timeout(60_000),
     });
     assert.equal(response.status, 200);
     return response.json();

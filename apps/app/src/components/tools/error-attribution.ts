@@ -1,8 +1,8 @@
 import { t } from "@/i18n";
 import type { DynamicToolUIPart } from "ai"
-import { openworkCloudMcpConnectionActionSchema } from "@openwork/types/den/mcp-connection-action"
-import { connectionActionPayloadSchema, type ConnectionActionPayload } from "@openwork/types/connection-action-app"
-import { parseMcpAppResourceUri } from "@openwork/types/mcp-app"
+import { get3wCloudMcpConnectionActionSchema } from "@get3w/types/den/mcp-connection-action"
+import { connectionActionPayloadSchema, type ConnectionActionPayload } from "@get3w/types/connection-action-app"
+import { parseMcpAppResourceUri } from "@get3w/types/mcp-app"
 
 export type ToolErrorAttribution = {
   label: string
@@ -22,17 +22,17 @@ export type ChatToolReconnectProgress =
   | { phase: "authorization_opened"; authorizeUrl: string }
 export type ChatToolReconnectResult = "connected"
 
-const OPENWORK_CLOUD_CAPABILITY_TOOLS = new Set([
-  "openwork-cloud_search_capabilities",
-  "openwork-cloud_execute_capability",
-  "openwork-cloud_list_skills",
-  "openwork-cloud_get_skill",
-  "openwork-cloud_connection_action",
-  "openwork_search_capabilities",
-  "openwork_execute_capability",
-  "openwork_list_skills",
-  "openwork_get_skill",
-  "openwork_connection_action",
+const GET3W_CLOUD_CAPABILITY_TOOLS = new Set([
+  "get3w-cloud_search_capabilities",
+  "get3w-cloud_execute_capability",
+  "get3w-cloud_list_skills",
+  "get3w-cloud_get_skill",
+  "get3w-cloud_connection_action",
+  "get3w_search_capabilities",
+  "get3w_execute_capability",
+  "get3w_list_skills",
+  "get3w_get_skill",
+  "get3w_connection_action",
 ])
 
 /**
@@ -42,13 +42,13 @@ const OPENWORK_CLOUD_CAPABILITY_TOOLS = new Set([
  * cards as execute_capability. Any other App's results stay its own.
  */
 export function appToolResultConnectionToolName(app: { serverName: string; resourceUri: string }, toolName: string): string {
-  return parseMcpAppResourceUri(app.resourceUri) && app.serverName.startsWith("openwork-app-host-connect-")
-    ? "openwork-cloud_execute_capability"
+  return parseMcpAppResourceUri(app.resourceUri) && app.serverName.startsWith("get3w-app-host-connect-")
+    ? "get3w-cloud_execute_capability"
     : toolName
 }
 
 export function isConnectionDiscoveryTool(toolName: string): boolean {
-  return toolName === "openwork_search_capabilities" || toolName === "openwork-cloud_search_capabilities"
+  return toolName === "get3w_search_capabilities" || toolName === "get3w-cloud_search_capabilities"
 }
 
 const MAX_PARSED_RESULT_LENGTH = 64 * 1_024
@@ -102,23 +102,26 @@ function confirmed(label: string, description: string): ToolErrorAttribution {
   return { label, confidence: "Confirmed", description }
 }
 
-const CONNECTION_ACTION_LABELS = {
-  connect: "Connect your account",
-  reconnect: "Reconnect your account",
-  update_credentials: "Update credentials",
-  inspect_connection: "Inspect the connection",
-  fix_provider: "Fix provider access",
-  fix_network: "Fix network access",
-  contact_openwork: "Contact Get3W support",
+const connectionActionLabel = (type: string): string => {
+  const keys: Record<string, string> = {
+    connect: "activity.native.connection.action.connect",
+    reconnect: "activity.native.connection.action.reconnect",
+    update_credentials: "activity.native.connection.action.update_credentials",
+    inspect_connection: "activity.native.connection.action.inspect_connection",
+    fix_provider: "activity.native.connection.action.fix_provider",
+    fix_network: "activity.native.connection.action.fix_network",
+    contact_get3w: "activity.native.connection.action.contact_get3w",
+  }
+  return t(keys[type] ?? "activity.native.connection.failure")
 }
 
 /** Get3W Cloud's own capability tools, whose results the host may present natively. */
-export function isOpenworkCloudCapabilityTool(toolName: string): boolean {
+export function isGet3wCloudCapabilityTool(toolName: string): boolean {
   return isConnectionTool(toolName)
 }
 
 function isConnectionTool(toolName: string): boolean {
-  return OPENWORK_CLOUD_CAPABILITY_TOOLS.has(toolName) || /^openwork(?:-cloud)?_run_artifact_[A-Za-z0-9_-]+$/.test(toolName)
+  return GET3W_CLOUD_CAPABILITY_TOOLS.has(toolName) || /^get3w(?:-cloud)?_run_artifact_[A-Za-z0-9_-]+$/.test(toolName)
 }
 
 /**
@@ -145,18 +148,18 @@ function chatConnectionTarget(toolName: string, result: unknown, input?: unknown
   let credentialMode: unknown
   for (const candidate of candidates) {
     if (!isRecord(candidate)) return null
-    if (("source" in candidate && candidate.source !== "openwork-cloud")
+    if (("source" in candidate && candidate.source !== "get3w-cloud")
       || ("version" in candidate && candidate.version !== 1)
       || ("kind" in candidate && candidate.kind !== "connection_action")) return null
-    const legacy = openworkCloudMcpConnectionActionSchema.safeParse(candidate)
+    const legacy = get3wCloudMcpConnectionActionSchema.safeParse(candidate)
     const payload = connectionActionPayloadSchema.safeParse(legacy.success && !("schemaVersion" in candidate)
       ? {
         ...legacy.data,
         schemaVersion: "1",
-        message: stringValue(candidate, "message") ?? CONNECTION_ACTION_LABELS[legacy.data.action.type],
+        message: stringValue(candidate, "message") ?? connectionActionLabel(legacy.data.action.type),
         action: {
           ...legacy.data.action,
-          label: isRecord(candidate.action) ? stringValue(candidate.action, "label") ?? CONNECTION_ACTION_LABELS[legacy.data.action.type] : CONNECTION_ACTION_LABELS[legacy.data.action.type],
+          label: isRecord(candidate.action) ? stringValue(candidate.action, "label") ?? connectionActionLabel(legacy.data.action.type) : connectionActionLabel(legacy.data.action.type),
         },
       }
       : candidate)
@@ -223,7 +226,7 @@ export function reconnectActionFromChatToolResult(
   const target = chatConnectionTarget(toolName, result, input, options)
   if (!target || (!target.memberOAuth && !target.memberPersonalKey)) return null
   const { connection } = target
-  if (connection.actor !== "member" || connection.action?.surface !== "openwork_your_connections"
+  if (connection.actor !== "member" || connection.action?.surface !== "get3w_your_connections"
     || !(target.memberPersonalKey
       // A member-held key only ever uses the credential action, never an OAuth connect or reconnect.
       ? connection.action.type === "update_credentials" && (connection.state === "needs_connection" || connection.state === "reauth_required")
@@ -232,7 +235,7 @@ export function reconnectActionFromChatToolResult(
   return {
     connectionId: connection.connectionId,
     connectionName: connection.connectionName,
-    label: target.memberPersonalKey ? connection.state === "reauth_required" ? "Replace key" : "Add key" : connection.state === "needs_connection" ? "Connect" : "Reconnect",
+    label: target.memberPersonalKey ? connection.state === "reauth_required" ? t("activity.native.connection.replace_key") : t("activity.native.connection.add_key") : connection.state === "needs_connection" ? t("activity.native.connection.connect") : t("activity.native.connection.reconnect"),
     ...(target.memberPersonalKey ? { credentialKind: "personal_key" } : {}),
   }
 }
@@ -240,7 +243,7 @@ export function reconnectActionFromChatToolResult(
 export function connectionResultFromChatToolPart(part: DynamicToolUIPart, options?: ChatConnectionTargetOptions): unknown {
   if (!isConnectionTool(part.toolName) || (part.state !== "output-error" && part.state !== "output-available")) return undefined
   const raw = part.state === "output-error" ? part.errorText : part.output
-  const metadata = part.callProviderMetadata?.openwork
+  const metadata = part.callProviderMetadata?.get3w
   const preserved = isRecord(metadata) ? [metadata.mcpResult, metadata.mcpApp] : []
   const records = [raw, ...preserved.flatMap(result => isRecord(result) ? [result.structuredContent] : [])]
     .map(parseResultRecord).filter(isRecord)
@@ -335,10 +338,10 @@ export function attributeChatToolError(errorText: string): ToolErrorAttribution 
 /** End-user copy; attribution and raw provider payloads belong in details. */
 export function describeChatToolFailure(errorText: string): string {
   const attribution = attributeChatToolError(errorText)
-  if (attribution?.label === "Blocked by Get3W") return "This action is blocked by your workspace settings."
-  if (/timeout|timed out|deadline|\b504\b/i.test(errorText)) return "The service didn’t respond in time. Check whether the action finished before trying again."
-  if (/\b401\b|unauthorized|invalid[_ ]token|authentication required/i.test(errorText)) return "This connection needs attention. Check its sign-in settings."
-  if (/\b403\b|forbidden|access[_ ]denied|insufficient[_ ]scope/i.test(errorText)) return "This connection doesn’t have access to the requested action."
-  if (/\b50[0234]\b|internal[_ ]server[_ ]error|bad gateway|service unavailable|fetch failed|ECONNRESET|ENOTFOUND/i.test(errorText)) return "The service couldn’t complete this action. Check its status before trying again."
-  return "This action couldn’t finish. Check the details before trying again."
+  if (attribution?.label === "Blocked by Get3W") return t("activity.native.connection.blocked")
+  if (/timeout|timed out|deadline|\b504\b/i.test(errorText)) return t("activity.native.connection.timeout")
+  if (/\b401\b|unauthorized|invalid[_ ]token|authentication required/i.test(errorText)) return t("activity.native.connection.auth")
+  if (/\b403\b|forbidden|access[_ ]denied|insufficient[_ ]scope/i.test(errorText)) return t("activity.native.connection.denied")
+  if (/\b50[0234]\b|internal[_ ]server[_ ]error|bad gateway|service unavailable|fetch failed|ECONNRESET|ENOTFOUND/i.test(errorText)) return t("activity.native.connection.service")
+  return t("activity.native.connection.failure")
 }

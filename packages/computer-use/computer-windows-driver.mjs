@@ -1,6 +1,6 @@
 // A computer use driver for this Windows PC. The desktop's main process starts
 // the Windows helper (windows/ComputerUse.cs, shipped as
-// helpers/openwork-computer-use.exe) and talks to it over stdin/stdout, one JSON
+// helpers/get3w-computer-use.exe) and talks to it over stdin/stdout, one JSON
 // object per line. The helper resolves each window by handle, process id and
 // start time, captures only the selected window, and stops input as soon as the
 // window loses focus, moves or closes, Windows locks, the host cancels, or the
@@ -11,7 +11,7 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-export const WINDOWS_HELPER_PROTOCOL = "openwork.computer-use.windows/1";
+export const WINDOWS_HELPER_PROTOCOL = "get3w.computer-use.windows/1";
 const MODIFIERS = { control: "control", command: "control", shift: "shift", option: "alt" };
 const KEYS = new Set(["enter", "tab", "escape", "backspace", "delete", "insert", "space", "left", "up", "right", "down", "home", "end", "page_up", "page_down",
   ...Array.from({ length: 12 }, (_, index) => `f${index + 1}`), ..."abcdefghijklmnopqrstuvwxyz0123456789"]);

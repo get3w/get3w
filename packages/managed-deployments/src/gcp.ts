@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { z } from "zod"
-import { gcpTargetSchema, versionSchema, type GcpTarget } from "@openwork/managed-deployments/schema"
+import { gcpTargetSchema, versionSchema, type GcpTarget } from "@get3w/managed-deployments/schema"
 
 const googleKeys = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"), { timeoutDuration: 10_000 })
 export const gcpBundleUrlSchema = z.string().url().refine((value) => {
@@ -137,9 +137,9 @@ export function cloudShellCommand(input: GcpLaunch) {
     'trap \'rm -rf -- "$work"\' EXIT',
     `curl --fail --silent --show-error --proto '=https' --max-filesize 33554432 --connect-timeout 10 --max-time 120 --output "$work/bundle.tar.gz" ${quoteShell(input.release.bundleUrl)}`,
     `printf '%s  %s\\n' ${quoteShell(input.release.bundleSha256)} "$work/bundle.tar.gz" | sha256sum --check --status`,
-    `python3 - "$work/bundle.tar.gz" "$work" ${quoteShell(input.release.version)} <<'OPENWORK_SAFE_EXTRACT'`,
+    `python3 - "$work/bundle.tar.gz" "$work" ${quoteShell(input.release.version)} <<'GET3W_SAFE_EXTRACT'`,
     safeExtraction,
-    "OPENWORK_SAFE_EXTRACT",
+    "GET3W_SAFE_EXTRACT",
     `python3 "$work/infra/managed-deployments/gcp/runner/install.py" --config-base64 ${quoteShell(config)}`,
     ")",
   ].join("\n")

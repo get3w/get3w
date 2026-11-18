@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { isOpencodeConfigErrorMessage } from "@openwork/types/opencode-config-error";
+import { isOpencodeConfigErrorMessage } from "@get3w/types/opencode-config-error";
 import type { ResolvedWorkspaceEndpoint } from "../src/app/lib/workspace-endpoint";
 import { classifyRouteSessionReadError, listRouteSessions, type RouteSessionListTransport } from "../src/react-app/shell/route-workspaces";
 import { presentOpencodeSessionError } from "../src/react-app/domains/session/sync/session-error";

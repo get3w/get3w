@@ -6,7 +6,7 @@
  *
  * - Pasted text is wrapped in `<pasted-text>` where it was pasted.
  * - An attached file is named in `<attachment>` where it was attached.
- * - Hidden context follows the words in one `<openwork-context>` block.
+ * - Hidden context follows the words in one `<get3w-context>` block.
  */
 
 export type PromptAttachment = {
@@ -16,8 +16,13 @@ export type PromptAttachment = {
   bytes?: number;
 };
 
-const CONTEXT_OPEN = "<openwork-context>";
-const CONTEXT_CLOSE = "</openwork-context>";
+const CONTEXT_OPEN = "<get3w-context>";
+const CONTEXT_CLOSE = "</get3w-context>";
+/** The title worker reads the first prompt independently of the reply worker. */
+export function conversationTitleLanguageContext(locale: "zh" | "en"): string {
+  const language = locale === "en" ? "English" : "Simplified Chinese (简体中文)";
+  return `Desktop language setting: ${language}. Generate the automatic conversation title in ${language}, regardless of the language of the conversation. This setting applies only to the conversation title, not the answer. Preserve names accurately; do not invent or transliterate a person's name unnecessarily.`;
+}
 const PASTED_OPEN = "<pasted-text>";
 const PASTED_CLOSE = "</pasted-text>";
 
@@ -25,7 +30,7 @@ const NOTE_HEADER = "Attached files were copied into this worker workspace for t
 const NOTE_FOOTER = "Use these paths with Read/Bash/MCP/Docling when a tool needs the file bytes.";
 const NOTE_RE = /Attached files were copied into this worker workspace for tool access:\n((?:- [^\n]*\n)*)Use these paths with Read\/Bash\/MCP\/Docling when a tool needs the file bytes\./;
 const NOTE_LINE_RE = /^- ([^:\n]+?)(?: \((\d+(?:\.\d+)? (?:B|KB|MB|GB))\))?: .+ \((file:\/\/[^\n]*)\)$/;
-const CONTEXT_RE = /(?:^|\n\n)<openwork-context>\n([\s\S]*)\n<\/openwork-context>$/;
+const CONTEXT_RE = /(?:^|\n\n)<get3w-context>\n([\s\S]*)\n<\/get3w-context>$/;
 const INLINE_RE = /<pasted-text>\n([\s\S]*?)\n<\/pasted-text>|<attachment>([^<>\n]+)<\/attachment>/g;
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB"] as const;

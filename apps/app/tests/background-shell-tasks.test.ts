@@ -1,3 +1,4 @@
+import { currentLocale, setLocale } from "../src/i18n";
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
@@ -39,7 +40,7 @@ afterAll(async () => {
 const SESSION = "ses_background_a";
 const OTHER_SESSION = "ses_background_b";
 const WORKSPACE = "ws_background";
-const sync = { workspaceId: WORKSPACE, baseUrl: "http://127.0.0.1:9/w/ws_background/opencode2", openworkToken: "token" };
+const sync = { workspaceId: WORKSPACE, baseUrl: "http://127.0.0.1:9/w/ws_background/opencode2", get3wToken: "token" };
 const location = { directory: "/tmp/background" };
 
 function shellInfo(id: string, sessionID: string, command = "sleep 20; echo done") {
@@ -84,6 +85,9 @@ function sessionCount(sessionId = SESSION) {
 }
 
 describe("translating engine shell events", () => {
+  let previousLocale = currentLocale();
+  beforeEach(() => { previousLocale = currentLocale(); setLocale("en"); });
+  afterEach(() => setLocale(previousLocale));
   test("a background shell call reports its running shell, with the command it runs", () => {
     const events = translateAll(shellToolCall("call_bg", { metadata: { status: "running", shellID: "sh_bg1" } }));
     const started = events.find((event) => event.type === BACKGROUND_SHELL_STARTED_EVENT);
@@ -114,7 +118,7 @@ describe("translating engine shell events", () => {
     expect(events[1]?.properties).toMatchObject({ info: { id: "msg_notice_sh_on", role: "system", sessionID: SESSION } });
     expect(events[2]?.properties).toMatchObject({ part: {
       type: "text", text: "Background task finished",
-      metadata: { openworkBackgroundShell: { shellId: "sh_on", command: "sleep 20; echo done", outcome: "finished", exit: 0 } },
+      metadata: { get3wBackgroundShell: { shellId: "sh_on", command: "sleep 20; echo done", outcome: "finished", exit: 0 } },
     } });
     expect(JSON.stringify(events)).not.toContain("<shell");
   });

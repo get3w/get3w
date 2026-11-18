@@ -92,7 +92,7 @@ export function applyTextHighlights(root: HTMLElement, query: string) {
       // KaTeX's layout spans, and its MathML branch duplicates the visible text.
       // Zoomable Mermaid diagrams are rendered by React; marks there would
       // break its reconciliation.
-      if (parent.closest("pre, code, .katex, [data-openwork-mermaid-interactive]")) {
+      if (parent.closest("pre, code, .katex, [data-get3w-mermaid-interactive]")) {
         return NodeFilter.FILTER_REJECT;
       }
 

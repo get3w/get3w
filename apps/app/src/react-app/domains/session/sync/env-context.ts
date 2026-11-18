@@ -1,18 +1,18 @@
 import { loadTaskCatalog } from "../../cloud/task-catalog-store";
 import { resolveGenerationPolicy } from "../../cloud/generation-policy";
 import { sideChatSystemContext } from "../chat/workbench-store";
-import type { OpenworkServerClient } from "../../../../app/lib/openwork-server";
-import { readOpenworkEnvPendingChanges } from "../../../../app/lib/openwork-env-runtime";
-import { readOpenworkRuntimeFacts, renderOpenworkRuntimeContext } from "./runtime-context";
+import type { Get3wServerClient } from "../../../../app/lib/get3w-server";
+import { readGet3wEnvPendingChanges } from "../../../../app/lib/get3w-env-runtime";
+import { readGet3wRuntimeFacts, renderGet3wRuntimeContext } from "./runtime-context";
 import { readGet3wAccount } from "../../cloud/get3w-account";
 import { modelPreferencesContext } from "../../cloud/model-preferences";
 
-const DEFAULT_CACHE_KEY = "__openwork_env_default__";
+const DEFAULT_CACHE_KEY = "__get3w_env_default__";
 const MAX_CONTEXT_CACHE_ENTRIES = 100;
 
 const envSystemContextCache = new Map<string, string | undefined>();
 
-export function clearOpenworkEnvSystemContextCache(): void {
+export function clearGet3wEnvSystemContextCache(): void {
   envSystemContextCache.clear();
 }
 
@@ -27,8 +27,8 @@ function normalizeEnvKeys(keys: string[]): string[] {
   ).sort((a, b) => a.localeCompare(b));
 }
 
-export async function buildOpenworkEnvSystemContext(
-  client: OpenworkServerClient | null,
+export async function buildGet3wEnvSystemContext(
+  client: Get3wServerClient | null,
   options: {
     cacheKey?: string;
     runtimeKey?: string | null;
@@ -38,7 +38,7 @@ export async function buildOpenworkEnvSystemContext(
 ): Promise<string | undefined> {
   if (!client) return undefined;
   const readPendingChanges = options.readPendingChanges ??
-    (() => readOpenworkEnvPendingChanges(options.runtimeKey));
+    (() => readGet3wEnvPendingChanges(options.runtimeKey));
   if (readPendingChanges()) return undefined;
 
   const cacheKey = `${client.baseUrl}:${options.cacheKey ?? DEFAULT_CACHE_KEY}`;
@@ -82,8 +82,8 @@ function rememberEnvSystemContext(cacheKey: string, context: string | undefined)
  * crosses midnight correctly), followed by the cached environment-key names
  * when the workspace has any.
  */
-export async function buildOpenworkSessionSystemContext(
-  client: OpenworkServerClient | null,
+export async function buildGet3wSessionSystemContext(
+  client: Get3wServerClient | null,
   options: {
     workspaceId?: string;
     cacheKey?: string;
@@ -93,8 +93,8 @@ export async function buildOpenworkSessionSystemContext(
   } = {},
 ): Promise<string> {
   const account = readGet3wAccount();
-  const envContext = await buildOpenworkEnvSystemContext(client, options);
-  const runtimeContext = renderOpenworkRuntimeContext(readOpenworkRuntimeFacts());
+  const envContext = await buildGet3wEnvSystemContext(client, options);
+  const runtimeContext = renderGet3wRuntimeContext(readGet3wRuntimeFacts());
   const sideChatContext = options.workspaceId && options.cacheKey
     ? sideChatSystemContext(options.workspaceId, options.cacheKey) : undefined;
   let preferenceContext = "";

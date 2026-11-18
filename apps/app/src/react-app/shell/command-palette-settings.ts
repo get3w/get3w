@@ -27,7 +27,7 @@ const SETTINGS_KEYWORDS: Partial<Record<SettingsTab, string[]>> = {
   updates: ["version", "upgrade", "check for updates", "release"],
   debug: ["logs", "diagnostics", "developer mode"],
   usage: ["usage", "limit", "spend", "budget", "quota", "increase"],
-  "cloud-account": ["sign in", "log in", "login", "account", "organization", "org", "den", "cloud", "openwork cloud"],
+  "cloud-account": ["sign in", "log in", "login", "account", "organization", "org", "den", "cloud", "get3w cloud"],
   general: ["settings", "preferences", "options", "configure"],
 };
 

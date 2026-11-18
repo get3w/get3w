@@ -7,7 +7,7 @@
 // - Reasoning and Fast are preferences: when the model does not offer them the
 //   switch still happens at the provider default / standard speed, and the
 //   caller says so.
-import { FAST_VARIANT_PREFIX, fastVariantId } from "@openwork/types/cloud-model-fast";
+import { FAST_VARIANT_PREFIX, fastVariantId } from "@get3w/types/cloud-model-fast";
 
 import type { ModelRef } from "@/app/types";
 import type { ModelAvailability, ModelUnavailableReason } from "@/react-app/domains/session/surface/model-availability";

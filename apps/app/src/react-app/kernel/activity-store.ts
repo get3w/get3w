@@ -12,7 +12,7 @@ import {
   type MemberActivityEntry,
 } from "./activity-types";
 
-export const PERSISTED_ACTIVITY_STORE_KEY = "openwork:member-activity:v1";
+export const PERSISTED_ACTIVITY_STORE_KEY = "get3w:member-activity:v1";
 
 const SOURCES: ActivitySource[] = ["providers", "capabilities", "connections"];
 const BASELINE_LABEL_LIMIT = 50;

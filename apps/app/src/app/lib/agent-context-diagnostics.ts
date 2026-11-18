@@ -2,7 +2,7 @@ import {
   agentContextDiagnosticsReportSchema,
   type AgentContextDiagnosticsReport,
   type AgentContextDiagnosticsRequest,
-} from "@openwork/types/agent-context-diagnostics";
+} from "@get3w/types/agent-context-diagnostics";
 
 export function collectAgentContextDiagnosticObservations(): AgentContextDiagnosticsRequest {
   return {

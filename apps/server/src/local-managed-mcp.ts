@@ -35,7 +35,7 @@ import {
   type EnterpriseMcpOAuthPersistence,
   type EnterpriseMcpPersistenceContext,
   type EnterpriseMcpRequestPhase,
-} from "@openwork/enterprise-mcp-client";
+} from "@get3w/enterprise-mcp-client";
 import { ApiError } from "./errors.js";
 import { sanitizeDiagnosticString } from "./diagnostic-sanitizer.js";
 import { runtimeStorageDir } from "./runtime-db.js";
@@ -158,7 +158,7 @@ export type CreateLocalManagedMcpInput = {
   };
 };
 
-const VAULT_AAD = Buffer.from("openwork-local-managed-mcp-v1", "utf8");
+const VAULT_AAD = Buffer.from("get3w-local-managed-mcp-v1", "utf8");
 const VAULT_RECOVERY_REASON = "secure_storage_changed";
 const VAULT_RECOVERED_LAST_ERROR =
   "Secure storage on this device changed, so saved sign-ins were cleared. Reconnect to restore this connection.";
@@ -448,7 +448,7 @@ function backupTimestamp(date: Date): string {
 
 async function recoverVaultLocked(config: ServerConfig, file: VaultFileState): Promise<LoadedVault> {
   const path = vaultPath(config);
-  const backupName = `${basename(path)}.openwork-backup-${backupTimestamp(new Date())}`;
+  const backupName = `${basename(path)}.get3w-backup-${backupTimestamp(new Date())}`;
   await rename(path, join(dirname(path), backupName));
   const vault = emptyVault();
   for (const [key, entry] of Object.entries(file.index ?? {})) {
@@ -1273,7 +1273,7 @@ export async function handleLocalManagedMcpGateway(
   }
   const redirectUri = localManagedMcpCallbackUrl(config);
   const server = new Server(
-    { name: `openwork-local-${name}`, version: "1.0.0" },
+    { name: `get3w-local-${name}`, version: "1.0.0" },
     { capabilities: { tools: {} } },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => {

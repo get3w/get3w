@@ -6,7 +6,7 @@ import {
   OPENAI_IMAGE_GENERATION_EXTENSION_ACTIONS,
   OPENAI_IMAGE_GENERATION_EXTENSION_ID,
 } from "./openai-image-generation.js";
-const OPENWORK_EXPERIMENTAL_EXTENSION_ACTIONS = [
+const GET3W_EXPERIMENTAL_EXTENSION_ACTIONS = [
   ...OPENAI_IMAGE_GENERATION_EXTENSION_ACTIONS,
 ];
 
@@ -23,8 +23,8 @@ function readStringField(value: unknown, key: string): string {
 export function listExperimentalExtensionActions(extensionId: string) {
   const filter = extensionId.trim();
   return filter
-    ? OPENWORK_EXPERIMENTAL_EXTENSION_ACTIONS.filter((action) => action.extensionId === filter)
-    : OPENWORK_EXPERIMENTAL_EXTENSION_ACTIONS;
+    ? GET3W_EXPERIMENTAL_EXTENSION_ACTIONS.filter((action) => action.extensionId === filter)
+    : GET3W_EXPERIMENTAL_EXTENSION_ACTIONS;
 }
 
 export async function callExperimentalExtensionAction(config: ServerConfig, env: EnvService, input: unknown, _connectSnapshot?: unknown, signal?: AbortSignal) {
@@ -41,7 +41,7 @@ export async function callExperimentalExtensionAction(config: ServerConfig, env:
   if (extensionId === "google-workspace") {
     throw new ApiError(409, "connection_unavailable", "Use a user-configured MCP connection for Google Workspace actions.");
   }
-  const registered = OPENWORK_EXPERIMENTAL_EXTENSION_ACTIONS.find((item) => item.extensionId === extensionId && item.action === action);
+  const registered = GET3W_EXPERIMENTAL_EXTENSION_ACTIONS.find((item) => item.extensionId === extensionId && item.action === action);
   if (!registered) {
     throw new ApiError(404, "extension_action_not_found", "Get3W extension action not found");
   }
@@ -51,5 +51,5 @@ export async function callExperimentalExtensionAction(config: ServerConfig, env:
     if (result) return result;
   }
 
-  throw new ApiError(501, "extension_action_not_implemented", `${registered.title} is registered but not implemented on openwork-server yet.`, { extensionId, action, args });
+  throw new ApiError(501, "extension_action_not_implemented", `${registered.title} is registered but not implemented on get3w-server yet.`, { extensionId, action, args });
 }

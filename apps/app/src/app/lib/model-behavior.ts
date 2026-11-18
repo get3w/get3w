@@ -1,7 +1,7 @@
 import type { ProviderListItem } from "../types";
 import type { ModelBehaviorOption } from "../types";
 import { t } from "../../i18n";
-import { FAST_DEFAULT_VARIANT, FAST_VARIANT_PREFIX, fastVariantId } from "@openwork/types/cloud-model-fast";
+import { FAST_DEFAULT_VARIANT, FAST_VARIANT_PREFIX, fastVariantId } from "@get3w/types/cloud-model-fast";
 
 type ProviderModel = ProviderListItem["models"][string];
 

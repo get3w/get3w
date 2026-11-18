@@ -1,3 +1,5 @@
+import { generationPolicyFromMessages } from "./generation-policies.js";
+import { gateway } from "./connect-mcp-server-catalog.js";
 import { captureCostRun, initializeTaskCostSettings } from "./task-cost-settings.js";
 import { createV2SessionHomes } from "./opencode-v2-session-home.js";
 import { workspaceIdForPath } from "./workspaces.js";
@@ -7,16 +9,16 @@ import type { ServerConfig } from "./types.js";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { serve } from "./serve-node.js";
-import { OpenWorkExtensionsPreview } from "./opencode-plugins/openwork-extensions-preview.js";
-import { openworkReadTransport, type OpenworkReadTransport } from "./opencode-plugins/openwork-read-transport.js";
+import { Get3WExtensionsPreview } from "./opencode-plugins/get3w-extensions-preview.js";
+import { get3wReadTransport, type Get3wReadTransport } from "./opencode-plugins/get3w-read-transport.js";
 import { createV2ReadAdapter, readV2SessionActivity } from "./opencode-v2-read-adapter.js";
 import { isRecord } from "./workspace-kv-store.js";
 import { createV2BrowserBridge } from "./opencode-v2-browser-bridge.js";
-import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/openwork-session-groups.js";
+import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/get3w-session-groups.js";
 import { loopbackFetch } from "./server-fetch.js";
 
 const requestSchema = z.object({
-  name: z.enum(["openwork_context", "openwork_query", "openwork_execute", "openwork_skills", "openwork_skill_read", "get3w_model_call", "task_log_evidence", "workspace_file"]),
+  name: z.enum(["get3w_context", "get3w_query", "get3w_execute", "get3w_skills", "get3w_skill_read", "get3w_model_call", "task_log_evidence", "workspace_file", "web_tool"]),
   input: z.unknown(),
   sessionId: z.string().max(256).optional(),
   // The calling tool's place in its chat, where a Drive approval is shown.
@@ -154,7 +156,7 @@ function bridgeAffordances(value: unknown): unknown {
     key === "affordances" || key === "availableAffordances"
       ? Array.isArray(entry) ? entry.filter(item => isRecord(item)
         && (item.kind === "query" || commandIds.includes(String(item.id)))
-        && (!isRecord(item.executor) || item.executor.kind === "openwork")) : entry
+        && (!isRecord(item.executor) || item.executor.kind === "get3w")) : entry
       : bridgeAffordances(entry)]));
 }
 
@@ -168,7 +170,7 @@ export async function createV2ContextBridge(
   permissionConfig?: ServerConfig,
 ) {
   const token = randomBytes(32).toString("base64url");
-  const plugin = await OpenWorkExtensionsPreview();
+  const plugin = await Get3WExtensionsPreview();
   const server = await serve({ hostname: "127.0.0.1", port: 0, fetch: async request => {
     if (request.headers.get("authorization") !== `Bearer ${token}`) return new Response(null, { status: 401 });
     if(request.method==="POST" && new URL(request.url).pathname==="/cost-message" && permissionConfig){
@@ -240,6 +242,31 @@ export async function createV2ContextBridge(
         signal.throwIfAborted();
         return hostRequest(path, { ...init, signal });
       };
+      if (call.name === "web_tool") {
+        if (!permissionConfig || !call.sessionId || !call.caller || !engine?.()) throw Error("Web tool conversation unavailable");
+        const connection = engine()!;
+        const nativeRead = async (path: string) => {
+          const response = await loopbackFetch(new URL(path, connection.url), { headers: { authorization: `Basic ${Buffer.from(`${connection.username}:${connection.password}`).toString("base64")}` }, signal: request.signal });
+          if (!response.ok) throw Error("Conversation unavailable");
+          return response.json();
+        };
+        const homes = createV2SessionHomes(permissionConfig, nativeRead);
+        const home = await homes.resolve(await nativeRead(`/api/session/${encodeURIComponent(call.sessionId)}`));
+        if (!home) throw Error("Conversation unavailable");
+        const workspace = permissionConfig.workspaces.find(row => row.path === home)?.id ?? workspaceIdForPath(home);
+        const target = await gateway(permissionConfig, workspace);
+        if (!target) throw Error("Sign in to Get3W to search or fetch pages");
+        const args = z.object({ operation: z.enum(["search", "fetch"]), body: z.record(z.string(), z.unknown()) }).strict().parse(call.input);
+        const selected=await generationPolicyFromMessages(call.caller.messageId,cursor=>nativeRead(`/api/session/${encodeURIComponent(call.sessionId!)}/message?limit=200&${cursor?`cursor=${encodeURIComponent(cursor)}`:"order=desc"}`));
+        const preferred=selected.policy.models[args.operation]?.slug;
+        const body={...args.body,...(preferred?{preferred_model:preferred}:{})};
+        const response = await loopbackFetch(`${target.origin}/web-tools/${args.operation}`, { method: "POST", redirect: "error", headers: { Authorization: target.authorization, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([request.signal, AbortSignal.timeout(310_000)]) });
+        const payload: unknown = await response.json();
+        if (!response.ok) throw Error(isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string" ? payload.error.message : "Get3W web service unavailable");
+        const latest = await gateway(permissionConfig, workspace);
+        if (latest?.authorization !== target.authorization || latest.origin !== target.origin) throw Error("Get3W account changed");
+        return Response.json(payload);
+      }
       if (call.name === "task_log_evidence") {
         return Response.json(await read("/experimental/task-log-evidence", {method:"POST",body:JSON.stringify(call)}));
       }
@@ -254,9 +281,9 @@ export async function createV2ContextBridge(
       }
       // Older engine plugins may still ask for retired organization catalogs.
       // Answer locally without reading credentials or calling a cloud endpoint.
-      if (call.name === "openwork_skills") return Response.json({ ok: true, skills: [] });
-      if (call.name === "openwork_skill_read") return Response.json({ ok: false, reason: "unavailable" }, { status: 404 });
-      const transport: OpenworkReadTransport = {
+      if (call.name === "get3w_skills") return Response.json({ ok: true, skills: [] });
+      if (call.name === "get3w_skill_read") return Response.json({ ok: false, reason: "unavailable" }, { status: 404 });
+      const transport: Get3wReadTransport = {
         engine: "v2",
         activity: (workspaceId: string, sessionId: string) => readV2SessionActivity(path => read(path), workspaceId, sessionId),
         get: createV2ReadAdapter(path => read(path)),
@@ -265,7 +292,7 @@ export async function createV2ContextBridge(
         // mount keep its workspace ownership checks.
         other: { engine: "v1", get: path => read(path) },
         post: async (path: string, body: Record<string, unknown>, signal?: AbortSignal) => {
-          const execute = call.name === "openwork_execute";
+          const execute = call.name === "get3w_execute";
           if (execute && path !== "/experimental/ui-control/request") {
             const written = await postV2SessionWrite(path, body, (target, payload) => read(target, { method: "POST", body: JSON.stringify(payload) }));
             if (written !== undefined) return written;
@@ -277,16 +304,16 @@ export async function createV2ContextBridge(
           }
           return read(path, { method: "POST", body: JSON.stringify(body), signal });
         },
-        ...(call.name === "openwork_execute" ? {
+        ...(call.name === "get3w_execute" ? {
           send: async (method: "POST" | "PATCH" | "DELETE", path: string, body?: Record<string, unknown>) => {
             if (!isSessionGroupWritePath(path)) throw new Error("Only Get3W session group changes are available");
             return read(path, { method, ...(body ? { body: JSON.stringify(body) } : {}) });
           },
         } : {}),
       };
-      const result = await openworkReadTransport.run(transport, async () => {
-        if (call.name === "openwork_query") return plugin.tool.openwork_query.execute(call.input);
-        if (call.name === "openwork_execute") {
+      const result = await get3wReadTransport.run(transport, async () => {
+        if (call.name === "get3w_query") return plugin.tool.get3w_query.execute(call.input);
+        if (call.name === "get3w_execute") {
           const id = isRecord(call.input) ? String(call.input.id) : "";
           if (!commandIds.includes(id)) throw new Error(`${id || "This command"} is not available here; only session group changes, session.create, session.send, session.question.answer and automation proposals are`);
           const { sessionId, caller } = call;
@@ -301,12 +328,12 @@ export async function createV2ContextBridge(
             // The writes after an approval get their own budget.
             deadline = AbortSignal.timeout(60_000);
           } : undefined;
-          return plugin.tool.openwork_execute.execute(call.input, { ...(sessionId ? { sessionID: sessionId } : {}), ...(ask ? { ask } : {}) });
+          return plugin.tool.get3w_execute.execute(call.input, { ...(sessionId ? { sessionID: sessionId } : {}), ...(ask ? { ask } : {}) });
         }
-        const context: unknown = JSON.parse(await plugin.tool.openwork_context.execute());
+        const context: unknown = JSON.parse(await plugin.tool.get3w_context.execute());
         const filtered = bridgeAffordances(context);
         return JSON.stringify(isRecord(filtered) ? { ...filtered, instructions: {
-          context: "Use openwork_query for the discovered read-only affordances and openwork_execute for session.group commands, session.create, session.send, session.question.answer or automation.propose. An automation proposal only shows a review card; it does not create, activate, or run anything. When Code Mode exposes these tools, discover their exact paths with search and compose them there, preserving exceptions and verifying the resulting groups. For other conversations, use session.search then session.read. Session reads include current activity and background-agent counts."
+          context: "Use get3w_query for the discovered read-only affordances and get3w_execute for session.group commands, session.create, session.send, session.question.answer or automation.propose. An automation proposal only shows a review card; it does not create, activate, or run anything. When Code Mode exposes these tools, discover their exact paths with search and compose them there, preserving exceptions and verifying the resulting groups. For other conversations, use session.search then session.read. Session reads include current activity and background-agent counts."
         } } : filtered);
       });
       return new Response(result, { headers: { "Content-Type": "application/json" } });

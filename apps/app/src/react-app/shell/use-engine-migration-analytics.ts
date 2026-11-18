@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { observeEngineMigrationAnalytics, type EngineMigrationAnalyticsStatus } from "../../app/lib/engine-migration-analytics";
-import { createOpenworkServerClient } from "../../app/lib/openwork-server";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { createGet3wServerClient } from "../../app/lib/get3w-server";
+import { resolveGet3wConnection } from "./get3w-connection";
 
 /** Non-overlapping polling with injectable timers; never mutates engine policy or UI. */
 export function startEngineMigrationAnalyticsPolling(options: {
@@ -35,9 +35,9 @@ export function useEngineMigrationAnalytics(enabled = true): void {
     if (!enabled) return;
     return startEngineMigrationAnalyticsPolling({
       read: async () => {
-        const connection = await resolveOpenworkConnection();
+        const connection = await resolveGet3wConnection();
         if (!connection.normalizedBaseUrl || !connection.resolvedToken) return null;
-        const client = createOpenworkServerClient({
+        const client = createGet3wServerClient({
           baseUrl: connection.normalizedBaseUrl,
           token: connection.resolvedToken,
           hostToken: connection.resolvedHostToken,

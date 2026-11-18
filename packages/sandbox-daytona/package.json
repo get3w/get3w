@@ -1,5 +1,5 @@
 {
-  "name": "@openwork/sandbox-daytona",
+  "name": "@get3w/sandbox-daytona",
   "private": true,
   "type": "module",
   "description": "Daytona sandbox adapter: compute, process execution, files and optional memory-preserving pause.",
@@ -9,7 +9,7 @@
   "exports": {
     ".": {
       "types": {
-        "openwork-build": "./dist/types/src/index.d.ts",
+        "get3w-build": "./dist/types/src/index.d.ts",
         "default": "./src/index.ts"
       },
       "development": "./src/index.ts",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.201.0",
-    "@openwork/sandbox": "workspace:*"
+    "@get3w/sandbox": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

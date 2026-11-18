@@ -1,4 +1,4 @@
-export const FONT_ZOOM_STORAGE_KEY = "openwork.desktop-font-zoom.v1";
+export const FONT_ZOOM_STORAGE_KEY = "get3w.desktop-font-zoom.v1";
 export const FONT_ZOOM_BASE_PX = 16;
 export const FONT_ZOOM_STEP = 0.1;
 export const FONT_ZOOM_MIN = 0.8;
@@ -71,6 +71,6 @@ export function persistFontZoom(storage: Pick<Storage, "setItem">, value: number
 export function applyFontZoom(rootStyle: Pick<CSSStyleDeclaration, "setProperty">, value: number): number {
   const normalized = normalizeFontZoom(value);
   const px = FONT_ZOOM_BASE_PX * normalized;
-  rootStyle.setProperty("--openwork-font-size", `${px}px`);
+  rootStyle.setProperty("--get3w-font-size", `${px}px`);
   return normalized;
 }

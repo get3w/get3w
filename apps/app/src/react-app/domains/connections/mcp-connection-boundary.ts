@@ -1,7 +1,7 @@
 import { getMcpServerName, type McpDirectoryInfo } from "../../../app/constants";
 import { CLOUD_MCP_SERVER_NAME } from "./cloud-mcp-user-state";
 
-export function conflictsWithOpenworkConnect(
+export function conflictsWithGet3wConnect(
   entry: Pick<McpDirectoryInfo, "id" | "name" | "serverName" | "managedBy">,
 ): boolean {
   const serverName = entry.id ?? getMcpServerName({
@@ -9,5 +9,5 @@ export function conflictsWithOpenworkConnect(
     description: "",
     oauth: false,
   });
-  return entry.managedBy !== "openwork-connect" && serverName === CLOUD_MCP_SERVER_NAME;
+  return entry.managedBy !== "get3w-connect" && serverName === CLOUD_MCP_SERVER_NAME;
 }

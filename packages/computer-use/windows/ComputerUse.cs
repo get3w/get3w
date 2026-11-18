@@ -3,8 +3,8 @@
 // line. It opens no listener, reads no clipboard and has no privilege beyond the
 // signed-in user session that started it. It exits when its parent closes stdin.
 //
-//   openwork-computer-use.exe --check                one status line, then exit
-//   openwork-computer-use.exe serve --host-pid N     {"type":"ready",...}, then requests:
+//   get3w-computer-use.exe --check                one status line, then exit
+//   get3w-computer-use.exe serve --host-pid N     {"type":"ready",...}, then requests:
 //     windows | focus | capture | input | status     answered in order
 //     cancel                                         answered at once; stops a running input
 //
@@ -37,8 +37,8 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-static class OpenWorkComputerUse {
-  const string Protocol = "openwork.computer-use.windows/1";
+static class Get3WComputerUse {
+  const string Protocol = "get3w.computer-use.windows/1";
   static readonly object OutputGate = new object();
   static readonly object CancelGate = new object();
   static readonly HashSet<string> Cancelled = new HashSet<string>();
@@ -93,7 +93,7 @@ static class OpenWorkComputerUse {
     output = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false));
     if (args.Length > 0 && args[0] == "--check") { Emit(Status()); return 0; }
     if (args.Length > 0 && args[0] == "serve") return Serve();
-    Console.Error.WriteLine("Usage: openwork-computer-use --check | serve [--host-pid N]");
+    Console.Error.WriteLine("Usage: get3w-computer-use --check | serve [--host-pid N]");
     return 2;
   }
 
@@ -231,7 +231,7 @@ static class OpenWorkComputerUse {
   }
 
   static string Restriction(uint pid, ProcessInfo info, IntPtr hwnd) {
-    if (pid == ownPid || pid == hostPid || info.Known && info.App.StartsWith("openwork", StringComparison.OrdinalIgnoreCase)) return "host";
+    if (pid == ownPid || pid == hostPid || info.Known && info.App.StartsWith("get3w", StringComparison.OrdinalIgnoreCase)) return "host";
     if (info.Session != ownSession) return "other_session";
     if (!info.Known) return "unavailable";
     // Windows blocks input from a lower integrity level; never elevate to get around it.

@@ -3,7 +3,7 @@ export function startMcpAppTiming(stage: string): () => number {
   const start = performance.now()
   return () => {
     const duration = performance.now() - start
-    const name = `openwork.mcp-app.${stage}`
+    const name = `get3w.mcp-app.${stage}`
     performance.measure(name, { start, duration })
     if (performance.getEntriesByName(name).length > 100) performance.clearMeasures(name)
     return duration

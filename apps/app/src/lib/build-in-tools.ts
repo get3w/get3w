@@ -172,7 +172,7 @@ export interface TodoWriteMetadata extends ToolMetadata {
 
 export type WebSearchLivecrawl = "fallback" | "preferred";
 export type WebSearchType = "auto" | "fast" | "deep";
-export type WebSearchProvider = "exa" | "parallel";
+export type WebSearchProvider = "exa" | "parallel" | "firecrawl" | "tavily" | "tinyfish" | "deepseek" | "bocha";
 
 export interface WebSearchInput {
   query: string;
@@ -350,8 +350,8 @@ export type SkillToolPart = BuiltInDynamicToolPart<"skill", SkillInput>;
  */
 export function skillDisplayName(input: Partial<SkillInput> | undefined): string {
   const raw = (input?.id ?? input?.name ?? "").trim();
-  if (!raw.startsWith("openwork-cloud-")) return raw;
-  return raw.slice("openwork-cloud-".length).replace(/-(?=[a-z0-9]*\d)[a-z0-9]{8}$/, "");
+  if (!raw.startsWith("get3w-cloud-")) return raw;
+  return raw.slice("get3w-cloud-".length).replace(/-(?=[a-z0-9]*\d)[a-z0-9]{8}$/, "");
 }
 
 export function isSkillToolPart(part: ToolUIPart | DynamicToolUIPart): part is SkillToolPart {
@@ -390,9 +390,9 @@ export function isTaskToolPart(part: ToolUIPart | DynamicToolUIPart): part is Ta
 
 /**
  * The sub-agent session a task tool call runs in. Forwarded from the engine's
- * task metadata by session sync (`callProviderMetadata.openwork.childSessionId`).
+ * task metadata by session sync (`callProviderMetadata.get3w.childSessionId`).
  */
 export function taskChildSessionId(part: TaskToolPart): string | null {
-  const value = part.callProviderMetadata?.openwork?.childSessionId;
+  const value = part.callProviderMetadata?.get3w?.childSessionId;
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }

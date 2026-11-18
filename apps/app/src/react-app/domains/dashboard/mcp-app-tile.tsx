@@ -2,16 +2,16 @@ import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { appToolResultConnectionToolName, connectionCardFromMcpToolResult } from "@/components/tools/error-attribution";
-import type { ConnectionActionPayload } from "@openwork/types/connection-action-app";
-import { MCP_APP_LAUNCH_TOOL_NAME, mcpAppIdSchema, mcpAppResourceIdentity } from "@openwork/types/mcp-app";
+import type { ConnectionActionPayload } from "@get3w/types/connection-action-app";
+import { MCP_APP_LAUNCH_TOOL_NAME, mcpAppIdSchema, mcpAppResourceIdentity } from "@get3w/types/mcp-app";
 import { Play } from "lucide-react";
 
 import {
-  OpenworkServerError,
-  type OpenworkMcpAppResource,
-  type OpenworkMcpAppToolResult,
-  type OpenworkServerClient,
-} from "@/app/lib/openwork-server";
+  Get3wServerError,
+  type Get3wMcpAppResource,
+  type Get3wMcpAppToolResult,
+  type Get3wServerClient,
+} from "@/app/lib/get3w-server";
 import { McpAppSandboxView, sameMcpAppDocument, type PreservedMcpAppResult } from "@/components/chat/mcp-app-frame";
 import { snapshotMcpAppArguments, type McpAppOrigin } from "@/components/chat/mcp-app-origin";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import type { DashboardMcpAppEntry } from "./dashboard-mcp-app-entry";
 
 /** A workspace MCP runtime a tile may launch through. */
 export type DashboardLaunchEndpoint = {
-  client: OpenworkServerClient;
+  client: Get3wServerClient;
   workspaceId: string;
 };
 
@@ -46,13 +46,13 @@ export type DashboardLaunchEndpoint = {
 const EMPTY_ARGUMENTS: Record<string, unknown> = {};
 
 /** When the host obtained a tile's launch result; set by Get3W, never by the App. */
-const MCP_APP_LAUNCHED_AT_META = "openwork/launchedAt";
+const MCP_APP_LAUNCHED_AT_META = "get3w/launchedAt";
 
 type TileDocument = { id: number; active: boolean; failed: boolean };
 
 type ReadyTileState = {
   phase: "ready";
-  app: OpenworkMcpAppResource;
+  app: Get3wMcpAppResource;
   result: PreservedMcpAppResult;
   endpoint: DashboardLaunchEndpoint;
   origin: McpAppOrigin;
@@ -68,7 +68,7 @@ type ReadyTileState = {
   live?: LiveTarget;
 };
 
-type LiveTarget = { origin: McpAppOrigin; app: OpenworkMcpAppResource };
+type LiveTarget = { origin: McpAppOrigin; app: Get3wMcpAppResource };
 
 /** The lease a ready tile's document calls through, if it has one. */
 function liveTargetOf(state: ReadyTileState): LiveTarget | null {
@@ -159,7 +159,7 @@ function launchCallArguments(entry: DashboardMcpAppEntry, toolName: string, args
   return { ...args, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
 }
 
-function appMatchesEntry(app: OpenworkMcpAppResource, entry: DashboardMcpAppEntry) {
+function appMatchesEntry(app: Get3wMcpAppResource, entry: DashboardMcpAppEntry) {
   return app.serverName === entry.serverName && app.toolName === entry.toolName && app.resourceUri === entry.resourceUri;
 }
 
@@ -169,7 +169,7 @@ function tileConnectionState(entry: DashboardMcpAppEntry, value: unknown, args: 
 }
 
 function invalidatesTileDocument(cause: unknown) {
-  return cause instanceof OpenworkServerError && (
+  return cause instanceof Get3wServerError && (
     [401, 403, 404, 410].includes(cause.status)
     || cause.code.startsWith("invalid_resource")
     || ["tool_denied", "tool_not_visible", "tool_not_found", "tool_resource_mismatch", "tool_requires_approval",
@@ -212,7 +212,7 @@ function McpAppTileContent({
   fallbackEndpoints?: DashboardLaunchEndpoint[];
 }) {
   const workspace = useWorkspace();
-  const { openworkServerClient, workspaceId } = workspace;
+  const { get3wServerClient, workspaceId } = workspace;
   // Provider annotations are not an authorization boundary. A safe-looking
   // tile runs on load only after this user has successfully run this exact
   // element once; approval-gated tools stay run-on-request forever.
@@ -224,11 +224,11 @@ function McpAppTileContent({
   );
   const manualLaunch = !runsAutomatically;
   const launchEndpoints = useMemo(() => [
-    ...(openworkServerClient && workspaceId ? [{ client: openworkServerClient, workspaceId }] : []),
+    ...(get3wServerClient && workspaceId ? [{ client: get3wServerClient, workspaceId }] : []),
     ...(fallbackEndpoints ?? []),
   ].filter((endpoint, index, all) => (
     all.findIndex((other) => sameLaunchEndpoint(other, endpoint)) === index
-  )), [fallbackEndpoints, openworkServerClient, workspaceId]);
+  )), [fallbackEndpoints, get3wServerClient, workspaceId]);
   // Cached app HTML is interactive, so it follows the same per-user launch
   // consent as a live call and never mounts on a first visit.
   const [nonce, setNonce] = useState(0);
@@ -433,10 +433,10 @@ function McpAppTileContent({
       const launch = entry.connectionId
         ? { connectionId: entry.connectionId, toolName: entry.toolName, resourceUri: entry.resourceUri, arguments: {} }
         : undefined;
-      let target: { endpoint: DashboardLaunchEndpoint; app: OpenworkMcpAppResource } | null = null;
+      let target: { endpoint: DashboardLaunchEndpoint; app: Get3wMcpAppResource } | null = null;
       let reused: ReadyTileState | null = null;
       let fallbackEndpoint: DashboardLaunchEndpoint | null = null;
-      let result: OpenworkMcpAppToolResult | undefined;
+      let result: Get3wMcpAppToolResult | undefined;
       let approvalWasRequired = false;
       let acquiredLaunchId: string | undefined;
       let keepLaunch = false;
@@ -463,7 +463,7 @@ function McpAppTileContent({
             reused = current;
           } catch (cause) {
             assertActive();
-            if (!(cause instanceof OpenworkServerError) || cause.status !== 422) throw cause;
+            if (!(cause instanceof Get3wServerError) || cause.status !== 422) throw cause;
             if (["mcp_app_resource_changed", "mcp_app_refresh_denied"].includes(cause.code)) {
               fallbackEndpoint = current.endpoint;
               clearDocument({ phase: "loading" });
@@ -493,7 +493,7 @@ function McpAppTileContent({
           if (!target) return { phase: "error", message: t("ui.5a80d48e4e1f") };
           const { endpoint, app } = target;
           attempt.endpoint = endpoint;
-          if (!app.launchId) throw new OpenworkServerError(422, "missing_launch_context", "This artifact has no live launch context. Update Get3W and run the tile again.");
+          if (!app.launchId) throw new Get3wServerError(422, "missing_launch_context", "This artifact has no live launch context. Update Get3W and run the tile again.");
           acquiredLaunchId = app.launchId;
           ownedLaunches.current.set(app.launchId, endpoint);
           const request = {
@@ -505,7 +505,7 @@ function McpAppTileContent({
             result = await endpoint.client.callMcpAppTool(endpoint.workspaceId, request);
           } catch (cause) {
             assertActive();
-            if (!(cause instanceof OpenworkServerError) || cause.code !== "tool_requires_approval") throw cause;
+            if (!(cause instanceof Get3wServerError) || cause.code !== "tool_requires_approval") throw cause;
             canRetryCredentials = false;
             approvalWasRequired = true;
             if (!userInitiated || fallbackEndpoint) return { phase: "idle", revokeAutoLaunch: true };
@@ -605,7 +605,7 @@ function McpAppTileContent({
       }
     }).catch((cause: unknown) => {
       if (!isCurrent()) return;
-      const connection = tileConnectionState(entry, cause instanceof OpenworkServerError ? cause.details : undefined, launchArguments);
+      const connection = tileConnectionState(entry, cause instanceof Get3wServerError ? cause.details : undefined, launchArguments);
       if (connection) {
         clearDocument(connection);
         releaseLaunches();
@@ -621,8 +621,8 @@ function McpAppTileContent({
         releaseLaunches();
       }
       updateRefresh("failed");
-      if (cause instanceof OpenworkServerError && cause.code === "mcp_auth_required"
-        && (entry.connectionId || entry.serverName === "openwork-cloud") && canRetryCredentials) {
+      if (cause instanceof Get3wServerError && cause.code === "mcp_auth_required"
+        && (entry.connectionId || entry.serverName === "get3w-cloud") && canRetryCredentials) {
         const candidates = attempt.endpoint ? [attempt.endpoint] : attempt.candidates;
         const stopCredentialRetry = onCloudCredentialRefreshed(
           candidates.map(endpoint => ({ serverBaseUrl: endpoint.client.baseUrl, workspaceId: endpoint.workspaceId })),

@@ -10,7 +10,7 @@ test("the engine's session metadata update becomes the app's Smart routes event"
   const events = translateV2Event({
     type: "session.metadata.updated",
     durable: { aggregateID: "ses_auto", seq: 4, version: 1 },
-    data: { sessionID: "ses_auto", metadata: { other: true, openworkAutoRoutes: [haiku, { at: "bad" }] } },
+    data: { sessionID: "ses_auto", metadata: { other: true, get3wAutoRoutes: [haiku, { at: "bad" }] } },
   }, createV2EventTranslationState())
   expect(events).toEqual([{ type: AUTO_ROUTES_EVENT, properties: { sessionID: "ses_auto", routes: [haiku] } }])
 })
@@ -25,7 +25,7 @@ test("snapshot and live routes merge in time order without duplicates", () => {
 })
 
 test("a mapped native session carries its recorded routes", () => {
-  expect(autoRoutesFromSession({ id: "ses_auto", openworkAutoRoutes: [haiku] })).toEqual([haiku])
+  expect(autoRoutesFromSession({ id: "ses_auto", get3wAutoRoutes: [haiku] })).toEqual([haiku])
   expect(autoRoutesFromSession({ id: "ses_auto" })).toEqual([])
   expect(autoRoutesFromSession(null)).toEqual([])
 })

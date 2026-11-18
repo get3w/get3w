@@ -7,7 +7,7 @@ import test from "node:test";
 import { createCloudBrowser, publicDestination } from "./chromium.mjs";
 
 async function fixture({ rejectInterception = false, holdInterception = false, existing = true, missingEgress = false, pages = existing ? ["tab"] : [], owned = pages } = {}) {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-browser-network-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-browser-network-"));
   const commands = [], sockets = [], held = [];
   let origin;
   const target = (url = "https://8.8.8.8/resource", id = "tab") => ({ type: "page", id, url, title: "Test page",
@@ -146,9 +146,9 @@ test("native kernel readiness requires complete UID-bound IPv4 and IPv6 rejectio
     ip6: [["::", 96], ["::ffff:0.0.0.0", 96], ["64:ff9b::", 96], ["64:ff9b:1::", 48], ["fc00::", 7], ["fe80::", 10]],
   };
   const rules = { nftables: [
-    { chain: { family: "inet", table: "openwork_desktop", name: "output", type: "filter", hook: "output" } },
+    { chain: { family: "inet", table: "get3w_desktop", name: "output", type: "filter", hook: "output" } },
     ...Object.entries(ranges).map(([protocol, prefixes]) => ({ rule: {
-      family: "inet", table: "openwork_desktop", chain: "output", expr: [
+      family: "inet", table: "get3w_desktop", chain: "output", expr: [
         { match: { op: "==", left: { meta: { key: "skuid" } }, right: 1001 } },
         { match: { op: "==", left: { payload: { protocol, field: "daddr" } }, right: { set: prefixes.map(([addr, len]) => ({ prefix: { addr, len } })) } } },
         { reject: { type: "icmpx", expr: "port-unreachable" } },

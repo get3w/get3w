@@ -1,5 +1,5 @@
 /**
- * @param {Partial<import("@openwork/types/desktop-ipc").DesktopBootstrapConfig>} config
+ * @param {Partial<import("@get3w/types/desktop-ipc").DesktopBootstrapConfig>} config
  * @param {(iconUrl: string) => Promise<unknown>} applyBrandIconUrl
  */
 export async function applyDesktopBootstrapBrandIcon(config, applyBrandIconUrl) {

@@ -37,7 +37,7 @@ console.log("server listening on http://127.0.0.1:" + server.port);
 `;
 
 async function isolatedPreviewEnvironment(engineMode: string) {
-  const root = await mkdtemp(join(tmpdir(), "openwork-v2-mcp-reconcile-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-v2-mcp-reconcile-"));
   const binary = join(root, "fake-engine");
   const environment = {
     HOME: root,
@@ -77,7 +77,7 @@ test("V2 reconciliation ignores retained organization rows and preserves persona
   try {
     await mkdir(environment.XDG_CONFIG_HOME);
     await writeFile(binary, fakeEngine, { mode: 0o700 });
-    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "openwork-cloud": remote, generic: remote } }));
+    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "get3w-cloud": remote, generic: remote } }));
     await preview.setEnabled(true);
     const deadline = Date.now() + 10_000;
     while (!preview.status().running && !preview.status().lastError && Date.now() < deadline) {
@@ -104,7 +104,7 @@ test("V2 reconciliation ignores retained organization rows and preserves persona
 
     const rotated = { ...remote, headers: { Authorization: "Bearer rotated-test-token" } };
     await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: {
-      "openwork-cloud": rotated,
+      "get3w-cloud": rotated,
       generic: { ...remote, protocol: "auto", unsupported: true },
     } }));
     await preview.syncWorkspaceMcp("workspace", directory);
@@ -113,10 +113,10 @@ test("V2 reconciliation ignores retained organization rows and preserves persona
 
     // A connection whose replacement the engine refuses fails only callers
     // that ask about it, not a Connect reconnect in the same folder.
-    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "openwork-cloud": rotated, generic: remote, broken: remote } }));
+    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "get3w-cloud": rotated, generic: remote, broken: remote } }));
     await preview.syncWorkspaceMcp("workspace", directory);
-    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "openwork-cloud": rotated, generic: remote, broken: rotated } }));
-    await preview.syncWorkspaceMcp("workspace", directory, { reconnect: ["openwork-cloud"] });
+    await writeGlobalRuntimeOpencodeConfig(config, () => ({ mcp: { "get3w-cloud": rotated, generic: remote, broken: rotated } }));
+    await preview.syncWorkspaceMcp("workspace", directory, { reconnect: ["get3w-cloud"] });
     await preview.syncWorkspaceMcp("workspace", directory, { servers: ["generic"] });
     await assert.rejects(preview.syncWorkspaceMcp("workspace", directory, { servers: ["broken"] }), /broken: OpenCode v2 MCP removal failed \(500\)$/);
     await assert.rejects(preview.syncWorkspaceMcp("workspace", directory), /broken: OpenCode v2 MCP removal failed \(500\)/);

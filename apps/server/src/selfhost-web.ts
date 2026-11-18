@@ -1,7 +1,7 @@
 /**
- * `openwork-server web`: run the Get3W web UI and API from one process on
+ * `get3w-server web`: run the Get3W web UI and API from one process on
  * one origin, with a server-managed OpenCode engine. This is the self-host
- * path (`npm i -g openwork-server && openwork-server web`).
+ * path (`npm i -g get3w-server && get3w-server web`).
  */
 import { spawn, spawnSync, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -9,11 +9,11 @@ import { randomBytes } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { openworkServerDataDir } from "@openwork/paths";
+import { get3wServerDataDir } from "@get3w/paths";
 import { startupPhase, startupPhaseSync } from "./startup-phase.js";
 
 export const OPENCODE_GITHUB_REPO = "anomalyco/opencode";
-const NPM_PACKAGE = "openwork-server";
+const NPM_PACKAGE = "get3w-server";
 const UPDATE_CHECK_TIMEOUT_MS = 3_000;
 
 export type SelfhostLogger = (message: string) => void;
@@ -27,9 +27,9 @@ async function isDirectory(path: string): Promise<boolean> {
 }
 
 /**
- * Where the published package lives. The npm launcher (bin/openwork-server.mjs)
+ * Where the published package lives. The npm launcher (bin/get3w-server.mjs)
  * passes it explicitly; a compiled binary run directly sits at
- * <root>/dist/bin/openwork-server; in a source checkout there is no package.
+ * <root>/dist/bin/get3w-server; in a source checkout there is no package.
  */
 export async function resolvePackageRoot(input: {
   env: NodeJS.ProcessEnv;
@@ -65,7 +65,7 @@ export async function resolveWebRoot(input: {
 export async function resolveBundledPluginDir(packageRoot: string | null): Promise<string | null> {
   if (!packageRoot) return null;
   const dir = join(packageRoot, "dist", "opencode-plugins");
-  return await isFile(join(dir, "openwork-extensions-preview.js")) ? dir : null;
+  return await isFile(join(dir, "get3w-extensions-preview.js")) ? dir : null;
 }
 
 export function opencodeReleaseAsset(platform: NodeJS.Platform, arch: string): string | null {
@@ -230,7 +230,7 @@ export async function ensureManagedEngine(input: {
     return { bin: explicit, installedVersion: readBinaryVersion(explicit), source: "env" };
   }
   const version = input.expectedVersion.replace(/^v/, "");
-  const dataDir = input.dataDir ?? openworkServerDataDir({ env: input.env });
+  const dataDir = input.dataDir ?? get3wServerDataDir({ env: input.env });
   const installDir = engineInstallDir(dataDir, version);
   const binaryName = (input.platform ?? process.platform) === "win32" ? "opencode.exe" : "opencode";
   const bin = join(installDir, binaryName);
@@ -251,7 +251,7 @@ export async function ensureManagedEngine(input: {
   const url = input.env.GET3W_OPENCODE_DOWNLOAD_URL?.trim() || opencodeReleaseUrl(version, asset, repo);
   input.log(`Downloading OpenCode ${version} (${asset}) from ${url}`);
 
-  const stagingDir = join(tmpdir(), `openwork-engine-${randomBytes(6).toString("hex")}`);
+  const stagingDir = join(tmpdir(), `get3w-engine-${randomBytes(6).toString("hex")}`);
   await mkdir(stagingDir, { recursive: true });
   try {
     const response = await fetch(url, { redirect: "follow" });
@@ -327,7 +327,7 @@ async function seedOpencodePluginDepsInner(input: {
   let staging: string | null = null;
   try {
     await mkdir(input.configDir, { recursive: true });
-    staging = await mkdtemp(join(input.configDir, ".openwork-plugin-deps-"));
+    staging = await mkdtemp(join(input.configDir, ".get3w-plugin-deps-"));
     const destination = staging;
     await startupPhase("plugin-deps.extract", () => extractArchive(input.archive, basename(input.archive), destination));
     // node_modules first: if this stops part-way, OpenCode sees an
@@ -396,7 +396,7 @@ export async function loadOrCreateWebTokens(input: {
   env: NodeJS.ProcessEnv;
   dataDir?: string;
 }): Promise<PersistedTokens & { path: string; created: boolean }> {
-  const dataDir = input.dataDir ?? openworkServerDataDir({ env: input.env });
+  const dataDir = input.dataDir ?? get3wServerDataDir({ env: input.env });
   const path = join(dataDir, "web-tokens.json");
   try {
     const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
@@ -453,7 +453,7 @@ export async function checkForUpdate(input: {
 }
 
 export function updateHint(latest: string): string {
-  return `Update available: openwork-server ${latest}. Run: npm i -g ${NPM_PACKAGE}@latest`;
+  return `Update available: get3w-server ${latest}. Run: npm i -g ${NPM_PACKAGE}@latest`;
 }
 
 /** Open a URL in the default browser without blocking; failures are ignored. */

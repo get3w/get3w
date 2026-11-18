@@ -1,5 +1,5 @@
 import type { DynamicToolUIPart, UIMessage } from "ai"
-import { skillCreatedPayloadSchema, type SkillCreatedPayload } from "@openwork/types/skill-created-app"
+import { skillCreatedPayloadSchema, type SkillCreatedPayload } from "@get3w/types/skill-created-app"
 
 import { parseDenLibraryAccessGrant, parseDenLibraryOrgDirectory } from "@/app/lib/den-library"
 import { connectionFromChatToolPart } from "@/components/tools/error-attribution"
@@ -60,8 +60,8 @@ export type CreatedSkillsModel = {
   savedNames: ReadonlyMap<string, string>
 }
 
-const OPENWORK_TOOL = /^(?:openwork|openwork-cloud)_/
-const SAVE_SKILL_TOOL = /^(?:openwork|openwork-cloud)_(?:create_skill|update_skill)$/
+const GET3W_TOOL = /^(?:get3w|get3w-cloud)_/
+const SAVE_SKILL_TOOL = /^(?:get3w|get3w-cloud)_(?:create_skill|update_skill)$/
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -84,7 +84,7 @@ function contentRecord(content: unknown): Record<string, unknown> | null {
 function structuredResults(call: DynamicToolUIPart): Record<string, unknown>[] {
   if (call.state !== "output-available") return []
   const found: Record<string, unknown>[] = []
-  const preserved = call.callProviderMetadata?.openwork?.mcpResult
+  const preserved = call.callProviderMetadata?.get3w?.mcpResult
   if (isRecord(preserved)) {
     if (preserved.isError === true) return []
     if (isRecord(preserved.structuredContent)) found.push(preserved.structuredContent)
@@ -146,14 +146,14 @@ export function skillShareRequest(call: DynamicToolUIPart): { pluginId: string; 
 
 function failureRecord(call: DynamicToolUIPart): Record<string, unknown> | null {
   if (call.state === "output-error") return parseRecord(call.errorText.slice(Math.max(0, call.errorText.indexOf("{"))))
-  const preserved = call.callProviderMetadata?.openwork?.mcpResult
+  const preserved = call.callProviderMetadata?.get3w?.mcpResult
   if (call.state === "output-available" && isRecord(preserved) && preserved.isError === true) return contentRecord(preserved.content)
   return null
 }
 
 /** Why a share did not happen, from the result's error code, never its prose. */
 export function skillShareFailureReason(call: DynamicToolUIPart): SkillShareFailureReason | null {
-  const preserved = call.callProviderMetadata?.openwork?.mcpResult
+  const preserved = call.callProviderMetadata?.get3w?.mcpResult
   const failed = call.state === "output-error" || (call.state === "output-available" && isRecord(preserved) && preserved.isError === true)
   if (!failed) return null
   if (connectionFromChatToolPart(call)?.action) return "sign-in"
@@ -348,8 +348,8 @@ export function skillShareSentence(label: SkillShareLabel | null): { present: st
 }
 
 /** Get3W's own skill tools are first-party: they carry the Get3W mark. */
-export function isOpenWorkSkillCall(call: DynamicToolUIPart): boolean {
-  return OPENWORK_TOOL.test(call.toolName) && (SAVE_SKILL_TOOL.test(call.toolName) || skillShareRequest(call) !== null)
+export function isGet3WSkillCall(call: DynamicToolUIPart): boolean {
+  return GET3W_TOOL.test(call.toolName) && (SAVE_SKILL_TOOL.test(call.toolName) || skillShareRequest(call) !== null)
 }
 
 /** The Library detail that opens this skill: the same id Library rows use for a plugin's file. */

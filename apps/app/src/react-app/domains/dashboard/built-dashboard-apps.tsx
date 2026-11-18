@@ -27,7 +27,7 @@ export { readBuiltDashboardApps } from "./built-dashboard-placement";
 export function builtDashboardScope(
   scope: ReturnType<typeof useAppsClient>["scope"],
 ) {
-  return `openwork:personal-mcp-apps:v1:${JSON.stringify(scope)}`;
+  return `get3w:personal-mcp-apps:v1:${JSON.stringify(scope)}`;
 }
 
 export function useBuiltDashboardApps() {

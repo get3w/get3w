@@ -6,7 +6,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { isCollectibleArtifactTarget, type OpenTarget, type OpenTargetPreview } from "../artifacts/open-target";
 
-export const PERSISTED_PANEL_TAB_STORE_KEY = "openwork:panel-tabs:v1";
+export const PERSISTED_PANEL_TAB_STORE_KEY = "get3w:panel-tabs:v1";
 
 export type PanelTabType = "artifact" | "browser" | "app" | "mcp-app" | "remote-thread";
 

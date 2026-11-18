@@ -1,7 +1,7 @@
 // Pre-resolves the dependency OpenCode installs into its global config folder
 // the first time it loads a folder with plugins configured
 // (`npm install @opencode-ai/plugin@<engine version>`), and packs the result
-// as dist/opencode-plugin-deps-<version>.tgz. `openwork-server web` extracts
+// as dist/opencode-plugin-deps-<version>.tgz. `get3w-server web` extracts
 // it on a fresh profile so the first folder load skips that install
 // (10-15 s on Windows, measured on a 2 vCPU Defender-enabled machine).
 import { spawnSync } from "node:child_process";
@@ -69,7 +69,7 @@ async function removeInstallMetadata(directory) {
 export async function buildOpencodePluginDeps(packageRoot, { runCommand = run } = {}) {
   const constants = JSON.parse(await readFile(resolve(packageRoot, "..", "..", "constants.json"), "utf8"));
   const version = String(constants.opencodeVersion).replace(/^v/, "");
-  const staging = await mkdtemp(join(tmpdir(), "openwork-opencode-plugin-deps-"));
+  const staging = await mkdtemp(join(tmpdir(), "get3w-opencode-plugin-deps-"));
   try {
     // Both the dependency graph and archive's historic package-lock receipt
     // are versioned. The isolated layout retains only relative links inside node_modules.

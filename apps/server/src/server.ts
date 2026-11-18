@@ -1,3 +1,5 @@
+import { effectiveWorkspaceConfig, saveWorkspaceProjectConfig } from "./get3w-project-config.js";
+import { ensureGet3wProjectConfig, get3wProjectConfig } from "@get3w/paths";
 import { resolveCostRunContext } from "./cost-run-context.js";
 import { captureCostRun, taskCostSettings, setTaskCostSettings, initializeTaskCostSettings, latestCostRun } from "./task-cost-settings.js";
 import { taskPermissionSettings, setTaskPermissionMode, initializeTaskPermissionMode } from "./task-permission-modes.js";
@@ -14,7 +16,7 @@ import { readFile, realpath, writeFile, rm, stat } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
-import { resolveGlobalOpencodeConfigPath } from "@openwork/paths";
+import { resolveGlobalOpencodeConfigPath } from "@get3w/paths";
 import type { ApprovalRequest, Capabilities, ServerConfig, WorkspaceInfo, Actor, ReloadReason, ReloadTrigger, TokenScope } from "./types.js";
 import { agentContextDiagnosticsRequestSchema } from "./agent-context-diagnostics-schema.js";
 import { ApprovalService } from "./approvals.js";
@@ -49,10 +51,10 @@ import { addPlugin, listPlugins, normalizePluginSpec, removePlugin } from "./plu
 import { sanitizePortableOpencodeConfig } from "./portable-opencode.js";
 import { addMcp, listMcp, removeMcp, setMcpEnabled } from "./mcp.js";
 import {
-  buildOpenWorkV2Instructions,
+  buildGet3WV2Instructions,
   ENGINE_IGNORES_CONFIGURED_INSTRUCTIONS,
-  OPENWORK_V2_CONFIGURED_INSTRUCTION_KEY,
-  OPENWORK_V2_INSTRUCTION_KEY,
+  GET3W_V2_CONFIGURED_INSTRUCTION_KEY,
+  GET3W_V2_INSTRUCTION_KEY,
   readConfiguredInstructions,
 } from "./opencode-v2-instructions.js";
 import {
@@ -87,9 +89,9 @@ import {
   resolveServerLogFileSink,
   type ServerLogFileSink,
 } from "./server-log-file.js";
-import { opencodeConfigPath, openworkConfigPath, projectCommandsDir, projectSkillsDir } from "./workspace-files.js";
+import { opencodeConfigPath, get3wConfigPath, projectCommandsDir, projectSkillsDir } from "./workspace-files.js";
 import { ensureDir, exists, hashToken, shortId } from "./utils.js";
-import { defaultWorkspaceOpenworkConfig, ensureWorkspaceFiles, readRawOpencodeConfig } from "./workspace-init.js";
+import { defaultWorkspaceGet3wConfig, ensureWorkspaceFiles, readRawOpencodeConfig } from "./workspace-init.js";
 import { sanitizeCommandName, validateMcpName, validateUserMcpName, validateUserOpencodeConfigText, validateUserProviderUpdate } from "./validators.js";
 import { TokenService } from "./tokens.js";
 import { resetManagedProviderAuthCache, syncManagedProviderAuth } from "./managed-provider-auth.js";
@@ -98,7 +100,7 @@ import { resolveWorkspaceOpencodeConnection } from "./opencode-connection.js";
 import { listPortableFiles } from "./portable-files.js";
 import {
   collectWorkspaceExportWarnings,
-  sanitizeOpenworkTemplateConfig,
+  sanitizeGet3wTemplateConfig,
   stripSensitiveWorkspaceExportData,
   type WorkspaceExportSensitiveMode,
 } from "./workspace-export-safety.js";
@@ -149,13 +151,12 @@ import {
   writeRuntimeOpencodeConfig,
 } from "./runtime-opencode-config-store.js";
 import {
-  hasOpenworkWorkspaceConfig,
-  mergeOpenworkWorkspaceConfigs,
-  readOpenworkWorkspaceConfig,
-  seedOpenworkWorkspaceConfigIfEmpty,
-  writeOpenworkWorkspaceConfig,
-} from "./openwork-workspace-config-store.js";
-import { buildOpenworkRuntimeConfigObject, openworkRuntimeConfigFilePath, writeOpenworkRuntimeConfigFile } from "./openwork-runtime-config.js";
+  hasGet3wWorkspaceConfig,
+  readGet3wWorkspaceConfig,
+  seedGet3wWorkspaceConfigIfEmpty,
+  writeGet3wWorkspaceConfig,
+} from "./get3w-workspace-config-store.js";
+import { buildGet3wRuntimeConfigObject, get3wRuntimeConfigFilePath, writeGet3wRuntimeConfigFile } from "./get3w-runtime-config.js";
 import { findManagedEngineWorkspace, managedEngineRootWorkspace } from "./workspaces.js";
 import { startThreadApprovalReplayer, type ThreadApprovalReplayer } from "./thread-approvals.js";
 import { LocalEngineReload } from "./local-engine-reload.js";
@@ -347,7 +348,7 @@ async function readManagedRuntimeConfigDebug(config: ServerConfig): Promise<{
   managedFileRebuiltAt: number | null;
   managedFileContentRedacted: string | null;
 }> {
-  const managedFilePath = openworkRuntimeConfigFilePath(config);
+  const managedFilePath = get3wRuntimeConfigFilePath(config);
   try {
     const [metadata, content] = await Promise.all([
       stat(managedFilePath),
@@ -448,7 +449,7 @@ export function createServerLogger(
   const runId = process.env.GET3W_RUN_ID ?? shortId();
   const host = hostname().trim();
   const resource: Record<string, string> = {
-    "service.name": "openwork-server",
+    "service.name": "get3w-server",
     "service.version": SERVER_VERSION,
     "service.instance.id": runId,
   };
@@ -1129,7 +1130,7 @@ export async function startServer(
         if (/^\/(?:den-session|cloud-provider-sync)(?:\/|$)/.test(url.pathname)
           || /^\/experimental\/drive-files(?:\/|$)/.test(url.pathname)
           || /^\/experimental\/connect\/(?:state|skills|automations)(?:\/|$)/.test(url.pathname)
-          || /^\/workspace\/[^/]+\/(?:desktop-cloud-sync|cloud-plugins|mcp\/openwork-cloud)(?:\/|$)/.test(url.pathname)) {
+          || /^\/workspace\/[^/]+\/(?:desktop-cloud-sync|cloud-plugins|mcp\/get3w-cloud)(?:\/|$)/.test(url.pathname)) {
           return finalize(jsonResponse({ code: "not_found", message: "Not found" }, 404));
         }
         const staticUiResponse = await serveStaticUi(request, config);
@@ -1165,7 +1166,7 @@ export async function startServer(
         const requestCanceled = isExpectedRequestCancellation(error, request.signal);
         if (!(error instanceof ApiError) && !requestCanceled) {
           captureServerException(error, { method: request.method, route: url.pathname, requestSignal: request.signal });
-          console.error("[openwork-server] Unhandled error:", error);
+          console.error("[get3w-server] Unhandled error:", error);
         }
         const apiError = error instanceof ApiError
           ? error
@@ -1435,9 +1436,9 @@ async function forwardOpencodeV2Request(input: {
   const headers = new Headers(input.request.headers);
   headers.delete("authorization");
   headers.delete("x-get3w-host-token");
-  headers.delete("x-openwork-host-token");
+  headers.delete("x-get3w-host-token");
   headers.delete("x-get3w-client-id");
-  headers.delete("x-openwork-client-id");
+  headers.delete("x-get3w-client-id");
   headers.delete("host");
   headers.delete("origin");
   headers.delete("transfer-encoding");
@@ -1485,7 +1486,7 @@ async function forwardOpencodeV2Request(input: {
     target.searchParams.set("location[directory]", executionDirectory);
   }
 
-  if (method !== "GET" && method !== "HEAD" && [OPENWORK_V2_INSTRUCTION_KEY, OPENWORK_V2_CONFIGURED_INSTRUCTION_KEY]
+  if (method !== "GET" && method !== "HEAD" && [GET3W_V2_INSTRUCTION_KEY, GET3W_V2_CONFIGURED_INSTRUCTION_KEY]
     .some((key) => decodeURIComponent(forwardedPath).endsWith(`/instructions/entries/${key}`))) {
     throw new ApiError(403, "engine_instructions_managed", "Get3W instructions are managed by the server");
   }
@@ -1500,10 +1501,10 @@ async function forwardOpencodeV2Request(input: {
     const mcpResponse = await engineFetch(mcpUrl.toString(), { headers: internalHeaders, signal: AbortSignal.timeout(10_000) });
     const mcpPayload: unknown = mcpResponse.ok ? await mcpResponse.json() : null;
     const connectReady = isRecord(mcpPayload) && Array.isArray(mcpPayload.data) && mcpPayload.data.some((entry) =>
-      isRecord(entry) && entry.name === "openwork-cloud" && isRecord(entry.status) && entry.status.status === "connected");
+      isRecord(entry) && entry.name === "get3w-cloud" && isRecord(entry.status) && entry.status.status === "connected");
     const modelGatewayReady = isRecord(mcpPayload) && Array.isArray(mcpPayload.data) && mcpPayload.data.some((entry) =>
       isRecord(entry) && entry.name === "get3w-account" && isRecord(entry.status) && entry.status.status === "connected");
-    const value = buildOpenWorkV2Instructions(connectReady, modelGatewayReady, input.workspace.path);
+    const value = buildGet3WV2Instructions(connectReady, modelGatewayReady, input.workspace.path);
     // The pinned engine never loads the config's `instructions` files, so send
     // them as their own entry, and clear it once the engine does. Best effort:
     // a failure leaves the entry as it was and never blocks the turn.
@@ -1516,10 +1517,10 @@ async function forwardOpencodeV2Request(input: {
       return url.toString();
     };
     const [synced] = await Promise.all([
-      engineFetch(entryUrl(OPENWORK_V2_INSTRUCTION_KEY), {
+      engineFetch(entryUrl(GET3W_V2_INSTRUCTION_KEY), {
         method: "PUT", headers: internalHeaders, body: JSON.stringify({ value }), signal: AbortSignal.timeout(15_000),
       }),
-      configured !== undefined && engineFetch(entryUrl(OPENWORK_V2_CONFIGURED_INSTRUCTION_KEY), configured === null
+      configured !== undefined && engineFetch(entryUrl(GET3W_V2_CONFIGURED_INSTRUCTION_KEY), configured === null
         ? { method: "DELETE", headers: internalHeaders, signal: AbortSignal.timeout(15_000) }
         : { method: "PUT", headers: internalHeaders, body: JSON.stringify({ value: configured }), signal: AbortSignal.timeout(15_000) })
         .catch(() => null),
@@ -1540,8 +1541,8 @@ async function forwardOpencodeV2Request(input: {
     if(isRecord(prompt)&&typeof prompt.id!=="string"){prompt.id=`msg_${shortId()}`;body=JSON.stringify(prompt);headers.delete("content-length");}
     if(isRecord(prompt)&&typeof prompt.id==="string"){
       const metadata=isRecord(prompt.metadata)?prompt.metadata:null;
-      const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
-      rememberGenerationPolicy(input.workspace.id,sessionId,prompt.id,openwork?.generationPolicy);
+      const get3w=metadata&&isRecord(metadata.get3w)?metadata.get3w:null;
+      rememberGenerationPolicy(input.workspace.id,sessionId,prompt.id,get3w?.generationPolicy);
       await captureCostRun(input.config,input.workspace.id,sessionId,prompt.id);
     }
   }
@@ -1599,7 +1600,7 @@ async function forwardOpencodeV2Request(input: {
       if (!isRecord(value) || typeof value.id !== "string") {
         throw new ApiError(502, "invalid_engine_response", "Invalid skill metadata");
       }
-      if (!value.id.startsWith("openwork-cloud-")) return value;
+      if (!value.id.startsWith("get3w-cloud-")) return value;
       return Object.fromEntries(Object.entries(value).filter(([key]) => ["id", "name", "description", "slash"].includes(key)));
     };
     return jsonResponse({ data: Array.isArray(raw) ? raw.map(publicSkill) : publicSkill(raw) });
@@ -1681,8 +1682,8 @@ async function forwardOpencodeV2Request(input: {
             if (home !== expectedHome) continue;
             // The compatibility stream is scoped to the UI home. Preserve the
             // native directory separately; the move's data remains untouched.
-            payload = { ...payload, data: { ...eventData, openworkHomeDirectory: home },
-              openworkWorkingLocation: payload.location,
+            payload = { ...payload, data: { ...eventData, get3wHomeDirectory: home },
+              get3wWorkingLocation: payload.location,
               location: { directory: input.workspace.path } };
             scopedFrame = `data: ${JSON.stringify(payload)}`;
           } else {
@@ -1999,9 +2000,9 @@ async function forwardOpencodeRequest(input: {
   let headers = new Headers(input.request.headers);
   headers.delete("authorization");
   headers.delete("x-get3w-host-token");
-  headers.delete("x-openwork-host-token");
+  headers.delete("x-get3w-host-token");
   headers.delete("x-get3w-client-id");
-  headers.delete("x-openwork-client-id");
+  headers.delete("x-get3w-client-id");
   headers.delete("host");
   headers.delete("origin");
   headers.delete("transfer-encoding");
@@ -2470,7 +2471,7 @@ function withCors(response: Response, request: Request, config: ServerConfig) {
   headers.set("Access-Control-Allow-Origin", allowOrigin);
   headers.set(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, X-Get3W-Host-Token, X-Get3W-Client-Id, X-OpenWork-Host-Token, X-OpenWork-Client-Id, X-OpenCode-Directory, X-Opencode-Directory, x-opencode-directory",
+    "Authorization, Content-Type, X-Get3W-Host-Token, X-Get3W-Client-Id, X-Get3W-Host-Token, X-Get3W-Client-Id, X-OpenCode-Directory, X-Opencode-Directory, x-opencode-directory",
   );
   headers.set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   const exposed = headers.get("Access-Control-Expose-Headers");
@@ -2494,12 +2495,12 @@ async function requireClient(request: Request, config: ServerConfig, tokens: Tok
   if (!scope) {
     throw new ApiError(401, "unauthorized", "Invalid bearer token");
   }
-  const clientId = request.headers.get("x-get3w-client-id") ?? request.headers.get("x-openwork-client-id") ?? undefined;
+  const clientId = request.headers.get("x-get3w-client-id") ?? request.headers.get("x-get3w-client-id") ?? undefined;
   return { type: "remote", clientId, tokenHash: hashToken(token), scope };
 }
 
 function requireHostToken(request: Request, config: ServerConfig): Actor {
-  const hostToken = request.headers.get("x-get3w-host-token") ?? request.headers.get("x-openwork-host-token");
+  const hostToken = request.headers.get("x-get3w-host-token") ?? request.headers.get("x-get3w-host-token");
   if (hostToken && hostToken === config.hostToken) {
     return { type: "host", tokenHash: hashToken(hostToken), scope: "owner" };
   }
@@ -2507,7 +2508,7 @@ function requireHostToken(request: Request, config: ServerConfig): Actor {
 }
 
 async function requireHost(request: Request, config: ServerConfig, tokens: TokenService): Promise<Actor> {
-  const hostToken = request.headers.get("x-get3w-host-token") ?? request.headers.get("x-openwork-host-token");
+  const hostToken = request.headers.get("x-get3w-host-token") ?? request.headers.get("x-get3w-host-token");
   if (hostToken && hostToken === config.hostToken) {
     return { type: "host", tokenHash: hashToken(hostToken), scope: "owner" };
   }
@@ -2522,7 +2523,7 @@ async function requireHost(request: Request, config: ServerConfig, tokens: Token
   if (scope !== "owner") {
     throw new ApiError(401, "unauthorized", "Invalid host token");
   }
-  const clientId = request.headers.get("x-get3w-client-id") ?? request.headers.get("x-openwork-client-id") ?? undefined;
+  const clientId = request.headers.get("x-get3w-client-id") ?? request.headers.get("x-get3w-client-id") ?? undefined;
   return { type: "remote", clientId, tokenHash: hashToken(bearer), scope };
 }
 
@@ -2541,7 +2542,7 @@ function buildCapabilities(config: ServerConfig): Capabilities {
     serverVersion: SERVER_VERSION,
     opencodeVersion: OPENCODE_VERSION,
     providerSync: true,
-    skills: { read: true, write: writeEnabled, source: "openwork" },
+    skills: { read: true, write: writeEnabled, source: "get3w" },
     plugins: { read: true, write: writeEnabled },
     mcp: { read: true, write: writeEnabled },
     commands: { read: true, write: writeEnabled },
@@ -2559,8 +2560,8 @@ function buildCapabilities(config: ServerConfig): Capabilities {
       files: {
         injection: writeEnabled && inboxEnabled,
         outbox: outboxEnabled,
-        inboxPath: ".opencode/openwork/inbox/",
-        outboxPath: ".opencode/openwork/outbox/",
+        inboxPath: ".get3w/inbox/",
+        outboxPath: ".get3w/outbox/",
         maxBytes,
       },
     },
@@ -2956,7 +2957,8 @@ function createRoutes(
 
   addRoute(routes, "GET", "/workspace/:id/config", "client", async (ctx) => {
     const workspace = await resolveWorkspace(config, ctx.params.id);
-    const openwork = await readOpenworkConfigForWorkspace(config, workspace);
+    const local = await readGet3wConfigForWorkspace(config, workspace);
+    const get3w = await effectiveWorkspaceConfig(workspace.path, local);
     // Effective runtime view (ENGINE_GLOBAL ⊕ workspace row): providers,
     // plugins, and authorized folders live in the global row now, and the UI
     // must keep seeing them after migration.
@@ -2965,7 +2967,7 @@ function createRoutes(
       await readEffectiveRuntimeOpencodeConfig(config, workspace.id),
     );
     const lastAudit = await readLastAudit(workspace.path, workspace.id);
-    return jsonResponse({ opencode, openwork, updatedAt: lastAudit?.timestamp ?? null });
+    return jsonResponse({ opencode, get3w, updatedAt: lastAudit?.timestamp ?? null });
   });
 
   const pendingRunModeRefresh = new Set<string>();
@@ -3081,13 +3083,13 @@ function createRoutes(
     const [workspaceConfig, globalConfig, injected] = await Promise.all([
       readOpencodeConfig(workspace.path),
       readJsoncFile(globalPath, emptyConfig, { allowInvalid: true }).then((result) => result.data),
-      buildOpenworkRuntimeConfigObject(config),
+      buildGet3wRuntimeConfigObject(config),
     ]);
     return jsonResponse({
       agent: agent.name,
       rows: summarizeEffectivePermissions(agent.permission, {
         global: globalConfig.permission,
-        openwork: injected.permission,
+        get3w: injected.permission,
         workspace: workspaceConfig.permission,
       }),
       files: { workspace: opencodeConfigPath(workspace.path), global: globalPath },
@@ -3113,7 +3115,7 @@ function createRoutes(
     const workspace = await resolveWorkspace(config, ctx.params.id);
     const body = await readJsonBody(ctx.request);
     const folders = parseAuthorizedFoldersPayload(body.folders, workspace.path);
-    const configPath = openworkConfigPath(workspace.path);
+    const configPath = get3wConfigPath(workspace.path);
 
     await requireApproval(ctx, {
       workspaceId: workspace.id,
@@ -3199,7 +3201,7 @@ function createRoutes(
     }));
 
     if (result.changed) {
-      emitReloadEvent(ctx.reloadEvents, workspace, "config", buildConfigTrigger(openworkRuntimeConfigFilePath(config)));
+      emitReloadEvent(ctx.reloadEvents, workspace, "config", buildConfigTrigger(get3wRuntimeConfigFilePath(config)));
     }
 
     return jsonResponse({
@@ -3275,8 +3277,8 @@ function createRoutes(
       const parent=isRecord(parentPayload)&&isRecord(parentPayload.data)?parentPayload.data:parentPayload;
       const parentInfo=isRecord(parent)&&isRecord(parent.info)?parent.info:parent;
       const metadata=isRecord(parentInfo)&&isRecord(parentInfo.metadata)?parentInfo.metadata:null;
-      const openwork=metadata&&isRecord(metadata.openwork)?metadata.openwork:null;
-      if(openwork?.generationPolicy){rememberGenerationPolicy(workspace.id,body.sessionId,parentId,openwork.generationPolicy);policy=generationPolicyFor(workspace.id,body.sessionId,parentId);}
+      const get3w=metadata&&isRecord(metadata.get3w)?metadata.get3w:null;
+      if(get3w?.generationPolicy){rememberGenerationPolicy(workspace.id,body.sessionId,parentId,get3w.generationPolicy);policy=generationPolicyFor(workspace.id,body.sessionId,parentId);}
     }
     {
       const callerMessageId=body.caller.messageId;
@@ -3402,9 +3404,9 @@ function createRoutes(
     // Only this host-token route can approve local process/file sources. Bind
     // approval to the exact definition so a later collaborator write cannot
     // retain privileges merely by reusing its provider ID.
-    const previousOwnership = await readOpenworkWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP);
+    const previousOwnership = await readGet3wWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP);
     const providers = runtimeProviderMap(result.config);
-    const ownership = await writeOpenworkWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP, current => {
+    const ownership = await writeGet3wWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP, current => {
       const next = new Map(Object.entries(current));
       for (const id of Object.keys(providerPatch)) {
         if (providers[id]) next.set(id, providerConfigFingerprint(providers[id]));
@@ -3413,7 +3415,7 @@ function createRoutes(
       return Object.fromEntries(next);
     });
     const templateOwnershipChanged = providerConfigFingerprint(previousOwnership) !== providerConfigFingerprint(ownership);
-    const fileResult = await writeOpenworkRuntimeConfigFile(config);
+    const fileResult = await writeGet3wRuntimeConfigFile(config);
     // Auth must land before the reload so the replacement provider instance is
     // constructed with its credential. This also refreshes SDK clients after
     // a key rotation even when provider config itself did not change.
@@ -3436,7 +3438,7 @@ function createRoutes(
       ok: true,
       changed: result.changed,
       provider: runtimeProviderMap(result.config),
-      runtimeConfigPath: openworkRuntimeConfigFilePath(config),
+      runtimeConfigPath: get3wRuntimeConfigFilePath(config),
       reload: shouldReload ? (reloadDeferred ? "deferred" : "reloaded") : "skipped",
     });
   });
@@ -3452,7 +3454,7 @@ function createRoutes(
     const globalOpencode = (await readJsoncFile(globalOpencodePath, emptyGlobalOpencode, { allowInvalid: true })).data;
     // The injected file is rendered from the ENGINE_GLOBAL row only; the
     // workspace runtime row reaches the engine via the dynamic MCP push.
-    const effectiveRuntime = await buildOpenworkRuntimeConfigObject(config);
+    const effectiveRuntime = await buildGet3wRuntimeConfigObject(config);
     const managedFile = await readManagedRuntimeConfigDebug(config);
 
     return jsonResponse({
@@ -3563,11 +3565,11 @@ function createRoutes(
     const workspace = await resolveWorkspace(config, ctx.params.id);
     const body = await readJsonBody(ctx.request);
     const opencode = body.opencode as Record<string, unknown> | undefined;
-    const openwork = body.openwork as Record<string, unknown> | undefined;
+    const get3w = body.get3w as Record<string, unknown> | undefined;
     let runtimeChanged = false;
 
-    if (!opencode && !openwork) {
-      throw new ApiError(400, "invalid_payload", "opencode or openwork updates required");
+    if (!opencode && !get3w) {
+      throw new ApiError(400, "invalid_payload", "opencode or get3w updates required");
     }
     // Adding or changing an MCP server here is the same as through /mcp: names
     // Get3W reserves for the organization's servers are refused, and so is
@@ -3584,11 +3586,11 @@ function createRoutes(
       workspaceId: workspace.id,
       action: "config.patch",
       summary: "Patch workspace config",
-      paths: [opencode || openwork ? openworkConfigPath(workspace.path) : null].filter(Boolean) as string[],
+      paths: [opencode || get3w ? get3wConfigPath(workspace.path) : null].filter(Boolean) as string[],
     });
 
     if (opencode) {
-      const configPath = openworkConfigPath(workspace.path);
+      const configPath = get3wConfigPath(workspace.path);
       const nextOpencode = ensurePlainObject(opencode);
       const { permission, provider, ...topLevelUpdates } = nextOpencode;
       const logicalUpdates: Record<string, unknown> = { ...topLevelUpdates };
@@ -3647,11 +3649,10 @@ function createRoutes(
         runtimeChanged = result.changed || runtimeChanged;
       }
     }
-    if (openwork) {
-      await writeOpenworkWorkspaceConfig(config, workspace.id, (current) => ({
-        ...current,
-        ...openwork,
-      }));
+    if (get3w) {
+      const current = await readGet3wConfigForWorkspace(config, workspace);
+      const next = await saveWorkspaceProjectConfig(workspace.path, current, get3w);
+      await writeGet3wWorkspaceConfig(config, workspace.id, () => next);
     }
 
     await recordAudit(workspace.path, {
@@ -3659,7 +3660,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "config.patch",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: "Patched workspace config",
       timestamp: Date.now(),
     });
@@ -3667,7 +3668,7 @@ function createRoutes(
     // A no-op provider patch (for example cloud sync reconciling an identical
     // block) must not force an engine reload; that caused a dispose/create loop.
     if (opencode && runtimeChanged) {
-      emitReloadEvent(ctx.reloadEvents, workspace, "config", buildConfigTrigger(openworkConfigPath(workspace.path)));
+      emitReloadEvent(ctx.reloadEvents, workspace, "config", buildConfigTrigger(get3wConfigPath(workspace.path)));
     }
 
     return jsonResponse({ updatedAt: Date.now() });
@@ -3790,7 +3791,7 @@ function createRoutes(
       workspaceId: workspace.id,
       action: "plugins.add",
       summary: `Add plugin ${spec}`,
-      paths: [openworkConfigPath(workspace.path)],
+      paths: [get3wConfigPath(workspace.path)],
     });
     const changed = await addPlugin(config, spec);
     await recordAudit(workspace.path, {
@@ -3798,7 +3799,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "plugins.add",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `Added ${spec}`,
       timestamp: Date.now(),
     });
@@ -3823,7 +3824,7 @@ function createRoutes(
       workspaceId: workspace.id,
       action: "plugins.remove",
       summary: `Remove plugin ${name}`,
-      paths: [openworkConfigPath(workspace.path)],
+      paths: [get3wConfigPath(workspace.path)],
     });
     const removed = await removePlugin(config, name);
     await recordAudit(workspace.path, {
@@ -3831,7 +3832,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "plugins.remove",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `Removed ${name}`,
       timestamp: Date.now(),
     });
@@ -4136,7 +4137,7 @@ function createRoutes(
       workspaceId: workspace.id,
       action: "mcp.add",
       summary: `Add Get3W-managed MCP ${name}`,
-      paths: [openworkConfigPath(workspace.path)],
+      paths: [get3wConfigPath(workspace.path)],
     });
     await createLocalManagedMcpConnection(config, {
       workspaceId: workspace.id,
@@ -4176,7 +4177,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "mcp.add",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `Added Get3W-managed MCP ${name}`,
       timestamp: Date.now(),
     });
@@ -4245,7 +4246,7 @@ function createRoutes(
         workspaceId: workspace.id,
         action: "mcp.add",
         summary: `Add MCP ${name}`,
-        paths: [openworkConfigPath(workspace.path)],
+        paths: [get3wConfigPath(workspace.path)],
       });
     }
     const result = await addMcp(config, workspace.id, name, configPayload);
@@ -4263,7 +4264,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "mcp.add",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `Added MCP ${name}`,
       timestamp: Date.now(),
     });
@@ -4286,7 +4287,7 @@ function createRoutes(
       workspaceId: workspace.id,
       action: "mcp.remove",
       summary: `Remove MCP ${name}`,
-      paths: [openworkConfigPath(workspace.path)],
+      paths: [get3wConfigPath(workspace.path)],
     });
     const managedRemoved = await deleteLocalManagedMcp(config, workspace.id, name);
     const removed = managedRemoved || await removeMcp(config, workspace.id, name);
@@ -4295,7 +4296,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action: "mcp.remove",
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `Removed MCP ${name}`,
       timestamp: Date.now(),
     });
@@ -4337,7 +4338,7 @@ function createRoutes(
       workspaceId: workspace.id,
       action,
       summary,
-      paths: [openworkConfigPath(workspace.path)],
+      paths: [get3wConfigPath(workspace.path)],
     });
     const managedUpdated = await setLocalManagedMcpEnabled(config, workspace.id, name, enabled);
     const updated = managedUpdated || await setMcpEnabled(config, workspace.id, name, enabled);
@@ -4356,7 +4357,7 @@ function createRoutes(
       workspaceId: workspace.id,
       actor: ctx.actor ?? { type: "remote" },
       action,
-      target: openworkConfigPath(workspace.path),
+      target: get3wConfigPath(workspace.path),
       summary: `${enabled ? "Enabled" : "Disabled"} MCP ${name}`,
       timestamp: Date.now(),
     });
@@ -4386,7 +4387,7 @@ function createRoutes(
         workspaceId: workspace.id,
         actor: ctx.actor ?? { type: "remote" },
         action: "mcp.auth.remove",
-        target: openworkConfigPath(workspace.path),
+        target: get3wConfigPath(workspace.path),
         summary: `Logged out Get3W-managed MCP ${name}`,
         timestamp: Date.now(),
       });
@@ -4818,75 +4819,29 @@ async function readOpencodeConfig(workspaceRoot: string): Promise<Record<string,
   return data;
 }
 
-async function readOpenworkConfig(workspaceRoot: string): Promise<Record<string, unknown>> {
-  const path = openworkConfigPath(workspaceRoot);
-  if (!(await exists(path))) return {};
-  try {
-    const raw = await readFile(path, "utf8");
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    throw new ApiError(422, "invalid_json", "Failed to parse openwork.json");
-  }
-}
-
-async function readOpenworkConfigForStatus(workspaceRoot: string): Promise<{
-  data: Record<string, unknown>;
-  error: string | null;
-}> {
-  try {
-    return { data: await readOpenworkConfig(workspaceRoot), error: null };
-  } catch (error) {
-    if (error instanceof ApiError && error.code === "invalid_json") {
-      return { data: {}, error: error.message };
-    }
-    throw error;
-  }
-}
-
-/**
- * Resolve the effective per-workspace openwork config from the runtime DB,
- * migrating a legacy `.opencode/openwork.json` file into the DB on first read.
- *
- * The DB is the source of truth. The file is only consulted to seed the DB
- * once (back-compat for workspaces created before the file->DB migration), and
- * is never written afterwards. Returns the merged view ({...file, ...db}) so a
- * partially-migrated install still surfaces every key.
- */
-async function readOpenworkConfigForWorkspace(
+async function readGet3wConfigForWorkspace(
   config: ServerConfig,
   workspace: WorkspaceInfo,
 ): Promise<Record<string, unknown>> {
-  const stored = await readOpenworkWorkspaceConfig(config, workspace.id);
-  if (Object.keys(stored).length > 0 || (await hasOpenworkWorkspaceConfig(config, workspace.id))) {
+  const stored = await readGet3wWorkspaceConfig(config, workspace.id);
+  if (Object.keys(stored).length > 0 || (await hasGet3wWorkspaceConfig(config, workspace.id))) {
     return stored;
   }
-  const legacy = await readOpenworkConfigForStatus(workspace.path);
-  if (Object.keys(legacy.data).length === 0) {
-    if (workspace.path.trim()) {
-      return seedOpenworkWorkspaceConfigIfEmpty(
-        config,
-        workspace.id,
-        defaultWorkspaceOpenworkConfig(workspace.path, workspace.preset ?? "starter"),
-      );
-    }
-    return {};
-  }
-  // Migrate-on-read: copy the legacy file contents into the DB once.
-  await seedOpenworkWorkspaceConfigIfEmpty(config, workspace.id, legacy.data);
-  return mergeOpenworkWorkspaceConfigs(legacy.data, await readOpenworkWorkspaceConfig(config, workspace.id));
+  return seedGet3wWorkspaceConfigIfEmpty(config, workspace.id,
+    defaultWorkspaceGet3wConfig(workspace.path, workspace.preset ?? "starter"));
 }
 
 /**
- * Persist a full openwork config document for a workspace to the runtime DB.
+ * Persist a full get3w config document for a workspace to the runtime DB.
  * Replaces the legacy file write path; the file is no longer written.
  */
-async function writeOpenworkConfigForWorkspace(
+async function writeGet3wConfigForWorkspace(
   config: ServerConfig,
   workspace: WorkspaceInfo,
   payload: Record<string, unknown>,
   merge: boolean,
 ): Promise<void> {
-  await writeOpenworkWorkspaceConfig(config, workspace.id, (current) =>
+  await writeGet3wWorkspaceConfig(config, workspace.id, (current) =>
     merge ? { ...current, ...payload } : payload,
   );
 }
@@ -5375,7 +5330,7 @@ async function runWorkspaceMcpRefreshSync(input: WorkspaceMcpRefreshRequest): Pr
   // config comparisons, rather than racing the asynchronous file listener.
   try {
     if (trigger === "engine_reload") {
-      await writeOpenworkRuntimeConfigFile(config);
+      await writeGet3wRuntimeConfigFile(config);
     }
   } catch {
     // Best-effort: the fresh-keeper listener still converges eventually.
@@ -5462,7 +5417,7 @@ async function runRuntimeMcpSyncToOpencodeEngine(
   if (connection.authHeader) headers.Authorization = connection.authHeader;
 
   // Keep going past per-entry failures: one dead or invalid MCP must not
-  // block re-registration of every entry after it (e.g. openwork-ui) on
+  // block re-registration of every entry after it (e.g. get3w-ui) on
   // each engine reload.
   const failures: EngineMcpSyncFailure[] = [];
   const registrations: EngineMcpRegistrationResult[] = [];
@@ -6052,7 +6007,7 @@ export function createEnginePoolForConfig(input: {
         // failed warm-up never blocks the flip.
         await warmActiveEngineFolder(poolConfig, logger, "rollover", standby);
       },
-      writeRuntimeConfigFile: (poolConfig) => writeOpenworkRuntimeConfigFile(poolConfig),
+      writeRuntimeConfigFile: (poolConfig) => writeGet3wRuntimeConfigFile(poolConfig),
       registerTrusted: (poolConfig, generation) => registerTrustedOpencodeProcess(poolConfig, generation),
       clearTrusted: (poolConfig, identity) => clearTrustedOpencodeProcess(poolConfig, identity),
       logger,
@@ -6588,7 +6543,8 @@ async function exportWorkspace(
   const sensitiveMode = options?.sensitiveMode ?? "auto";
   const rawOpencode = await readOpencodeConfig(workspace.path);
   let opencode = sanitizePortableOpencodeConfig(rawOpencode);
-  const openwork = sanitizeOpenworkTemplateConfig(await readOpenworkConfigForWorkspace(config, workspace));
+  const localWorkspaceConfig = await readGet3wConfigForWorkspace(config, workspace);
+  const get3w = sanitizeGet3wTemplateConfig({ ...get3wProjectConfig(await ensureGet3wProjectConfig(workspace.path, localWorkspaceConfig)) });
   const skills = await listSkills(workspace.path, false);
   const commands = await listCommands(workspace.path, "workspace");
   let files = await listPortableFiles(workspace.path);
@@ -6625,7 +6581,7 @@ async function exportWorkspace(
     workspaceId: workspace.id,
     exportedAt: Date.now(),
     opencode,
-    openwork,
+    get3w,
     skills: skillContents,
     commands: commandContents,
     ...(files.length ? { files } : {}),

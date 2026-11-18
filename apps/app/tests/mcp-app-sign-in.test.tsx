@@ -36,7 +36,7 @@ function connection(overrides: Partial<DenExternalMcpConnection>): DenExternalMc
 const needsSignIn = {
   schemaVersion: "1" as const, connectionId: "emc_linear", connectionName: "Linear", state: "needs_connection" as const, actor: "member" as const,
   message: "You haven't connected your Linear account yet.",
-  action: { type: "connect" as const, label: "Connect Linear", surface: "openwork_your_connections" as const },
+  action: { type: "connect" as const, label: "Connect Linear", surface: "get3w_your_connections" as const },
 }
 
 test("reads each connection an App's tools use once, ignoring Workflows", () => {

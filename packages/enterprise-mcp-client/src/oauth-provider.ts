@@ -30,7 +30,7 @@ type OAuthFlowContext =
   | { kind: "runtime" }
 
 type VerifiedOAuthDiscoveryState = OAuthDiscoveryState & {
-  openworkMetadataVerification?: {
+  get3wMetadataVerification?: {
     version: 1
     issuer: string
   }
@@ -269,7 +269,7 @@ export class EnterpriseMcpOAuthProvider implements OAuthClientProvider {
   }
 
   private hasCurrentMetadataVerification(state: OAuthDiscoveryState, selectedIssuer: string): boolean {
-    const verification = (state as VerifiedOAuthDiscoveryState).openworkMetadataVerification
+    const verification = (state as VerifiedOAuthDiscoveryState).get3wMetadataVerification
     // The stamp records the canonical metadata issuer; the selected issuer may
     // be its equivalent root trailing-slash alias (RFC 8414's one tolerance).
     return verification?.version === 1
@@ -295,7 +295,7 @@ export class EnterpriseMcpOAuthProvider implements OAuthClientProvider {
       ...state,
       authorizationServerUrl: metadata.issuer,
       authorizationServerMetadata: metadata,
-      openworkMetadataVerification: {
+      get3wMetadataVerification: {
         version: 1,
         issuer: metadata.issuer,
       },

@@ -8,13 +8,13 @@ function call(toolName: string, input: unknown): DynamicToolUIPart {
 }
 
 test("Code Mode engine tools never name the engine or its plumbing", () => {
-  const index = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "openwork-cloud", uri: "skill://index.json" }))
+  const index = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "get3w-cloud", uri: "skill://index.json" }))
   expect(index).toMatchObject({ service: null, past: "Looked through your skills" })
 
-  const skill = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "openwork-cloud", uri: "skill://debug-openwork-logs-ex2w5r7s/SKILL.md" }))
-  expect(skill).toMatchObject({ service: null, past: "Used your debug-openwork-logs skill" })
+  const skill = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "get3w-cloud", uri: "skill://debug-get3w-logs-ex2w5r7s/SKILL.md" }))
+  expect(skill).toMatchObject({ service: null, past: "Used your debug-get3w-logs skill" })
 
-  const document = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "openwork-cloud", uri: "openwork://agent/guidance.md" }))
+  const document = getCapabilityCallSentence(call("opencode_read_mcp_resource", { server: "get3w-cloud", uri: "get3w://agent/guidance.md" }))
   expect(document).toMatchObject({ service: "Get3W Cloud", past: "Read a document from Get3W Cloud" })
 
   expect(getCapabilityCallSentence(call("opencode_session_move", { directory: "/Users/me/work/repo-fix/" })).past).toBe("Moved this chat to repo-fix")
@@ -27,15 +27,15 @@ test("Code Mode engine tools never name the engine or its plumbing", () => {
 })
 
 test("the native skill tool names the skill a person would recognize", () => {
-  expect(skillDisplayName({ id: "openwork-cloud-debug-openwork-logs-ex2w5r7s" })).toBe("debug-openwork-logs")
-  expect(skillDisplayName({ id: "openwork-cloud-create-skill" })).toBe("create-skill")
+  expect(skillDisplayName({ id: "get3w-cloud-debug-get3w-logs-ex2w5r7s" })).toBe("debug-get3w-logs")
+  expect(skillDisplayName({ id: "get3w-cloud-create-skill" })).toBe("create-skill")
   expect(skillDisplayName({ id: "release" })).toBe("release")
   expect(skillDisplayName({ name: "release" })).toBe("release")
   expect(skillDisplayName(undefined)).toBe("")
 })
 
 test('native media errors are failures even when the engine completed the call',async()=>{
- const {openWorkNativeFailure}=await import('../src/lib/openwork-native-activity');
- expect(openWorkNativeFailure({...call('media_prepare',{}),output:[{type:'text',text:JSON.stringify({status:'error',error:{code:'offline',message:'Reconnect the media service'}})}]})).toBe('Reconnect the media service');
- expect(openWorkNativeFailure({...call('media_generate',{}),output:JSON.stringify({status:'submitted',task_id:'task'})})).toBeNull();
+ const {get3wNativeFailure}=await import('../src/lib/get3w-native-activity');
+ expect(get3wNativeFailure({...call('media_prepare',{}),output:[{type:'text',text:JSON.stringify({status:'error',error:{code:'offline',message:'Reconnect the media service'}})}]})).toBe('Reconnect the media service');
+ expect(get3wNativeFailure({...call('media_generate',{}),output:JSON.stringify({status:'submitted',task_id:'task'})})).toBeNull();
 });

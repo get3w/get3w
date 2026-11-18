@@ -10,7 +10,7 @@ import {
 function readStoredPreference(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem("openwork.debug.renderOverlay") === "1";
+    return window.localStorage.getItem("get3w.debug.renderOverlay") === "1";
   } catch {
     return false;
   }
@@ -19,7 +19,7 @@ function readStoredPreference(): boolean {
 function writeStoredPreference(value: boolean) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem("openwork.debug.renderOverlay", value ? "1" : "0");
+    window.localStorage.setItem("get3w.debug.renderOverlay", value ? "1" : "0");
   } catch {
     // ignore
   }

@@ -8,10 +8,10 @@ function reply(model: object): UIMessage {
 }
 
 test("Auto keeps the Get3W mark and reports the routed name once", () => {
-  const message = reply({ requestedProviderID: "openwork", requestedModelID: AUTO_MODEL_ID,
+  const message = reply({ requestedProviderID: "get3w", requestedModelID: AUTO_MODEL_ID,
     providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true })
   expect(replyModelLabel(message)).toBe("GPT-6")
-  expect(replyModelProvider(message)).toBe("openwork")
+  expect(replyModelProvider(message)).toBe("get3w")
 })
 
 test("direct provider replies use their provider mark", () => {
@@ -39,8 +39,8 @@ test("gateway requested identities fall back only to a catalog title", () => {
 
 test("resolved identity wins over the requested catalog title", () => {
   expect(replyModelLabel(reply({ providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true }), () => "Other model")).toBe("GPT-6")
-  expect(replyModelLabel(reply({ providerID: "openwork", modelID: AUTO_MODEL_ID, resolved: true }))).toBe("GPT-6 Luna")
-  expect(replyModelLabel(reply({ providerID: "openwork", modelID: AUTO_MODEL_ID }), () => "GPT-6 Luna")).toBeNull()
+  expect(replyModelLabel(reply({ providerID: "get3w", modelID: AUTO_MODEL_ID, resolved: true }))).toBe("GPT-6 Luna")
+  expect(replyModelLabel(reply({ providerID: "get3w", modelID: AUTO_MODEL_ID }), () => "GPT-6 Luna")).toBeNull()
 })
 
 test("an opaque resolved name never leaks even without a gateway provider", () => {
@@ -52,13 +52,13 @@ test("unresolved and missing metadata stay absent without a catalog match", () =
   expect(replyModelLabel(reply({}))).toBeNull()
 })
 
-const SMART = "openwork-smart-ar_engineering"
+const SMART = "get3w-smart-ar_engineering"
 const smartTitle = (model: { providerID: string; modelID: string }) =>
-  model.providerID === "openwork-auto" && model.modelID === SMART ? "Smart: Engineering" : undefined
+  model.providerID === "get3w-auto" && model.modelID === SMART ? "Smart: Engineering" : undefined
 
 function autoReply(times: { created?: number; completed?: number }): UIMessage {
   return { id: "auto", role: "assistant", parts: [], metadata: { opencode: { ...times,
-    replyModel: { providerID: "openwork-auto", modelID: SMART, requestedProviderID: "openwork-auto", requestedModelID: SMART } } } }
+    replyModel: { providerID: "get3w-auto", modelID: SMART, requestedProviderID: "get3w-auto", requestedModelID: SMART } } } }
 }
 const haiku = { at: 1_500, provider: "anthropic", model: "claude-haiku-5-5", name: "Claude Haiku 5.5", thinking: "high" }
 
@@ -86,15 +86,15 @@ test("a Smart reply without a decision keeps its router's name", () => {
   expect(replyModelLabel(autoReply({ created: 1_000, completed: 4_000 }), smartTitle, [{ ...haiku, at: 20_000 }])).toBe("Smart: Engineering")
   expect(replyModelLabel(autoReply({ created: 1_000, completed: 4_000 }), smartTitle)).toBe("Smart: Engineering")
   expect(replyModelLabel(autoReply({ completed: 4_000 }), smartTitle, [haiku])).toBe("Smart: Engineering")
-  expect(replyModelProvider(autoReply({ created: 1_000, completed: 4_000 }))).toBe("openwork-auto")
+  expect(replyModelProvider(autoReply({ created: 1_000, completed: 4_000 }))).toBe("get3w-auto")
 })
 
 test("a Smart reply never shows its model id, even when the engine reports it as resolved", () => {
   const resolved: UIMessage = { id: "auto", role: "assistant", parts: [], metadata: { opencode: { created: 1_000, completed: 4_000,
-    replyModel: { providerID: "openwork-auto", modelID: SMART, name: SMART, resolved: true, requestedProviderID: "openwork-auto", requestedModelID: SMART } } } }
+    replyModel: { providerID: "get3w-auto", modelID: SMART, name: SMART, resolved: true, requestedProviderID: "get3w-auto", requestedModelID: SMART } } } }
   expect(replyModelLabel(resolved, smartTitle)).toBe("Smart: Engineering")
   expect(replyModelLabel(resolved)).toBe("Smart")
-  expect(replyModelLabel(autoReply({ created: 1_000, completed: 4_000 }), () => SMART.replace("openwork-smart-", "ipr_"))).toBe("Smart")
+  expect(replyModelLabel(autoReply({ created: 1_000, completed: 4_000 }), () => SMART.replace("get3w-smart-", "ipr_"))).toBe("Smart")
 })
 
 test("a routed model without a name uses the catalog name, then a public id, never an opaque one", () => {
@@ -109,5 +109,5 @@ test("a routed model without a name uses the catalog name, then a public id, nev
 test("routing decisions never relabel other models' replies", () => {
   const message = reply({ providerID: "anthropic", modelID: "claude-sonnet", name: "Claude Sonnet", resolved: true })
   expect(replyModelLabel(message, undefined, [haiku])).toBe("Claude Sonnet")
-  expect(replyModelLabel(reply({ requestedProviderID: "openwork", requestedModelID: AUTO_MODEL_ID, providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true }), undefined, [haiku])).toBe("GPT-6")
+  expect(replyModelLabel(reply({ requestedProviderID: "get3w", requestedModelID: AUTO_MODEL_ID, providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true }), undefined, [haiku])).toBe("GPT-6")
 })

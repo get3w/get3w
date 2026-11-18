@@ -5,8 +5,8 @@ import { ApiError } from "../errors.js";
 import { inheritWorkspaceOpencodeConnection, resolveWorkspaceOpencodeConnection } from "../opencode-connection.js";
 import type { ServerConfig, WorkspaceInfo } from "../types.js";
 import { ensureDir, exists, shortId } from "../utils.js";
-import { defaultWorkspaceOpenworkConfig, ensureWorkspaceFiles } from "../workspace-init.js";
-import { seedOpenworkWorkspaceConfigIfEmpty } from "../openwork-workspace-config-store.js";
+import { defaultWorkspaceGet3wConfig, ensureWorkspaceFiles } from "../workspace-init.js";
+import { seedGet3wWorkspaceConfigIfEmpty } from "../get3w-workspace-config-store.js";
 import { workspaceIdForPath } from "../workspaces.js";
 import { addRoute, type Route } from "./registry.js";
 
@@ -131,12 +131,12 @@ export function registerWorkspaceRoutes(options: RegisterWorkspaceRoutesOptions)
     await ensureWorkspaceFiles(workspacePath, preset);
 
     const workspaceId = workspaceIdForPath(workspacePath);
-    // Seed the per-workspace openwork config in the runtime DB (replaces the
-    // legacy `.opencode/openwork.json` file). No-op if a row already exists.
-    await seedOpenworkWorkspaceConfigIfEmpty(
+    // Seed the per-workspace get3w config in the runtime DB (replaces the
+    // legacy `.opencode/get3w.json` file). No-op if a row already exists.
+    await seedGet3wWorkspaceConfigIfEmpty(
       config,
       workspaceId,
-      defaultWorkspaceOpenworkConfig(workspacePath, preset),
+      defaultWorkspaceGet3wConfig(workspacePath, preset),
     );
 
     const workspace: WorkspaceInfo = {

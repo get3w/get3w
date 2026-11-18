@@ -14,16 +14,16 @@ import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 
 import { desktopFetch } from "../../app/lib/desktop";
 import {
-  getOpenworkGatewayOrigin,
-  readOpenworkGatewayDenToken,
+  getGet3wGatewayOrigin,
+  readGet3wGatewayDenToken,
 } from "../../app/lib/gateway-runtime";
-import { isWebDeployment } from "../../app/lib/openwork-deployment";
-import { normalizeOpenworkServerUrl } from "../../app/lib/openwork-server";
+import { isWebDeployment } from "../../app/lib/get3w-deployment";
+import { normalizeGet3wServerUrl } from "../../app/lib/get3w-server";
 import { isDesktopRuntime } from "../../app/utils";
 import { initialServerState, serverReducer } from "./server-provider-state";
 
 export function normalizeServerUrl(input: string): string | undefined {
-  return normalizeOpenworkServerUrl(input) ?? undefined;
+  return normalizeGet3wServerUrl(input) ?? undefined;
 }
 
 export function serverDisplayName(url: string): string {
@@ -46,7 +46,7 @@ const ServerContext = createContext<ServerContextValue | undefined>(undefined);
 function readStoredList(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem("openwork.server.list");
+    const raw = window.localStorage.getItem("get3w.server.list");
     const parsed = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
   } catch {
@@ -57,32 +57,32 @@ function readStoredList(): string[] {
 function readStoredActive(): string {
   if (typeof window === "undefined") return "";
   try {
-    const stored = window.localStorage.getItem("openwork.server.active");
+    const stored = window.localStorage.getItem("get3w.server.active");
     return typeof stored === "string" ? stored : "";
   } catch {
     return "";
   }
 }
 
-function readOpenworkToken(): string {
-  if (getOpenworkGatewayOrigin()) return readOpenworkGatewayDenToken();
+function readGet3wToken(): string {
+  if (getGet3wGatewayOrigin()) return readGet3wGatewayDenToken();
 
   if (typeof window === "undefined") return "";
   try {
-    return (window.localStorage.getItem("openwork.server.token") ?? "").trim();
+    return (window.localStorage.getItem("get3w.server.token") ?? "").trim();
   } catch {
     return "";
   }
 }
 
-export function buildOpenworkHealthHeaders(url: string): Record<string, string> | undefined {
-  const token = readOpenworkToken();
+export function buildGet3wHealthHeaders(url: string): Record<string, string> | undefined {
+  const token = readGet3wToken();
   return token && url.includes("/opencode") ? { Authorization: `Bearer ${token}` } : undefined;
 }
 
 async function checkHealth(url: string): Promise<boolean> {
   if (!url) return false;
-  const headers = buildOpenworkHealthHeaders(url);
+  const headers = buildGet3wHealthHeaders(url);
   const client = createOpencodeClient({
     baseUrl: url,
     headers,
@@ -108,7 +108,7 @@ export function ServerProvider({ children, defaultUrl }: ServerProviderProps) {
     if (readyRef.current) return;
     if (typeof window === "undefined") return;
 
-    const gatewayOrigin = getOpenworkGatewayOrigin();
+    const gatewayOrigin = getGet3wGatewayOrigin();
     const fallback = normalizeServerUrl(gatewayOrigin ? `${gatewayOrigin}/opencode` : defaultUrl) ?? "";
 
     // Hosted web deployments served by Get3W must reuse the OpenCode proxy
@@ -141,8 +141,8 @@ export function ServerProvider({ children, defaultUrl }: ServerProviderProps) {
     if (!readyRef.current) return;
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem("openwork.server.list", JSON.stringify(list));
-      window.localStorage.setItem("openwork.server.active", active);
+      window.localStorage.setItem("get3w.server.list", JSON.stringify(list));
+      window.localStorage.setItem("get3w.server.active", active);
     } catch {
       // ignore
     }

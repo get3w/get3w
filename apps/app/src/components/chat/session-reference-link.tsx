@@ -27,7 +27,7 @@ export function SessionReferenceLink({ reference, openReference, children, class
   return (
     <a
       href={sessionReferenceHref(reference)}
-      aria-label={`Open ${reference.archived ? t("ui.dc57e10e5c6f") : "task"}: ${reference.title}`}
+      aria-label={t(reference.archived ? "activity.open.archived" : "activity.open.task", { name: reference.title })}
       title={reference.title}
       className={cn(SESSION_REFERENCE_LINK_CLASS_NAME, className)}
       onClick={open}
@@ -35,7 +35,7 @@ export function SessionReferenceLink({ reference, openReference, children, class
       onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }}
     >
       <img
-        src={resolveExtensionIconSrc("/openwork-sidebar-mark.svg")}
+        src={resolveExtensionIconSrc("/get3w-sidebar-mark.svg")}
         alt=""
         aria-hidden="true"
         className={SESSION_REFERENCE_ICON_CLASS_NAME}

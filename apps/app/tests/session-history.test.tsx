@@ -8,7 +8,7 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { focusManager, notifyManager, onlineManager, QueryClientProvider, skipToken, useQuery } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
-import type { OpenworkSessionHistory } from "../src/app/lib/openwork-server";
+import type { Get3wSessionHistory } from "../src/app/lib/get3w-server";
 import { latestConfirmsFullHistory, openingHistoryWindow, openingSessionHistoryOptions, prefetchOpeningSessionHistory, sessionHistoryIdentity, useSessionHistoryRuntimeOwners, SessionHistoryBoundary, SessionHistoryStatus, useOpeningSessionHistory, useSessionPrefetchIntent, type OpeningHistoryWindow } from "../src/react-app/domains/session/surface/session-history";
 import { resolveWorkspaceEndpoint } from "../src/app/lib/workspace-endpoint";
 import { flushSessionScrollState, readPersistedSessionScrollState, sessionScrollKey, useSessionScrollStore } from "../src/react-app/domains/session/surface/scroll-store";
@@ -57,7 +57,7 @@ afterAll(async () => {
 // A newest window that fills its limit may still be missing earlier messages.
 const fullWindow = Array.from({ length: 24 }, (_, index) => `w${index}`);
 
-function snapshot(id: string, title: string, ids: string[] = [], revert?: string): OpenworkSessionHistory {
+function snapshot(id: string, title: string, ids: string[] = [], revert?: string): Get3wSessionHistory {
   return {
     session: { id, title, version: "1", time: { created: 1, updated: 1 }, revert: revert ? { messageID: revert } : undefined },
     messages: ids.map((messageId, index) => ({
@@ -68,7 +68,7 @@ function snapshot(id: string, title: string, ids: string[] = [], revert?: string
 }
 
 function sessionEvents() {
-  const input = { workspaceId: "workspace", baseUrl: "https://history.example/opencode", openworkToken: "history-test" };
+  const input = { workspaceId: "workspace", baseUrl: "https://history.example/opencode", get3wToken: "history-test" };
   const dispose = __createWorkspaceSessionSyncForTest(input);
   const release = trackWorkspaceSessionSync(input, "a");
   cleanups.push(async () => { release(); dispose(); });
@@ -140,22 +140,22 @@ function fixture(navigation = false) {
   const panePages = new Map<string, ReturnType<typeof useOpeningSessionHistory>["pages"]>();
   let openingError: Error | null = null;
   let findRequested = false;
-  let ensureFullSnapshot: (() => Promise<OpenworkSessionHistory>) | undefined;
+  let ensureFullSnapshot: (() => Promise<Get3wSessionHistory>) | undefined;
   let readSendHistory: ReturnType<typeof useOpeningSessionHistory>["readSendHistory"] | undefined;
   let runWithFullSnapshot: ReturnType<typeof useOpeningSessionHistory>["runWithFullSnapshot"] | undefined;
-  const reads: { owner: string; authToken?: string; window?: OpeningHistoryWindow; signal: AbortSignal; resolve: (snapshot: OpenworkSessionHistory) => void; reject: (error: Error) => void }[] = [];
-  const latestReads: { owner: string; authToken?: string; signal: AbortSignal; resolve: (history: Pick<OpenworkSessionHistory, "session" | "messages">) => void; reject: (error: Error) => void }[] = [];
+  const reads: { owner: string; authToken?: string; window?: OpeningHistoryWindow; signal: AbortSignal; resolve: (snapshot: Get3wSessionHistory) => void; reject: (error: Error) => void }[] = [];
+  const latestReads: { owner: string; authToken?: string; signal: AbortSignal; resolve: (history: Pick<Get3wSessionHistory, "session" | "messages">) => void; reject: (error: Error) => void }[] = [];
   function input(owner = "a", authToken?: string, cacheOwner = owner, runtimeOwner?: string) {
-    const readSnapshot = (signal: AbortSignal, window?: OpeningHistoryWindow) => new Promise<OpenworkSessionHistory>((resolve, reject) => {
+    const readSnapshot = (signal: AbortSignal, window?: OpeningHistoryWindow) => new Promise<Get3wSessionHistory>((resolve, reject) => {
       reads.push({ owner, authToken, window, signal, resolve, reject });
     });
-    const readLatest = (signal: AbortSignal) => new Promise<Pick<OpenworkSessionHistory, "session" | "messages">>((resolve, reject) => {
+    const readLatest = (signal: AbortSignal) => new Promise<Pick<Get3wSessionHistory, "session" | "messages">>((resolve, reject) => {
       latestReads.push({ owner, authToken, signal, resolve, reject });
     });
     return { owner: cacheOwner, runtimeOwner, sessionId: owner, authToken, snapshotQueryKey: snapshotKey("workspace", owner), transcriptQueryKey: transcriptKey("workspace", owner),
-      metadataQueryKey: sessionMetadataKey({ workspaceId: "workspace", baseUrl: "https://history.example/opencode", openworkToken: authToken ?? "" }, owner), readSnapshot, readLatest };
+      metadataQueryKey: sessionMetadataKey({ workspaceId: "workspace", baseUrl: "https://history.example/opencode", get3wToken: authToken ?? "" }, owner), readSnapshot, readLatest };
   }
-  function Harness({ options, onMount, pane }: { options: ReturnType<typeof input>; onMount?: (ensure: () => Promise<OpenworkSessionHistory>) => void; pane?: string }) {
+  function Harness({ options, onMount, pane }: { options: ReturnType<typeof input>; onMount?: (ensure: () => Promise<Get3wSessionHistory>) => void; pane?: string }) {
     const { sessionId: owner, owner: cacheOwner } = options;
     const key = options.snapshotQueryKey;
     const workspaceId = key[1];
@@ -195,7 +195,7 @@ function fixture(navigation = false) {
     useSessionHistoryRuntimeOwners(owners);
     return children;
   }
-  async function renderInput(options: ReturnType<typeof input>, mount: { strict?: boolean; onMount?: (ensure: () => Promise<OpenworkSessionHistory>) => void } = {}) {
+  async function renderInput(options: ReturnType<typeof input>, mount: { strict?: boolean; onMount?: (ensure: () => Promise<Get3wSessionHistory>) => void } = {}) {
     const tree = <QueryClientProvider client={client}><Harness options={options} onMount={mount.onMount} /></QueryClientProvider>;
     await act(async () => flushSync(() => root.render(mount.strict ? <StrictMode>{tree}</StrictMode> : tree)));
   }
@@ -233,7 +233,7 @@ function fixture(navigation = false) {
       if (!query) throw new Error("History is not mounted");
       await act(async () => { void query.fetch().catch(() => undefined); });
     },
-    async resolveLatest(index: number, history: Pick<OpenworkSessionHistory, "session" | "messages">) {
+    async resolveLatest(index: number, history: Pick<Get3wSessionHistory, "session" | "messages">) {
       await act(async () => latestReads[index].resolve(history));
       await settle();
     },
@@ -250,7 +250,7 @@ function fixture(navigation = false) {
       return readSendHistory(options);
     },
     render(owner = "a", authToken?: string, cacheOwner = owner) { return renderInput(input(owner, authToken, cacheOwner)); },
-    async resolve(index: number, title: string | OpenworkSessionHistory) {
+    async resolve(index: number, title: string | Get3wSessionHistory) {
       await act(async () => reads[index].resolve(typeof title === "string" ? snapshot(reads[index].owner, title) : title));
       await settle();
     },
@@ -1152,7 +1152,7 @@ describe("native paged history", () => {
     const event = sessionEvents();
     await view.render();
     await view.resolve(0, page(["reading"], "middle", "older"));
-    let preparing: Promise<OpenworkSessionHistory["messages"]> = Promise.resolve([]);
+    let preparing: Promise<Get3wSessionHistory["messages"]> = Promise.resolve([]);
     await act(async () => { preparing = view.readSendHistory({ revealLatest: true }); });
     expect(view.reads[1].window).toEqual({ limit: 24 });
     for (const [id, role] of [["server-user", "user"], ["server-assistant", "assistant"]]) {
@@ -1230,7 +1230,7 @@ describe("native paged history", () => {
     const view = fixture();
     const event = sessionEvents();
     const input = view.input("a", boundary === "token" ? "different-token" : "history-test");
-    if (boundary === "engine") input.metadataQueryKey = sessionMetadataKey({ workspaceId: "workspace", baseUrl: "https://history.example/opencode2", openworkToken: "history-test" }, "a");
+    if (boundary === "engine") input.metadataQueryKey = sessionMetadataKey({ workspaceId: "workspace", baseUrl: "https://history.example/opencode2", get3wToken: "history-test" }, "a");
     await view.renderInput(input);
     await view.resolve(0, page(["visible", "boundary"], null, "older"));
     await event({ type: "session.updated", properties: { info: { id: "a", revert: { messageID: "boundary" } } } });
@@ -1566,7 +1566,7 @@ describe("opening a thread", () => {
     expect(view.host.textContent).toContain("msg_old");
     expect(view.host.textContent).toContain("msg_latest");
     expect(view.host.querySelector("[data-thread-history-status]")).toBeNull();
-    const cached = view.client.getQueryData<OpenworkSessionHistory>(snapshotKey("workspace", "a"));
+    const cached = view.client.getQueryData<Get3wSessionHistory>(snapshotKey("workspace", "a"));
     expect(cached?.status).toBeUndefined();
     expect(cached?.todos).toBeUndefined();
   });
@@ -1926,7 +1926,7 @@ describe("opening a thread", () => {
     await settle();
     expect(restore).toHaveBeenCalledTimes(1);
     expect(view.client.getQueryState(snapshotKey("workspace", "a"))).toMatchObject({ status: "success", fetchStatus: "idle" });
-    expect(view.client.getQueryData<OpenworkSessionHistory>(snapshotKey("workspace", "a"))?.session.revert).toBeUndefined();
+    expect(view.client.getQueryData<Get3wSessionHistory>(snapshotKey("workspace", "a"))?.session.revert).toBeUndefined();
     expect(view.host.querySelectorAll("[data-message-id]").length).toBe(3);
     expect(view.host.querySelector('[role="status"]')).toBeNull();
     expect(view.host.querySelector("input")).toBe(composer);
@@ -2026,7 +2026,7 @@ describe("opening a thread", () => {
 
   test("a bounded first-send read retries once after StrictMode restores the same owner", async () => {
     const view = fixture();
-    let send: Promise<OpenworkSessionHistory["messages"] | string> | undefined;
+    let send: Promise<Get3wSessionHistory["messages"] | string> | undefined;
     await view.renderInput(view.input(), { strict: true, onMount: () => {
       send ??= view.readSendHistory().catch((error: unknown) => String(error));
     } });
@@ -2057,7 +2057,7 @@ describe("opening a thread", () => {
     // the simulated unmount removes the surface's only observer and TanStack
     // cancels that read. The send must still receive complete history.
     const view = fixture();
-    let send: Promise<{ snapshot: OpenworkSessionHistory } | { error: unknown }> | null = null;
+    let send: Promise<{ snapshot: Get3wSessionHistory } | { error: unknown }> | null = null;
     await view.renderInput(view.input(), { strict: true, onMount: (ensure) => {
       send ??= ensure().then((snapshot) => ({ snapshot }), (error: unknown) => ({ error }));
     } });
@@ -2210,7 +2210,7 @@ describe("opening a thread", () => {
     const ids = ["first", "second", ...fullWindow];
     const cached = snapshot("a", "Cached history", ids);
     const key = snapshotKey("workspace", "a");
-    const tail = (history: OpenworkSessionHistory) => ({ session: history.session, messages: history.messages.slice(-24) });
+    const tail = (history: Get3wSessionHistory) => ({ session: history.session, messages: history.messages.slice(-24) });
     const refocus = async () => {
       await act(async () => { focusManager.setFocused(false); focusManager.setFocused(true); });
       await settle();
@@ -2271,7 +2271,7 @@ describe("opening a thread", () => {
     const full = snapshot("a", "Images", ids);
     const image = (bytes: number) => ({ id: "image", sessionID: "a", messageID: "w23", type: "file" as const, mime: "image/png", url: `data:image/png;base64,${"A".repeat(bytes)}` });
     full.messages.at(-1)!.parts.push(image(4_000));
-    const latest = (mutate: (copy: OpenworkSessionHistory) => void = () => {}) => {
+    const latest = (mutate: (copy: Get3wSessionHistory) => void = () => {}) => {
       const copy = structuredClone(full);
       mutate(copy);
       return { session: copy.session, messages: copy.messages.slice(-24) };
@@ -2373,7 +2373,7 @@ describe("opening a thread", () => {
     const staleFull = { ...cached, messages: [cached.messages[0], latest.messages[1]] };
     await view.resolve(0, staleFull);
     assertLive();
-    expect(view.client.getQueryData<OpenworkSessionHistory>(key)?.messages).toEqual(staleFull.messages);
+    expect(view.client.getQueryData<Get3wSessionHistory>(key)?.messages).toEqual(staleFull.messages);
   });
 
   test("warm refresh leaves manual scroll state and the mounted anchor untouched", async () => {
@@ -2481,7 +2481,7 @@ describe("opening a thread", () => {
     expect(view.host.textContent).toContain("terminal-B");
     expect(view.host.textContent).not.toContain("terminal-A");
     expect(view.host.textContent).toContain("full-only");
-    expect(view.client.getQueryData<OpenworkSessionHistory>(key)?.messages).toEqual(oldFull.messages);
+    expect(view.client.getQueryData<Get3wSessionHistory>(key)?.messages).toEqual(oldFull.messages);
     expect(JSON.stringify(view.client.getQueryData(transcriptKey("workspace", "a")))).toContain("terminal-A");
     await view.render();
     expect(view.host.textContent).toContain("terminal-B");
@@ -2525,7 +2525,7 @@ describe("opening a thread", () => {
     const full = historyTool("terminal-A2");
     full.session.title = "Finished full";
     await view.resolve(0, full);
-    expect(view.client.getQueryData<OpenworkSessionHistory>(snapshotKey("workspace", "a"))?.session.title).toBe("Finished full");
+    expect(view.client.getQueryData<Get3wSessionHistory>(snapshotKey("workspace", "a"))?.session.title).toBe("Finished full");
     await view.resolveLatest(0, historyTool("terminal-B"));
     expect(view.host.textContent).toContain("terminal-B");
     expect(view.host.textContent).not.toContain("terminal-A2");
@@ -2582,14 +2582,14 @@ describe("opening a thread", () => {
     expect(view.host.querySelector('[data-message-id="M"]')).toBeNull();
     expect(view.host.querySelector('[data-message-id="after"]')).not.toBeNull();
     if (resolved) expect(view.host.querySelector('[data-message-id="tail"]')).not.toBeNull();
-    expect(view.client.getQueryData<OpenworkSessionHistory>(key)?.messages.some(({ info }) => info.id === "M")).toBe(false);
+    expect(view.client.getQueryData<Get3wSessionHistory>(key)?.messages.some(({ info }) => info.id === "M")).toBe(false);
     for (const query of view.client.getQueryCache().findAll({ queryKey: ["react-session-latest", ...key] })) {
       const latest = view.client.getQueryData<LatestSessionHistory>(query.queryKey);
       expect(latest?.messages.some((message) => message.id === "M") ?? false).toBe(false);
     }
     await event({ type: "message.updated", properties: { info: { id: "unrelated", sessionID: "a", role: "assistant" } } });
     expect(view.host.querySelector('[data-message-id="M"]')).toBeNull();
-    expect(view.client.getQueryData<OpenworkSessionHistory>(snapshotKey("workspace", "b"))?.messages[0].info.id).toBe("M");
+    expect(view.client.getQueryData<Get3wSessionHistory>(snapshotKey("workspace", "b"))?.messages[0].info.id).toBe("M");
   });
 
   test("a transport that ignores cancellation cannot hold full history behind the newest deadline", async () => {

@@ -21,11 +21,11 @@ test("updates, saved choices, v1 history and explicit overrides keep today's eng
 type Profile = { configPath: string; freshInstallEngine: "v2" };
 
 function withProfile(run: (config: Profile, env: NodeJS.ProcessEnv, dir: string) => void): void {
-  const dir = mkdtempSync(join(tmpdir(), "openwork-fresh-engine-"));
+  const dir = mkdtempSync(join(tmpdir(), "get3w-fresh-engine-"));
   const previous = process.env.GET3W_RUNTIME_DB;
-  process.env.GET3W_RUNTIME_DB = join(dir, "openwork", "runtime.sqlite");
+  process.env.GET3W_RUNTIME_DB = join(dir, "get3w", "runtime.sqlite");
   try {
-    const config: Profile = { configPath: join(dir, "openwork", "server.json"), freshInstallEngine: "v2" };
+    const config: Profile = { configPath: join(dir, "get3w", "server.json"), freshInstallEngine: "v2" };
     run(config, { OPENCODE_DB: join(dir, "opencode", "opencode.db") }, dir);
   } finally {
     if (previous === undefined) delete process.env.GET3W_RUNTIME_DB;
@@ -41,9 +41,9 @@ test("the fresh-install choice is saved once and a later switch back to v1 stick
     assert.ok(engineChangedAt && Number.isFinite(Date.parse(engineChangedAt)));
     assert.deepEqual(state, { enabled: true, chatRouting: true, engineOrigin: "fresh", engineForced: true });
 
-    writeFileSync(join(dir, "openwork", "engine-v2-preview.json"), JSON.stringify({ enabled: false, chatRouting: false }));
+    writeFileSync(join(dir, "get3w", "engine-v2-preview.json"), JSON.stringify({ enabled: false, chatRouting: false }));
     assert.equal(seedFreshInstallEngineState(config, env), false);
-    assert.deepEqual(JSON.parse(readFileSync(join(dir, "openwork", "engine-v2-preview.json"), "utf8")), { enabled: false, chatRouting: false });
+    assert.deepEqual(JSON.parse(readFileSync(join(dir, "get3w", "engine-v2-preview.json"), "utf8")), { enabled: false, chatRouting: false });
   });
 });
 

@@ -12,7 +12,7 @@
 import { homedir } from "node:os";
 import type { EffectiveEnginePermissionAction, EffectiveEnginePermissionRule } from "./agent-context-engine-inspection.js";
 
-export type PermissionSource = "engine" | "global" | "openwork" | "workspace";
+export type PermissionSource = "engine" | "global" | "get3w" | "workspace";
 
 export type EffectivePermissionKey =
   | "shell"
@@ -39,7 +39,7 @@ export interface PermissionLayers {
   /** `permission` block of the user's global opencode.json, as written. */
   global: unknown;
   /** `permission` block Get3W injects through OPENCODE_CONFIG. */
-  openwork: unknown;
+  get3w: unknown;
   /** `permission` block of the workspace's opencode.json, as written. */
   workspace: unknown;
 }
@@ -49,7 +49,7 @@ const PROBES: ReadonlyArray<{ key: EffectivePermissionKey; permission: string; p
   { key: "edit", permission: "edit", pattern: "*" },
   { key: "web", permission: "webfetch", pattern: "*" },
   // A tool name no config is expected to spell out, so only catch-all rules decide it.
-  { key: "mcp", permission: "openwork_effective_mcp_probe", pattern: "*" },
+  { key: "mcp", permission: "get3w_effective_mcp_probe", pattern: "*" },
   { key: "outside_folders", permission: "external_directory", pattern: "*" },
   { key: "env_files", permission: "read", pattern: "/workspace/.env" },
   { key: "doom_loop", permission: "doom_loop", pattern: "*" },
@@ -127,7 +127,7 @@ function layerContains(layerRules: EffectiveEnginePermissionRule[], rule: Effect
 export function attributeRule(rule: EffectiveEnginePermissionRule, layers: PermissionLayers, home = homedir()): PermissionSource {
   const ordered: Array<[PermissionSource, unknown]> = [
     ["workspace", layers.workspace],
-    ["openwork", layers.openwork],
+    ["get3w", layers.get3w],
     ["global", layers.global],
   ];
   for (const [source, block] of ordered) {
@@ -161,7 +161,7 @@ export function summarizeEffectivePermissions(
 /** Pick the agent whose ruleset governs new threads: the configured default, else the engine's build agent. */
 export function selectGoverningAgent<T extends { name: string }>(agents: T[], defaultAgent: string | null): T | null {
   return agents.find((agent) => agent.name === defaultAgent)
-    ?? agents.find((agent) => agent.name === "openwork")
+    ?? agents.find((agent) => agent.name === "get3w")
     ?? agents.find((agent) => agent.name === "build")
     ?? null;
 }

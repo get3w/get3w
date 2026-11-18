@@ -1,6 +1,6 @@
-// Release smoke for an installed openwork-server npm package:
-//   node npm-web-smoke.mjs <path-to-installed>/bin/openwork-server.mjs <expected-version>
-// Runs `--version`, then `openwork-server web` against a fresh home directory
+// Release smoke for an installed get3w-server npm package:
+//   node npm-web-smoke.mjs <path-to-installed>/bin/get3w-server.mjs <expected-version>
+// Runs `--version`, then `get3w-server web` against a fresh home directory
 // (so the OpenCode engine is downloaded as on a user's first run) and checks
 // the web UI, an authenticated API call, the engine proxy, the bundled
 // engine plugins and session creation. Exits non-zero on the first failure.
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const [launcher, expectedVersion] = process.argv.slice(2);
 if (!launcher || !expectedVersion) {
-  console.error("usage: node npm-web-smoke.mjs <bin/openwork-server.mjs> <expected-version>");
+  console.error("usage: node npm-web-smoke.mjs <bin/get3w-server.mjs> <expected-version>");
   process.exit(2);
 }
 
@@ -66,8 +66,8 @@ function stopTree(child) {
   }
 }
 
-const home = await mkdtemp(join(tmpdir(), "openwork-npm-home-"));
-const workspace = await mkdtemp(join(tmpdir(), "openwork-npm-ws-"));
+const home = await mkdtemp(join(tmpdir(), "get3w-npm-home-"));
+const workspace = await mkdtemp(join(tmpdir(), "get3w-npm-ws-"));
 const env = {
   ...process.env,
   HOME: home,
@@ -103,8 +103,8 @@ for (const stream of [child.stdout, child.stderr]) {
 try {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (!/Get3W web UI: /.test(output)) {
-    if (child.exitCode !== null) fail(`openwork-server web exited ${child.exitCode} before it was ready`);
-    if (Date.now() > deadline) fail("openwork-server web was not ready within 5 minutes");
+    if (child.exitCode !== null) fail(`get3w-server web exited ${child.exitCode} before it was ready`);
+    if (Date.now() > deadline) fail("get3w-server web was not ready within 5 minutes");
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
   if (!/Installed OpenCode \S+ to /.test(output)) fail("the OpenCode engine was not downloaded on first run");

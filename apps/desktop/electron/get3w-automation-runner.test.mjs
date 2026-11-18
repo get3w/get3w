@@ -81,7 +81,7 @@ test('restarting the runner replays a durable terminal receipt without rerunning
  const second=createPersonalAutomationRunner(options);
  try{second.start();await recovered;assert.equal(executions,1);}finally{second.stop();}
 });
-test('raw missing-model errors receive the same recovery classification as OpenWork',async()=>{
+test('raw missing-model errors receive the same recovery classification as Get3W',async()=>{
  let resolve;const done=new Promise(r=>resolve=r);let failure;
  const auth={status:async()=>({status:'signed_in',user:{id:'alice'}}),automationWork:async()=>({run:{id:'run'},automation:{id:'auto',name:'Report'},revision:{instructions:'test',workspaceId:'workspace',model:{providerId:'test',modelId:'missing'},maximumRuntimeMs:10000}}),automationReport:async(uid,id,runner,body)=>{if(body.status==='failed'){failure=body.error;resolve();}}};
  const runner=createPersonalAutomationRunner({auth,getLocalRuntime:async()=>({}),intervalMs:100000,execute:async()=>{throw Object.assign(Error('Model not found: test/missing'),{code:'http_error'});}});

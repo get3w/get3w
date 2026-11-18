@@ -40,13 +40,13 @@ export type SettingsUpdateStatus = {
   };
 } | null;
 
-type ElectronUpdaterBridge = NonNullable<Window["__OPENWORK_ELECTRON__"]>["updater"] & {
+type ElectronUpdaterBridge = NonNullable<Window["__GET3W_ELECTRON__"]>["updater"] & {
   onDownloadProgress?: (callback: (data: { transferred: number; total: number; percent: number; bytesPerSecond: number }) => void) => (() => void);
 };
 
 declare global {
   interface Window {
-    __openworkUpdaterEvalBridge?: ElectronUpdaterBridge;
+    __get3wUpdaterEvalBridge?: ElectronUpdaterBridge;
   }
 }
 
@@ -116,10 +116,10 @@ function electronUpdaterEnvReducer(
 
 function electronUpdaterBridge(): ElectronUpdaterBridge | null {
   if (typeof window === "undefined") return null;
-  if (import.meta.env.DEV && window.__openworkUpdaterEvalBridge) {
-    return window.__openworkUpdaterEvalBridge;
+  if (import.meta.env.DEV && window.__get3wUpdaterEvalBridge) {
+    return window.__get3wUpdaterEvalBridge;
   }
-  return window.__OPENWORK_ELECTRON__?.updater ?? null;
+  return window.__GET3W_ELECTRON__?.updater ?? null;
 }
 
 function describeError(error: unknown) {

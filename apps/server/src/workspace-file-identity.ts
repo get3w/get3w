@@ -94,7 +94,7 @@ async function refuseLinkedFolder(path: string, label: string, missingCode: Work
  * Open a regular file for reading without following a link at any level and
  * prove it is in place before returning the handle. The caller must close it.
  */
-export async function openWorkspaceFileForReading(realRoot: string, path: string, label: string): Promise<OpenedWorkspaceFile> {
+export async function get3wspaceFileForReading(realRoot: string, path: string, label: string): Promise<OpenedWorkspaceFile> {
   await refuseLinkedFolder(path, label, "missing");
   let handle: FileHandle;
   try {
@@ -128,7 +128,7 @@ export async function openWorkspaceFileForReading(realRoot: string, path: string
  * identity if it proves to have landed anywhere but at `path`. The caller
  * truncates and writes through the returned handle, then closes it.
  */
-export async function openWorkspaceFileForWriting(realRoot: string, path: string, expected: Stats | null, label: string): Promise<OpenedWorkspaceFile> {
+export async function get3wspaceFileForWriting(realRoot: string, path: string, expected: Stats | null, label: string): Promise<OpenedWorkspaceFile> {
   await refuseLinkedFolder(path, label, "folder-missing");
   let handle: FileHandle;
   try {

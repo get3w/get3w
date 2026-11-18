@@ -8,7 +8,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { OpenworkServerClient, OpenworkCloudMcpHealth, OpenworkRuntimeConfigStatus } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wCloudMcpHealth, Get3wRuntimeConfigStatus } from "@/app/lib/get3w-server";
 import { sanitizeCloudMcpHealthDiagnostic, sanitizeDiagnosticRecord } from "@/app/lib/diagnostic-sanitizer";
 import {
   DEFAULT_DEN_API_BASE_URL,
@@ -89,9 +89,9 @@ interface AdvancedRuntimeSectionProps {
   clientStatusLabel: string;
   clientTone: SettingsTone;
   clientDetailLines: string[];
-  openworkStatusLabel: string;
-  openworkTone: SettingsTone;
-  openworkDetailLines: string[];
+  get3wStatusLabel: string;
+  get3wTone: SettingsTone;
+  get3wDetailLines: string[];
 }
 
 export function AdvancedRuntimeSection(props: AdvancedRuntimeSectionProps) {
@@ -113,11 +113,11 @@ export function AdvancedRuntimeSection(props: AdvancedRuntimeSectionProps) {
         />
         <RuntimeStatusCard
           icon={<Server size={18} />}
-          title={t("settings.openwork_server_label")}
-          description={t("settings.openwork_server_desc")}
-          statusLabel={props.openworkStatusLabel}
-          tone={props.openworkTone}
-          detailLines={props.openworkDetailLines}
+          title={t("settings.get3w_server_label")}
+          description={t("settings.get3w_server_desc")}
+          statusLabel={props.get3wStatusLabel}
+          tone={props.get3wTone}
+          detailLines={props.get3wDetailLines}
         />
       </div>
     </LayoutSection>
@@ -147,11 +147,11 @@ function formatMetadataRecord(value: Record<string, string | number | boolean | 
   return Object.entries(value).map(([key, nested]) => `${key}=${formatMaybe(nested)}`).join(", ");
 }
 
-function formatSupportedFeatures(features: OpenworkCloudMcpHealth["compatibility"]["supportedFeatures"]): string {
+function formatSupportedFeatures(features: Get3wCloudMcpHealth["compatibility"]["supportedFeatures"]): string {
   return Object.entries(features).map(([key, enabled]) => `${key}:${enabled ? "yes" : "no"}`).join(", ");
 }
 
-function formatPluginHashes(hashes: OpenworkCloudMcpHealth["compatibility"]["pluginFileHashes"]): string {
+function formatPluginHashes(hashes: Get3wCloudMcpHealth["compatibility"]["pluginFileHashes"]): string {
   if (hashes.length === 0) return "none";
   return hashes.map((hash) => `${hash.name}=${hash.sha256 ? hash.sha256.slice(0, 12) : `unavailable${hash.error ? ` (${hash.error})` : ""}`}`).join(", ");
 }
@@ -163,8 +163,8 @@ function formatMcpToolExposure(input: { checked: boolean; includesMcpTools: bool
 }
 
 interface AdvancedCloudMcpDiagnosticsSectionProps {
-  cloudMcpHealth: OpenworkCloudMcpHealth | null;
-  onRefresh: () => Promise<OpenworkCloudMcpHealth | null>;
+  cloudMcpHealth: Get3wCloudMcpHealth | null;
+  onRefresh: () => Promise<Get3wCloudMcpHealth | null>;
 }
 
 export function AdvancedCloudMcpDiagnosticsSection(props: AdvancedCloudMcpDiagnosticsSectionProps) {
@@ -257,7 +257,7 @@ export function AdvancedCloudMcpDiagnosticsSection(props: AdvancedCloudMcpDiagno
               <DiagnosticRow label={t("ui.5816af8ff1a1")} value={`schema v${props.cloudMcpHealth.schemaVersion}; connect catalog ${props.cloudMcpHealth.connectCatalogEnabled ? "enabled" : "disabled"}`} />
               {compatibility ? (
                 <>
-                  <DiagnosticRow label={t("ui.156d2a8c42d3")} value={`server ${formatMaybe(compatibility.openwork.serverVersion)}; app ${formatMetadataRecord(compatibility.openwork.app)}`} />
+                  <DiagnosticRow label={t("ui.156d2a8c42d3")} value={`server ${formatMaybe(compatibility.get3w.serverVersion)}; app ${formatMetadataRecord(compatibility.get3w.app)}`} />
                   <DiagnosticRow label={t("ui.692a3f2bf52a")} value={`expected ${formatMaybe(compatibility.opencode.expectedVersion)}; actual ${formatMaybe(compatibility.opencode.actualVersion)}; probe ${compatibility.opencode.probe}`} />
                   <DiagnosticRow label={t("ui.9da618e2ddf9")} value={formatSupportedFeatures(compatibility.supportedFeatures)} />
                   <DiagnosticRow label={t("ui.8dc892694635")} value={formatMcpToolExposure(compatibility.experimentalToolIds)} />
@@ -285,7 +285,7 @@ export function AdvancedCloudMcpDiagnosticsSection(props: AdvancedCloudMcpDiagno
 interface AdvancedRuntimeConfigSourcesSectionProps {
   busy: boolean;
   canInspect: boolean;
-  configStatus: OpenworkRuntimeConfigStatus | null;
+  configStatus: Get3wRuntimeConfigStatus | null;
   configStatusBusy: boolean;
   configStatusError: string | null;
   onRefresh: () => Promise<void>;
@@ -530,7 +530,7 @@ export function AdvancedWorkspaceRunModeSection() {
   );
 }
 
-export function AdvancedEngineV2PreviewSection(props: { client: OpenworkServerClient | null }) {
+export function AdvancedEngineV2PreviewSection(props: { client: Get3wServerClient | null }) {
   const engine = useOpencodeEngineControls(props.client);
   if (!isDesktopRuntime()) return null;
   const runtimeError = engine.status?.enabled ? engine.status.lastError : undefined;

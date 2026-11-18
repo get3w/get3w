@@ -57,11 +57,11 @@ interface RegisterFileRoutesOptions {
 }
 
 function resolveInboxDir(workspaceRoot: string): string {
-  return join(workspaceRoot, ".opencode", "openwork", "inbox");
+  return join(workspaceRoot, ".get3w", "inbox");
 }
 
 function resolveOutboxDir(workspaceRoot: string): string {
-  return join(workspaceRoot, ".opencode", "openwork", "outbox");
+  return join(workspaceRoot, ".get3w", "outbox");
 }
 
 export function normalizeWorkspaceRelativePath(input: string, options: { allowSubdirs: boolean }): string {
@@ -861,7 +861,8 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
       return jsonResponse({ items: [] });
     }
     const inboxRoot = resolveInboxDir(workspace.path);
-    const items = await listInbox(inboxRoot);
+    const current = await listInbox(inboxRoot);
+    const items = current;
     return jsonResponse({ items });
   });
 
@@ -872,7 +873,8 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
     }
     const inboxRoot = resolveInboxDir(workspace.path);
     const relativePath = decodeInboxId(ctx.params.inboxId);
-    const absPath = resolveSafeChildPath(inboxRoot, relativePath);
+    const currentPath = resolveSafeChildPath(inboxRoot, relativePath);
+    const absPath = currentPath;
     if (!(await exists(absPath))) {
       throw new ApiError(404, "inbox_item_not_found", "Inbox item not found");
     }
@@ -951,7 +953,8 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
       return jsonResponse({ items: [] });
     }
     const outboxRoot = resolveOutboxDir(workspace.path);
-    const items = await listArtifacts(outboxRoot);
+    const current = await listArtifacts(outboxRoot);
+    const items = current;
     return jsonResponse({ items });
   });
 
@@ -962,7 +965,8 @@ export function registerFileRoutes(options: RegisterFileRoutesOptions): void {
     }
     const outboxRoot = resolveOutboxDir(workspace.path);
     const relativePath = decodeArtifactId(ctx.params.artifactId);
-    const absPath = resolveSafeChildPath(outboxRoot, relativePath);
+    const currentPath = resolveSafeChildPath(outboxRoot, relativePath);
+    const absPath = currentPath;
     if (!(await exists(absPath))) {
       throw new ApiError(404, "artifact_not_found", "Artifact not found");
     }

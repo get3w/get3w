@@ -1,13 +1,13 @@
 import { unwrap } from "@/app/lib/opencode";
 import { isOpencodeV2Client } from "@/app/lib/opencode-v2-adapter";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import type { Client } from "@/app/types";
 
 type WorkspaceType = string;
 
 export type UpdateManagedDisabledProvidersOptions = {
   opencodeClient: Client | null;
-  openworkClient?: OpenworkServerClient | null;
+  get3wClient?: Get3wServerClient | null;
   workspaceId?: string | null;
   workspaceType?: WorkspaceType | null;
   disabledProviders: unknown;
@@ -42,7 +42,7 @@ export function disabledProvidersFromConfig(config: unknown): string[] {
 
 export type ReadManagedDisabledProvidersOptions = {
   opencodeClient: Client | null;
-  openworkClient?: OpenworkServerClient | null;
+  get3wClient?: Get3wServerClient | null;
   workspaceId?: string | null;
   workspaceType?: WorkspaceType | null;
   directory?: string;
@@ -59,10 +59,10 @@ export async function readManagedDisabledProviders(
 ): Promise<string[]> {
   const client = options.opencodeClient;
   const workspaceId = options.workspaceId?.trim() ?? "";
-  const openworkClient = options.openworkClient;
-  const managedRuntime = Boolean(openworkClient && workspaceId && options.workspaceType === "local");
-  const readRuntime = async () => openworkClient && managedRuntime
-    ? normalizeDisabledProviders((await openworkClient.getRuntimeDisabledProviders(workspaceId)).disabledProviders)
+  const get3wClient = options.get3wClient;
+  const managedRuntime = Boolean(get3wClient && workspaceId && options.workspaceType === "local");
+  const readRuntime = async () => get3wClient && managedRuntime
+    ? normalizeDisabledProviders((await get3wClient.getRuntimeDisabledProviders(workspaceId)).disabledProviders)
     : [];
   if (client && isOpencodeV2Client(client)) return readRuntime();
   if (!client) return [];
@@ -96,8 +96,8 @@ export async function updateManagedDisabledProviders(
   const disabledProviders = normalizeDisabledProviders(options.disabledProviders);
   const workspaceId = options.workspaceId?.trim() ?? "";
 
-  if (options.openworkClient && workspaceId && options.workspaceType === "local") {
-    const result = await options.openworkClient.setRuntimeDisabledProviders(workspaceId, disabledProviders);
+  if (options.get3wClient && workspaceId && options.workspaceType === "local") {
+    const result = await options.get3wClient.setRuntimeDisabledProviders(workspaceId, disabledProviders);
     return { managedRuntime: true, disabledProviders: result.disabledProviders };
   }
 

@@ -4,7 +4,7 @@
 // window.open requests get that treatment. (The computer view's pop-out window
 // has its own name and handler in main.mjs.)
 
-export const FLOATING_VIEW_PREFIX = "openwork-floating-";
+export const FLOATING_VIEW_PREFIX = "get3w-floating-";
 
 /**
  * BrowserWindow options for a floating view, or null when the request is not

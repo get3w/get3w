@@ -1,7 +1,7 @@
 import { t } from "@/i18n";
 import * as React from "react"
 import type { UIMessage } from "ai"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, ChevronRight } from "lucide-react"
 
 import {
   backgroundShellNoticeLabel,
@@ -13,7 +13,10 @@ import { readSubagentNotice, subagentNoticeLabel, type SubagentNotice } from "@/
 import { useMessageList } from "@/components/chat/message-list-provider"
 import { formatElapsedSeconds } from "@/lib/tool-call-duration"
 import { Message } from "@/components/ui/message"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { useWorkspaceMaybe } from "@/react-app/shell/workspace-provider"
+import { manageBackgroundShell } from "@/react-app/domains/session/sync/session-sync"
 import { cn } from "@/lib/utils"
 import type { BackgroundShell } from "@/react-app/domains/session/status/background-shell-store"
 
@@ -123,11 +126,9 @@ type BackgroundTasksLabelProps = BackgroundTasksProps & {
 }
 
 /**
- * "2 running background tasks": commands the agent left running. Same
- * shimmer as the turn's "Working" line. The list stays one hover (or focus)
- * away: each command and how long it has been running.
+ * "2 running background tasks": commands the agent left running. Click to inspect command output or stop an individual task.
  */
-export const BackgroundTasksLabel = React.memo(function BackgroundTasksLabel({ shells, stale = false, shimmer = true }: BackgroundTasksLabelProps) {
+export const BackgroundTasksLabel = React.memo(function BackgroundTasksLabel({ shells, stale = false }: BackgroundTasksLabelProps) {
   const [open, setOpen] = React.useState(false)
   const [now, setNow] = React.useState(() => Date.now())
   React.useEffect(() => {
@@ -136,28 +137,48 @@ export const BackgroundTasksLabel = React.memo(function BackgroundTasksLabel({ s
     const interval = window.setInterval(() => setNow(Date.now()), 1_000)
     return () => window.clearInterval(interval)
   }, [open])
+  const workspace = useWorkspaceMaybe()
+  const { workspaceId, sessionId, readOnly } = useMessageList()
+  const [output, setOutput] = React.useState<{ id: string; text: string } | null>(null)
+  const [error, setError] = React.useState("")
+  const [busy, setBusy] = React.useState<{ id: string; stop: boolean } | null>(null)
+  const run = async (shell: BackgroundShell, stop: boolean) => {
+    if (!workspace?.opencodeBaseUrl || busy) return
+    setBusy({ id: shell.id, stop })
+    setError("")
+    try {
+      const text = await manageBackgroundShell({ workspaceId, baseUrl: workspace.opencodeBaseUrl, sessionId, shellId: shell.id }, stop, AbortSignal.timeout(15_000))
+      if (!stop) setOutput({ id: shell.id, text })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("backgroundTasks.actionFailed"))
+    } finally { setBusy(null) }
+  }
   return (
     <span data-background-tasks={shells.length}>
-      <Tooltip open={open} onOpenChange={setOpen}>
-        <TooltipTrigger
-          render={<span tabIndex={0} />}
-          className={cn("cursor-default rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50", shimmer && !stale && "ow-text-shimmer")}
-        >
-          {runningBackgroundTasksLabel(shells.length)}
-        </TooltipTrigger>
-        <TooltipContent side="top" align="start" className="flex-col items-stretch gap-1">
-          {shells.map((shell) => (
-            <span key={shell.id} className="flex min-w-0 items-center gap-3">
-              <code className="min-w-0 flex-1 truncate font-mono">{commandPreview(shell.command) || t("ui.713166971d73")}</code>
-              {shell.startedAt > 0 ? (
-                <span className="shrink-0 tabular-nums opacity-70">
-                  {formatElapsedSeconds(Math.max(0, Math.floor((now - shell.startedAt) / 1_000)))}
-                </span>
-              ) : null}
-            </span>
-          ))}
-        </TooltipContent>
-      </Tooltip>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger render={<Button variant="ghost" size="sm" />} className="h-8 gap-2 rounded-lg px-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
+          <span className={cn("size-1.5 shrink-0 rounded-full", stale ? "bg-muted-foreground/40" : "bg-foreground/60")} aria-hidden="true" />
+          <span>{runningBackgroundTasksLabel(shells.length)}</span>
+          <ChevronRight className="size-3.5 opacity-60" aria-hidden="true" />
+        </DialogTrigger>
+        <DialogContent className="gap-4 lg:max-w-2xl">
+          <DialogTitle>{t("backgroundTasks.title")}</DialogTitle>
+          {stale && <p role="status" className="text-sm text-muted-foreground">{t("backgroundTasks.stale")}</p>}
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <div className="max-h-[65vh] overflow-y-auto divide-y divide-border">
+            {shells.length === 0 && <p className="py-3 text-muted-foreground">{t("backgroundTasks.empty")}</p>}
+            {shells.map(shell => <div key={shell.id} className="space-y-3 py-4">
+              <code className="block whitespace-pre-wrap break-all text-xs">{shell.command || t("ui.713166971d73")}</code>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-auto text-xs text-muted-foreground">{t("backgroundTasks.running")} {shell.startedAt > 0 ? formatElapsedSeconds(Math.max(0, Math.floor((now - shell.startedAt) / 1000))) : ""}</span>
+                <Button variant="outline" size="sm" disabled={Boolean(busy) || !workspace?.opencodeBaseUrl} onClick={() => void run(shell, false)}>{busy?.id === shell.id && !busy.stop ? t("backgroundTasks.loading") : t("backgroundTasks.output")}</Button>
+                <Button variant="destructive" size="sm" disabled={Boolean(busy) || readOnly || !workspace?.opencodeBaseUrl} onClick={() => void run(shell, true)}>{busy?.id === shell.id && busy.stop ? t("backgroundTasks.stopping") : t("backgroundTasks.stop")}</Button>
+              </div>
+              {output?.id === shell.id && <pre tabIndex={0} aria-label={t("backgroundTasks.outputLabel")} className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{output.text.replace(/\x1b\[[0-9;]*m/g, "") || t("backgroundTasks.noOutput")}</pre>}
+            </div>)}
+          </div>
+        </DialogContent>
+      </Dialog>
     </span>
   )
 })

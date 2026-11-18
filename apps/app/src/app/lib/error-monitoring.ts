@@ -15,16 +15,16 @@
  *
  * The pre-boot half lives as an inline script in `index.html` so a bundle
  * that never loads is still reported; once this module starts it takes over
- * via `window.__openworkWebErrorMonitorActive`.
+ * via `window.__get3wWebErrorMonitorActive`.
  */
 import { isAnalyticsEnabled } from "./analytics";
 import { formatCrashDiagnostic, redactCrashText } from "./crash-diagnostics";
-import { getOpenWorkDeployment } from "./openwork-deployment";
+import { getGet3WDeployment } from "./get3w-deployment";
 import { isElectronRuntime } from "./runtime-env";
 
 declare global {
   interface Window {
-    __openworkWebErrorMonitorActive?: boolean;
+    __get3wWebErrorMonitorActive?: boolean;
   }
 }
 
@@ -57,7 +57,7 @@ export function shouldMonitorWebErrors(input: WebErrorMonitoringGate): boolean {
 
 /**
  * Strip query and fragment before reporting: sign-in and deep-link URLs can
- * carry credentials (`grant`, `openworkToken`, `accessToken`) that must never
+ * carry credentials (`grant`, `get3wToken`, `accessToken`) that must never
  * leave the page.
  */
 export function sanitizePageUrl(href: string): string {
@@ -163,7 +163,7 @@ export function startWebErrorMonitoring() {
   const dsn = String(import.meta.env.VITE_GET3W_SENTRY_DSN ?? "").trim();
   const gate: WebErrorMonitoringGate = {
     dsn,
-    deployment: getOpenWorkDeployment(),
+    deployment: getGet3WDeployment(),
     electronRuntime: isElectronRuntime(),
   };
   if (!shouldMonitorWebErrors(gate)) return;
@@ -171,7 +171,7 @@ export function startWebErrorMonitoring() {
   if (!target) return;
 
   // Hand off from the pre-boot beacon in index.html.
-  window.__openworkWebErrorMonitorActive = true;
+  window.__get3wWebErrorMonitorActive = true;
   const release = String(import.meta.env.VITE_GET3W_BUILD_SHA ?? "").trim()
     || String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
   monitor = { target, release };

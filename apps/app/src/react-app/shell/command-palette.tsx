@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { Agent } from "@opencode-ai/sdk/v2/client";
 
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import { useOpencodeEngineControls } from "./opencode-engine-controls";
 import { t } from "@/i18n";
 import {
@@ -91,7 +91,7 @@ export type SessionGroupOption = {
 };
 
 export type CommandPaletteProps = {
-  engineClient?: OpenworkServerClient | null;
+  engineClient?: Get3wServerClient | null;
   open: boolean;
   onClose: () => void;
   developerMode: boolean;

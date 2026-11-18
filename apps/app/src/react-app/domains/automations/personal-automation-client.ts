@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { currentLocale } from "@/i18n";
-import { automationDesktopRunnerPresenceSchema, automationDetailSchema, automationListSchema, automationRunSchema, automationRunRangeSchema, automationRunReceiptSchema, type CreateAutomation, type UpdateAutomation } from "@openwork/types/automations";
+import { automationDesktopRunnerPresenceSchema, automationDetailSchema, automationListSchema, automationRunSchema, automationRunRangeSchema, automationRunReceiptSchema, type CreateAutomation, type UpdateAutomation } from "@get3w/types/automations";
 
 export function createPersonalAutomationClient(userId: string) {
   async function request(path: string, method = "GET", body?: unknown) {

@@ -1,4 +1,4 @@
-import type { SavedAppSummary } from "@openwork/types/workflows";
+import type { SavedAppSummary } from "@get3w/types/workflows";
 import type { BuiltMcpAppCatalogEntry } from "@/app/lib/built-mcp-app-catalog";
 
 export type ArtifactRow =

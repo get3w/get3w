@@ -1,4 +1,4 @@
-import { readOpencodeConfigProblem, describeOpencodeConfigProblem } from "@openwork/types/opencode-config-error";
+import { readOpencodeConfigProblem, describeOpencodeConfigProblem } from "@get3w/types/opencode-config-error";
 import { ApiError } from "./errors.js";
 
 /** A clear 400 for an engine config error, instead of a generic 502. */

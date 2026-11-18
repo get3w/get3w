@@ -3,7 +3,7 @@ setLocale("en");
 /** @jsxImportSource react */
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createOpenworkServerClient } from "../src/app/lib/openwork-server";
+import { createGet3wServerClient } from "../src/app/lib/get3w-server";
 import { deviceProviders, localProviderEngineStates } from "../src/react-app/domains/connections/provider-auth/local-provider-engine-state";
 import { LocalProviderStatus } from "../src/react-app/domains/settings/pages/provider-rows";
 
@@ -80,7 +80,7 @@ test("the status client reads skip reasons, keeps older servers working and neve
     skippedProviders: [{ id: "openai", reason: "oauth" }, { id: "future", reason: "something-new" }, { reason: "policy" }],
   };
   const fetch = spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
-  const client = createOpenworkServerClient({ baseUrl: "http://localhost:8787", token: "test" });
+  const client = createGet3wServerClient({ baseUrl: "http://localhost:8787", token: "test" });
 
   const current = await client.getEngineV2PreviewStatus();
   expect(current.skippedProviders).toEqual([{ id: "openai", reason: "oauth" }, { id: "future", reason: "unsupported" }]);

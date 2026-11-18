@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { artifactRows, groupArtifacts, readArtifactSelection, rememberArtifactSelection, selectedArtifact } from "../src/react-app/domains/dashboard/artifacts-workspace";
 import type { BuiltMcpAppCatalogEntry } from "../src/app/lib/built-mcp-app-catalog";
-import type { SavedAppSummary } from "@openwork/types/workflows";
+import type { SavedAppSummary } from "@get3w/types/workflows";
 
 function app(connectionId: string, title: string, isOwner?: boolean): BuiltMcpAppCatalogEntry & { isOwner?: boolean } {
   return { connectionId, title, isOwner, description: null, serverName: "artifacts", toolName: "open_app", projectedToolName: "open_app", resourceUri: `ui://artifacts/${connectionId}`, pluginId: `plugin-${connectionId}`, pluginName: "Workspace", requiresApproval: false };

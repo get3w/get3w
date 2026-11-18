@@ -46,7 +46,7 @@ export function sentenceCase(text: string): string {
 }
 
 function filePath(part: AnyToolPart): string {
-  const destination = part.callProviderMetadata?.openwork?.fileDestination
+  const destination = part.callProviderMetadata?.get3w?.fileDestination
   if (typeof destination === "string" && destination) return destination
   return inputString(part, "filePath")
 }
@@ -114,7 +114,7 @@ function lines(text: string): string[] {
  * is null, never a guessed zero.
  */
 export function textDiffStats(part: AnyToolPart): DiffStats | null {
-  const reported = part.callProviderMetadata?.openwork?.diffStats
+  const reported = part.callProviderMetadata?.get3w?.diffStats
   if (isRecord(reported) && typeof reported.added === "number" && typeof reported.removed === "number") {
     return { added: reported.added, removed: reported.removed }
   }

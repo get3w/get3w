@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import { AlertTriangle, ChevronDown, Cloud } from "lucide-react"
-import type { AutomationModel } from "@openwork/types/automations"
+import type { AutomationModel } from "@get3w/types/automations"
 
 import { currentLocale } from "@/i18n"
 import { Button } from "@/components/ui/button"

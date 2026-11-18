@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import { openGet3wSignIn, useGet3wAccount } from "../../cloud/get3w-account";
 import { focusPaneComposerSoon } from "./workbench-pane-focus";
-import { isOpencodeConfigErrorMessage } from "@openwork/types/opencode-config-error";
+import { isOpencodeConfigErrorMessage } from "@get3w/types/opencode-config-error";
 import { childOrigin, prepareChildReturn } from "@/lib/child-navigation";
 import { newSessionDraftOwnerKey } from "./new-session-destination";
 import { usePendingConversationStore } from "./pending-conversation-store";
@@ -12,7 +12,7 @@ import { usePanelRef } from "react-resizable-panels";
 import { ArrowLeft, CheckCheck, Cloud, FileText, Globe, Maximize2, MoreHorizontal, PanelRight, TextSearch, Undo2, X, Zap } from "lucide-react";
 
 import { t } from "../../../../i18n";
-import { type OpenworkServerClient, type OpenworkServerStatus } from "../../../../app/lib/openwork-server";
+import { type Get3wServerClient, type Get3wServerStatus } from "../../../../app/lib/get3w-server";
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
 import type { BootPhase } from "../../../../app/lib/startup-boot";
 import { getCachedDesktopHomeDir, openDesktopUrl, openDesktopWithApp, openDesktopWorkspaceFile, type WorkspaceInfo } from "../../../../app/lib/desktop";
@@ -104,7 +104,7 @@ import { useComputerEndTurn } from "../computer/computer-store";
 import { TerminalDock } from "../terminal/terminal-dock";
 import { useActivePanelTab, usePanelTabStore, useSessionPanelState } from "../panel/panel-tab-store";
 import { useWorkspaceShellLayout } from "../../../shell/workspace-shell-layout";
-import { useControlAction, type OpenworkControlAction } from "../../../shell/control/control-provider";
+import { useControlAction, type Get3wControlAction } from "../../../shell/control/control-provider";
 import { cn } from "@/lib/utils";
 import {
   canNavigateSelectedConversationHistory,
@@ -153,7 +153,7 @@ type StatusBarOverrides = {
   showSettingsButton: boolean;
   reloadBusy: boolean;
   reloadError: string | null;
-  openWorkConnectState: SessionCloudMcpMaintenanceState;
+  get3wConnectState: SessionCloudMcpMaintenanceState;
 };
 
 export type SessionPageHistoryControls = {
@@ -208,7 +208,7 @@ export type SessionPageSidebarProps = {
 
 export type SessionPageSurfaceProps = Omit<
   SessionSurfaceProps,
-  "client" | "workspaceId" | "sessionId" | "opencodeBaseUrl" | "openworkToken" | "isControlTarget"
+  "client" | "workspaceId" | "sessionId" | "opencodeBaseUrl" | "get3wToken" | "isControlTarget"
 >;
 
 export type SessionPagePaneRuntime = {
@@ -220,9 +220,9 @@ export type SessionPagePaneRuntime = {
   sandboxBackend?: string | null;
   runtimeWorkspaceId: string;
   opencodeBaseUrl: string;
-  openworkToken: string;
-  client: OpenworkServerClient;
-  environmentClient?: OpenworkServerClient | null;
+  get3wToken: string;
+  client: Get3wServerClient;
+  environmentClient?: Get3wServerClient | null;
   surface: SessionPageSurfaceProps;
 } | {
   status: "unavailable";
@@ -258,10 +258,10 @@ export type SessionPageProps = {
   opencodeBaseUrl?: string | null;
   workspaces: WorkspaceInfo[];
   clientConnected: boolean;
-  openworkServerStatus: OpenworkServerStatus;
-  openworkServerClient: OpenworkServerClient | null;
-  environmentClient?: OpenworkServerClient | null;
-  openworkServerToken?: string | null;
+  get3wServerStatus: Get3wServerStatus;
+  get3wServerClient: Get3wServerClient | null;
+  environmentClient?: Get3wServerClient | null;
+  get3wServerToken?: string | null;
   developerMode: boolean;
   headerStatus: string;
   busyHint: string | null;
@@ -375,15 +375,15 @@ function WorkbenchPaneHeader(props: {
 /** Every visible conversation owns its pending interactions, including the side pane. */
 function SplitSessionSurface({ metadataCallbacks, ...props }: SessionSurfaceProps & { metadataCallbacks?: SessionMetadataCallbacks }) {
   const client = useMemo(() => isOpencodeV2BaseUrl(props.opencodeBaseUrl)
-    ? createClientV2(props.opencodeBaseUrl, props.workspaceRoot, { token: props.openworkToken })
-    : createClient(props.opencodeBaseUrl, props.workspaceRoot, { token: props.openworkToken, mode: "openwork" }),
-  [props.opencodeBaseUrl, props.openworkToken, props.workspaceRoot]);
+    ? createClientV2(props.opencodeBaseUrl, props.workspaceRoot, { token: props.get3wToken })
+    : createClient(props.opencodeBaseUrl, props.workspaceRoot, { token: props.get3wToken, mode: "get3w" }),
+  [props.opencodeBaseUrl, props.get3wToken, props.workspaceRoot]);
   const interactions = useSessionInteractions({
     client, workspaceId: props.workspaceId, sessionId: props.sessionId, workspaceRoot: props.workspaceRoot ?? "",
   });
   return <>
     <ReactSessionRuntime {...metadataCallbacks} workspaceId={props.workspaceId} sessionId={props.sessionId}
-      opencodeBaseUrl={props.opencodeBaseUrl} openworkToken={props.openworkToken} />
+      opencodeBaseUrl={props.opencodeBaseUrl} get3wToken={props.get3wToken} />
     <SessionSurface {...props} {...interactions} />
   </>;
 }
@@ -420,7 +420,7 @@ function isTrackableAccessibleTarget(target: OpenTarget) {
 
 function hiddenAccessibleTargetsStorageKey(workspaceId: string | null | undefined, sessionId: string | null | undefined) {
   if (!workspaceId || !sessionId) return null;
-  return `openwork.session.hiddenAccessibleTargets.v1:${workspaceId}:${sessionId}`;
+  return `get3w.session.hiddenAccessibleTargets.v1:${workspaceId}:${sessionId}`;
 }
 
 function readHiddenAccessibleTargetIds(workspaceId: string | null | undefined, sessionId: string | null | undefined): Set<string> {
@@ -499,21 +499,21 @@ export function SessionPage(props: SessionPageProps) {
   const panelRailActive = activeSidePanel === "panel";
   const browserRailActive = panelRailActive && activePanelTab?.type === "browser";
   const filesRailActive = panelRailActive && activePanelTab?.type !== "browser";
-  const openworkAccount = useGet3wAccount();
+  const get3wAccount = useGet3wAccount();
   const chatSessionId = props.selectedSessionId ?? undefined;
-  const showCloudSignIn = shellConfig.cloudSignin && !openworkAccount.user && !denAuth.isSignedIn && denAuth.status !== "checking";
+  const showCloudSignIn = shellConfig.cloudSignin && !get3wAccount.user && !denAuth.isSignedIn && denAuth.status !== "checking";
   useEffect(() => {
     const bridge = window.__GET3W_ACCOUNT__;
-    if (!bridge || !openworkAccount.user?.id || !props.selectedWorkspaceId || !chatSessionId) return;
+    if (!bridge || !get3wAccount.user?.id || !props.selectedWorkspaceId || !chatSessionId) return;
     void bridge.managedMcp({
-      userId: openworkAccount.user.id,
+      userId: get3wAccount.user.id,
       workspaceId: props.selectedWorkspaceId,
       sessionId: chatSessionId,
       action: "enable",
     }).catch((error) => {
       console.warn("[get3w-managed-mcp] enable failed", error instanceof Error ? error.message : String(error));
     });
-  }, [chatSessionId, openworkAccount.user?.id, props.selectedWorkspaceId]);
+  }, [chatSessionId, get3wAccount.user?.id, props.selectedWorkspaceId]);
   // The Get3W account dialog opens in place; this conversation stays on screen.
   const openCloudSignIn = useCallback(() => { openGet3wSignIn(); }, []);
 
@@ -569,7 +569,7 @@ export function SessionPage(props: SessionPageProps) {
   const activeWorkbenchPane = isMobile
     ? narrowPane === "split" ? "secondary" : "primary"
     : focusedWorkbenchPane;
-  const openWorkbenchTab = useWorkbenchStore((state) => state.openTab);
+  const get3wbenchTab = useWorkbenchStore((state) => state.openTab);
   const setWorkbenchSplit = useWorkbenchStore((state) => state.setSplit);
   const focusWorkbenchPane = useWorkbenchStore((state) => state.focusPane);
   const [conversationHistory, setConversationHistory] = useState(() => (
@@ -648,7 +648,7 @@ export function SessionPage(props: SessionPageProps) {
   // conversation's tabs keep loading silently in the background.
   useEffect(() => {
     if (!isElectronRuntime()) return;
-    void (window as Window).__OPENWORK_ELECTRON__?.browser?.setVisibleSession?.(props.selectedSessionId ?? null);
+    void (window as Window).__GET3W_ELECTRON__?.browser?.setVisibleSession?.(props.selectedSessionId ?? null);
   }, [props.selectedSessionId]);
 
   // Floating / side / full-screen browser uses the native desktop host.
@@ -693,7 +693,7 @@ export function SessionPage(props: SessionPageProps) {
   // the panel opened and doesn't render the unified panel chrome.
   useEffect(() => {
     if (!isElectronRuntime()) return;
-    const browser = (window as Window).__OPENWORK_ELECTRON__?.browser;
+    const browser = (window as Window).__GET3W_ELECTRON__?.browser;
     if (!browser) return;
     const unsubOpen = browser.onPanelOpened?.((payload) => {
       const ownerSessionId = payload?.ownerSessionId ?? props.selectedSessionId;
@@ -748,7 +748,7 @@ export function SessionPage(props: SessionPageProps) {
   }, []);
   const createBrowserTab = useCreateTab();
   const openTargetForRuntime = useCallback((runtime: {
-    client: OpenworkServerClient | null;
+    client: Get3wServerClient | null;
     runtimeWorkspaceId: string | null;
     workspaceRoot: string;
     workspaceType?: WorkspaceInfo["workspaceType"];
@@ -764,7 +764,7 @@ export function SessionPage(props: SessionPageProps) {
           return;
         }
         const ownerSessionId = sourceSessionId ?? props.selectedSessionId ?? null;
-        const openLink = window.__OPENWORK_ELECTRON__?.browser?.openLink;
+        const openLink = window.__GET3W_ELECTRON__?.browser?.openLink;
         if (openLink) {
           openLink(url, ownerSessionId);
           return;
@@ -805,7 +805,7 @@ export function SessionPage(props: SessionPageProps) {
       });
     };
 
-    const openWorkspaceFile = (fileTarget: OpenTarget) => {
+    const get3wspaceFile = (fileTarget: OpenTarget) => {
       // A person's explicit native open is not a workspace preview request.
       if (options?.external || !isCollectibleArtifactTarget(fileTarget)) {
         if (!canOpenLocally || !isOpenableFileTarget(fileTarget)) { showUnavailable(); return; }
@@ -843,7 +843,7 @@ export function SessionPage(props: SessionPageProps) {
           : undefined,
       });
       if (plan.kind === "workspace") {
-        openWorkspaceFile(plan.target);
+        get3wspaceFile(plan.target);
         return;
       }
       if (plan.kind === "unavailable") {
@@ -855,7 +855,7 @@ export function SessionPage(props: SessionPageProps) {
   }, [browserUrlForTarget, createBrowserTab, openOwnerSidePanel, openTab, props.selectedSessionId, setCurrentSidePanel]);
   const openTarget = useCallback((target: OpenTarget, options?: OpenTargetOptions, sourceSessionId?: string) => {
     openTargetForRuntime({
-      client: props.openworkServerClient,
+      client: props.get3wServerClient,
       runtimeWorkspaceId: props.runtimeWorkspaceId,
       workspaceRoot: props.selectedWorkspaceRoot,
       workspaceType: props.selectedWorkspaceDisplay.workspaceType,
@@ -863,7 +863,7 @@ export function SessionPage(props: SessionPageProps) {
     }, target, options, sourceSessionId);
   }, [
     openTargetForRuntime,
-    props.openworkServerClient,
+    props.get3wServerClient,
     props.runtimeWorkspaceId,
     props.selectedWorkspaceDisplay.workspaceType,
     props.selectedWorkspaceDisplay.sandboxBackend,
@@ -876,7 +876,7 @@ export function SessionPage(props: SessionPageProps) {
     setCurrentSidePanel("panel");
   }, [setCurrentSidePanel]);
   const openBrowserRailPane = useOpenBrowserRailPane(sidePanelSessionKey, browserRailActive, setCurrentSidePanel);
-  const openBrowserUrlControlAction = useMemo<OpenworkControlAction>(() => ({
+  const openBrowserUrlControlAction = useMemo<Get3wControlAction>(() => ({
     id: "browser.open_url",
     label: t("ui.ef4345d208a1"),
     description: t("ui.66550c977bd0"),
@@ -900,11 +900,11 @@ export function SessionPage(props: SessionPageProps) {
       // conversation on screen is never interrupted.
       const ownerSessionId = helpers.origin?.sessionId ?? props.selectedSessionId ?? null;
       if (!placeOpenedBrowser(ownerSessionId)) openOwnerSidePanel(ownerSessionId);
-      return window.__OPENWORK_ELECTRON__?.browser?.openUrl?.(url, provider, { sessionId: ownerSessionId });
+      return window.__GET3W_ELECTRON__?.browser?.openUrl?.(url, provider, { sessionId: ownerSessionId });
     },
   }), [openOwnerSidePanel, placeOpenedBrowser, props.selectedSessionId]);
   useControlAction(openBrowserUrlControlAction);
-  const restoreBrowserTabControlAction = useMemo<OpenworkControlAction>(() => ({
+  const restoreBrowserTabControlAction = useMemo<Get3wControlAction>(() => ({
     id: "browser.restore_tab",
     label: t("ui.56ac5df8600f"),
     description: t("ui.0a7962e0bb15"),
@@ -915,14 +915,14 @@ export function SessionPage(props: SessionPageProps) {
     execute: async (args, helpers) => {
       const tabId = controlStringArg(args, "tabId");
       if (!tabId) return { ok: false, error: t("ui.114bdd8b72d7") };
-      const restoreTab = window.__OPENWORK_ELECTRON__?.browser?.restoreTab;
+      const restoreTab = window.__GET3W_ELECTRON__?.browser?.restoreTab;
       if (!restoreTab) return { ok: false, error: t("ui.a6bb53a89822") };
       const ownerSessionId = helpers.origin?.sessionId ?? props.selectedSessionId ?? null;
       return restoreTab(tabId, ownerSessionId);
     },
   }), [props.selectedSessionId]);
   useControlAction(restoreBrowserTabControlAction);
-  const releaseBrowserTabControlAction = useMemo<OpenworkControlAction>(() => ({
+  const releaseBrowserTabControlAction = useMemo<Get3wControlAction>(() => ({
     id: "browser.release_tab",
     label: t("ui.b25cdf5dde1a"),
     description: t("ui.01fdfeffe6f7"),
@@ -933,14 +933,14 @@ export function SessionPage(props: SessionPageProps) {
     execute: async (args, helpers) => {
       const tabId = controlStringArg(args, "tabId");
       if (!tabId) return { ok: false, error: t("ui.114bdd8b72d7") };
-      const releaseTab = window.__OPENWORK_ELECTRON__?.browser?.releaseTab;
+      const releaseTab = window.__GET3W_ELECTRON__?.browser?.releaseTab;
       if (!releaseTab) return { ok: false, error: t("ui.a6bb53a89822") };
       const ownerSessionId = helpers.origin?.sessionId ?? props.selectedSessionId ?? null;
       return releaseTab(tabId, ownerSessionId);
     },
   }), [props.selectedSessionId]);
   useControlAction(releaseBrowserTabControlAction);
-  const setBrowserProxyControlAction = useMemo<OpenworkControlAction>(() => ({
+  const setBrowserProxyControlAction = useMemo<Get3wControlAction>(() => ({
     id: "browser.set_proxy",
     label: t("ui.5c4aee38f11b"),
     description: t("ui.9833d00fe878"),
@@ -952,7 +952,7 @@ export function SessionPage(props: SessionPageProps) {
     disabled: !isElectronRuntime(),
     execute: async (args) => {
       const proxy = controlStringArg(args, "proxy") || "";
-      const setProxy = window.__OPENWORK_ELECTRON__?.browser?.setProxy;
+      const setProxy = window.__GET3W_ELECTRON__?.browser?.setProxy;
       if (!setProxy) return { ok: false, error: t("ui.a6bb53a89822") };
       return setProxy(proxy);
     },
@@ -1015,17 +1015,17 @@ export function SessionPage(props: SessionPageProps) {
       const target = accessibleTargets.find((item) => item.id === requested?.id || item.value === requested?.value);
       if (target) removeAccessibleTarget(target);
     };
-    window.addEventListener("openwork-open-accessible-target", open);
-    window.addEventListener("openwork-hide-accessible-target", hide);
+    window.addEventListener("get3w-open-accessible-target", open);
+    window.addEventListener("get3w-hide-accessible-target", hide);
     return () => {
-      window.removeEventListener("openwork-open-accessible-target", open);
-      window.removeEventListener("openwork-hide-accessible-target", hide);
+      window.removeEventListener("get3w-open-accessible-target", open);
+      window.removeEventListener("get3w-hide-accessible-target", hide);
     };
   }, [accessibleTargets, openTarget, removeAccessibleTarget]);
   useEffect(() => {
     const handler = () => setCurrentSidePanel(null);
-    window.addEventListener("openwork-close-right-pane", handler);
-    return () => window.removeEventListener("openwork-close-right-pane", handler);
+    window.addEventListener("get3w-close-right-pane", handler);
+    return () => window.removeEventListener("get3w-close-right-pane", handler);
   }, [setCurrentSidePanel]);
   const [showDelayedSessionLoadingState, setShowDelayedSessionLoadingState] = useState(false);
 
@@ -1060,7 +1060,7 @@ export function SessionPage(props: SessionPageProps) {
       splitSession?.sessionId ?? null,
     ));
   }, [
-    openWorkbenchTab,
+    get3wbenchTab,
     pendingConversationHistoryNavigation,
     props.selectedSessionId,
     props.selectedWorkspaceId,
@@ -1125,13 +1125,13 @@ export function SessionPage(props: SessionPageProps) {
 
   const reactSessionBaseUrl = props.opencodeBaseUrl?.trim() ?? "";
   const reactSessionToken =
-    props.openworkServerToken?.trim() ||
-    props.openworkServerClient?.token?.trim() ||
+    props.get3wServerToken?.trim() ||
+    props.get3wServerClient?.token?.trim() ||
     "";
   const canRenderReactSurface = Boolean(
     props.selectedSessionId &&
       props.runtimeWorkspaceId &&
-      props.openworkServerClient &&
+      props.get3wServerClient &&
       reactSessionBaseUrl &&
       reactSessionToken &&
       props.surface,
@@ -1152,7 +1152,7 @@ export function SessionPage(props: SessionPageProps) {
     }
     if (
       props.runtimeWorkspaceId
-      && props.openworkServerClient
+      && props.get3wServerClient
       && reactSessionBaseUrl
       && reactSessionToken
       && props.surface
@@ -1165,8 +1165,8 @@ export function SessionPage(props: SessionPageProps) {
         workspaceType: props.selectedWorkspaceDisplay.workspaceType,
         runtimeWorkspaceId: props.runtimeWorkspaceId,
         opencodeBaseUrl: reactSessionBaseUrl,
-        openworkToken: reactSessionToken,
-        client: props.openworkServerClient,
+        get3wToken: reactSessionToken,
+        client: props.get3wServerClient,
         environmentClient: props.environmentClient,
         surface: props.surface,
       };
@@ -1230,7 +1230,7 @@ export function SessionPage(props: SessionPageProps) {
   );
 
   const openSessionTab = useCallback((workspaceId: string, sessionId: string) => {
-    openWorkbenchTab({
+    get3wbenchTab({
       workspaceId,
       sessionId,
       title: sessionTitleForId(props.sidebar.workspaceSessionGroups, sessionId, workspaceId),
@@ -1238,7 +1238,7 @@ export function SessionPage(props: SessionPageProps) {
     });
     focusWorkbenchPane("primary");
     props.sidebar.onOpenSession(workspaceId, sessionId);
-  }, [focusWorkbenchPane, openWorkbenchTab, props.sidebar]);
+  }, [focusWorkbenchPane, get3wbenchTab, props.sidebar]);
 
   const handleOpenSessionReference = useCallback((reference: SessionReference) => {
     const workbench = useWorkbenchStore.getState();
@@ -1294,7 +1294,7 @@ export function SessionPage(props: SessionPageProps) {
     prepareChildReturn(JSON.stringify([reactSessionBaseUrl, props.runtimeWorkspaceId, props.surface?.draftScope]), props.selectedSessionId!);
     openSessionTab(parentSessionLink.workspaceId, parentSessionLink.sessionId);
   }, [parentSessionLink, openSessionTab, reactSessionBaseUrl, props.runtimeWorkspaceId, props.surface?.draftScope, props.selectedSessionId]);
-  const focusWorkbenchSessionControlAction = useMemo<OpenworkControlAction>(() => ({
+  const focusWorkbenchSessionControlAction = useMemo<Get3wControlAction>(() => ({
     id: "workbench.session.focus",
     label: t("ui.2c3786b3a589"),
     description: t("ui.a1f0390f24df"),
@@ -1434,11 +1434,11 @@ export function SessionPage(props: SessionPageProps) {
   ) : activeSidePanel === "panel" ? (
     <SidePanel
       sessionId={sidePanelSessionKey}
-      client={props.openworkServerClient}
+      client={props.get3wServerClient}
       workspaceId={props.runtimeWorkspaceId}
       workspaceRoot={props.selectedWorkspaceRoot}
       onOpenTarget={openTarget}
-      isLocalWorkspace={fileOriginForRuntime({ desktop: isElectronRuntime(), serverUrl: props.openworkServerClient?.baseUrl, sandboxBackend: props.selectedWorkspaceDisplay.sandboxBackend }) === "local"}
+      isLocalWorkspace={fileOriginForRuntime({ desktop: isElectronRuntime(), serverUrl: props.get3wServerClient?.baseUrl, sandboxBackend: props.selectedWorkspaceDisplay.sandboxBackend }) === "local"}
       onClose={closeRightPane}
       onOpenExtensions={props.settingsSlot ? () => setCurrentSidePanel("extensions") : undefined}
       browserPresentation={browserPresentation.enabled ? { onPresent: browserPresentation.present } : undefined}
@@ -1530,7 +1530,7 @@ export function SessionPage(props: SessionPageProps) {
           status={{
             clientConnected: props.statusBar?.runtimeConnected ?? props.clientConnected,
             initializing: props.statusBar?.initializing,
-            openworkServerStatus: props.openworkServerStatus,
+            get3wServerStatus: props.get3wServerStatus,
             developerMode: props.developerMode,
             showConnectionStatus: Boolean(props.selectedWorkspaceId),
             providerConnectedIds: props.providerConnectedIds,
@@ -1538,7 +1538,7 @@ export function SessionPage(props: SessionPageProps) {
             showSettingsButton: props.statusBar?.showSettingsButton,
             reloadBusy: props.statusBar?.reloadBusy,
             reloadError: props.statusBar?.reloadError,
-            openWorkConnectState: props.statusBar?.openWorkConnectState,
+            get3wConnectState: props.statusBar?.get3wConnectState,
             onSendFeedback: props.onSendFeedback,
           }}
         />
@@ -1723,8 +1723,8 @@ export function SessionPage(props: SessionPageProps) {
                   className="hidden lg:inline-flex"
                   onClick={() => {
                     try {
-                      window.localStorage.removeItem("openwork.acknowledgedProviders");
-                      window.localStorage.removeItem("openwork.orgOnboardingSeen");
+                      window.localStorage.removeItem("get3w.acknowledgedProviders");
+                      window.localStorage.removeItem("get3w.orgOnboardingSeen");
                     } catch {}
                   }}
                   title={t("ui.630dd5e6c5e1")}
@@ -1905,11 +1905,11 @@ export function SessionPage(props: SessionPageProps) {
                             // Spread `surface` first so the explicit per-workspace
                             // routing props below CAN'T be silently overridden by
                             // anything that leaks into `surface`. SessionSurface's
-                            // server target (client/workspaceId/sessionId/opencodeBaseUrl/openworkToken)
+                            // server target (client/workspaceId/sessionId/opencodeBaseUrl/get3wToken)
                             // must come from the resolved workspace endpoint passed by
                             // SessionRoute, not from anything in `surface`.
                             {...props.surface!}
-                            client={props.openworkServerClient!}
+                            client={props.get3wServerClient!}
                             sandboxBackend={props.selectedWorkspaceDisplay.sandboxBackend}
                             environmentClient={props.environmentClient}
                             workspaceId={props.runtimeWorkspaceId!}
@@ -1919,7 +1919,7 @@ export function SessionPage(props: SessionPageProps) {
                             isControlTarget={activeWorkbenchPane === "primary"}
                             chatPane={canRenderSplitSurface ? "primary" : undefined}
                             opencodeBaseUrl={reactSessionBaseUrl}
-                            openworkToken={reactSessionToken}
+                            get3wToken={reactSessionToken}
                             todos={props.todos}
                             activePermission={props.activePermission}
                             activePermissionSourceTitle={props.activePermissionSourceTitle}
@@ -1989,7 +1989,7 @@ export function SessionPage(props: SessionPageProps) {
                                     workspaceId: splitSession.workspaceId,
                                     runtimeWorkspaceId: splitPaneRuntime.runtimeWorkspaceId,
                                     opencodeBaseUrl: splitPaneRuntime.opencodeBaseUrl,
-                                    openworkToken: splitPaneRuntime.openworkToken,
+                                    get3wToken: splitPaneRuntime.get3wToken,
                                   })}
                                   client={splitPaneRuntime.client}
                                   environmentClient={splitPaneRuntime.environmentClient}
@@ -2002,7 +2002,7 @@ export function SessionPage(props: SessionPageProps) {
                                   isControlTarget={activeWorkbenchPane === "secondary"}
                                   chatPane="secondary"
                                   opencodeBaseUrl={splitPaneRuntime.opencodeBaseUrl}
-                                  openworkToken={splitPaneRuntime.openworkToken}
+                                  get3wToken={splitPaneRuntime.get3wToken}
                                   onOpenTarget={(target, options, sourceSessionId) => openTargetForRuntime({
                                     client: splitPaneRuntime.client,
                                     runtimeWorkspaceId: splitPaneRuntime.runtimeWorkspaceId,
@@ -2012,7 +2012,7 @@ export function SessionPage(props: SessionPageProps) {
                                   }, target, options, sourceSessionId)}
                                   sessionTitle={splitSession.title}
                                   onOpenSubagentSession={(sessionId) => {
-                                    openWorkbenchTab({ workspaceId: splitSession.workspaceId, sessionId,
+                                    get3wbenchTab({ workspaceId: splitSession.workspaceId, sessionId,
                                       title: sessionTitleForId(props.sidebar.workspaceSessionGroups, sessionId, splitSession.workspaceId) });
                                     setWorkbenchSplit({ workspaceId: splitSession.workspaceId, sessionId });
                                     focusWorkbenchPane("secondary");
@@ -2022,7 +2022,7 @@ export function SessionPage(props: SessionPageProps) {
                                     const origin = childOrigin(scope, splitSession.sessionId);
                                     const nativeParent = props.sidebar.workspaceSessionGroups.find(group => group.workspace.id === splitSession.workspaceId)?.sessions.find(session => session.id === splitSession.sessionId)?.parentID;
                                     const parent = origin?.parentId ?? nativeParent;
-                                    if (parent) { openWorkbenchTab({ workspaceId: splitSession.workspaceId, sessionId: parent,
+                                    if (parent) { get3wbenchTab({ workspaceId: splitSession.workspaceId, sessionId: parent,
                                       title: origin?.title ?? sessionTitleForId(props.sidebar.workspaceSessionGroups, parent, splitSession.workspaceId) });
                                       setWorkbenchSplit({ workspaceId: splitSession.workspaceId, sessionId: parent });
                                       focusWorkbenchPane("secondary"); }
@@ -2157,8 +2157,8 @@ export function SessionPage(props: SessionPageProps) {
                 filesRailActive && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
               )}
               onClick={filesRailActive ? closeRightPane : openArtifactRailPane}
-              title={`Files (${artifactTargetCount})`}
-              aria-label={`Files (${artifactTargetCount})`}
+              title={t("activity.files", { count: artifactTargetCount })}
+              aria-label={t("activity.files", { count: artifactTargetCount })}
               aria-pressed={filesRailActive}
             >
               <FileText size={15} />
@@ -2174,8 +2174,8 @@ export function SessionPage(props: SessionPageProps) {
           <BrowserPresentationSurfaces sessionId={sidePanelSessionKey} controller={browserPresentation} />
           {/* With a thread open, the session surface owns the debug panel. */}
           {props.developerMode && !canRenderReactSurface ? <SessionDebugPanel
-            client={props.openworkServerClient} workspaceId={props.runtimeWorkspaceId ?? ""} workspaceRoot={props.selectedWorkspaceRoot}
-            opencodeBaseUrl={reactSessionBaseUrl} openworkToken={reactSessionToken} thread={null}
+            client={props.get3wServerClient} workspaceId={props.runtimeWorkspaceId ?? ""} workspaceRoot={props.selectedWorkspaceRoot}
+            opencodeBaseUrl={reactSessionBaseUrl} get3wToken={reactSessionToken} thread={null}
             workspace={{ name: workspaceName, startupPhase: props.startupPhase, providersConnected: props.providerConnectedIds.length, mcpConnected: props.mcpConnectedCount }}
           /> : null}
           </FloatingSlotProvider>

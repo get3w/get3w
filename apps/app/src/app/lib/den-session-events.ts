@@ -1,7 +1,7 @@
 import type { DenSettings, DenUser } from "./den-types";
 
-export const denSessionUpdatedEvent = "openwork-den-session-updated";
-export const denSettingsChangedEvent = "openwork-den-settings-changed";
+export const denSessionUpdatedEvent = "get3w-den-session-updated";
+export const denSettingsChangedEvent = "get3w-den-settings-changed";
 
 export type DenSessionUpdatedDetail = {
   status?: "success" | "error" | "signed_out";
@@ -43,6 +43,6 @@ export function dispatchDenSettingsChanged(detail: DenSettingsChangedDetail) {
 // Event typing belongs to the event contract, independent of settings UI hooks.
 declare global {
   interface WindowEventMap {
-    "openwork-den-session-updated": CustomEvent<DenSessionUpdatedDetail>;
+    "get3w-den-session-updated": CustomEvent<DenSessionUpdatedDetail>;
   }
 }

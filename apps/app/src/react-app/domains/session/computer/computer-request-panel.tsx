@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { useState, type ReactNode } from "react"
 import { Monitor } from "lucide-react"
 import { useLocation, useNavigate } from "react-router"
-import type { ComputerRequest } from "@openwork/types/desktop-ipc"
+import type { ComputerRequest } from "@get3w/types/desktop-ipc"
 
 import { desktopBridge } from "@/app/lib/desktop"
 import { Button } from "@/components/ui/button"

@@ -1,6 +1,6 @@
 // Compiled Bun binaries built by `build:bin` / `build:bin:all` in a source
 // checkout. The npm package does not ship them: it runs the Node bundle in
-// dist/openwork-server.mjs, which works on every OS and CPU.
+// dist/get3w-server.mjs, which works on every OS and CPU.
 export const SERVER_BINARY_TARGETS = [
   { platform: "darwin", arch: "arm64", target: "bun-darwin-arm64" },
   { platform: "darwin", arch: "x64", target: "bun-darwin-x64" },
@@ -13,7 +13,7 @@ export const SERVER_BINARY_TARGETS = [
 export function serverBinaryName(platform, arch) {
   const target = SERVER_BINARY_TARGETS.find((entry) => entry.platform === platform && entry.arch === arch);
   if (!target) return null;
-  return `openwork-server-${target.target}${platform === "win32" ? ".exe" : ""}`;
+  return `get3w-server-${target.target}${platform === "win32" ? ".exe" : ""}`;
 }
 
 // Security baseline: only patched releases on the supported Node 24 line.

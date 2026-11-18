@@ -77,7 +77,7 @@ export function parseRecord(value: unknown): Record<string, unknown> | null {
 }
 
 /** Brand names whose casing a plain title case would get wrong. */
-const BRAND_WORDS: Record<string, string> = { openwork: "Get3W", github: "GitHub", gitlab: "GitLab", hubspot: "HubSpot" }
+const BRAND_WORDS: Record<string, string> = { get3w: "Get3W", github: "GitHub", gitlab: "GitLab", hubspot: "HubSpot" }
 
 function titleCase(slug: string): string {
   return slug
@@ -88,11 +88,11 @@ function titleCase(slug: string): string {
 }
 
 /**
- * Connection namespaces carry routing ids ("openwork-direct-slack-c1ca24").
+ * Connection namespaces carry routing ids ("get3w-direct-slack-c1ca24").
  * People should see the service ("Slack"), never the plumbing around it.
  */
 export function serviceNameFromSlug(slug: string): string {
-  const cleaned = slug.replace(/^openwork-direct-/i, "").replace(/-[0-9a-f]{6}$/i, "")
+  const cleaned = slug.replace(/^get3w-direct-/i, "").replace(/-[0-9a-f]{6}$/i, "")
   return titleCase(cleaned || slug)
 }
 
@@ -163,9 +163,9 @@ function verbPhrase(action: string, tense: "present" | "past"): string {
   const first = words[0]?.toLowerCase()
   const mapped = first ? (tense === "past" ? PAST_TENSE[first] : PRESENT_TENSE[first]) : undefined
   if (mapped) {
-    return [mapped, ...words.slice(1)].join(" ")
+    return [t(`activity.verb.${first}.${tense}`), ...words.slice(1)].join(" ")
   }
-  const prefix = tense === "past" ? "Used" : "Using"
+  const prefix = t(`activity.verb.using.${tense}`)
   return `${prefix} ${humanize(action)}`
 }
 
@@ -204,35 +204,35 @@ function engineToolSentence(action: string, input: Record<string, unknown> | nul
   if (action === "read_mcp_resource") {
     const uri = typeof input?.uri === "string" ? input.uri : ""
     if (uri === "skill://index.json") {
-      return sentence(null, "Looking through your skills", "Looked through your skills", "Couldn't look through your skills")
+      return sentence(null, t("activity.capability.skills.present"), t("activity.capability.skills.past"), t("activity.capability.skills.failure"))
     }
     const skill = /^skill:\/\/([^/]+)\/SKILL\.md$/.exec(uri)?.[1]
     if (skill) {
-      const target = `your ${plainSkillName(skill)} skill`
-      return sentence(null, `Using ${target}…`, `Used ${target}`, `Couldn't use ${target}`)
+      const target = t("activity.skill.target", { name: plainSkillName(skill) })
+      return sentence(null, t("activity.capability.skill.present", { target }), t("activity.capability.skill.past", { target }), t("activity.capability.skill.failure", { target }))
     }
-    const from = server ? ` from ${server}` : ""
-    return sentence(server, `Reading a document${from}`, `Read a document${from}`, `Couldn't read a document${from}`)
+    const from = server ? t("activity.capability.from", { server }) : ""
+    return sentence(server, t("activity.capability.document.present", { from }), t("activity.capability.document.past", { from }), t("activity.capability.document.failure", { from }))
   }
   if (action === "list_mcp_resources") {
-    const from = server ? ` from ${server}` : ""
-    return sentence(server, `Listing available documents${from}`, `Listed available documents${from}`, `Couldn't list documents${from}`)
+    const from = server ? t("activity.capability.from", { server }) : ""
+    return sentence(server, t("activity.capability.documents.present", { from }), t("activity.capability.documents.past", { from }), t("activity.capability.documents.failure", { from }))
   }
-  if (action === "models") return sentence(null, "Looking up models", "Looked up models", "Couldn't look up models")
+  if (action === "models") return sentence(null, t("activity.capability.models.present"), t("activity.capability.models.past"), t("activity.capability.models.failure"))
   if (action === "session_rename") {
-    const title = typeof input?.title === "string" && input.title.trim() ? ` to “${truncate(input.title.trim(), 60)}”` : ""
-    return sentence(null, `Renaming this chat${title}`, `Renamed this chat${title}`, "Couldn't rename this chat")
+    const title = typeof input?.title === "string" && input.title.trim() ? t("activity.capability.title", { name: truncate(input.title.trim(), 60) }) : ""
+    return sentence(null, t("activity.capability.rename.present", { title }), t("activity.capability.rename.past", { title }), t("activity.capability.rename.failure"))
   }
   if (action === "session_move") {
     const folder = typeof input?.directory === "string" ? input.directory.replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) : undefined
-    const to = folder ? ` to ${folder}` : ""
-    return sentence(null, `Moving this chat${to}`, `Moved this chat${to}`, "Couldn't move this chat")
+    const to = folder ? t("activity.capability.folder", { folder }) : ""
+    return sentence(null, t("activity.capability.move.present", { to }), t("activity.capability.move.past", { to }), t("activity.capability.move.failure"))
   }
-  return sentence(null, verbPhrase(action, "present"), verbPhrase(action, "past"), `Couldn't ${baseVerbPhrase(action)}`)
+  return sentence(null, verbPhrase(action, "present"), verbPhrase(action, "past"), t("activity.verb.failure", { action: baseVerbPhrase(action) }))
 }
 
 export function getConnectionStatusProbeId(part: DynamicToolUIPart): string | null {
-  if (part.toolName !== "openwork_execute_capability" && part.toolName !== "openwork-cloud_execute_capability") return null
+  if (part.toolName !== "get3w_execute_capability" && part.toolName !== "get3w-cloud_execute_capability") return null
   const input = parseRecord(part.input)
   return typeof input?.name === "string" ? /^mcp:([^:\s]+):\*$/.exec(input.name)?.[1] ?? null : null
 }
@@ -242,32 +242,37 @@ export function getCapabilityCallSentence(
   options?: { includeQuery?: boolean; connectionName?: string | null },
 ): CapabilityCallSentence {
   const toolName = part.toolName
+  if (toolName === "workspace_file") {
+    const action = parseRecord(part.input)?.action
+    const operation = action === "register" || action === "resolve" ? action : "plan"
+    return { service: null, present: t(`activity.workspace.${operation}.present`), past: t(`activity.workspace.${operation}.past`), failure: t(`activity.workspace.${operation}.failure`) }
+  }
   if(toolName === "resource_upload") return {service:null,present:t("personal.resource.uploading"),past:t("personal.resource.uploaded"),failure:t("personal.resource.upload_failed")}
   if(toolName === "media_prepare") return {service:null,present:t("personal.media.preparing"),past:t("personal.media.prepared"),failure:t("personal.media.prepare_failed")}
   if(toolName === "media_generate") return {service:null,present:t("personal.media.starting"),past:t("personal.media.started"),failure:t("personal.media.start_failed")}
   if (getConnectionStatusProbeId(part)) {
     const service = options?.connectionName?.trim() || null
-    const target = service ? `${service} connection` : "connection"
+    const target = service ? t("activity.connection.target", { name: service }) : t("activity.connection.default")
     return {
       service,
-      present: `Checking ${target}…`,
-      past: `Checked ${target}`,
-      failure: `Couldn't check ${target}`,
+      present: t("activity.connection.present", { target }),
+      past: t("activity.connection.past", { target }),
+      failure: t("activity.connection.failure", { target }),
     }
   }
   if (toolName.endsWith("_get_skill")) {
     const name = skillReference(part)
-    const target = name ? `your ${name} skill` : "a skill"
+    const target = name ? t("activity.skill.target", { name }) : t("activity.skill.default")
     return {
       service: null,
-      present: `Using ${target}…`,
-      past: `Used ${target}`,
-      failure: `Couldn't use ${target}`,
+      present: t("activity.skill.present", { target }),
+      past: t("activity.skill.past", { target }),
+      failure: t("activity.skill.failure", { target }),
     }
   }
 
   if (toolName.endsWith("_list_skills")) {
-    return { service: null, present: "Looking through your skills…", past: "Looked through your skills" }
+    return { service: null, present: t("activity.skills.present"), past: t("activity.skills.past"), failure: t("activity.skills.failure") }
   }
 
   // Code Mode's own catalog lookup is plumbing: say what it did, never echo
@@ -275,9 +280,9 @@ export function getCapabilityCallSentence(
   if (toolName === "search") {
     return {
       service: null,
-      present: "Checking which tools are available",
-      past: "Checked which tools are available",
-      failure: "Couldn't check which tools are available",
+      present: t("activity.tools.present"),
+      past: t("activity.tools.past"),
+      failure: t("activity.tools.failure"),
     }
   }
 
@@ -287,9 +292,9 @@ export function getCapabilityCallSentence(
   if (toolName.endsWith("search_capabilities")) {
     return {
       service: null,
-      present: `Searching your connections for${quoted || " capabilities"}`,
-      past: `Searched your connections for${quoted || " capabilities"}`,
-      failure: "Couldn't search your connections",
+      present: t("activity.connections.present", { query: quoted || t("activity.connections.default") }),
+      past: t("activity.connections.past", { query: quoted || t("activity.connections.default") }),
+      failure: t("activity.connections.failure"),
     }
   }
 
@@ -298,9 +303,9 @@ export function getCapabilityCallSentence(
   if (toolName.endsWith("execute_capability_script")) {
     return {
       service: "Get3W Cloud",
-      present: "Running a script on Get3W Cloud",
-      past: "Ran a script on Get3W Cloud",
-      failure: "Script on Get3W Cloud failed",
+      present: t("activity.capability.script.present"),
+      past: t("activity.capability.script.past"),
+      failure: t("activity.capability.script.failure"),
     }
   }
 
@@ -310,9 +315,9 @@ export function getCapabilityCallSentence(
     if (name && /(?:^|:)getOrg$/.test(name)) {
       return {
         service: null,
-        present: "Looking up people in your organization",
-        past: "Looked up people in your organization",
-        failure: "Couldn't look up people in your organization",
+        present: t("activity.capability.people.present"),
+        past: t("activity.capability.people.past"),
+        failure: t("activity.capability.people.failure"),
       }
     }
     const split = name ? splitCapabilityName(name) : null
@@ -322,7 +327,7 @@ export function getCapabilityCallSentence(
         service: split.service,
         present: `${verbPhrase(split.action, "present")} · ${split.service}${suffix}`,
         past: `${verbPhrase(split.action, "past")} · ${split.service}${suffix}`,
-        failure: `Couldn't ${baseVerbPhrase(split.action)} · ${split.service}`,
+        failure: t("activity.verb.failure", { action: `${baseVerbPhrase(split.action)} · ${split.service}` }),
       }
     }
 
@@ -339,9 +344,9 @@ export function getCapabilityCallSentence(
           const verb = action.split("_")[0]!.toLowerCase()
           return {
             service,
-            present: `${PRESENT_TENSE[verb]} ${service}${quoted ? ` for${quoted}` : ""}`,
-            past: `${PAST_TENSE[verb]} ${service}${quoted ? ` for${quoted}` : ""}`,
-            failure: `Couldn't ${verb} ${service}`,
+            present: `${t(`activity.verb.${verb}.present`)} ${service}${quoted ? t("activity.verb.for", { query: quoted }) : ""}`,
+            past: `${t(`activity.verb.${verb}.past`)} ${service}${quoted ? t("activity.verb.for", { query: quoted }) : ""}`,
+            failure: t("activity.verb.failure", { action: `${verb} ${service}` }),
           }
         }
         const suffix = quoted ? `:${quoted}` : ""
@@ -351,7 +356,7 @@ export function getCapabilityCallSentence(
           present: `${verbPhrase(action, "present")}${tail}${suffix}`,
           past: `${verbPhrase(action, "past")}${tail}${suffix}`,
           // Without a known service there is nothing specific to say.
-          ...(service ? { failure: `Couldn't ${baseVerbPhrase(action)}${tail}` } : {}),
+          ...(service ? { failure: t("activity.verb.failure", { action: `${baseVerbPhrase(action)}${tail}` }) } : {}),
         }
       }
     }
@@ -369,8 +374,8 @@ export function getCapabilityCallSentence(
       const label = pluginName ? `${kind} “${pluginName}”` : `a ${kind} capability`
       return {
         service: pluginName,
-        present: `Using ${label}`,
-        past: `Used ${label}`,
+        present: t("activity.capability.plugin.present", { label }),
+        past: t("activity.capability.plugin.past", { label }),
       }
     }
 
@@ -393,17 +398,17 @@ export function getCapabilityCallSentence(
         const suffix = nativeService ? ` · ${nativeService}` : ""
         return {
           service: nativeService,
-          present: `${verbPresent} ${phrase}${suffix}`,
-          past: `${verbPast} ${phrase}${suffix}`,
-          failure: `Couldn't ${first} ${phrase}${suffix}`,
+          present: `${t(`activity.verb.${first}.present`)} ${phrase}${suffix}`,
+          past: `${t(`activity.verb.${first}.past`)} ${phrase}${suffix}`,
+          failure: t("activity.verb.failure", { action: `${first} ${phrase}${suffix}` }),
         }
       }
     }
 
     return {
       service: null,
-      present: `Running a capability${quoted ? ` for${quoted}` : ""}`,
-      past: `Ran a capability${quoted ? ` for${quoted}` : ""}`,
+      present: t("activity.capability.run.present", { query: quoted ? t("activity.capability.query", { query: quoted }) : "" }),
+      past: t("activity.capability.run.past", { query: quoted ? t("activity.capability.query", { query: quoted }) : "" }),
     }
   }
 
@@ -422,12 +427,12 @@ export function getCapabilityCallSentence(
     // nothing a person needs; the query says what was searched.
     if (/^(?:search|find|query)(?:_|$)/i.test(action)) {
       const verb = action.split("_")[0]!.toLowerCase()
-      const suffix = quoted ? ` for${quoted}` : ""
+      const suffix = quoted ? t("activity.verb.for", { query: quoted }) : ""
       return {
         service,
-        present: `${PRESENT_TENSE[verb]} ${service}${suffix}`,
-        past: `${PAST_TENSE[verb]} ${service}${suffix}`,
-        failure: `Couldn't ${verb} ${service}`,
+        present: `${t(`activity.verb.${verb}.present`)} ${service}${suffix}`,
+        past: `${t(`activity.verb.${verb}.past`)} ${service}${suffix}`,
+        failure: t("activity.verb.failure", { action: `${verb} ${service}` }),
       }
     }
     const suffix = quoted ? `:${quoted}` : ""
@@ -435,7 +440,7 @@ export function getCapabilityCallSentence(
       service,
       present: `${verbPhrase(action, "present")} · ${service}${suffix}`,
       past: `${verbPhrase(action, "past")} · ${service}${suffix}`,
-      failure: `Couldn't ${baseVerbPhrase(action)} · ${service}`,
+      failure: t("activity.verb.failure", { action: `${baseVerbPhrase(action)} · ${service}` }),
     }
   }
 

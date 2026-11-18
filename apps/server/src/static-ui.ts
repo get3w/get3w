@@ -144,7 +144,7 @@ function injectBootstrap(html: string, token: string): string {
   if (!clientToken) return html;
 
   const bootstrap = escapeScriptJson(JSON.stringify({ token: clientToken }));
-  const script = `<script>window.__OPENWORK_BOOTSTRAP__ = ${bootstrap}</script>`;
+  const script = `<script>window.__GET3W_BOOTSTRAP__ = ${bootstrap}</script>`;
   const headCloseIndex = html.toLowerCase().indexOf("</head>");
   if (headCloseIndex < 0) return `${script}${html}`;
   return `${html.slice(0, headCloseIndex)}${script}${html.slice(headCloseIndex)}`;

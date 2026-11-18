@@ -49,7 +49,7 @@ test('model draft produces native parts and transcript chips after restoration',
  const model={slug:'provider/image/text-to-image',runType:'text-to-image',name:'Image Model'};
  const token='@'+encodeComposerMentionValue(modelMentionValue(model));
  const parts=await draftToParts({mode:'prompt',text:`${token} draw a cat`,parts:[],attachments:[]},'/tmp','ses_isolated',null);
- expect(parts.some(part=>part.type==='text'&&part.metadata&&Reflect.get(part.metadata,'openworkComposerPill')?.kind==='model')).toBe(true);
+ expect(parts.some(part=>part.type==='text'&&part.metadata&&Reflect.get(part.metadata,'get3wComposerPill')?.kind==='model')).toBe(true);
  expect(splitComposerPillText(token)).toEqual([{kind:'model',...model}]);
 });
 
@@ -85,4 +85,16 @@ test('legacy system and user duration preferences never reach generation policy'
 test('execution drops incompatible legacy output values',()=>{
  writeOutputPreference('a',{runType:'image',fields:{resolution:'8K',aspect_ratio:'16:9',format:'psd'},scope:'global',updatedAt:1});
  expect(resolveGenerationPolicy('a','s',catalog,[]).outputs['text-to-image']).toEqual({aspect_ratio:'16:9'});
+});
+
+test('web search and fetch preferences are bound to message policy',()=>{
+ const tools:TaskCatalogSnapshot={...catalog,models:[
+  {...model('tavily/v1/search'),type:'search',category:'Tools'},
+  {...model('parallel/v1/fetch'),type:'fetch',category:'Tools'},
+ ]};
+ writeModelPreference('a',{runType:'search',slug:'tavily/v1',scope:'global',updatedAt:1});
+ writeModelPreference('a',{runType:'fetch',slug:'parallel/v1',scope:'global',updatedAt:1});
+ const policy=resolveGenerationPolicy('a','s',tools,[]);
+ expect(policy.models.search).toEqual({slug:'tavily/v1/search',source:'user'});
+ expect(policy.models.fetch).toEqual({slug:'parallel/v1/fetch',source:'user'});
 });

@@ -13,7 +13,7 @@ export const PROVIDER_LIST_CACHE_MS = 5 * 60 * 1000;
 const PROVIDER_LIST_QUERY_ROOT = ["opencode-provider-list"] as const;
 // Every provider the engine knows (~6 MB on v1), for connecting a new one.
 const PROVIDER_CATALOG_QUERY_ROOT = ["opencode-provider-catalog"] as const;
-const SAVED_PROVIDER_LIST_PREFIX = "openwork.providerList.v1:";
+const SAVED_PROVIDER_LIST_PREFIX = "get3w.providerList.v1:";
 
 export type ConnectedProviderSnapshot = Array<{
   id: string;

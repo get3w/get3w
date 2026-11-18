@@ -1,6 +1,6 @@
 import { builtMcpAppCatalogSchema, type BuiltMcpAppCatalogEntry } from "./built-mcp-app-catalog";
 import { DenApiError } from "./den";
-import { generatedArtifactViewSchema, savedAppDetailSchema, savedAppSummarySchema, type SaveApp } from "@openwork/types/workflows";
+import { generatedArtifactViewSchema, savedAppDetailSchema, savedAppSummarySchema, type SaveApp } from "@get3w/types/workflows";
 
 /** Personal artifacts, owned by the signed-in Get3W user and reached through the desktop bridge. */
 export function createArtifactsClient(input: { userId: string }) {

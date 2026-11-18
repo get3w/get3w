@@ -1,6 +1,6 @@
 import type { DynamicToolUIPart, ToolUIPart } from "ai"
-import { credentialPromptSchema, type CredentialPrompt } from "@openwork/types/den/credential-prompt"
-import { isOpenworkCloudCapabilityTool } from "@/components/tools/error-attribution"
+import { credentialPromptSchema, type CredentialPrompt } from "@get3w/types/den/credential-prompt"
+import { isGet3wCloudCapabilityTool } from "@/components/tools/error-attribution"
 import { codeModeToolCalls } from "@/lib/code-mode-tools"
 
 const MAX_PARSED_RESULT_LENGTH = 256 * 1_024
@@ -45,7 +45,7 @@ const DEN_PROMPT_OPERATIONS = new Map<string, ReadonlySet<PromptTargetType>>([
 ])
 
 function denPromptTargets(part: DynamicToolUIPart): ReadonlySet<PromptTargetType> | null {
-  if (!isOpenworkCloudCapabilityTool(part.toolName) || !/(?:^|_)execute_capability$/.test(part.toolName)) return null
+  if (!isGet3wCloudCapabilityTool(part.toolName) || !/(?:^|_)execute_capability$/.test(part.toolName)) return null
   const name = isRecord(part.input) ? part.input.name : undefined
   return typeof name === "string" ? DEN_PROMPT_OPERATIONS.get(name) ?? null : null
 }
@@ -58,8 +58,8 @@ function denPromptTargets(part: DynamicToolUIPart): ReadonlySet<PromptTargetType
 export function credentialPromptFromToolPart(part: DynamicToolUIPart): CredentialPrompt | null {
   const targets = part.state === "output-available" ? denPromptTargets(part) : null
   if (!targets) return null
-  const metadata = isRecord(part.callProviderMetadata) && isRecord(part.callProviderMetadata.openwork)
-    ? part.callProviderMetadata.openwork.mcpResult
+  const metadata = isRecord(part.callProviderMetadata) && isRecord(part.callProviderMetadata.get3w)
+    ? part.callProviderMetadata.get3w.mcpResult
     : undefined
   const found = new Map<string, CredentialPrompt>()
   for (const record of [...records(part.output), ...records(metadata)]) {

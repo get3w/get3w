@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { RefreshCw } from "lucide-react";
-import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wWorkspaceCatalogEntry } from "@/app/lib/get3w-server";
 import { t } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { classifyOpenTarget, type Data } from "../session/artifacts/open-target";
@@ -19,7 +19,7 @@ const retainedDrafts = new Map<string, { loaded: Loaded; draft: string; sheetDra
 export type FileEditorHandle = { dirty: boolean; save: () => Promise<boolean>; discard: () => void };
 
 export function WorkspaceFileContent({ client, workspaceId, entry, draftScope = "", actionsContainer, onEditor, onSaved }: {
-  client: OpenworkServerClient; workspaceId: string; entry: OpenworkWorkspaceCatalogEntry; draftScope?: string;
+  client: Get3wServerClient; workspaceId: string; entry: Get3wWorkspaceCatalogEntry; draftScope?: string;
   actionsContainer: HTMLElement | null;
   onEditor: (editor: FileEditorHandle | null) => void; onSaved: () => void;
 }) {

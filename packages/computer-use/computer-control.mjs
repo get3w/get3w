@@ -14,7 +14,7 @@ export const COMPUTER_TOOLS = Object.freeze({
   computer_status: "computer_session_status",
   computer_close: "computer_close_session",
 });
-export const COMPUTER_PROTOCOL = "openwork.computer-use/1";
+export const COMPUTER_PROTOCOL = "get3w.computer-use/1";
 export const COMPUTER_STOP_GUIDANCE = "Computer session revocation could not be confirmed. Use Stop on the agent's pill over the app window or in the Get3W Computer Use menu before continuing.";
 const ARGUMENTS = Object.freeze({
   computer_open: ["app_id", "pid", "window_id", "mode", "purpose", "screenshot"],
@@ -146,7 +146,7 @@ function deadline(ms) {
  * a time, never through the model's thinking. Other computers serve one chat.
  * @param {{
  *   adapters: ComputerAdapter[],
- *   runProgram?: (request: import("@openwork/computer-use/runtime").ProgramRequest, host: import("@openwork/computer-use/runtime").ProgramHost, signal: AbortSignal) => Promise<import("@openwork/computer-use/runtime").ProgramResult>,
+ *   runProgram?: (request: import("@get3w/computer-use/runtime").ProgramRequest, host: import("@get3w/computer-use/runtime").ProgramHost, signal: AbortSignal) => Promise<import("@get3w/computer-use/runtime").ProgramResult>,
  *   browserTask?: (request: { sessionId: string, operation: string, args: Record<string, unknown> }, options: { signal: AbortSignal }) => Promise<unknown>,
  *   readRemoteFeatureEnabled?: () => Promise<boolean>,
  *   standing?: { read: () => Promise<SavedChoices>, write: (state: SavedChoices) => Promise<void> },
@@ -1221,7 +1221,7 @@ export function createComputerControl({ adapters, runProgram, runScript, onTimin
     /**
      * Run bounded UI code under the same flag, chat and stop generation as
      * direct tools. Browser calls still pass through their normal task host.
-     * @param {import("@openwork/computer-use/runtime").ProgramRequest & ChatInput} input
+     * @param {import("@get3w/computer-use/runtime").ProgramRequest & ChatInput} input
      * @param {{ signal?: AbortSignal }} options
      */
     /**

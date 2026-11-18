@@ -1,12 +1,12 @@
 import {
   GATEWAY_USAGE_LIMIT_ERROR_CODE,
   hasGatewayUsageLimitHttpMarker,
-} from "@openwork/types/den/gateway-usage-limits";
+} from "@get3w/types/den/gateway-usage-limits";
 import {
-  OPENWORK_MODELS_ALLOWANCE_ERROR_CODE,
-  OPENWORK_MODELS_ALLOWANCE_SOURCE,
-  hasOpenWorkModelsAllowanceHttpMarker,
-} from "@openwork/types/den/inference";
+  GET3W_MODELS_ALLOWANCE_ERROR_CODE,
+  GET3W_MODELS_ALLOWANCE_SOURCE,
+  hasGet3WModelsAllowanceHttpMarker,
+} from "@get3w/types/den/inference";
 
 export const GATEWAY_QUOTA_MESSAGE = "You have reached your AI Gateway usage limit.";
 const MAX_ERROR_BYTES = 16_384;
@@ -29,9 +29,9 @@ export function gatewayBase(id: string, baseURL: unknown): URL | undefined {
   }
 }
 
-/** Get3W Models: the engine's `openwork` provider, served at `<models origin>/api/v1`. */
-export function openWorkModelsBase(id: string, baseURL: unknown): URL | undefined {
-  if (id !== "openwork" || typeof baseURL !== "string") return;
+/** Get3W Models: the engine's `get3w` provider, served at `<models origin>/api/v1`. */
+export function get3wModelsBase(id: string, baseURL: unknown): URL | undefined {
+  if (id !== "get3w" || typeof baseURL !== "string") return;
   try {
     const url = new URL(baseURL);
     if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) return;
@@ -44,17 +44,17 @@ export function openWorkModelsBase(id: string, baseURL: unknown): URL | undefine
 }
 
 /**
- * The organization used its Get3W Models allowance (`x-openwork-error-code: openwork_models_allowance_reached`).
+ * The organization used its Get3W Models allowance (`x-get3w-error-code: get3w_models_allowance_reached`).
  * It lasts until the window resets, so the engine must not retry it as a rate limit.
  */
-export async function isOpenWorkModelsAllowanceResponse(base: URL, url: URL, response: Response): Promise<boolean> {
+export async function isGet3WModelsAllowanceResponse(base: URL, url: URL, response: Response): Promise<boolean> {
   if (url.origin !== base.origin || !url.pathname.startsWith(`${base.pathname}/`)
     || (response.url && new URL(response.url).origin !== base.origin)
-    || !hasOpenWorkModelsAllowanceHttpMarker(response)) return false;
+    || !hasGet3WModelsAllowanceHttpMarker(response)) return false;
   const body = await readBoundedJson(response);
   return record(body) && record(body.error)
-    && body.error.code === OPENWORK_MODELS_ALLOWANCE_ERROR_CODE
-    && body.error.source === OPENWORK_MODELS_ALLOWANCE_SOURCE;
+    && body.error.code === GET3W_MODELS_ALLOWANCE_ERROR_CODE
+    && body.error.source === GET3W_MODELS_ALLOWANCE_SOURCE;
 }
 
 async function readBoundedJson(response: Response): Promise<unknown> {
@@ -111,7 +111,7 @@ export async function isGatewayQuotaResponse(base: URL, url: URL, response: Resp
     const body: unknown = JSON.parse(text + decoder.decode());
     return record(body) && record(body.error)
       && body.error.code === GATEWAY_USAGE_LIMIT_ERROR_CODE
-      && body.error.source === "openwork_gateway"
+      && body.error.source === "get3w_gateway"
       && body.error.type === "usage_limit_error"
       && body.error.message === GATEWAY_QUOTA_MESSAGE;
   };

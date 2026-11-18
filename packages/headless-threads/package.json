@@ -1,12 +1,12 @@
 {
-  "name": "@openwork/headless-threads",
+  "name": "@get3w/headless-threads",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "types": {
-        "openwork-build": "./dist/types/src/index.d.ts",
+        "get3w-build": "./dist/types/src/index.d.ts",
         "default": "./src/index.ts"
       },
       "bun": "./src/index.ts",

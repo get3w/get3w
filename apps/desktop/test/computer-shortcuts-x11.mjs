@@ -7,11 +7,11 @@ import { promisify } from "node:util";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createComputerControl } from "@openwork/computer-use/computer-control";
-import { createRemoteComputerAdapter } from "@openwork/computer-use/computer-remote";
-import { createX11Driver } from "@openwork/computer-use/computer-x11-driver";
-import { runComputerProgram } from "@openwork/computer-use/runtime";
-import { createCloudComputer } from "@openwork/computer-use/cloud";
+import { createComputerControl } from "@get3w/computer-use/computer-control";
+import { createRemoteComputerAdapter } from "@get3w/computer-use/computer-remote";
+import { createX11Driver } from "@get3w/computer-use/computer-x11-driver";
+import { runComputerProgram } from "@get3w/computer-use/runtime";
+import { createCloudComputer } from "@get3w/computer-use/cloud";
 
 const container = process.env.GET3W_TEST_COMPUTER_CONTAINER;
 assert.ok(container, "Set GET3W_TEST_COMPUTER_CONTAINER to the isolated GTK fixture container.");
@@ -21,7 +21,7 @@ let workerDirectory = "";
 const machine = {
   async run(command, timeoutMs) {
     commands++;
-    workerDirectory ||= command.match(/\/tmp\/openwork-computer-[a-f0-9-]+/)?.[0] ?? "";
+    workerDirectory ||= command.match(/\/tmp\/get3w-computer-[a-f0-9-]+/)?.[0] ?? "";
     try {
       const result = await exec("docker", ["exec", container, "sh", "-c", "set -a; . /tmp/computer-shortcuts-dbus; set +a; " + command], { timeout: timeoutMs + 2000, maxBuffer: 3_000_000 });
       return { exitCode: 0, ...result };
@@ -97,7 +97,7 @@ try {
 
   // A killed worker leaves its socket behind. Read-only recovery must restart
   // it without replaying any preceding input or changing the fixture state.
-  assert.match(workerDirectory, /^\/tmp\/openwork-computer-[a-f0-9-]+$/);
+  assert.match(workerDirectory, /^\/tmp\/get3w-computer-[a-f0-9-]+$/);
   await exec("docker", ["exec", container, "pkill", "-f", `^python3 ${workerDirectory}/worker.py `]);
   const recovered = await driver.accessibility({ x: 0, y: 0, width: 1280, height: 900 }, { observationId: "recovered" });
   assert.equal(recovered.capability, "atspi");

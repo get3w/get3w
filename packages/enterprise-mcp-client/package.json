@@ -1,5 +1,5 @@
 {
-  "name": "@openwork/enterprise-mcp-client",
+  "name": "@get3w/enterprise-mcp-client",
   "private": true,
   "version": "0.1.0",
   "description": "Package-first remote MCP client runtime for enterprise Den connections",
@@ -7,7 +7,7 @@
   "exports": {
     ".": {
       "types": {
-        "openwork-build": "./dist/types/src/index.d.ts",
+        "get3w-build": "./dist/types/src/index.d.ts",
         "default": "./src/index.ts"
       },
       "development": "./src/index.ts",
@@ -15,7 +15,7 @@
     },
     "./manual-oauth": {
       "types": {
-        "openwork-build": "./dist/types/src/manual-oauth.d.ts",
+        "get3w-build": "./dist/types/src/manual-oauth.d.ts",
         "default": "./src/manual-oauth.ts"
       },
       "development": "./src/manual-oauth.ts",

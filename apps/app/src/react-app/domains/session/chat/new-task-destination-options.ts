@@ -20,7 +20,7 @@ export function destinationWorkspaces(destination: NewSessionDestination, worksp
   return workspaces.filter((workspace) => !destination.parent || workspace.id === destination.parent.workspaceId);
 }
 
-/** "openwork-lounge / coworker", or just the workspace when there is no group. */
+/** "get3w-lounge / coworker", or just the workspace when there is no group. */
 export function destinationLabel(
   destination: NewSessionDestination,
   workspaces: readonly Named[],

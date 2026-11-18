@@ -37,8 +37,8 @@ function toolPart(toolName: string, output: unknown, name = "postMcpConnections"
 
 test("only Get3W Cloud's own tools can draw a key field", () => {
   const body = JSON.stringify({ connection: { id: "emc_fixture" }, credentialPrompt: prompt, nextStep: "End your turn." })
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", body))?.target).toEqual(prompt.target)
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", { content: [{ type: "text", text: body }] }))?.name).toBe("Fixture service")
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", body))?.target).toEqual(prompt.target)
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", { content: [{ type: "text", text: body }] }))?.name).toBe("Fixture service")
   // Another MCP server, or a model writing the same JSON elsewhere, gets no field.
   expect(credentialPromptFromToolPart(toolPart("thirdparty_lookup", body))).toBeNull()
   expect(credentialPromptFromToolPart(toolPart("bash", body))).toBeNull()
@@ -46,20 +46,20 @@ test("only Get3W Cloud's own tools can draw a key field", () => {
 
 test("an organization MCP server's result cannot forge a prompt, even through execute_capability", () => {
   const body = JSON.stringify({ credentialPrompt: prompt })
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", body, "postMcpConnectionsCredentialPrompt"))?.name).toBe("Fixture service")
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", body, "postMcpConnectionsCredentialPrompt"))?.name).toBe("Fixture service")
   for (const name of ["mcp:emc_evil:lookup", "plugin:plg_1:cob_1", "marketplace:plg_1:cob_1", "getMcpConnections"]) {
-    expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", body, name))).toBeNull()
+    expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", body, name))).toBeNull()
   }
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_search_capabilities", body))).toBeNull()
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_search_capabilities", body))).toBeNull()
 })
 
 test("only the exact metadata schema is accepted; a value field or a second target is refused", () => {
-  const read = (candidate: unknown) => credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", { credentialPrompt: candidate }))
+  const read = (candidate: unknown) => credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", { credentialPrompt: candidate }))
   expect(read({ ...prompt, value: "fixture-private-value" })).toBeNull()
   expect(read({ ...prompt, target: { ...prompt.target, apiKey: "fixture-private-value" } })).toBeNull()
   expect(read({ ...prompt, kind: "connection_action" })).toBeNull()
   const two = { matches: [{ credentialPrompt: prompt }], credentialPrompt: { ...prompt, target: { type: "mcp_connection_key", connectionId: "emc_other" } } }
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", { ...two, structuredContent: { credentialPrompt: prompt } }))).toBeNull()
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", { ...two, structuredContent: { credentialPrompt: prompt } }))).toBeNull()
 })
 
 test("the private field opts out of autofill, password managers and session capture, with no value in markup", () => {
@@ -115,30 +115,30 @@ test("the field is masked and offers to show the key while typing", () => {
 
 test("a plugin's setup can ask for its connection key in chat", () => {
   const plugin = { ...prompt, target: { type: "plugin_connection_key", pluginId: "plg_fixture", configObjectId: "cob_fixture", serverName: "status", connectionId: "emc_fixture" } }
-  const part = toolPart("openwork-cloud_execute_capability", JSON.stringify({ ok: true, item: {}, credentialPrompt: plugin }), "postPluginsMcpConnections")
+  const part = toolPart("get3w-cloud_execute_capability", JSON.stringify({ ok: true, item: {}, credentialPrompt: plugin }), "postPluginsMcpConnections")
   expect(credentialPromptFromToolPart(part)?.target.type).toBe("plugin_connection_key")
 })
 
 test("stable-key creation and existing-connection requests draw the key field, directly or from a Code Mode script", () => {
   const body = JSON.stringify({ id: "emc_fixture", credentialPrompt: prompt })
-  expect(credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", body, "putMcpConnectionsByKeyByExternalKey"))?.target).toEqual(prompt.target)
+  expect(credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", body, "putMcpConnectionsByKeyByExternalKey"))?.target).toEqual(prompt.target)
   const member = { ...prompt, target: { type: "mcp_connection_member_key", connectionId: "emc_fixture" } }
   const share = { ...prompt, target: { type: "mcp_connection_shared_switch", connectionId: "emc_fixture", expectedUpdatedAt: "2026-10-21T10:00:00.000Z", audience: { orgWide: false, memberCount: 2, teamCount: 1 } } }
   for (const candidate of [prompt, member, share]) {
-    const part = toolPart("openwork-cloud_execute_capability", JSON.stringify({ credentialPrompt: candidate }), "postMcpConnectionsCredentialPrompt")
+    const part = toolPart("get3w-cloud_execute_capability", JSON.stringify({ credentialPrompt: candidate }), "postMcpConnectionsCredentialPrompt")
     expect(credentialPromptFromToolPart(part)?.target).toEqual(candidate.target)
   }
   const script: DynamicToolUIPart = {
     type: "dynamic-tool", toolName: "code_mode", toolCallId: "call_script", state: "output-available", input: {}, output: "done",
-    callProviderMetadata: { openwork: { codeMode: { calls: [{ tool: "openwork-cloud.execute_capability", input: { name: "putMcpConnectionsByKeyByExternalKey", body: {} }, status: "completed" }], details: [{ tool: "openwork-cloud.execute_capability", ordinal: 0, output: body }] } } },
+    callProviderMetadata: { get3w: { codeMode: { calls: [{ tool: "get3w-cloud.execute_capability", input: { name: "putMcpConnectionsByKeyByExternalKey", body: {} }, status: "completed" }], details: [{ tool: "get3w-cloud.execute_capability", ordinal: 0, output: body }] } } },
   }
-  expect(credentialPromptCall(script)?.toolName).toBe("openwork-cloud_execute_capability")
+  expect(credentialPromptCall(script)?.toolName).toBe("get3w-cloud_execute_capability")
 })
 
 test("each Den operation can only ask for its own kind of key", () => {
   const share = { ...prompt, target: { type: "mcp_connection_shared_switch", connectionId: "emc_fixture", expectedUpdatedAt: "2026-10-21T10:00:00.000Z", audience: { orgWide: true, memberCount: 0, teamCount: 0 } } }
   const gateway = { ...prompt, target: { type: "gateway_provider_key", inferenceProviderId: "ipr_1", credentialSetId: "gcs_1" } }
-  const read = (candidate: unknown, name: string) => credentialPromptFromToolPart(toolPart("openwork-cloud_execute_capability", JSON.stringify({ credentialPrompt: candidate }), name))
+  const read = (candidate: unknown, name: string) => credentialPromptFromToolPart(toolPart("get3w-cloud_execute_capability", JSON.stringify({ credentialPrompt: candidate }), name))
   expect(read(share, "putMcpConnectionsByKeyByExternalKey")).toBeNull()
   expect(read(share, "postMcpConnections")).toBeNull()
   expect(read(gateway, "postMcpConnectionsCredentialPrompt")).toBeNull()

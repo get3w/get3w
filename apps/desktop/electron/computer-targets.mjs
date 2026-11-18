@@ -1,5 +1,5 @@
 // Remote computers for computer use. Each is an existing Linux VM reached
-// through its `@openwork/sandbox` provider (run a command, read a file) and
+// through its `@get3w/sandbox` provider (run a command, read a file) and
 // driven by the X11 driver. Pointing computer use at a VM is configuration:
 //
 //   GET3W_COMPUTER_FREESTYLE_VM=<vm id>        with FREESTYLE_API_KEY
@@ -8,8 +8,8 @@
 //
 // Another provider only needs a `machine` binding below. Provider packages load
 // lazily, so a desktop without a configured VM never starts their clients.
-import { createRemoteComputerAdapter } from "@openwork/computer-use/computer-remote";
-import { createX11Driver } from "@openwork/computer-use/computer-x11-driver";
+import { createRemoteComputerAdapter } from "@get3w/computer-use/computer-remote";
+import { createX11Driver } from "@get3w/computer-use/computer-x11-driver";
 
 /**
  * @typedef {{ run: (command: string, timeoutMs: number) => Promise<{ exitCode: number, stdout: string, stderr: string }>, read: (path: string, timeoutMs: number) => Promise<Uint8Array> }} Machine
@@ -73,7 +73,7 @@ export function remoteComputerAdapters(env = process.env) {
       driver: createX11Driver({
         display,
         machine: sandboxMachine(async () => {
-          const { createFreestyleProvider } = await loadProvider("@openwork/sandbox-freestyle");
+          const { createFreestyleProvider } = await loadProvider("@get3w/sandbox-freestyle");
           // Only an existing VM is driven; nothing is created, so no snapshot or egress applies.
           const provider = createFreestyleProvider({ apiKey: freestyleKey, snapshot: "", firewall: { rules: [] } });
           return { provider, ref: { providerId: "freestyle", ref: { vmId: freestyleVm } } };
@@ -90,7 +90,7 @@ export function remoteComputerAdapters(env = process.env) {
       driver: createX11Driver({
         display,
         machine: sandboxMachine(async () => {
-          const { createDaytonaProvider } = await loadProvider("@openwork/sandbox-daytona");
+          const { createDaytonaProvider } = await loadProvider("@get3w/sandbox-daytona");
           const provider = createDaytonaProvider({
             apiKey: daytonaKey,
             apiUrl: env.DAYTONA_API_URL?.trim() || "https://app.daytona.io/api",

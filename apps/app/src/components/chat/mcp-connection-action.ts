@@ -1,24 +1,24 @@
-import { connectionActionPayloadSchema } from "@openwork/types/connection-action-app"
+import { connectionActionPayloadSchema } from "@get3w/types/connection-action-app"
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js"
-import type { OpenworkMcpAppResource, OpenworkMcpAppToolResult } from "@/app/lib/openwork-server"
+import type { Get3wMcpAppResource, Get3wMcpAppToolResult } from "@/app/lib/get3w-server"
 import type { ChatConnectionDecisionBinding } from "@/react-app/domains/session/surface/mcp-chat-reconnect"
 import type { ChatToolReconnectCallbacks } from "@/components/tools/use-chat-tool-reconnect"
 import { chatMcpReconnectKey, respondChatConnectionDecision } from "@/components/tools/mcp-reconnect-state"
 import type { createMcpAppActions } from "./mcp-app-origin"
 
-const resourceUri = "ui://openwork/connection-action/v2/view.html"
+const resourceUri = "ui://get3w/connection-action/v2/view.html"
 const claimedDecisions = new Set<string>()
 const authenticatedDecisions = new Map<string, {
   request: string | null
   onReconnect: ChatToolReconnectCallbacks["onReconnect"]
 }>()
 
-export function hasHostConnectionActions(app: OpenworkMcpAppResource): boolean {
+export function hasHostConnectionActions(app: Get3wMcpAppResource): boolean {
   return app.resourceUri === resourceUri && app.toolName === "connection_action"
     && "hostConnectionActions" in app && app.hostConnectionActions === true
 }
 
-export function standardMcpToolResult(result: OpenworkMcpAppToolResult) {
+export function standardMcpToolResult(result: Get3wMcpAppToolResult) {
   return CallToolResultSchema.parse({
     content: result.content,
     ...(result.structuredContent ? { structuredContent: result.structuredContent } : {}),
@@ -70,7 +70,7 @@ export function createConnectionActionController(source: ConnectionActionHost) {
   }
   const callTool = async (
     actions: ReturnType<typeof createMcpAppActions>,
-    app: OpenworkMcpAppResource,
+    app: Get3wMcpAppResource,
     name: string,
     args: Record<string, unknown> | undefined,
     userInteraction: boolean,
@@ -119,7 +119,7 @@ export function createConnectionActionController(source: ConnectionActionHost) {
       if (intent.action === "authenticate") {
         if (!authenticated) {
           const connection = parsed.data
-          if (!onReconnect || connection.actor !== "member" || connection.action?.surface !== "openwork_your_connections"
+          if (!onReconnect || connection.actor !== "member" || connection.action?.surface !== "get3w_your_connections"
             || !((connection.state === "needs_connection" && connection.action.type === "connect")
               || (connection.state === "reauth_required" && connection.action.type === "reconnect"))) {
             throw new Error("This connection requires setup in Settings > Library.")

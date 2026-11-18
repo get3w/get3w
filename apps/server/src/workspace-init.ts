@@ -1,3 +1,4 @@
+import { ensureGet3wProjectConfig } from "@get3w/paths";
 import { basename } from "node:path";
 import { readFile } from "node:fs/promises";
 
@@ -7,7 +8,7 @@ import { opencodeConfigPath } from "./workspace-files.js";
 import { readJsoncFile, updateJsoncTopLevel } from "./jsonc.js";
 import type { ReloadReason, WorkspaceInfo } from "./types.js";
 
-type WorkspaceOpenworkConfig = {
+type WorkspaceGet3wConfig = {
   version: number;
   workspace?: {
     name?: string | null;
@@ -39,13 +40,11 @@ function errorStringField(error: unknown, field: "code" | "path" | "syscall"): s
 }
 
 /**
- * Build the default per-workspace openwork config metadata. The openwork
- * config is now stored in the runtime DB (see
- * `seedOpenworkWorkspaceConfigIfEmpty`), not in `.opencode/openwork.json`, so
- * this no longer writes a file. Exposed so the workspace-creation route can
- * seed the DB row with the same defaults.
+ * Build the default per-workspace get3w config metadata. The get3w
+ * machine state is stored in the runtime DB. ensureWorkspaceFiles writes only
+ * portable metadata to root get3w.json; callers seed local defaults separately.
  */
-export function defaultWorkspaceOpenworkConfig(workspaceRoot: string, preset: string): WorkspaceOpenworkConfig {
+export function defaultWorkspaceGet3wConfig(workspaceRoot: string, preset: string): WorkspaceGet3wConfig {
   return {
     version: 1,
     workspace: {
@@ -96,9 +95,8 @@ export async function ensureWorkspaceFiles(workspaceRoot: string, presetInput: s
   }
   const reloadReasons = new Set<ReloadReason>();
   if (await ensureOpencodeConfig(workspaceRoot)) reloadReasons.add("config");
-  // openwork config is seeded into the runtime DB by the caller, not written
-  // as a file here.
-  void preset;
+  // Shareable project metadata lives at the root; machine state stays in the DB.
+  await ensureGet3wProjectConfig(workspaceRoot, defaultWorkspaceGet3wConfig(workspaceRoot, preset));
   return {
     changed: reloadReasons.size > 0,
     reloadReasons: Array.from(reloadReasons),

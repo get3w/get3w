@@ -56,7 +56,7 @@ function serveEngine() {
 describe("session ownership across a linked workspace path", () => {
   test("archive reads the tree by the engine's resolved directory and still refuses other workspaces", async () => {
     const requests = serveEngine();
-    const client = createClient(baseUrl, WORKSPACE, { token: "synthetic", mode: "openwork" });
+    const client = createClient(baseUrl, WORKSPACE, { token: "synthetic", mode: "get3w" });
     expect(await readSessionTree(client, "ses_root", WORKSPACE)).toEqual(["ses_root", "ses_child"]);
     expect(await readSessionTree(client, "ses_sibling", WORKSPACE)).toEqual(["ses_sibling"]);
     const resolved = requests.filter((request) => request.path === "/path");
@@ -64,7 +64,7 @@ describe("session ownership across a linked workspace path", () => {
     expect(resolved.every((request) => request.method === "GET" && request.directory === WORKSPACE)).toBe(true);
     await expect(readSessionTree(client, "ses_foreign", WORKSPACE)).rejects.toThrow("Could not verify the conversation's workspace.");
     await expect(readSessionTree(client, "ses_stray", WORKSPACE)).rejects.toThrow("Could not verify a subtask's owner.");
-    const elsewhere = createClient(baseUrl, ELSEWHERE, { token: "synthetic", mode: "openwork" });
+    const elsewhere = createClient(baseUrl, ELSEWHERE, { token: "synthetic", mode: "get3w" });
     await expect(readSessionTree(elsewhere, "ses_root", ELSEWHERE)).rejects.toThrow("Could not verify the conversation's workspace.");
     expect(await readSessionTree(elsewhere, "ses_foreign", ELSEWHERE)).toEqual(["ses_foreign"]);
     expect(requests.every((request) => request.method === "GET")).toBe(true);
@@ -72,7 +72,7 @@ describe("session ownership across a linked workspace path", () => {
 
   test("Stop settles the root in a linked workspace and still refuses a session from another workspace", async () => {
     const requests = serveEngine();
-    const client = createClient(baseUrl, WORKSPACE, { token: "synthetic", mode: "openwork" });
+    const client = createClient(baseUrl, WORKSPACE, { token: "synthetic", mode: "get3w" });
     await interruptSessionTurn(baseUrl, client, "ses_root", WORKSPACE, { timeoutMs: 10_000 });
     expect(requests.filter((request) => request.method === "POST").map((request) => request.path)).toEqual(["/session/ses_root/abort", "/session/ses_root/abort"]);
     expect(requests.some((request) => request.path === "/path" && request.directory === WORKSPACE)).toBe(true);

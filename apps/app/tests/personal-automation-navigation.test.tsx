@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import {expect,mock,test} from 'bun:test';
 import {GlobalRegistrator} from '@happy-dom/global-registrator';
-import {automationDetailSchema} from '@openwork/types/automations';
+import {automationDetailSchema} from '@get3w/types/automations';
 GlobalRegistrator.register({url:'http://localhost/'});
 Reflect.set(globalThis,'IS_REACT_ACT_ENVIRONMENT',true);
 mock.module('../src/react-app/domains/cloud/get3w-account',()=>({openGet3wSignIn:()=>true,requireGet3wSignIn:()=>true,readGet3wAccount:()=>({status:'signed_in',user:{id:'alice'}}),useGet3wAccount:()=>({status:'signed_in',user:{id:'alice'}})}));

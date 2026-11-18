@@ -2,7 +2,7 @@
 
 `apps/app` is a React 19 + Vite app. It is the UI for every Get3W
 deployment: the Electron desktop shell loads it, plain web serves it, and it
-talks to openwork-server / opencode / Den over HTTP. (The Solid runtime it
+talks to get3w-server / opencode / Den over HTTP. (The Solid runtime it
 replaced is fully removed; `src/index.react.tsx` is the only entry.)
 
 ## Layers
@@ -10,7 +10,7 @@ replaced is fully removed; `src/index.react.tsx` is the only entry.)
 ```text
 src/
 ├── app/                       Framework-agnostic layer (no React imports — enforced invariant)
-│   ├── lib/                   Clients + bridges: opencode, openwork-server, den, desktop (IPC),
+│   ├── lib/                   Clients + bridges: opencode, get3w-server, den, desktop (IPC),
 │   │   │                      analytics, app-inspector
 │   │   ├── runtime-env.ts     Leaf: isElectronRuntime/isDesktopRuntime
 │   │   ├── desktop-types.ts   Leaf: desktop IPC wire types (WorkspaceInfo = shared WorkspaceWire)
@@ -44,7 +44,7 @@ src/
    invert it (callback registration) or move the primitive down.
 2. Leaf modules (`runtime-env`, `desktop-types`, `den-types`, `extensions`)
    import nothing (or types-only from other leaves). Low-level clients
-   (`opencode`, `openwork-server`, `den`) import leaves — never the `utils/`
+   (`opencode`, `get3w-server`, `den`) import leaves — never the `utils/`
    barrel (it drags in i18n).
 3. `kernel/` and `infra/` sit below `domains/`: they must not import domain
    code. Shared query/state infrastructure lives in `infra/`.
@@ -110,8 +110,8 @@ Rules for agents and future code:
   from the URL `workspaceId` param first.
 - Read the active session from the URL `sessionId` param. A selected session
   should never imply a different workspace than the URL workspace.
-- The legacy `openwork.react.activeWorkspace` and
-  `openwork.react.sessionByWorkspace` values are only restore/fallback memory.
+- The legacy `get3w.react.activeWorkspace` and
+  `get3w.react.sessionByWorkspace` values are only restore/fallback memory.
   They are not authoritative while a workspace-scoped URL is active.
 - `/session`, `/session/:sessionId`, and `/settings/*` are compatibility entry
   points. They should redirect to workspace-scoped URLs when the workspace can
@@ -141,11 +141,11 @@ that a URL cannot represent: retained conversation tabs, the secondary split
 session, and which pane is focused. It is process memory so this state survives
 temporary navigation to Settings, but it does not replace route identity.
 
-`shell/openwork-context-projector.ts` combines route state, the workbench store,
+`shell/get3w-context-projector.ts` combines route state, the workbench store,
 UI chrome state, and panel-tab state into the shared
-`OpenworkContextSnapshot` contract. `OpenworkContextPublisher` publishes that
-snapshot through `window.__openworkControl`; the desktop loopback bridge and
-`openwork-ui-mcp` expose the same contract without requiring every element to
+`Get3wContextSnapshot` contract. `Get3wContextPublisher` publishes that
+snapshot through `window.__get3wControl`; the desktop loopback bridge and
+`get3w-ui-mcp` expose the same contract without requiring every element to
 be mounted or visible.
 
 Control registrations have semantic metadata:

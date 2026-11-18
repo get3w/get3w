@@ -42,7 +42,7 @@ describe("window state", () => {
   });
 
   it("restores saved bounds and saves normal bounds when the window closes", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "openwork-window-state-"));
+    const directory = await mkdtemp(path.join(os.tmpdir(), "get3w-window-state-"));
     try {
       const screen = { getAllDisplays: () => [{ workArea: laptop }] };
       const store = createWindowStateStore({ directory, screen });

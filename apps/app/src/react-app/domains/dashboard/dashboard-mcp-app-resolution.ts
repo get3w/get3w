@@ -1,21 +1,21 @@
-import { timeMcpApp } from "@openwork/types/mcp-app-timing";
+import { timeMcpApp } from "@get3w/types/mcp-app-timing";
 import { mcpAppResolutionRetryDelayMs } from "@/app/lib/mcp-app-resolution"
 import type {
-  OpenworkMcpAppLaunchReference,
-  OpenworkMcpAppResource,
-  OpenworkServerClient,
-} from "@/app/lib/openwork-server"
+  Get3wMcpAppLaunchReference,
+  Get3wMcpAppResource,
+  Get3wServerClient,
+} from "@/app/lib/get3w-server"
 
 type McpAppResolutionEndpoint = {
-  client: Pick<OpenworkServerClient, "resolveMcpApp" | "releaseMcpApp">
+  client: Pick<Get3wServerClient, "resolveMcpApp" | "releaseMcpApp">
   workspaceId: string
 }
 
 type ResolveDashboardMcpAppOptions<TEndpoint extends McpAppResolutionEndpoint> = {
   endpoints: TEndpoint[]
   projectedToolName: string
-  expected: Pick<OpenworkMcpAppResource, "serverName" | "toolName" | "resourceUri">
-  launch?: OpenworkMcpAppLaunchReference
+  expected: Pick<Get3wMcpAppResource, "serverName" | "toolName" | "resourceUri">
+  launch?: Get3wMcpAppLaunchReference
   isActive?: (endpoint: TEndpoint) => boolean
   wait?: (delayMs: number) => Promise<void>
 }
@@ -28,7 +28,7 @@ export async function resolveDashboardMcpApp<TEndpoint extends McpAppResolutionE
   launch,
   isActive = () => true,
   wait = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
-}: ResolveDashboardMcpAppOptions<TEndpoint>): Promise<{ endpoint: TEndpoint; app: OpenworkMcpAppResource } | null> {
+}: ResolveDashboardMcpAppOptions<TEndpoint>): Promise<{ endpoint: TEndpoint; app: Get3wMcpAppResource } | null> {
   let attemptIndex = 0
   let pending = endpoints
   while (true) {

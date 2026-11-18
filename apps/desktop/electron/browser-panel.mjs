@@ -17,11 +17,11 @@ import {
   fitAgentViewport,
   lockedAgentViewport,
   foregroundTabEmulationCommands,
-} from "@openwork/browser-tabs";
+} from "@get3w/browser-tabs";
 import { runDetachedTask } from "./process-resilience.mjs";
 import { openExternalUrl } from "./open-external.mjs";
-import { BrowserTaskError, createBrowserTaskHost } from "@openwork/computer-use/browser-task";
-import { agentPermissionDenialMessage, decideAgentPermission, stricterAgentPermissionDecision } from "@openwork/types/den/agent-permissions-runtime";
+import { BrowserTaskError, createBrowserTaskHost } from "@get3w/computer-use/browser-task";
+import { agentPermissionDenialMessage, decideAgentPermission, stricterAgentPermissionDecision } from "@get3w/types/den/agent-permissions-runtime";
 import { createWebMcpBroker } from "./webmcp-host.mjs";
 import { createWebMcpFramePolicy } from "./webmcp-policy.mjs";
 
@@ -1002,7 +1002,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       // panel (1 when not scaled).
       /** @type {string | null} */
       agentViewport: null,
-      /** @type {Readonly<import("@openwork/browser-tabs").AgentViewport> | null} */
+      /** @type {Readonly<import("@get3w/browser-tabs").AgentViewport> | null} */
       agentViewportSize: null,
       agentViewportAwaitsPanel: false,
       viewportScale: 1,
@@ -1012,7 +1012,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       thumbnailRevision: 0,
       webMcpRevision: 0,
       documentGeneration: 0,
-      /** @type {import("@openwork/browser-tabs").BrowserPanelTab["loadError"]} */
+      /** @type {import("@get3w/browser-tabs").BrowserPanelTab["loadError"]} */
       loadError: null,
       /** What the page requested since it opened (origin and path), for checking it against new website rules. */
       requests: new Set(),
@@ -1082,9 +1082,9 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       // data: loads are internal plumbing (CDP target-marker pages), not
       // user-visible navigations — don't surface the panel for them.
       if (target === "about:blank" || target.startsWith("data:")) return;
-      // Intercept openwork:// deep links (e.g. den-auth handoff grants) so
+      // Intercept get3w:// deep links (e.g. den-auth handoff grants) so
       // in-app browser auth works without the system protocol handler.
-      if (target.startsWith("openwork://") || target.startsWith("openwork-dev://")) {
+      if (target.startsWith("get3w://") || target.startsWith("get3w-dev://")) {
         if (typeof onDeepLink === "function") {
           onDeepLink([target]);
         }
@@ -1118,7 +1118,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
         registry.select(tabId);
         sendBrowserState();
       }
-      sendToRenderer("openwork:browser:panel-opened", { ownerSessionId: registry.ownerOf(tabId) });
+      sendToRenderer("get3w:browser:panel-opened", { ownerSessionId: registry.ownerOf(tabId) });
     });
     view.webContents.on("did-navigate", (_event, url) => {
       // Only a main-frame commit replaces the document. Aborts and downloads
@@ -1199,7 +1199,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
     // The page preload's fallback only asks to leave full screen; the same
     // foreground checks apply, and it never grants or resumes browser control.
     view.webContents.on("ipc-message", (event, channel) => {
-      if (channel === "openwork:browser:escape" && event.senderFrame === view.webContents.mainFrame) requestPresentationExit(tab);
+      if (channel === "get3w:browser:escape" && event.senderFrame === view.webContents.mainFrame) requestPresentationExit(tab);
     });
     view.webContents.once("destroyed", () => {
       // CDP Target.closeTarget and page-initiated close bypass our tab-strip
@@ -1220,7 +1220,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       // Explicit opens select their page in the owner's unified panel. Later
       // navigations may keep that panel open, but must not displace an artifact
       // the user selected while a page was loading or refreshing itself.
-      sendToRenderer("openwork:browser:panel-opened", {
+      sendToRenderer("get3w:browser:panel-opened", {
         ownerSessionId: registry.ownerOf(tabId),
         tab: browserTabToPanelTab(tabId, tab),
       });
@@ -1473,7 +1473,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       || !window()?.contentView.children.includes(tab.view)) return false;
     browserPresentation = null;
     window()?.webContents.focus();
-    sendToRenderer("openwork:browser:presentation-exit", { sessionId: owner, tabId: tab.tabId });
+    sendToRenderer("get3w:browser:presentation-exit", { sessionId: owner, tabId: tab.tabId });
     return true;
   }
 
@@ -1643,20 +1643,20 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
     if (!mainWindow || !browserViewVisible) return;
     if (!lastBrowserBounds || lastBrowserZoomFactor !== mainWindowZoomFactor()) {
       invalidateBrowserBounds();
-      sendToRenderer("openwork:browser:bounds-invalidated");
+      sendToRenderer("get3w:browser:bounds-invalidated");
       return;
     }
     const cachedBounds = lastBrowserBounds;
     lastBrowserBounds = clampBrowserBounds(cachedBounds);
     if (!lastBrowserBounds) {
       invalidateBrowserBounds();
-      sendToRenderer("openwork:browser:bounds-invalidated");
+      sendToRenderer("get3w:browser:bounds-invalidated");
       return;
     }
     if (["x", "y", "width", "height"].some(key => cachedBounds[key] !== lastBrowserBounds[key])) {
       // The host changed placement outside a bounds IPC. Clear both renderer
       // caches so returning to the same CSS rectangle still sends fresh bounds.
-      sendToRenderer("openwork:browser:bounds-invalidated");
+      sendToRenderer("get3w:browser:bounds-invalidated");
     }
     const tab = getBrowserTab();
     if (!tab) { detachIdleBrowserViews(); return; }
@@ -1721,7 +1721,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       }
     }
     if (removed && !removed.ownerHasTabs) {
-      sendToRenderer("openwork:browser:panel-closed", { ownerSessionId: removed.tab.ownerSessionId });
+      sendToRenderer("get3w:browser:panel-closed", { ownerSessionId: removed.tab.ownerSessionId });
     }
     try {
       if (tab && !tab.view.webContents.isDestroyed()) tab.view.webContents.close({ waitForBeforeUnload: false });
@@ -1985,7 +1985,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
   }
 
   function sendBrowserState() {
-    sendToRenderer("openwork:browser:state", browserStatePayload());
+    sendToRenderer("get3w:browser:state", browserStatePayload());
   }
 
   /**
@@ -2040,7 +2040,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
   }
 
   function registerIpc(ipcMain) {
-    ipcMain.on("openwork:browser:shortcut-focus", (event, tabId) => {
+    ipcMain.on("get3w:browser:shortcut-focus", (event, tabId) => {
       const contents = window()?.webContents;
       if (!contents || event.sender !== contents || event.senderFrame !== contents.mainFrame) return;
       setShortcutFocus(tabId);
@@ -2056,49 +2056,49 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       const contents = window()?.webContents;
       return !!contents && event.sender === contents && event.senderFrame === contents.mainFrame;
     }
-    ipcMain.handle("openwork:browser:show", (event, bounds, sessionId) => {
+    ipcMain.handle("get3w:browser:show", (event, bounds, sessionId) => {
       if (!isMainRenderer(event)) return false;
       return attachBrowserView(bounds, sessionId === undefined ? {} : { sessionId: normalizeSessionId(sessionId) });
     });
-    ipcMain.handle("openwork:browser:hide", (event, options) => {
+    ipcMain.handle("get3w:browser:hide", (event, options) => {
       if (!isMainRenderer(event)) return false;
       return hideBrowserView(options?.preserveShortcutFocus === true);
     });
-    ipcMain.handle("openwork:browser:setVisibleSession", (event, sessionId) => {
+    ipcMain.handle("get3w:browser:setVisibleSession", (event, sessionId) => {
       if (!isMainRenderer(event)) return false;
       return setVisibleSession(normalizeSessionId(sessionId));
     });
-    ipcMain.handle("openwork:browser:presentation", (event, input) => {
+    ipcMain.handle("get3w:browser:presentation", (event, input) => {
       if (!isMainRenderer(event)) return false;
       return setBrowserPresentation(input);
     });
-    ipcMain.handle("openwork:browser:thumbnail", (event, tabId) => {
+    ipcMain.handle("get3w:browser:thumbnail", (event, tabId) => {
       if (!isMainRenderer(event)) return null;
       return captureBrowserThumbnail(tabId);
     });
-    ipcMain.handle("openwork:browser:openUrl", (_event, url, provider, options) => (
+    ipcMain.handle("get3w:browser:openUrl", (_event, url, provider, options) => (
       openBrowserUrlForAutomation(url, provider, {
         ownerSessionId: normalizeSessionId(options && typeof options === "object" ? options.sessionId : null),
       })
     ));
-    ipcMain.handle("openwork:browser:navigate", (event, url) => {
+    ipcMain.handle("get3w:browser:navigate", (event, url) => {
       authorizeManualNavigation(event);
       getActiveWebContents(); // Reject navigation while suspension is pending.
       const view = getActiveBrowserView()
         ?? createBrowserTab("about:blank", { select: true, ownerSessionId: registry.visibleSessionId() }).view;
       runDetachedTask("navigate browser tab", () => view.webContents.loadURL(normalizeBrowserUrl(url)));
     });
-    ipcMain.handle("openwork:browser:back", (event) => {
+    ipcMain.handle("get3w:browser:back", (event) => {
       authorizeManualNavigation(event);
       const webContents = getActiveWebContents();
       if (webContents?.canGoBack()) webContents.goBack();
     });
-    ipcMain.handle("openwork:browser:forward", (event) => {
+    ipcMain.handle("get3w:browser:forward", (event) => {
       authorizeManualNavigation(event);
       const webContents = getActiveWebContents();
       if (webContents?.canGoForward()) webContents.goForward();
     });
-    ipcMain.handle("openwork:browser:reload", (event) => {
+    ipcMain.handle("get3w:browser:reload", (event) => {
       authorizeManualNavigation(event);
       const webContents = getActiveWebContents();
       const failure = getBrowserTab()?.loadError;
@@ -2108,12 +2108,12 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
         webContents?.reload();
       }
     });
-    ipcMain.handle("openwork:browser:bounds", (event, bounds) => {
+    ipcMain.handle("get3w:browser:bounds", (event, bounds) => {
       if (!isMainRenderer(event) || !acceptBrowserBounds(bounds)) return false;
       attachActiveBrowserView();
       return true;
     });
-    ipcMain.handle("openwork:browser:state", () => ({
+    ipcMain.handle("get3w:browser:state", () => ({
       ...browserStatePayload(),
       nativeViews: browserNativeViews(),
       tabLimit: MAX_BROWSER_TABS,
@@ -2121,19 +2121,19 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       backgroundWindowVisible: Boolean(backgroundWindow && !backgroundWindow.isDestroyed() && backgroundWindow.isVisible()),
       visibleWindowCount: BrowserWindow.getAllWindows().filter((host) => host.isVisible()).length,
     }));
-    ipcMain.handle("openwork:browser:createTab", (_event, url, sessionId) => {
+    ipcMain.handle("get3w:browser:createTab", (_event, url, sessionId) => {
       const target = typeof url === "string" && url.trim() ? url : BROWSER_NEW_TAB_URL;
       const ownerSessionId = sessionId === undefined ? registry.visibleSessionId() : normalizeSessionId(sessionId);
       const tab = createBrowserTab(target, { select: true, ownerSessionId });
       return { tabId: tab.tabId };
     });
-    ipcMain.handle("openwork:browser:closeTab", (_event, tabId) => closeUserBrowserTab(tabId == null ? undefined : String(tabId)));
-    ipcMain.handle("openwork:browser:suspendTab", (_event, tabId) => suspendBrowserTab(tabId));
-    ipcMain.handle("openwork:browser:restoreTab", async (_event, tabId, sessionId) => {
+    ipcMain.handle("get3w:browser:closeTab", (_event, tabId) => closeUserBrowserTab(tabId == null ? undefined : String(tabId)));
+    ipcMain.handle("get3w:browser:suspendTab", (_event, tabId) => suspendBrowserTab(tabId));
+    ipcMain.handle("get3w:browser:restoreTab", async (_event, tabId, sessionId) => {
       requireTabOwner(tabId, sessionId);
       return (await restoreBrowserTab(tabId, true)).handle;
     });
-    ipcMain.handle("openwork:browser:releaseTab", (_event, tabId, sessionId) => {
+    ipcMain.handle("get3w:browser:releaseTab", (_event, tabId, sessionId) => {
       requireTabOwner(tabId, sessionId);
       const tab = browserTabs.get(tabId);
       if (tab?.operation || tab?.suspending) throw new Error("Browser tab is busy.");
@@ -2141,35 +2141,35 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       sendBrowserState();
       return { tabId, released: true };
     });
-    ipcMain.handle("openwork:browser:closeSessionTabs", (_event, sessionId) => closeSessionBrowserTabs(sessionId));
-    ipcMain.handle("openwork:browser:selectTab", async (_event, tabId) => {
+    ipcMain.handle("get3w:browser:closeSessionTabs", (_event, sessionId) => closeSessionBrowserTabs(sessionId));
+    ipcMain.handle("get3w:browser:selectTab", async (_event, tabId) => {
       const id = String(tabId ?? "");
       if (!browserTabs.has(id) && suspendedTabs.has(id)) await restoreBrowserTab(id);
       const tab = selectBrowserTab(id);
       resetViewportEmulation(tab.view);
       return tab.tabId;
     });
-    ipcMain.handle("openwork:browser:reorderTabs", (_event, tabIds) => reorderBrowserTabs(tabIds));
-    ipcMain.handle("openwork:browser:taskControl", (event, tabId, action) => {
+    ipcMain.handle("get3w:browser:reorderTabs", (_event, tabIds) => reorderBrowserTabs(tabIds));
+    ipcMain.handle("get3w:browser:taskControl", (event, tabId, action) => {
       if (event.sender !== window()?.webContents || event.senderFrame !== window()?.webContents.mainFrame || !getBrowserTab(tabId) || registry.ownerOf(tabId) !== registry.visibleSessionId()) throw new Error("Select this conversation first.");
       if (action === "resume") taskHost.resume(tabId);
       else if (action === "pause") taskHost.pause(tabId);
       else throw new Error("Unsupported browser control.");
     });
-    ipcMain.handle("openwork:webmcp:frame-policy", (event) => {
+    ipcMain.handle("get3w:webmcp:frame-policy", (event) => {
       const tab = [...browserTabs.values()].find((candidate) => candidate.view.webContents === event.sender);
       if (!tab || !event.senderFrame) {
         return { allowed: false, originKeyed: false, reason: "unknown_browser_frame" };
       }
       return ensureWebMcpFramePolicy().checkFrame(event.senderFrame);
     });
-    ipcMain.handle("openwork:browser:setProxy", (_event, proxy) => setBrowserProxy(proxy));
+    ipcMain.handle("get3w:browser:setProxy", (_event, proxy) => setBrowserProxy(proxy));
     // The app says when the member's rules may have changed. It can only make
     // the browser stricter itself (null keeps pages closed while it verifies
     // them); the rules are read from the local Get3W server, never taken
     // from the window, so a script in the window cannot loosen them.
     let websiteRulesRead = 0;
-    ipcMain.handle("openwork:browser:setAgentPermissionRules", async (event, rules) => {
+    ipcMain.handle("get3w:browser:setAgentPermissionRules", async (event, rules) => {
       if (event.sender !== window()?.webContents || event.senderFrame !== window()?.webContents.mainFrame) return false;
       const read = ++websiteRulesRead;
       // Rules the app reports keep pages closed until verified: that only makes it stricter.
@@ -2189,13 +2189,13 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       }
       return false;
     });
-    ipcMain.handle("openwork:browser:setControlEnabled", (event, enabled) => {
+    ipcMain.handle("get3w:browser:setControlEnabled", (event, enabled) => {
       if (event.sender !== window()?.webContents || event.senderFrame !== window()?.webContents.mainFrame) return false;
       browserControlEnabled = enabled === true;
       if (!browserControlEnabled) for (const tab of browserTabs.values()) taskHost.pause(tab.tabId, "Browser control disabled");
       return browserControlEnabled;
     });
-    ipcMain.handle("openwork:browser:setAgentViewport", (event, key) => {
+    ipcMain.handle("get3w:browser:setAgentViewport", (event, key) => {
       if (!isMainRenderer(event) || typeof key !== "string" || !Object.hasOwn(AGENT_VIEWPORTS, key)) return agentViewportKey;
       agentViewportKey = key;
       // Tabs the agent is using switch now; the agent observes the new layout.
@@ -2205,7 +2205,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
     });
     // The person took over, then wrote to the agent again: that message
     // hands the conversation's tabs back, so the new turn can use them.
-    ipcMain.handle("openwork:browser:startAgentTurn", (event, sessionId) => {
+    ipcMain.handle("get3w:browser:startAgentTurn", (event, sessionId) => {
       const owner = normalizeSessionId(sessionId);
       if (!isMainRenderer(event) || !owner || !browserControlEnabled) return false;
       const paused = registry.tabsFor(owner).find((item) => taskHost.stateFor(item.tabId).status === "paused");
@@ -2213,7 +2213,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       taskHost.resume(paused.tabId);
       return true;
     });
-    ipcMain.handle("openwork:browser:endAgentTurn", (event, sessionId) => {
+    ipcMain.handle("get3w:browser:endAgentTurn", (event, sessionId) => {
       const owner = normalizeSessionId(sessionId);
       if (!isMainRenderer(event) || !owner) return false;
       for (const item of registry.tabsFor(owner)) {
@@ -2222,15 +2222,15 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       }
       return true;
     });
-    ipcMain.handle("openwork:browser:tabContextMenu", (_event, tabId, point) => showBrowserTabContextMenu(tabId, point));
-    ipcMain.handle("openwork:browser:chooseLinkDestination", (event, id, destination) => {
+    ipcMain.handle("get3w:browser:tabContextMenu", (_event, tabId, point) => showBrowserTabContextMenu(tabId, point));
+    ipcMain.handle("get3w:browser:chooseLinkDestination", (event, id, destination) => {
       const contents = window()?.webContents;
       if (!contents || event.sender !== contents || event.senderFrame !== contents.mainFrame) return false;
       if (!linkChoiceRequest || linkChoiceRequest.id !== id) return false;
-      if (destination !== null && destination !== "openwork" && destination !== "external") return false;
+      if (destination !== null && destination !== "get3w" && destination !== "external") return false;
       return linkChoiceRequest.finish(destination);
     });
-    ipcMain.on("openwork:browser:linkClick", (event, payload) => {
+    ipcMain.on("get3w:browser:linkClick", (event, payload) => {
       const contents = window()?.webContents;
       if (!contents || event.sender !== contents || event.senderFrame !== contents.mainFrame) return;
       const url = payload?.url;
@@ -2270,27 +2270,27 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
           finish(destination) {
             if (linkChoiceRequest?.id !== id) return false;
             linkChoiceRequest = null;
-            sendToRenderer("openwork:browser:link-open-request", null);
+            sendToRenderer("get3w:browser:link-open-request", null);
             if (destination === null || !isCurrent()) { cleanup(); return false; }
             open(destination === "external");
             return true;
           },
         };
-        sendToRenderer("openwork:browser:link-open-request", { id, url });
+        sendToRenderer("get3w:browser:link-open-request", { id, url });
       } else {
         open(payload.external === true);
       }
     });
-    ipcMain.on("openwork:browser:linkContextMenu", (event, payload) => {
+    ipcMain.on("get3w:browser:linkContextMenu", (event, payload) => {
       const mainContents = window()?.webContents;
       if (event.sender !== mainContents || event.senderFrame !== mainContents?.mainFrame) return;
       if (!payload || typeof payload !== "object") return;
       const showing = showLinkContextMenu(payload);
       runDetachedTask("show link context menu", () => showing);
     });
-    ipcMain.handle("openwork:browser:destroy", () => destroyBrowserView());
-    ipcMain.on("openwork:menu-overlay:dismiss", () => hideContextMenu());
-    ipcMain.on("openwork:webmcp:tools-changed", (event) => {
+    ipcMain.handle("get3w:browser:destroy", () => destroyBrowserView());
+    ipcMain.on("get3w:menu-overlay:dismiss", () => hideContextMenu());
+    ipcMain.on("get3w:webmcp:tools-changed", (event) => {
       const tab = [...browserTabs.values()].find((candidate) => candidate.view.webContents === event.sender);
       if (!tab) return;
       // The page relays this after a debounce, so it routinely arrives after a

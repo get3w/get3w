@@ -1,11 +1,11 @@
 import { test, expect } from "bun:test";
-import contextPlugin from "../src/opencode-plugins/openwork-context-v2.js";
+import contextPlugin from "../src/opencode-plugins/get3w-context-v2.js";
 import { GET3W_CHAT_TOOLS } from "../src/get3w-chat-tools.js";
 
 test("Artifact and capability tools use trusted engine context without changing the MCP result", async () => {
   const calls: unknown[] = [];
   let rejected = false;
-  const result = { content: [{ type: "text", text: "draft" }], _meta: { "openwork/appDraft": { appId: "draft" } } };
+  const result = { content: [{ type: "text", text: "draft" }], _meta: { "get3w/appDraft": { appId: "draft" } } };
   const endpoint = Bun.serve({ port: 0, async fetch(request) {
     expect(request.headers.get("Authorization")).toBe("Bearer bridge-token");
     calls.push(await request.json());

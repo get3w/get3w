@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client"
 import type { DynamicToolUIPart, UIMessage } from "ai"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
+import { setLocale } from "../src/i18n"
+
 GlobalRegistrator.register({ url: "https://web.example/" })
+setLocale("en")
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT")
 Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true)
 const { PlatformProvider, createDefaultPlatform } = await import("../src/react-app/kernel/platform")
@@ -47,11 +50,11 @@ function turn(): UIMessage[] {
       metadata: { opencode: { created: 1000, completed: 60_000 } },
       parts: [
         { type: "reasoning", text: "Plan the change.", state: "done", providerMetadata: { opencode: { partId: "r1", time: { start: 1_000, end: 13_000 } } } },
-        tool("call_ls", "bash", { command: "gh pr view 5245 --repo different-ai/openwork", description: "view the pull request" }, "title: feat"),
+        tool("call_ls", "bash", { command: "gh pr view 5245 --repo different-ai/get3w", description: "view the pull request" }, "title: feat"),
         tool("call_read", "read", { filePath: "/work/pr-body.md" }),
         tool("call_edit", "edit", { filePath: "/work/pr-body.md", oldString: "old line\n", newString: "new line\nanother\n" }),
         failedCommand,
-        { type: "text", text: "PR opened: [#5212 feat(server): add a web command](https://github.com/different-ai/openwork/pull/5212)." },
+        { type: "text", text: "PR opened: [#5212 feat(server): add a web command](https://github.com/different-ai/get3w/pull/5212)." },
       ],
     },
   ]
@@ -109,7 +112,7 @@ test("one text-first summary, steps as sentences, a red failure, a timed thought
   // Opening a command shows the quiet card: `$`, the tinted program, and its output.
   await click(container.querySelector('button[aria-label="Show details for Ran View the pull request"]'))
   const card = container.querySelector("[data-text-command-card]")
-  expect(card?.textContent).toContain("$ gh pr view 5245 --repo different-ai/openwork")
+  expect(card?.textContent).toContain("$ gh pr view 5245 --repo different-ai/get3w")
   expect(card?.querySelector(".text-orange-11")?.textContent).toBe("gh")
   expect(card?.querySelector("[data-text-command-output]")?.textContent).toBe("title: feat")
 
@@ -124,7 +127,7 @@ function turnWithCapability(): UIMessage[] {
   const [user, reply] = turn()
   if (!user || !reply) throw new Error("fixture")
   const parts = [...reply.parts]
-  parts.splice(parts.length - 1, 0, tool("call_org", "openwork-cloud_execute_capability", { name: "getOrg" }, JSON.stringify({ members: 2 })))
+  parts.splice(parts.length - 1, 0, tool("call_org", "get3w-cloud_execute_capability", { name: "getOrg" }, JSON.stringify({ members: 2 })))
   return [user, { ...reply, parts }]
 }
 
@@ -156,18 +159,18 @@ test("every rail line starts on the reply's left edge, chevrons trail, marks sit
   expect(sentence?.parentElement?.firstElementChild).toBe(sentence ?? null)
   const mark = sentence?.querySelector("[data-text-rail-mark]")
   expect(mark?.previousElementSibling?.textContent?.length).toBeGreaterThan(0)
-  expect(mark?.querySelector("[data-openwork-mark]")?.className).toContain("bg-current")
+  expect(mark?.querySelector("[data-get3w-mark]")?.className).toContain("bg-current")
   expect(capability?.querySelector("img")).toBeNull()
 })
 
 test("the Get3W mark is recognised however the identity reaches the row", async () => {
-  const { isOpenWorkIdentity, OPENWORK_IDENTITY } = await import("../src/components/chat/capability-call-line")
+  const { isGet3WIdentity, GET3W_IDENTITY } = await import("../src/components/chat/capability-call-line")
   const base = { name: "Get3W", toolNamespace: null, connectionId: null }
-  expect(isOpenWorkIdentity(OPENWORK_IDENTITY)).toBe(true)
-  expect(isOpenWorkIdentity({ ...base, id: "connection:c1", iconUrl: "https://www.google.com/s2/favicons?sz=64&domain=openworklabs.com", serviceUrl: "https://api.openworklabs.com/mcp/agent" })).toBe(true)
-  expect(isOpenWorkIdentity({ ...base, id: "mcp:x", iconUrl: "/openwork-sidebar-mark.svg", serviceUrl: null })).toBe(true)
-  expect(isOpenWorkIdentity({ ...base, id: "connection:slack", name: "Slack", iconUrl: "https://cdn.simpleicons.org/slack", serviceUrl: "https://mcp.slack.com" })).toBe(false)
-  expect(isOpenWorkIdentity({ ...base, id: "connection:evil", iconUrl: null, serviceUrl: "https://openworklabs.com.evil.example" })).toBe(false)
+  expect(isGet3WIdentity(GET3W_IDENTITY)).toBe(true)
+  expect(isGet3WIdentity({ ...base, id: "connection:c1", iconUrl: "https://www.google.com/s2/favicons?sz=64&domain=get3wlabs.com", serviceUrl: "https://api.get3wlabs.com/mcp/agent" })).toBe(true)
+  expect(isGet3WIdentity({ ...base, id: "mcp:x", iconUrl: "/get3w-sidebar-mark.svg", serviceUrl: null })).toBe(true)
+  expect(isGet3WIdentity({ ...base, id: "connection:slack", name: "Slack", iconUrl: "https://cdn.simpleicons.org/slack", serviceUrl: "https://mcp.slack.com" })).toBe(false)
+  expect(isGet3WIdentity({ ...base, id: "connection:evil", iconUrl: null, serviceUrl: "https://get3wlabs.com.evil.example" })).toBe(false)
 })
 
 test("mid-turn: the Working line is the one shimmer and the group line carries only its totals", async () => {

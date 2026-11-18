@@ -1,9 +1,9 @@
 import { expect, vi } from "vitest";
-import { test } from "@openwork/testkit";
+import { test } from "@get3w/testkit";
 
-const marker = "x-openwork-title-attempt";
+const marker = "x-get3w-title-attempt";
 
-for (const authorization of ["AWS4-HMAC-SHA256 Credential=dummy, SignedHeaders=x-openwork-title-attempt, Signature=dummy", "Bearer dummy", ""]) {
+for (const authorization of ["AWS4-HMAC-SHA256 Credential=dummy, SignedHeaders=x-get3w-title-attempt, Signature=dummy", "Bearer dummy", ""]) {
   test(`title correlation preserves signed headers but strips unsigned markers: ${authorization.split(" ")[0] || "api-key"}`, async ({ evidence }) => {
     const original = globalThis.fetch;
     let received = new Headers();
@@ -12,8 +12,8 @@ for (const authorization of ["AWS4-HMAC-SHA256 Credential=dummy, SignedHeaders=x
       return new Response("{}", { status: 200 });
     }, original);
     vi.resetModules();
-    const { OpenWorkTitleRecovery } = await import("../src/opencode-plugins/openwork-title-recovery.ts");
-    const plugin = await OpenWorkTitleRecovery({ client: { app: { log: async () => undefined } } });
+    const { Get3WTitleRecovery } = await import("../src/opencode-plugins/get3w-title-recovery.ts");
+    const plugin = await Get3WTitleRecovery({ client: { app: { log: async () => undefined } } });
     try {
       const headers: Record<string, string> = { authorization, "x-api-key": "dummy-api-key" };
       await plugin["chat.headers"]({ sessionID: "unit", agent: "title", model: { id: "model", providerID: "provider" } }, { headers });
@@ -48,8 +48,8 @@ for (const { status, body, outcome } of failures) {
     globalThis.fetch = Object.assign(async () => new Response(raw, { status }), original);
     vi.resetModules();
     const diagnostics: string[] = [];
-    const { OpenWorkTitleRecovery } = await import("../src/opencode-plugins/openwork-title-recovery.ts");
-    const plugin = await OpenWorkTitleRecovery({ client: { app: { log: async ({ body }) => { diagnostics.push(body.extra.outcome); } } } });
+    const { Get3WTitleRecovery } = await import("../src/opencode-plugins/get3w-title-recovery.ts");
+    const plugin = await Get3WTitleRecovery({ client: { app: { log: async ({ body }) => { diagnostics.push(body.extra.outcome); } } } });
     try {
       const headers: Record<string, string> = {};
       await plugin["chat.headers"]({ sessionID: "unit", agent: "title", model: { id: "model", providerID: "provider" } }, { headers });

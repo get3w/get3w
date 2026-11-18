@@ -13,7 +13,7 @@ const engineBin = process.env.GET3W_TEST_ENGINE_BIN
   || join(repo, "apps/desktop/resources/sidecars", process.platform === "win32" ? "opencode.exe" : "opencode");
 
 test("a fresh bundled engine lists sessions and loads Get3W tools without npm access", { timeout: 300_000 }, async () => {
-  const profile = await mkdtemp(join(tmpdir(), "openwork-cold-engine-"));
+  const profile = await mkdtemp(join(tmpdir(), "get3w-cold-engine-"));
   const previousEnv = { ...process.env };
   const registryRequests = [];
   // Fault only the dependency registry. The real engine, bundled plugins, and
@@ -25,7 +25,7 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
     // A shell launched by Get3W can carry its actual engine DB/config.
     // Clear those before importing any module that caches environment paths.
     for (const key of Object.keys(process.env)) {
-      if (key.startsWith("OPENCODE_") || key.startsWith("OPENWORK_")) delete process.env[key];
+      if (key.startsWith("OPENCODE_") || key.startsWith("GET3W_")) delete process.env[key];
     }
     Object.assign(process.env, {
       HOME: profile, USERPROFILE: profile, OPENCODE_TEST_HOME: profile,
@@ -34,7 +34,7 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
       OPENCODE_CONFIG_DIR: join(profile, "engine-config"),
       OPENCODE_DISABLE_MODELS_FETCH: "true",
       GET3W_ENGINE_V2_PREVIEW: "0",
-      GET3W_DATA_DIR: join(profile, "openwork"),
+      GET3W_DATA_DIR: join(profile, "get3w"),
       GET3W_ENV_STORE: join(profile, "env.json"),
       npm_config_registry: `http://127.0.0.1:${registry.address().port}`,
       npm_config_fetch_retries: "0", npm_config_fetch_timeout: "60000",
@@ -47,12 +47,12 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
     const { startEmbeddedServer } = await import(embeddedUrl);
     handle = await startEmbeddedServer({
       manageOpencode: true, opencodeBin: engineBin, opencodeCwd: scratch, workspaces: [workspace],
-      configPath: join(profile, "openwork", "server.json"),
+      configPath: join(profile, "get3w", "server.json"),
       host: "127.0.0.1", port: 0, token: "cold-engine-owner", hostToken: "cold-engine-host",
     });
     // Exercise the real Desktop/Server host contract; branded headers must
     // authenticate, legacy clients remain compatible, and bad tokens fail.
-    for (const header of ["X-Get3W-Host-Token", "X-OpenWork-Host-Token"]) {
+    for (const header of ["X-Get3W-Host-Token", "X-Get3W-Host-Token"]) {
       const issued = await fetch(`${handle.url}/tokens`, {
         method: "POST", headers: { [header]: "cold-engine-host", "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "owner", label: "isolated package acceptance" }),
@@ -80,7 +80,7 @@ test("a fresh bundled engine lists sessions and loads Get3W tools without npm ac
     });
     assert.equal(tools.status, 200);
     const ids = await tools.json();
-    for (const tool of ["openwork_docs_search", "openwork_query"]) assert.ok(ids.includes(tool), `bundled ${tool} is available`);
+    for (const tool of ["get3w_docs_search", "get3w_query"]) assert.ok(ids.includes(tool), `bundled ${tool} is available`);
     assert.deepEqual(registryRequests, [], "cold startup did not need a registry download");
   } finally {
     await handle?.stop();

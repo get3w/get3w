@@ -7,7 +7,7 @@ import { EnvService, InvalidEnvKeyError, isReservedEnvKey } from "../src/env-fil
 import { inheritedEngineEnv } from "../src/managed-opencode-v2.js";
 
 async function withStore(platform: NodeJS.Platform, run: (env: EnvService) => Promise<void>) {
-  const dir = await mkdtemp(join(tmpdir(), "openwork-env-names-"));
+  const dir = await mkdtemp(join(tmpdir(), "get3w-env-names-"));
   try {
     await run(new EnvService({ path: join(dir, "env.json"), platform }));
   } finally {

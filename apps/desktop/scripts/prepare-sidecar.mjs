@@ -98,8 +98,8 @@ const opencodeTargetPath = opencodeTargetName ? join(sidecarDir, opencodeTargetN
 const opencodeCandidatePath = opencodeTargetPath ?? opencodePath;
 let existingOpencodeVersion = null;
 
-// openwork-server paths
-const openworkServerDir = resolve(__dirname, "..", "..", "server");
+// get3w-server paths
+const get3wServerDir = resolve(__dirname, "..", "..", "server");
 
 const readHeader = (filePath, length = 256) => {
   const fd = openSync(filePath, "r");
@@ -219,7 +219,7 @@ const adHocSignDarwinSidecars = (paths) => {
   }
 };
 
-// openwork-server is no longer compiled as a sidecar binary — it runs
+// get3w-server is no longer compiled as a sidecar binary — it runs
 // in-process inside Electron via a direct import of the server library.
 // Server binary copy/sign skipped — runs in-process.
 
@@ -360,12 +360,12 @@ copyFileSync(opencodeV2Path, opencodeV2TargetPath);
 adHocSignDarwinSidecars([
   opencodePath,
   opencodeTargetPath,
-  // openwork-server runs in-process — no binary to sign.
+  // get3w-server runs in-process — no binary to sign.
 ]);
 
-const openworkServerVersion = (() => {
+const get3wServerVersion = (() => {
   try {
-    const raw = readFileSync(resolve(openworkServerDir, "package.json"), "utf8");
+    const raw = readFileSync(resolve(get3wServerDir, "package.json"), "utf8");
     return String(JSON.parse(raw).version ?? "").trim();
   } catch {
     return null;
@@ -383,8 +383,8 @@ const versions = {
     sha256: opencodeCandidatePath && existsSync(opencodeCandidatePath) ? sha256File(opencodeCandidatePath) : null,
     unsignedSha256: unsignedSha256Darwin(opencodeCandidatePath),
   },
-  "openwork-server": {
-    version: openworkServerVersion,
+  "get3w-server": {
+    version: get3wServerVersion,
     sha256: "in-process",
   },
 };

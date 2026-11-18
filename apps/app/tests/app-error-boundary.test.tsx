@@ -74,20 +74,20 @@ test("the copy payload omits an empty stack", () => {
 
 test("redaction drops query strings and fragments from URLs in the message and stack", () => {
   const error = new Error(
-    "Sign-in failed for https://app.openworklabs.com/signin?code=eval-secret-code&state=xyz#accessToken=at",
+    "Sign-in failed for https://app.get3wlabs.com/signin?code=eval-secret-code&state=xyz#accessToken=at",
   );
-  error.stack = `Error: ${error.message}\n    at finishSignIn (https://app.openworklabs.com/assets/index-abc.js:1:2345)`;
+  error.stack = `Error: ${error.message}\n    at finishSignIn (https://app.get3wlabs.com/assets/index-abc.js:1:2345)`;
 
   const crash = describeCrash(error);
   const report = buildCrashReport(crash, context);
 
-  expect(crash.message).toBe("Sign-in failed for https://app.openworklabs.com/signin");
+  expect(crash.message).toBe("Sign-in failed for https://app.get3wlabs.com/signin");
   expect(crash.stack).toBe(
-    "Error: Sign-in failed for https://app.openworklabs.com/signin\n    at finishSignIn (https://app.openworklabs.com/assets/index-abc.js:1:2345)",
+    "Error: Sign-in failed for https://app.get3wlabs.com/signin\n    at finishSignIn (https://app.get3wlabs.com/assets/index-abc.js:1:2345)",
   );
   expect(report).not.toContain("eval-secret-code");
   expect(report).not.toContain("accessToken");
-  expect(report).toContain("https://app.openworklabs.com/signin");
+  expect(report).toContain("https://app.get3wlabs.com/signin");
 });
 
 test("redaction drops credentials embedded in a URL authority", () => {
@@ -103,7 +103,7 @@ test("redaction masks bare token-like pairs outside URLs", () => {
   expect(redactCrashText("Handoff rejected: token=eyJhbGci.payload grant=g-123 state=ok")).toBe(
     "Handoff rejected: token=[redacted] grant=[redacted] state=ok",
   );
-  expect(redactCrashText("openworkToken=tok&accessToken=at")).toBe("openworkToken=[redacted]&accessToken=[redacted]");
+  expect(redactCrashText("get3wToken=tok&accessToken=at")).toBe("get3wToken=[redacted]&accessToken=[redacted]");
 });
 
 test("redaction keeps file:// stack frames and dev-server line:col positions intact", () => {
@@ -124,7 +124,7 @@ test("the revealed technical details show the redacted message, never the query 
   const root = createRoot(container);
   const logError = spyOn(console, "error").mockImplementation(() => {});
   function Throws(): ReactNode {
-    throw new Error("Deep link rejected: openwork://open?token=eval-secret-token");
+    throw new Error("Deep link rejected: get3w://open?token=eval-secret-token");
   }
   try {
     await act(async () => {
@@ -132,7 +132,7 @@ test("the revealed technical details show the redacted message, never the query 
     });
     const toggle = Array.from(container.querySelectorAll("button")).find((button) => /technical details/i.test(button.textContent ?? ""));
     await act(async () => { toggle?.click(); });
-    expect(container.textContent).toContain("Deep link rejected: openwork://open");
+    expect(container.textContent).toContain("Deep link rejected: get3w://open");
     expect(container.textContent).not.toContain("eval-secret-token");
   } finally {
     await act(async () => { root.unmount(); });
@@ -261,8 +261,8 @@ test("children render untouched when nothing throws", () => {
 test("the architecture check shows progress without mounting the gated application", async () => {
   const ownedDom = typeof window === "undefined";
   if (ownedDom) GlobalRegistrator.register({ url: "http://localhost/" });
-  const bridge = window.__OPENWORK_ELECTRON__;
-  Reflect.set(window, "__OPENWORK_ELECTRON__", { system: {} });
+  const bridge = window.__GET3W_ELECTRON__;
+  Reflect.set(window, "__GET3W_ELECTRON__", { system: {} });
   try {
     const html = renderToStaticMarkup(
       <BootStateProvider>
@@ -273,8 +273,8 @@ test("the architecture check shows progress without mounting the gated applicati
     expect(html).toContain("Reload");
     expect(html).not.toContain("private workspace");
   } finally {
-    if (bridge === undefined) Reflect.deleteProperty(window, "__OPENWORK_ELECTRON__");
-    else Reflect.set(window, "__OPENWORK_ELECTRON__", bridge);
+    if (bridge === undefined) Reflect.deleteProperty(window, "__GET3W_ELECTRON__");
+    else Reflect.set(window, "__GET3W_ELECTRON__", bridge);
     if (ownedDom) await GlobalRegistrator.unregister();
   }
 });
@@ -291,8 +291,8 @@ test.each(["ready", "error"])("pending startup remains actionable and settles to
   const logError = spyOn(console, "error").mockImplementation(() => {});
   const startup = Promise.withResolvers<ReactNode>();
   const hash = window.location.hash;
-  const stored = window.localStorage.getItem("openwork.server.active");
-  window.localStorage.setItem("openwork.server.active", "https://self-hosted.example.test/opencode");
+  const stored = window.localStorage.getItem("get3w.server.active");
+  window.localStorage.setItem("get3w.server.active", "https://self-hosted.example.test/opencode");
   let mounted = 0;
   function Session() {
     mounted += 1;
@@ -332,14 +332,14 @@ test.each(["ready", "error"])("pending startup remains actionable and settles to
       expect(mounted).toBe(0);
     }
     expect(window.location.hash).toBe(hash);
-    expect(window.localStorage.getItem("openwork.server.active")).toBe("https://self-hosted.example.test/opencode");
+    expect(window.localStorage.getItem("get3w.server.active")).toBe("https://self-hosted.example.test/opencode");
   } finally {
     await act(async () => { root.unmount(); });
     container.remove();
     reload.mockRestore();
     logError.mockRestore();
-    if (stored === null) window.localStorage.removeItem("openwork.server.active");
-    else window.localStorage.setItem("openwork.server.active", stored);
+    if (stored === null) window.localStorage.removeItem("get3w.server.active");
+    else window.localStorage.setItem("get3w.server.active", stored);
     Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
     if (ownedDom) await GlobalRegistrator.unregister();
   }

@@ -6,7 +6,7 @@ import { engineDirectory } from "./session-ownership";
 
 export function createSessionInterruptionClient(baseUrl: string, client: Client, directory?: string, token?: string): Client {
   return isOpencodeV2BaseUrl(baseUrl) ? client
-    : createClient(baseUrl, directory?.trim() || undefined, { token, mode: "openwork" }, { desktopTransport: "main" });
+    : createClient(baseUrl, directory?.trim() || undefined, { token, mode: "get3w" }, { desktopTransport: "main" });
 }
 
 type Submission = {

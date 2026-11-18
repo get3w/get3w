@@ -361,7 +361,7 @@ function RoadmapSectionBlock({ section }: { section: RoadmapSection }) {
   )
 }
 
-export function OpenWorkRoadmap({
+export function Get3WRoadmap({
   feedbackHref = "https://get3w.com/docs/help/contact-support?source=roadmap",
   docsHref = "https://get3w.com/docs",
 }: {
@@ -371,7 +371,7 @@ export function OpenWorkRoadmap({
   const statuses: RoadmapStatus[] = ["live", "partial", "building", "next", "exploring"]
 
   return (
-    <div data-testid="openwork-roadmap" className="text-[#011627]">
+    <div data-testid="get3w-roadmap" className="text-[#011627]">
       <section className="pb-14 pt-10 md:pb-20 md:pt-16">
         <div className="mb-7 flex flex-wrap items-center gap-3">
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-sm">

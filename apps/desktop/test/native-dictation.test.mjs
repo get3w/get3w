@@ -97,7 +97,7 @@ function helperProcess() {
 function speechHelper(options = {}) {
   const spawned = [];
   const adapter = createSpeechDictation({
-    platform: "darwin", helperPath: "/App/helpers/openwork-dictation", infoPlist: "/App/Info.plist",
+    platform: "darwin", helperPath: "/App/helpers/get3w-dictation", infoPlist: "/App/Info.plist",
     exists: () => true, readText: () => "<key>NSSpeechRecognitionUsageDescription</key>",
     spawnHelper: (file, args, options) => { const child = helperProcess(); spawned.push({ file, args, options, child }); return child; },
     ...options,
@@ -115,7 +115,7 @@ test("speech dictation needs the helper, and on macOS the speech usage string", 
 });
 
 test("the Windows helper gets only the system folders it needs", () => {
-  const { adapter, spawned } = speechHelper({ platform: "win32", helperPath: "C:\\Get3W\\helpers\\openwork-dictation.exe",
+  const { adapter, spawned } = speechHelper({ platform: "win32", helperPath: "C:\\Get3W\\helpers\\get3w-dictation.exe",
     env: { SystemRoot: "C:\\Windows", TEMP: "C:\\Temp", OPENAI_API_KEY: "secret", NODE_OPTIONS: "--require x" } });
   const { event, window } = surface();
   event.sender.send = () => {};

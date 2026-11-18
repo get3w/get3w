@@ -17,9 +17,9 @@ import {
   X,
 } from "lucide-react";
 import { useDragControls } from "motion/react";
-import { AGENT_VIEWPORTS, type AgentViewportKey } from "@openwork/browser-tabs";
+import { AGENT_VIEWPORTS, type AgentViewportKey } from "@get3w/browser-tabs";
 
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import { PanelTab, PanelTabClose, PanelTabItem, PanelTabList } from "@/components/panel-tabs";
 import { Button } from "@/components/ui/button";
 import { TaskRecovery } from "@/components/chat/task-recovery";
@@ -42,7 +42,7 @@ import {
   useActivePanelTab,
   useSessionPanelState,
 } from "./panel-tab-store";
-import { useControlAction, type OpenworkControlAction } from "../../../shell/control/control-provider";
+import { useControlAction, type Get3wControlAction } from "../../../shell/control/control-provider";
 import type { OpenTarget } from "../artifacts/open-target";
 import type { OpenTargetOptions } from "@/lib/target-provider";
 import { useSidePanelTabs } from "./use-side-panel-tabs";
@@ -64,7 +64,7 @@ export type BrowserPresentationControls = {
 
 type SidePanelProps = {
   sessionId: string;
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string | null;
   workspaceRoot: string;
   onOpenTarget?: (target: OpenTarget, options?: OpenTargetOptions) => void;
@@ -354,13 +354,13 @@ export function BrowserPanelContent({
     const observer = new ResizeObserver(syncBounds);
     observer.observe(content);
     window.addEventListener("resize", invalidateBounds);
-    window.addEventListener("openwork:browser:bounds-invalidated", invalidateBounds);
+    window.addEventListener("get3w:browser:bounds-invalidated", invalidateBounds);
 
     return () => {
       disposed = true;
       observer.disconnect();
       window.removeEventListener("resize", invalidateBounds);
-      window.removeEventListener("openwork:browser:bounds-invalidated", invalidateBounds);
+      window.removeEventListener("get3w:browser:bounds-invalidated", invalidateBounds);
 
       if (boundsFrame !== null) {
         window.cancelAnimationFrame(boundsFrame);
@@ -382,7 +382,7 @@ export function BrowserPanelContent({
           </span>
           <AgentViewportMenu viewport={tab.agentViewport ?? null} />
           <Button variant="outline" size="sm" className="h-6 px-2 text-xs"
-            onClick={() => { void window.__OPENWORK_ELECTRON__?.browser?.taskControl?.(tab.id, tab.browserTask?.status === "paused" ? "resume" : "pause"); }}>
+            onClick={() => { void window.__GET3W_ELECTRON__?.browser?.taskControl?.(tab.id, tab.browserTask?.status === "paused" ? "resume" : "pause"); }}>
             {tab.browserTask?.status === "paused" ? t("ui.2be4eb0af810") : t("ui.66abfef02cd8")}
           </Button>
         </div>
@@ -610,7 +610,7 @@ export function SidePanel({
 
   const { createTab, closeTab, selectTab, reorderTabs } = useSidePanelTabs(sessionId);
 
-  const seedArtifactOverflowControlAction = React.useMemo<OpenworkControlAction | null>(() => {
+  const seedArtifactOverflowControlAction = React.useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -639,7 +639,7 @@ export function SidePanel({
         for (let index = 1; index <= count; index += 1) {
           const padded = String(index).padStart(2, "0");
           const baseName = longNameLast && index === count
-            ? `openwork-self-managed-subscription-and-licensing-overview-very-long-${padded}`
+            ? `get3w-self-managed-subscription-and-licensing-overview-very-long-${padded}`
             : `overflow-tab-${padded}`;
           const value = `artifacts/${baseName}.md`;
           const label = `${baseName}.md`;
@@ -677,7 +677,7 @@ export function SidePanel({
   }, [client, sessionId, workspaceId]);
   useControlAction(seedArtifactOverflowControlAction);
 
-  const seedMarkdownPrimitiveArtifactControlAction = React.useMemo<OpenworkControlAction | null>(() => {
+  const seedMarkdownPrimitiveArtifactControlAction = React.useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -722,7 +722,7 @@ export function SidePanel({
   }, [client, sessionId, workspaceId]);
   useControlAction(seedMarkdownPrimitiveArtifactControlAction);
 
-  const seedPdfArtifactControlAction = React.useMemo<OpenworkControlAction | null>(() => {
+  const seedPdfArtifactControlAction = React.useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {

@@ -1,12 +1,12 @@
-import { envKey, setEnv } from "@openwork/paths";
+import { envKey, setEnv } from "@get3w/paths";
 import { startupPhase } from "./startup-phase.js";
 import { agentPermissionEngineV2Rules, type AgentPermissionRule, type EngineV2PermissionRule } from "./agent-permission-engine.js";
 import type { OrganizationMcpServers } from "./reserved-mcp-names.js";
 
 type EnginePermissionRule = { action: string; resource: string; effect: "allow" | "deny" };
-import { nativeModelVariants } from "@openwork/types/cloud-model-fast";
+import { nativeModelVariants } from "@get3w/types/cloud-model-fast";
 import { gatewayBase } from "./gateway-quota.js";
-import { taskLogEvidenceV2PluginPath, openworkAgentPermissionsV2PluginPath, openworkAutoRouteV2PluginPath, openworkContextV2PluginPath, openworkMcpResultsV2PluginPath, openworkMcpReadinessV2PluginPath, openworkProviderFiltersV2PluginPath, openworkVisibleReasoningV2PluginPath } from "./openwork-extensions-plugin-path.js";
+import { get3wBackgroundShellV2PluginPath, taskLogEvidenceV2PluginPath, get3wAgentPermissionsV2PluginPath, get3wAutoRouteV2PluginPath, get3wContextV2PluginPath, get3wMcpResultsV2PluginPath, get3wMcpReadinessV2PluginPath, get3wProviderFiltersV2PluginPath, get3wVisibleReasoningV2PluginPath } from "./get3w-extensions-plugin-path.js";
 import { pathToFileURL } from "node:url";
 // Parallel v2 lane prototype: provider injection is a watched-config write. This module
 // deliberately has no reload/dispose call, unlike managed-opencode.ts and server.ts reloadOpencodeEngine.
@@ -229,6 +229,7 @@ export function renderOpencodeV2Config(input: {
   mcpResultsPluginDirectory?: string;
   mcpReadinessPluginDirectory?: string;
   /** Applies Settings › Show model reasoning to each agent request. */
+  backgroundShellPluginDirectory?: string;
   visibleReasoningPluginDirectory?: string;
   autoRoutePluginDirectory?: string;
   taskLogPluginDirectory?: string;
@@ -305,9 +306,10 @@ export function renderOpencodeV2Config(input: {
     }] : []),
     ...(input.mcpResultsPluginDirectory ? [{ package: pathToFileURL(input.mcpResultsPluginDirectory).href }] : []),
     ...(input.mcpReadinessPluginDirectory ? [{ package: pathToFileURL(input.mcpReadinessPluginDirectory).href }] : []),
+    ...(input.backgroundShellPluginDirectory ? [{ package: pathToFileURL(input.backgroundShellPluginDirectory).href }] : []),
     ...(input.visibleReasoningPluginDirectory ? [{ package: pathToFileURL(input.visibleReasoningPluginDirectory).href }] : []),
     // Smart Model Router (feature `autoRouter`): records which model the
-    // gateway chose for each Smart reply. It only reads `openwork-auto`
+    // gateway chose for each Smart reply. It only reads `get3w-auto`
     // responses, which exist only while a Smart Router applies to the member.
     ...(input.autoRoutePluginDirectory ? [{ package: pathToFileURL(input.autoRoutePluginDirectory).href }] : []),
     ...(input.agentPermissionsPluginDirectory ? [{
@@ -378,6 +380,7 @@ async function createManagedOpencodeV2ServerInner(
   const providerFiltersPluginDirectory = join(instanceRoot, "provider-filters-plugin");
   const mcpResultsPluginDirectory = join(instanceRoot, "mcp-results-plugin");
   const mcpReadinessPluginDirectory = join(instanceRoot, "mcp-readiness-plugin");
+  const backgroundShellPluginDirectory = join(instanceRoot, "background-shell-plugin");
   const visibleReasoningPluginDirectory = join(instanceRoot, "visible-reasoning-plugin");
   const autoRoutePluginDirectory = join(instanceRoot, "auto-route-plugin");
   const taskLogPluginDirectory = join(instanceRoot, "task-log-plugin");
@@ -407,23 +410,27 @@ async function createManagedOpencodeV2ServerInner(
   await mkdir(providerFiltersPluginDirectory, { recursive: true, mode: 0o700 });
   await writeFile(join(providerFiltersPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
   await writeFile(join(providerFiltersPluginDirectory, "server.js"),
-    `export { default } from ${JSON.stringify(pathToFileURL(openworkProviderFiltersV2PluginPath()).href)};\n`, { mode: 0o600 });
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wProviderFiltersV2PluginPath()).href)};\n`, { mode: 0o600 });
   await mkdir(mcpResultsPluginDirectory, { recursive: true, mode: 0o700 });
   await writeFile(join(mcpResultsPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
   await writeFile(join(mcpResultsPluginDirectory, "server.js"),
-    `export { default } from ${JSON.stringify(pathToFileURL(openworkMcpResultsV2PluginPath()).href)};\n`, { mode: 0o600 });
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wMcpResultsV2PluginPath()).href)};\n`, { mode: 0o600 });
   await mkdir(mcpReadinessPluginDirectory, { recursive: true, mode: 0o700 });
   await writeFile(join(mcpReadinessPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
   await writeFile(join(mcpReadinessPluginDirectory, "server.js"),
-    `export { default } from ${JSON.stringify(pathToFileURL(openworkMcpReadinessV2PluginPath()).href)};\n`, { mode: 0o600 });
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wMcpReadinessV2PluginPath()).href)};\n`, { mode: 0o600 });
+  await mkdir(backgroundShellPluginDirectory, { recursive: true, mode: 0o700 });
+  await writeFile(join(backgroundShellPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
+  await writeFile(join(backgroundShellPluginDirectory, "server.js"),
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wBackgroundShellV2PluginPath()).href)};\n`, { mode: 0o600 });
   await mkdir(visibleReasoningPluginDirectory, { recursive: true, mode: 0o700 });
   await writeFile(join(visibleReasoningPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
   await writeFile(join(visibleReasoningPluginDirectory, "server.js"),
-    `export { default } from ${JSON.stringify(pathToFileURL(openworkVisibleReasoningV2PluginPath()).href)};\n`, { mode: 0o600 });
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wVisibleReasoningV2PluginPath()).href)};\n`, { mode: 0o600 });
   await mkdir(autoRoutePluginDirectory, { recursive: true, mode: 0o700 });
   await writeFile(join(autoRoutePluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
   await writeFile(join(autoRoutePluginDirectory, "server.js"),
-    `export { default } from ${JSON.stringify(pathToFileURL(openworkAutoRouteV2PluginPath()).href)};\n`, { mode: 0o600 });
+    `export { default } from ${JSON.stringify(pathToFileURL(get3wAutoRouteV2PluginPath()).href)};\n`, { mode: 0o600 });
   if (options.contextTools) {
     await mkdir(taskLogPluginDirectory, { recursive: true, mode: 0o700 });
     await writeFile(join(taskLogPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
@@ -432,7 +439,7 @@ async function createManagedOpencodeV2ServerInner(
     await mkdir(contextPluginDirectory, { recursive: true, mode: 0o700 });
     await writeFile(join(contextPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
     await writeFile(join(contextPluginDirectory, "server.js"),
-      `export { default } from ${JSON.stringify(pathToFileURL(openworkContextV2PluginPath()).href)};\n`, { mode: 0o600 });
+      `export { default } from ${JSON.stringify(pathToFileURL(get3wContextV2PluginPath()).href)};\n`, { mode: 0o600 });
   }
   // Replace the generated config before boot, removing stale managed-policy
   // registrations while retaining independent engine permissions. Leave the
@@ -519,7 +526,7 @@ async function createManagedOpencodeV2ServerInner(
       await mkdir(agentPermissionsPluginDirectory, { recursive: true, mode: 0o700 });
       await writeFile(join(agentPermissionsPluginDirectory, "package.json"), JSON.stringify({ type: "module" }), { mode: 0o600 });
       await writeFile(join(agentPermissionsPluginDirectory, "server.js"),
-        `export { default } from ${JSON.stringify(pathToFileURL(openworkAgentPermissionsV2PluginPath()).href)};\n`, { mode: 0o600 });
+        `export { default } from ${JSON.stringify(pathToFileURL(get3wAgentPermissionsV2PluginPath()).href)};\n`, { mode: 0o600 });
       agentPermissionsPluginWritten = true;
     }
     return { agentPermissionRules: rules, organizationMcp, agentPermissionsPluginDirectory };
@@ -535,6 +542,7 @@ async function createManagedOpencodeV2ServerInner(
       providerFilters,
       mcpResultsPluginDirectory,
       mcpReadinessPluginDirectory,
+      backgroundShellPluginDirectory,
       visibleReasoningPluginDirectory,
       autoRoutePluginDirectory,
       taskLogPluginDirectory,

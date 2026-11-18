@@ -12,7 +12,7 @@ const environment = {
   APPLE_API_ISSUER: "test-issuer",
 };
 const originalEnvironment = {};
-const appOutDir = mkdtempSync(path.join(tmpdir(), "openwork-signing-test-"));
+const appOutDir = mkdtempSync(path.join(tmpdir(), "get3w-signing-test-"));
 const appPath = path.join(appOutDir, "Test App.app");
 const helperPath = path.join(appPath, "Contents", "Resources", "helpers", "Get3W Computer Use.app");
 mkdirSync(helperPath, { recursive: true });

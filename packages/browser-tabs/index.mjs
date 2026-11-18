@@ -1,4 +1,4 @@
-// @openwork/browser-tabs
+// @get3w/browser-tabs
 //
 // The built-in browser is one native surface shared by every conversation in
 // the desktop app, but each tab belongs to the conversation that opened it.

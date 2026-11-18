@@ -57,7 +57,7 @@ describe('workspace-first v1 file destinations',()=>{
   const hooks=workspaceFileHooks({directory:workspace,client:{config:{get:async()=>({data:{permission:{external_directory:'ask'}}})}}},{platform:'win32',cwd:String.raw`C:\Engine`,validate:async(_root,path)=>{validated.push(path);}});
   await hooks['tool.execute.before']({tool:'write'},{args});expect(args.filePath).toBe(workspace+'\\report.html');expect(validated).toEqual([args.filePath]);
   const output:{output:string;metadata:Record<string,unknown>}={output:'Wrote file successfully.',metadata:{filepath:args.filePath}};
-  await hooks['tool.execute.after']({args},output);expect(output.output).toContain('Workspace destination: '+args.filePath);expect(output.metadata.openworkWorkspacePaths).toEqual([{requested:'/report.html',resolved:args.filePath}]);
+  await hooks['tool.execute.after']({args},output);expect(output.output).toContain('Workspace destination: '+args.filePath);expect(output.metadata.get3wWorkspacePaths).toEqual([{requested:'/report.html',resolved:args.filePath}]);
   const definition:{description:string;jsonSchema?:unknown}={description:'Write'};await hooks['tool.definition']({toolID:'write'},definition);expect(JSON.stringify(definition.jsonSchema)).toContain('Prefer a plain workspace-relative');expect(JSON.stringify(definition.jsonSchema)).not.toContain('must be absolute');
   const other={description:'Read'};await hooks['tool.definition']({toolID:'read'},other);expect(other.description).toBe('Read');
  });

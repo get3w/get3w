@@ -7,7 +7,7 @@ import { BrowserRouter, HashRouter } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { initializeDenBootstrapConfig } from "./app/lib/den";
 import { startWebErrorMonitoring } from "./app/lib/error-monitoring";
-import { getOpenWorkDeployment } from "./app/lib/openwork-deployment";
+import { getGet3WDeployment } from "./app/lib/get3w-deployment";
 import { bootstrapTheme } from "./app/theme";
 import { isDesktopRuntime } from "./app/utils";
 import { initLocale } from "./i18n";
@@ -39,7 +39,7 @@ const startup = Promise.resolve().then(async () => {
   startDeepLinkBridge();
   await initializeDenBootstrapConfig();
 
-  root.dataset.openworkDeployment = getOpenWorkDeployment();
+  root.dataset.get3wDeployment = getGet3WDeployment();
   const platform = createDefaultPlatform();
   setWebNotificationHandler(platform.notify);
   const queryClient = getReactQueryClient();

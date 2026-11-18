@@ -103,10 +103,10 @@ function publish(next: Snapshot) {
 export function useGet3wAccount() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => current, () => empty);
 }
-export const openworkSignInEvent = "openwork:sign-in";
+export const get3wSignInEvent = "get3w:sign-in";
 export function openGet3wSignIn(): boolean {
   if (!window.__GET3W_ACCOUNT__) return false;
-  window.dispatchEvent(new Event(openworkSignInEvent));
+  window.dispatchEvent(new Event(get3wSignInEvent));
   return true;
 }
 
@@ -178,8 +178,8 @@ export function Get3wAccount() {
     if (!bridge) return;
     void run("status");
     const show = () => setOpen(true);
-    window.addEventListener(openworkSignInEvent, show);
-    return () => window.removeEventListener(openworkSignInEvent, show);
+    window.addEventListener(get3wSignInEvent, show);
+    return () => window.removeEventListener(get3wSignInEvent, show);
   }, [bridge]);
   useEffect(() => {
     if (isDesktopRuntime() && bridge && !snapshot.pending && !snapshot.user && snapshot.status === "signed_out") setOpen(true);

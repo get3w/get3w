@@ -18,8 +18,8 @@ function option(providerID: string, modelID: string, title: string, description:
   return { providerID, modelID, title, description, behaviorTitle: "Effort", behaviorLabel: "Default", behaviorDescription: "", behaviorValue: null, isFree: false };
 }
 
-const router = option("openwork-auto", "openwork-smart-ar_engineering", "Smart: Engineering", "Smart Model Router");
-const design = option("openwork-auto", "openwork-smart-ar_design", "Smart: Design", "Smart Model Router");
+const router = option("get3w-auto", "get3w-smart-ar_engineering", "Smart: Engineering", "Smart Model Router");
+const design = option("get3w-auto", "get3w-smart-ar_design", "Smart: Design", "Smart Model Router");
 const opus = option("anthropic", "opus", "Claude Opus", "Anthropic");
 
 test("Smart is the first entry, in its own group, even when pinned or recent", () => {
@@ -48,10 +48,10 @@ test("Smart models are named by their router", () => {
 });
 
 test("a Smart model without a name never shows its id", () => {
-  const unnamed = { providerID: "openwork-auto", modelID: "openwork-smart-ar_x" };
+  const unnamed = { providerID: "get3w-auto", modelID: "get3w-smart-ar_x" };
   expect(fixedModelTitle(unnamed)).toBeUndefined();
   expect(modelTitle(unnamed)).toBe("Smart");
-  expect(publicModelTitle({ ...unnamed, title: "openwork-smart-ar_x" })).toBe("Smart");
+  expect(publicModelTitle({ ...unnamed, title: "get3w-smart-ar_x" })).toBe("Smart");
 });
 
 test("Smart is an Get3W Gateway model with no effort of its own", () => {

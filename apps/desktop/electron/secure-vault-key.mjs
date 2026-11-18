@@ -22,7 +22,7 @@ async function replaceProtectedKey(filePath, encrypted) {
 }
 
 /**
- * Compact filename-safe UTC timestamp mirroring the `*.openwork-backup-<ts>`
+ * Compact filename-safe UTC timestamp mirroring the `*.get3w-backup-<ts>`
  * naming used by the server legacy-config sweep.
  *
  * @param {Date} date
@@ -97,7 +97,7 @@ export function createDesktopVaultKeyProvider({
         // Secure storage is available but can no longer decrypt the blob (for
         // example the OS keychain secret changed), so quarantine the original
         // bytes and mint a fresh key instead of failing on every launch.
-        await rename(filePath, `${filePath}.openwork-backup-${backupTimestamp(new Date())}`);
+        await rename(filePath, `${filePath}.get3w-backup-${backupTimestamp(new Date())}`);
       }
       if (decrypted && key) {
         if (decrypted.shouldReEncrypt) {

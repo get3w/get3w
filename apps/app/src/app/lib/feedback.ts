@@ -12,7 +12,7 @@ type FeedbackUrlOptions = {
   deployment?: "desktop" | "web";
   appVersion?: string | null;
   buildSha?: string | null;
-  openworkServerVersion?: string | null;
+  get3wServerVersion?: string | null;
   opencodeVersion?: string | null;
 };
 
@@ -102,7 +102,7 @@ export function buildFeedbackUrl(options: FeedbackUrlOptions): string {
   const entries = {
     deployment,
     appVersion,
-    openworkServerVersion: options.openworkServerVersion?.trim() ?? "",
+    get3wServerVersion: options.get3wServerVersion?.trim() ?? "",
     opencodeVersion: options.opencodeVersion?.trim() ?? "",
     osName: osContext.osName?.trim() ?? "",
     osVersion: osContext.osVersion?.trim() ?? "",

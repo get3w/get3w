@@ -1,16 +1,16 @@
-import type { DesktopAgentPermissionRule } from "@openwork/types/den/desktop-policies";
+import type { DesktopAgentPermissionRule } from "@get3w/types/den/desktop-policies";
 import { nativeDeepLinkEvent } from "./deep-link-bridge";
 
 export type * from "./desktop-types";
 export type {
   EngineInfo,
-  OpenworkServerInfo,
+  Get3wServerInfo,
   EngineDoctorResult,
   WorkspaceInfo,
   WorkspaceList,
   WorkspaceExportSummary,
   OpencodeCommandDraft,
-  WorkspaceOpenworkConfig,
+  WorkspaceGet3wConfig,
   AppBuildInfo,
   DesktopStartupTimings,
   DesktopDistributionInfo,
@@ -18,7 +18,7 @@ export type {
   BrandIconState,
   DesktopBootstrapConfig,
   EvalRelaunchResult,
-  OpenworkDockerCleanupResult,
+  Get3wDockerCleanupResult,
   ExecResult,
   LocalSkillCard,
   LocalSkillContent,
@@ -53,9 +53,9 @@ import type {
   BrowserPanelTab,
   BrowserStatePayload,
   OpenBrowserUrlResult,
-} from "@openwork/browser-tabs";
-import type { ComputerRequest } from "@openwork/types/desktop-ipc";
-export type { BrowserStatePayload } from "@openwork/browser-tabs";
+} from "@get3w/browser-tabs";
+import type { ComputerRequest } from "@get3w/types/desktop-ipc";
+export type { BrowserStatePayload } from "@get3w/browser-tabs";
 
 export type BrowserPresentationMode = "hidden" | "floating" | "side" | "fullscreen";
 
@@ -96,11 +96,11 @@ export type SpeechDictationEvent =
 
 declare global {
   interface Window {
-    __openworkRecoveryControl?: {
+    __get3wRecoveryControl?: {
       snapshot: () => Promise<unknown>;
       select: (id: string) => Promise<unknown>;
     };
-    __OPENWORK_ELECTRON__?: {
+    __GET3W_ELECTRON__?: {
       invokeDesktop?: <C extends DesktopCommandName>(
         command: C,
         ...args: DesktopCommandArgs<C>
@@ -198,7 +198,7 @@ declare global {
       };
       browser?: {
         openLink?: (url: string, sessionId: string | null) => void;
-        chooseLinkDestination?: (id: string, destination: "openwork" | "external" | null) => Promise<boolean>;
+        chooseLinkDestination?: (id: string, destination: "get3w" | "external" | null) => Promise<boolean>;
         onLinkOpenRequest?: (callback: (request: { id: string; url: string } | null) => void) => () => void;
         show?: (bounds: { x: number; y: number; width: number; height: number }, sessionId?: string | null) => Promise<boolean | void>;
         hide?: (options?: { preserveShortcutFocus?: boolean }) => Promise<void>;
@@ -277,7 +277,7 @@ declare global {
 export async function closeSessionBrowserTabs(sessionId: string): Promise<void> {
   if (typeof window === "undefined" || !sessionId.trim()) return;
   try {
-    await window.__OPENWORK_ELECTRON__?.browser?.closeSessionTabs?.(sessionId);
+    await window.__GET3W_ELECTRON__?.browser?.closeSessionTabs?.(sessionId);
   } catch {
     // Cleanup is idempotent and must not undo a confirmed session deletion.
   }
@@ -287,7 +287,7 @@ async function invokeElectronHelper<C extends DesktopCommandName>(
   command: C,
   ...args: DesktopCommandArgs<C>
 ): Promise<DesktopCommandResult<C>> {
-  const invokeDesktop = window.__OPENWORK_ELECTRON__?.invokeDesktop;
+  const invokeDesktop = window.__GET3W_ELECTRON__?.invokeDesktop;
   if (!invokeDesktop) {
     throw new Error(`Electron desktop helper is unavailable: ${command}`);
   }
@@ -336,7 +336,7 @@ export const desktopBridge = new Proxy(electronBridge, {
     if (cached) return cached;
 
     const fn = async (...args: unknown[]) => {
-      const invokeDesktop = window.__OPENWORK_ELECTRON__?.invokeDesktop;
+      const invokeDesktop = window.__GET3W_ELECTRON__?.invokeDesktop;
       if (!invokeDesktop) {
         throw new Error(`Electron desktop helper is unavailable: ${prop}`);
       }
@@ -355,7 +355,7 @@ export const desktopBridge = new Proxy(electronBridge, {
 
 // ---------------------------------------------------------------------------
 // desktopFetch — proxies non-loopback requests through the Electron main
-// process. Loopback hosts (the local opencode/openwork server) use the
+// process. Loopback hosts (the local opencode/get3w server) use the
 // renderer's own fetch, which works against same-machine services. Cross-origin
 // requests that need CORS headers the target does not send (e.g. the Den API on
 // a different control plane) should instead use `desktopFetchViaMain` directly.
@@ -535,7 +535,7 @@ export type DesktopUrlOpenStatus = "opened" | "opening";
 
 export async function openDesktopUrlWithStatus(url: string): Promise<DesktopUrlOpenStatus> {
   const safeUrl = assertDesktopWebUrl(url);
-  const openExternal = window.__OPENWORK_ELECTRON__?.shell?.openExternal;
+  const openExternal = window.__GET3W_ELECTRON__?.shell?.openExternal;
   if (openExternal) {
     const result = await openExternal(safeUrl);
     if (result && result.ok === false) {
@@ -567,7 +567,7 @@ export async function openDesktopPath(target: string): Promise<void> {
  * resolves outside (for example through a symlink) is revealed in its folder instead.
  */
 export async function openDesktopWorkspaceFile(workspaceRoot: string, target: string, options?: { reveal?: boolean }): Promise<"opened" | "revealed" | "unavailable"> {
-  const result = await invokeElectronHelper("__openWorkspaceFile", workspaceRoot, target, options);
+  const result = await invokeElectronHelper("__get3wspaceFile", workspaceRoot, target, options);
   if (!result || typeof result !== "object" || !("ok" in result)) {
     throw new Error("Could not open this file.");
   }
@@ -588,18 +588,18 @@ export async function applyBrandAppName(appName: string | null): Promise<string>
 }
 
 export async function applyBrandIcon(url: string | null): Promise<BrandIconApplyResult> {
-  const apply = typeof window !== "undefined" ? window.__OPENWORK_ELECTRON__?.brandIcon?.apply : undefined;
+  const apply = typeof window !== "undefined" ? window.__GET3W_ELECTRON__?.brandIcon?.apply : undefined;
   if (!apply) return { ok: false, reason: "bridge-unavailable" };
   return apply(url);
 }
 
 export async function getBrandIconState(): Promise<BrandIconState | null> {
-  const getState = typeof window !== "undefined" ? window.__OPENWORK_ELECTRON__?.brandIcon?.getState : undefined;
+  const getState = typeof window !== "undefined" ? window.__GET3W_ELECTRON__?.brandIcon?.getState : undefined;
   return getState ? getState() : null;
 }
 
 export async function evalRelaunchDesktopApp(): Promise<EvalRelaunchResult> {
-  const relaunch = typeof window !== "undefined" ? window.__OPENWORK_ELECTRON__?.dev?.evalRelaunch : undefined;
+  const relaunch = typeof window !== "undefined" ? window.__GET3W_ELECTRON__?.dev?.evalRelaunch : undefined;
   if (!relaunch) {
     throw new Error("Electron eval relaunch helper is unavailable.");
   }
@@ -624,7 +624,7 @@ export async function openDesktopWithApp(target: string, appPath: string, worksp
 }
 
 export async function relaunchDesktopApp(): Promise<void> {
-  await window.__OPENWORK_ELECTRON__?.shell?.relaunch?.();
+  await window.__GET3W_ELECTRON__?.shell?.relaunch?.();
 }
 
 export async function getDesktopHomeDir(): Promise<string> {
@@ -635,7 +635,7 @@ let cachedHomeDir: Promise<string | null> | null = null;
 
 /** The home folder for expanding `~/` in chat file links; null outside the desktop app. */
 export function getCachedDesktopHomeDir(): Promise<string | null> {
-  if (typeof window === "undefined" || !window.__OPENWORK_ELECTRON__?.invokeDesktop) return Promise.resolve(null);
+  if (typeof window === "undefined" || !window.__GET3W_ELECTRON__?.invokeDesktop) return Promise.resolve(null);
   cachedHomeDir ??= getDesktopHomeDir()
     .then((home) => (typeof home === "string" && home.trim() ? home : null))
     .catch(() => {
@@ -663,7 +663,7 @@ export async function subscribeDesktopDeepLinks(
     }
   };
   window.addEventListener(nativeDeepLinkEvent, listener as EventListener);
-  const initialUrls = window.__OPENWORK_ELECTRON__?.meta?.initialDeepLinks;
+  const initialUrls = window.__GET3W_ELECTRON__?.meta?.initialDeepLinks;
   if (Array.isArray(initialUrls) && initialUrls.length > 0) {
     handler(initialUrls);
   }
@@ -674,18 +674,18 @@ export async function subscribeDesktopDeepLinks(
 
 export function readInitialDesktopBootstrapConfig(): DesktopBootstrapConfig | null | undefined {
   if (typeof window === "undefined") return undefined;
-  return window.__OPENWORK_ELECTRON__?.meta?.desktopBootstrap;
+  return window.__GET3W_ELECTRON__?.meta?.desktopBootstrap;
 }
 
 export function readDesktopDistributionInfo(): DesktopDistributionInfo {
   const distribution = typeof window === "undefined"
     ? undefined
-    : window.__OPENWORK_ELECTRON__?.meta?.distribution;
+    : window.__GET3W_ELECTRON__?.meta?.distribution;
   return distribution ?? {
     flavor: "public",
     appName: "Get3W",
     appIdentifier: "com.get3w.desktop",
-    protocolScheme: "openwork",
+    protocolScheme: "get3w",
     requireSignin: false,
     requireActivation: false,
   };
@@ -702,8 +702,8 @@ const {
   workspaceSetRuntimeActive,
   workspaceCreate,
   workspaceForget,
-  workspaceOpenworkRead,
-  workspaceOpenworkWrite,
+  workspaceGet3wRead,
+  workspaceGet3wWrite,
   engineStop,
   engineRestart,
   appBuildInfo,
@@ -712,10 +712,10 @@ const {
   debugDesktopBootstrapConfig,
   clearDesktopBootstrapConfig,
   setDesktopBootstrapConfig,
-  nukeOpenworkAndOpencodeConfigPreview,
-  nukeOpenworkAndOpencodeConfigAndExit,
-  openworkServerInfo,
-  openworkServerRestart,
+  nukeGet3wAndOpencodeConfigPreview,
+  nukeGet3wAndOpencodeConfigAndExit,
+  get3wServerInfo,
+  get3wServerRestart,
   runtimeBootstrap,
   runtimeStatus,
   engineInfo,
@@ -731,7 +731,7 @@ const {
   updaterEnvironment,
   readOpencodeConfig,
   writeOpencodeConfig,
-  resetOpenworkState,
+  resetGet3wState,
   opencodeMcpAuth,
 } = desktopBridge;
 
@@ -742,8 +742,8 @@ export {
   workspaceSetRuntimeActive,
   workspaceCreate,
   workspaceForget,
-  workspaceOpenworkRead,
-  workspaceOpenworkWrite,
+  workspaceGet3wRead,
+  workspaceGet3wWrite,
   engineStop,
   engineRestart,
   appBuildInfo,
@@ -752,10 +752,10 @@ export {
   debugDesktopBootstrapConfig,
   clearDesktopBootstrapConfig,
   setDesktopBootstrapConfig,
-  nukeOpenworkAndOpencodeConfigPreview,
-  nukeOpenworkAndOpencodeConfigAndExit,
-  openworkServerInfo,
-  openworkServerRestart,
+  nukeGet3wAndOpencodeConfigPreview,
+  nukeGet3wAndOpencodeConfigAndExit,
+  get3wServerInfo,
+  get3wServerRestart,
   runtimeBootstrap,
   runtimeStatus,
   engineInfo,
@@ -771,6 +771,6 @@ export {
   updaterEnvironment,
   readOpencodeConfig,
   writeOpencodeConfig,
-  resetOpenworkState,
+  resetGet3wState,
   opencodeMcpAuth,
 };

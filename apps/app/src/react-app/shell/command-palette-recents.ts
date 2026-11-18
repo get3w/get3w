@@ -1,4 +1,4 @@
-export const COMMAND_PALETTE_RECENTS_KEY = "openwork.react.command-palette.recents";
+export const COMMAND_PALETTE_RECENTS_KEY = "get3w.react.command-palette.recents";
 
 type PaletteRecentsStorage = Pick<Storage, "getItem" | "setItem">;
 

@@ -35,7 +35,7 @@ const SIMPLE_ICON_MISSES = new Set([
   "amazonwebservices",
   "fireworks",
   "opencode",
-  "openwork",
+  "get3w",
 ]);
 
 /** Apex domains for providers whose id does not resolve to their own domain. */
@@ -61,7 +61,7 @@ const PROVIDER_DOMAINS: Record<string, string> = {
   ollama: "ollama.com",
   xai: "x.ai",
   opencode: "opencode.ai",
-  openwork: "get3w.com",
+  get3w: "get3w.com",
   abacus: "abacus.ai",
 };
 
@@ -97,7 +97,7 @@ export function providerLogoCandidates(input: {
 }): string[] {
   const id = input.providerId?.trim().toLowerCase() ?? "";
   // These internal/legacy provider IDs use the bundled Get3W mark.
-  if (["openwork", "get3w-account", "openwork-auto"].includes(id)) return [];
+  if (["get3w", "get3w-account", "get3w-auto"].includes(id)) return [];
   const candidates: string[] = [];
 
   if (id) {

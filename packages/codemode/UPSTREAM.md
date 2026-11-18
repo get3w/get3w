@@ -13,7 +13,7 @@
 
 ## Local divergences
 
-- The package is published internally as `@openwork/codemode` with repository-local package metadata and TypeScript configuration.
+- The package is published internally as `@get3w/codemode` with repository-local package metadata and TypeScript configuration.
 - The OpenAPI export was removed with the dropped OpenAPI implementation.
 - Host-supplied named bindings can be exposed as read-only program-scope variables through `CodeMode.execute` and `CodeMode.make`.
 - Upstream pins `acorn` 8.15.0; this workspace pins 8.16.0 to reuse the existing workspace resolution.

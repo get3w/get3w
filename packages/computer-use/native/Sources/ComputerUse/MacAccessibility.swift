@@ -99,7 +99,7 @@ struct AppIdentity {
         // itself access or approve its own requests.
         return !protected.contains(id) && !id.hasPrefix("com.jetbrains.") && !id.hasPrefix("com.google.android.studio")
             && !id.hasPrefix("com.get3w.desktop") && !id.hasPrefix("com.differentai.opencoworker")
-            && !id.hasPrefix("com.openwork") && !id.hasPrefix("com.openai")
+            && !id.hasPrefix("com.get3w") && !id.hasPrefix("com.openai")
     }
 }
 

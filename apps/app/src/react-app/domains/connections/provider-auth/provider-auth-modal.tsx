@@ -55,7 +55,7 @@ type ProviderOAuthSession = ProviderOAuthStartResult & {
 };
 
 export const PROVIDER_LABELS: Record<string, string> = {
-  openwork: "Get3W",
+  get3w: "Get3W",
   opencode: "OpenCode Zen",
   openai: "OpenAI",
   anthropic: "Anthropic",
@@ -63,7 +63,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   openrouter: "OpenRouter",
 };
 
-const OPENWORK_MODELS_PROVIDER_ID = "openwork";
+const GET3W_MODELS_PROVIDER_ID = "get3w";
 
 export type ProviderAuthModalProps = {
   open: boolean;
@@ -206,7 +206,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
       })
       .sort(compareProviders);
 
-    return nextEntries.filter((entry) => entry.id !== OPENWORK_MODELS_PROVIDER_ID);
+    return nextEntries.filter((entry) => entry.id !== GET3W_MODELS_PROVIDER_ID);
   }, [props.authMethods, props.connectedProviderIds, props.gatewayProviderIds, props.keylessProviderIds, props.providers]);
 
   const selectedEntry = useMemo(
@@ -776,8 +776,8 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
                     <div role="group" aria-labelledby="connect-provider-device">
                       <ProviderSectionLabel id="connect-provider-device" count={connectedCount + Number(showIncludedAuto)}>{t("ui.38b9d88c1fdb")}</ProviderSectionLabel>
                       {showIncludedAuto ? (
-                        <div className="flex items-center gap-3 rounded-xl px-2 py-2" data-testid="included-openwork-provider">
-                          <ProviderTile providerId="openwork" size="sm" />
+                        <div className="flex items-center gap-3 rounded-xl px-2 py-2" data-testid="included-get3w-provider">
+                          <ProviderTile providerId="get3w" size="sm" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-dls-text">{t("ui.5246148b3097")}</div>
                             <div className="line-clamp-2 text-xs text-muted-foreground">{t("models.account_provider_subtitle")}</div>

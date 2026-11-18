@@ -8,7 +8,7 @@ import { runCommand } from "./packaged-smoke-runner.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 if (process.platform !== "linux") throw new Error("The fast packaged smoke gate currently targets Linux.");
-const output = resolve(process.env.GET3W_PACKAGED_SMOKE_DIR || join(tmpdir(), `openwork-packaged-smoke-${process.pid}`));
+const output = resolve(process.env.GET3W_PACKAGED_SMOKE_DIR || join(tmpdir(), `get3w-packaged-smoke-${process.pid}`));
 mkdirSync(output, { recursive: true });
 const report = { commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim(), phases: [], passed: false };
 const started = performance.now();
@@ -46,13 +46,13 @@ async function bootPackagedDesktop(name, binary, timeout) {
     cwd: repo, stdio: "inherit", timeout,
     env: {
       ...process.env,
-      OPENWORK_EVAL_ELECTRON_BINARY: binary,
-      OPENWORK_EVAL_ELECTRON_RESOURCES_PREPARED: "1",
-      OPENWORK_EVAL_ENGINE: "v1",
-      OPENWORK_EVAL_SURFACES_DIR: join(output, "profiles", name),
+      GET3W_EVAL_ELECTRON_BINARY: binary,
+      GET3W_EVAL_ELECTRON_RESOURCES_PREPARED: "1",
+      GET3W_EVAL_ENGINE: "v1",
+      GET3W_EVAL_SURFACES_DIR: join(output, "profiles", name),
       // Profiles are removed when a journey ends; keep each main-process log
       // outside them so CI can upload it.
-      OPENWORK_EVAL_SURFACE_LOGS_DIR: join(output, "logs", name),
+      GET3W_EVAL_SURFACE_LOGS_DIR: join(output, "logs", name),
       ELECTRON_RUN_AS_NODE: "",
       NODE_PATH: "", NODE_OPTIONS: "",
     },
@@ -69,7 +69,7 @@ try {
       ...(process.argv.includes("--server-built") ? ["--server-built"] : [])], 240_000);
     packageDesktop();
   }
-  const binary = join(output, "linux-unpacked/openwork");
+  const binary = join(output, "linux-unpacked/get3w");
   const resources = join(output, "linux-unpacked/resources");
   const archive = join(resources, "app.asar");
   if (!existsSync(archive)) throw new Error(`Missing packaged archive: ${archive}`);

@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
-import { isJsonSecret, isPlainSecret } from "@openwork/ui/secret-input"
-import type { CredentialPromptTarget } from "@openwork/types/den/credential-prompt"
+import { isJsonSecret, isPlainSecret } from "@get3w/ui/secret-input"
+import type { CredentialPromptTarget } from "@get3w/types/den/credential-prompt"
 
 export type PromptField = {
   id: string

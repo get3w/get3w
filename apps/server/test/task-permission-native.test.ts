@@ -17,9 +17,9 @@ test("real pinned engine evaluates per-task mode and keeps explicit denials",asy
  let connection:{url:string;username:string;password:string}|undefined;
  const bridge=await createV2ContextBridge(async()=>({}),()=>connection,config);
  const plugin=join(root,"plugin");await mkdir(plugin);await writeFile(join(plugin,"package.json"),'{"type":"module"}');
- const built=await Bun.build({entrypoints:[resolve("apps/server/src/opencode-plugins/openwork-agent-permissions-v2.ts")],target:"node",format:"esm",outdir:plugin});
+ const built=await Bun.build({entrypoints:[resolve("apps/server/src/opencode-plugins/get3w-agent-permissions-v2.ts")],target:"node",format:"esm",outdir:plugin});
  expect(built.success).toBe(true);
- await writeFile(join(plugin,"server.js"),'export {default} from "./openwork-agent-permissions-v2.js";');
+ await writeFile(join(plugin,"server.js"),'export {default} from "./get3w-agent-permissions-v2.js";');
  const configDir=join(root,"config");await mkdir(configDir);
  const nativeConfig=join(configDir,"opencode.json");await writeFile(nativeConfig,JSON.stringify({plugins:[{package:new URL(`file://${plugin}`).href,options:{rules:[],permissionPolicy:bridge}}],permissions:[{action:"external_directory",resource:"*",effect:"ask"},{action:"shell",resource:"blocked",effect:"deny"}]}));
  const child=spawn(resolve("apps/desktop/resources/sidecars/opencode2"),["serve","--hostname","127.0.0.1","--port","0"],{env:{PATH:process.env.PATH,HOME:root,XDG_CONFIG_HOME:join(root,"xdg-config"),XDG_DATA_HOME:join(root,"xdg-data"),XDG_CACHE_HOME:join(root,"xdg-cache"),OPENCODE_DB:join(root,"engine.db"),OPENCODE_CONFIG:nativeConfig,OPENCODE_PASSWORD:"test-secret",OPENCODE_CONFIG_DIR:configDir,OPENCODE_DISABLE_MODELS_FETCH:"1"},stdio:["ignore","pipe","pipe"]});

@@ -33,7 +33,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
     const startedAt = performance.now();
     const toolCalls = toolCallDiagnostics();
     let upstreamHeadersAt, firstChunkAt, upstreamStatus;
-    const evidenceSession = request.headers["x-openwork-session-id"];
+    const evidenceSession = request.headers["x-get3w-session-id"];
     const evidenceId = randomBytes(16).toString("hex");
     const evidence = (type, payload) => typeof evidenceSession === "string"
       ? globalThis.__get3wTaskLogs?.captureEvidence?.(evidenceSession,{type,payload:{exchange_id:evidenceId,...payload}}).catch(()=>{})
@@ -65,7 +65,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
         // Scope replay protection by the caller request id. Independent title
         // and chat completions may share a body, while a transport retry with
         // the same request id remains deduplicated.
-        const requestId = request.headers["x-get3w-request-id"] || request.headers["x-openwork-request-id"];
+        const requestId = request.headers["x-get3w-request-id"] || request.headers["x-get3w-request-id"];
         console.info("[get3w-inference-request]", JSON.stringify({ hasRequestId: Boolean(requestId), requestIdLength: requestId?.length ?? 0, bodyBytes: body.length }));
         // A caller-provided request ID is the only reliable replay key. Some
         // OpenCode versions omit both headers; hashing the body in that case
@@ -87,7 +87,7 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
       upstreamStatus = upstream.status;
       await evidence("model.http.response",{status:upstream.status,request_id:upstream.headers.get("x-request-id"),provider_task_id:upstream.headers.get("x-task-id")});
       const headers = {"Cache-Control":"no-store", "X-Content-Type-Options":"nosniff"};
-      for (const name of ["content-type", "x-task-id", "x-request-id", "x-openwork-request-id", "x-openwork-model", "x-get3w-request-id", "x-get3w-model", "x-get3w-auto-reason", "x-get3w-auto-thinking", "server-timing", "retry-after"]) {
+      for (const name of ["content-type", "x-task-id", "x-request-id", "x-get3w-request-id", "x-get3w-model", "x-get3w-request-id", "x-get3w-model", "x-get3w-auto-reason", "x-get3w-auto-thinking", "server-timing", "retry-after"]) {
         const value = upstream.headers.get(name); if (value) headers[name] = value;
       }
       // The engine retries 429/5xx with new request IDs. Require an explicit

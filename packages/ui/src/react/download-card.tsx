@@ -145,8 +145,8 @@ function DownloadLink({
       href={href}
       target={openInNewTab ? "_blank" : undefined}
       rel={openInNewTab ? "noreferrer" : undefined}
-      data-testid={testId ?? "download-openwork-link"}
-      data-download-openwork-link="true"
+      data-testid={testId ?? "download-get3w-link"}
+      data-download-get3w-link="true"
       data-recommended={recommended ? "true" : undefined}
       onClick={onDownload}
       className={
@@ -312,7 +312,7 @@ function groupsForInstallers(installers: DownloadCardInstallers): DownloadPlatfo
   ]
 }
 
-export function DownloadOpenWorkCard({
+export function DownloadGet3WCard({
   installers,
   releaseTag,
   compact = false,
@@ -337,7 +337,7 @@ export function DownloadOpenWorkCard({
 
     return (
       <section
-        data-testid="download-openwork-card"
+        data-testid="download-get3w-card"
         data-compact="true"
         data-detected-os={detected?.os}
         data-detected-arch={detected ? detected.arch ?? "unknown" : undefined}
@@ -365,8 +365,8 @@ export function DownloadOpenWorkCard({
               href={recommended.href}
               target="_blank"
               rel="noreferrer"
-              data-testid="download-openwork-link"
-              data-download-openwork-link="true"
+              data-testid="download-get3w-link"
+              data-download-get3w-link="true"
               data-recommended="true"
               aria-label={`Download Get3W for ${detectedGroup.title} (${recommended.label})`}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
@@ -392,8 +392,8 @@ export function DownloadOpenWorkCard({
                       href={option.href}
                       target="_blank"
                       rel="noreferrer"
-                      data-testid="download-openwork-link"
-                      data-download-openwork-link="true"
+                      data-testid="download-get3w-link"
+                      data-download-get3w-link="true"
                       aria-label={`Download Get3W for ${group.title} (${option.label})`}
                       className="flex min-h-9 items-center justify-between gap-3 rounded-lg px-2 py-2 text-xs text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
                     >
@@ -411,7 +411,7 @@ export function DownloadOpenWorkCard({
 
   return (
     <section
-      data-testid="download-openwork-card"
+      data-testid="download-get3w-card"
       data-detected-os={detected?.os}
       data-detected-arch={detected ? detected.arch ?? "unknown" : undefined}
       data-detected-os-version={detected ? detected.osVersion ?? "unknown" : undefined}

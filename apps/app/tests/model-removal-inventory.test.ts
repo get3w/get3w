@@ -15,20 +15,20 @@ function gatewayModel(id: string) {
   };
 }
 const gatewayProvider = {
-  id: "ipr_assigned", providerId: "anthropic", name: "Gateway", source: "openwork_gateway",
+  id: "ipr_assigned", providerId: "anthropic", name: "Gateway", source: "get3w_gateway",
   credentialStatus: "ready", modelAssignmentsComplete: true, models: [gatewayModel("gwm_ready")], authorizationRequests: [],
 };
 
 describe("authoritative member model inventory", () => {
   test("maps legacy runtime identities without retaining configuration or credentials", () => {
     expect(parseModelRemovalInventory({ llmProviders: [legacyProvider, {
-      ...legacyProvider, id: "lpr_openwork", source: "openwork", credentialMode: "per_member", hasMyCredential: false,
+      ...legacyProvider, id: "lpr_get3w", source: "get3w", credentialMode: "per_member", hasMyCredential: false,
     }] }, emptyGateway)).toEqual({
       models: [
         { providerID: "lpr_assigned", modelID: "model-a", title: "Model A" },
-        { providerID: "openwork", modelID: "model-a", title: "Model A" },
+        { providerID: "get3w", modelID: "model-a", title: "Model A" },
       ],
-      lockedModels: [{ providerID: "openwork", modelID: "model-a" }],
+      lockedModels: [{ providerID: "get3w", modelID: "model-a" }],
     });
   });
 

@@ -3,20 +3,20 @@ import { connectionDiagnosticHistory } from "./connection-diagnostic-history";
 import {
   appBuildInfo,
   engineInfo,
-  openworkServerInfo,
+  get3wServerInfo,
   runtimeStatus,
   type AppBuildInfo,
   type EngineInfo,
   type OpencodeExecutionSnapshot,
-  type OpenworkServerInfo,
+  type Get3wServerInfo,
 } from "./desktop";
 import { readPerfLogs, type PerfLogRecord } from "./perf-log";
 import { sanitizeCloudMcpHealthDiagnostic } from "./diagnostic-sanitizer";
 import {
-  readOpenworkServerSettings,
-  type OpenworkServerSettings,
-  type OpenworkServerStatus,
-} from "./openwork-server";
+  readGet3wServerSettings,
+  type Get3wServerSettings,
+  type Get3wServerStatus,
+} from "./get3w-server";
 import { isDesktopRuntime } from "../utils";
 
 export type DiagnosticsBundleContext = {
@@ -26,9 +26,9 @@ export type DiagnosticsBundleContext = {
   developerMode?: boolean;
   hostConnectUrl?: string;
   hostConnectUrlUsesMdns?: boolean;
-  hostInfo?: OpenworkServerInfo | null;
-  openworkServerStatus?: OpenworkServerStatus;
-  openworkServerUrl?: string;
+  hostInfo?: Get3wServerInfo | null;
+  get3wServerStatus?: Get3wServerStatus;
+  get3wServerUrl?: string;
   runtimeWorkspaceId?: string | null;
   cloudMcpHealth?: unknown;
 };
@@ -39,8 +39,8 @@ export type DiagnosticsBundleInputs = {
   appInfo: AppBuildInfo | null;
   desktopStartupLog?: unknown;
   engineInfo: EngineInfo | null;
-  openworkServerSettings: OpenworkServerSettings;
-  hostInfo: OpenworkServerInfo | null;
+  get3wServerSettings: Get3wServerSettings;
+  hostInfo: Get3wServerInfo | null;
   developerLogs: DevLogRecord[];
   perfLogs: PerfLogRecord[];
   context?: DiagnosticsBundleContext;
@@ -64,7 +64,7 @@ function pickAppInfo(info: AppBuildInfo | null) {
     version: info.version,
     gitSha: info.gitSha ?? null,
     buildEpoch: info.buildEpoch ?? null,
-    openworkDevMode: info.openworkDevMode ?? null,
+    get3wDevMode: info.get3wDevMode ?? null,
   };
 }
 
@@ -101,7 +101,7 @@ function pickEngineInfo(info: EngineInfo | null) {
   };
 }
 
-function pickHostInfo(info: OpenworkServerInfo | null) {
+function pickHostInfo(info: Get3wServerInfo | null) {
   if (!info) return null;
   return {
     running: Boolean(info.running),
@@ -111,7 +111,7 @@ function pickHostInfo(info: OpenworkServerInfo | null) {
   };
 }
 
-function defaultHostConnectUrl(hostInfo: OpenworkServerInfo | null) {
+function defaultHostConnectUrl(hostInfo: Get3wServerInfo | null) {
   return hostInfo?.baseUrl ?? "";
 }
 
@@ -123,8 +123,8 @@ function addSecretValue(secrets: string[], value: string | null | undefined) {
 
 function collectSecretValues(input: DiagnosticsBundleInputs) {
   const secrets: string[] = [];
-  addSecretValue(secrets, input.openworkServerSettings.token);
-  addSecretValue(secrets, input.openworkServerSettings.hostToken);
+  addSecretValue(secrets, input.get3wServerSettings.token);
+  addSecretValue(secrets, input.get3wServerSettings.hostToken);
   addSecretValue(secrets, input.hostInfo?.clientToken);
   addSecretValue(secrets, input.hostInfo?.ownerToken);
   addSecretValue(secrets, input.hostInfo?.hostToken);
@@ -142,8 +142,8 @@ function scrubKnownSecretValues(value: string, secrets: string[]) {
 
 export function composeDiagnosticsBundleJson(input: DiagnosticsBundleInputs): string {
   const context = input.context;
-  const urlOverride = input.openworkServerSettings.urlOverride?.trim() ?? "";
-  const token = input.openworkServerSettings.token?.trim() ?? "";
+  const urlOverride = input.get3wServerSettings.urlOverride?.trim() ?? "";
+  const token = input.get3wServerSettings.token?.trim() ?? "";
   const hostConnectUrl = context?.hostConnectUrl ?? defaultHostConnectUrl(input.hostInfo);
   const hostConnectUrlUsesMdns = context?.hostConnectUrlUsesMdns ?? hostConnectUrl.includes(".local");
   const clientConnected = context?.clientConnected === true;
@@ -162,9 +162,9 @@ export function composeDiagnosticsBundleJson(input: DiagnosticsBundleInputs): st
       clientConnected,
       anyActiveRuns: context?.anyActiveRuns === true,
     },
-    openworkServer: {
-      status: context?.openworkServerStatus ?? (clientConnected ? "connected" : "disconnected"),
-      url: context?.openworkServerUrl ?? "",
+    get3wServer: {
+      status: context?.get3wServerStatus ?? (clientConnected ? "connected" : "disconnected"),
+      url: context?.get3wServerUrl ?? "",
       settings: {
         urlOverride: urlOverride || null,
         tokenPresent: Boolean(token),
@@ -212,7 +212,7 @@ async function readEngineInfo(desktopRuntime: boolean) {
 async function readHostInfo(desktopRuntime: boolean) {
   if (!desktopRuntime) return null;
   try {
-    return await openworkServerInfo();
+    return await get3wServerInfo();
   } catch {
     return null;
   }
@@ -241,7 +241,7 @@ export async function buildDiagnosticsBundleJson(context?: DiagnosticsBundleCont
     appInfo,
     desktopStartupLog: await readDesktopStartupLog(desktopRuntime),
     engineInfo: engine,
-    openworkServerSettings: readOpenworkServerSettings(),
+    get3wServerSettings: readGet3wServerSettings(),
     hostInfo,
     developerLogs: readDevLogs(80),
     perfLogs: readPerfLogs(80),

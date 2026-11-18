@@ -17,16 +17,16 @@
 # install removes the entry. Windows deletes RunOnce entries before running
 # them, and the rerun registers itself again, so an interrupted recovery is
 # retried too. Per-user installs only: a per-machine rerun would need elevation.
-!define OPENWORK_UPDATE_RECOVERY_KEY "Software\Microsoft\Windows\CurrentVersion\RunOnce"
-!define OPENWORK_UPDATE_RECOVERY_VALUE "${APP_GUID}-update-recovery"
+!define GET3W_UPDATE_RECOVERY_KEY "Software\Microsoft\Windows\CurrentVersion\RunOnce"
+!define GET3W_UPDATE_RECOVERY_VALUE "${APP_GUID}-update-recovery"
 
 !macro customInit
   ${if} ${isUpdated}
   ${andIf} $installMode == "CurrentUser"
-    WriteRegStr HKCU "${OPENWORK_UPDATE_RECOVERY_KEY}" "${OPENWORK_UPDATE_RECOVERY_VALUE}" '"$EXEPATH" --updated /S'
+    WriteRegStr HKCU "${GET3W_UPDATE_RECOVERY_KEY}" "${GET3W_UPDATE_RECOVERY_VALUE}" '"$EXEPATH" --updated /S'
   ${endIf}
 !macroend
 
 !macro customInstall
-  DeleteRegValue HKCU "${OPENWORK_UPDATE_RECOVERY_KEY}" "${OPENWORK_UPDATE_RECOVERY_VALUE}"
+  DeleteRegValue HKCU "${GET3W_UPDATE_RECOVERY_KEY}" "${GET3W_UPDATE_RECOVERY_VALUE}"
 !macroend

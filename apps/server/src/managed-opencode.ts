@@ -3,7 +3,7 @@ import { chmod, mkdir } from "node:fs/promises";
 import net from "node:net";
 import { homedir } from "node:os";
 import { join, relative, resolve, isAbsolute } from "node:path";
-import { deleteEnv, mergeEnv } from "@openwork/paths";
+import { deleteEnv, mergeEnv } from "@get3w/paths";
 import { startupPhase } from "./startup-phase.js";
 import { randomUUID } from "node:crypto";
 import { appendEngineOutputTail, createEngineStartupLineReader } from "./engine-output.js";

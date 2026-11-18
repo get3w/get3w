@@ -20,7 +20,7 @@ export function validateGet3wOrigin(value) {
 /**
  * Origins passed to createGet3wAuth. Development reads GET3W_CLOUD_ORIGIN and
  * GET3W_AUTH_WEB_ORIGIN; packaged builds use the defaults unless the package is a
- * local validation build that ships its own `openworkAuthOrigins`.
+ * local validation build that ships its own `get3wAuthOrigins`.
  * @param {{isPackaged:boolean,env?:Record<string,string|undefined>,packageMetadata?:object,localValidation?:boolean}} input
  * @returns {{cloudBase?:string,webBase?:string}}
  */
@@ -31,7 +31,7 @@ export function resolveGet3wOrigins({ isPackaged, env = {}, packageMetadata = {}
       webBase: env.GET3W_AUTH_WEB_ORIGIN?.trim() || GET3W_SERVICES.webBase,
     };
   }
-  const shipped = localValidation ? Reflect.get(packageMetadata ?? {}, "openworkAuthOrigins") : null;
+  const shipped = localValidation ? Reflect.get(packageMetadata ?? {}, "get3wAuthOrigins") : null;
   if (!shipped || typeof shipped !== "object") return {};
   const origins = {};
   for (const key of ["cloudBase", "webBase"]) {

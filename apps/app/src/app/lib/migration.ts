@@ -11,12 +11,12 @@
 export const MIGRATION_SNAPSHOT_VERSION = 1;
 
 export const MIGRATION_KEY_PATTERNS: Array<RegExp> = [
-  /^openwork\.react\.activeWorkspace$/,
-  /^openwork\.react\.sessionByWorkspace$/,
-  /^openwork\.server\.list$/,
-  /^openwork\.server\.active$/,
-  /^openwork\.server\.urlOverride$/,
-  /^openwork\.server\.token$/,
+  /^get3w\.react\.activeWorkspace$/,
+  /^get3w\.react\.sessionByWorkspace$/,
+  /^get3w\.server\.list$/,
+  /^get3w\.server\.active$/,
+  /^get3w\.server\.urlOverride$/,
+  /^get3w\.server\.token$/,
 ];
 
 export type MigrationSnapshot = {
@@ -38,8 +38,8 @@ type ElectronMigrationBridge = {
 function electronMigrationBridge(): ElectronMigrationBridge | null {
   if (typeof window === "undefined") return null;
   const bridge = (window as unknown as {
-    __OPENWORK_ELECTRON__?: { migration?: ElectronMigrationBridge };
-  }).__OPENWORK_ELECTRON__;
+    __GET3W_ELECTRON__?: { migration?: ElectronMigrationBridge };
+  }).__GET3W_ELECTRON__;
   return bridge?.migration ?? null;
 }
 

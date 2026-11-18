@@ -4,14 +4,14 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {ServerConfig} from '../src/types';
 import {writeRuntimeOpencodeConfig} from '../src/runtime-opencode-config-store';
-import {readOpenWorkConnectMcpAppHostCatalog,findOpenWorkConnectMcpAppHostServer,readOpenWorkConnectMcpAppHostAuthorization,readOpenWorkConnectMcpAppHostAuthorizationRevision} from '../src/connect-mcp-server-catalog';
+import {readGet3WConnectMcpAppHostCatalog,findGet3WConnectMcpAppHostServer,readGet3WConnectMcpAppHostAuthorization,readGet3WConnectMcpAppHostAuthorizationRevision} from '../src/connect-mcp-server-catalog';
 import {resolveConnectMcpAppResource,callMcpAppTool,releaseMcpAppLaunch} from '../src/mcp-app-host';
 
 test('native catalog resolves an app through loopback without enabling arbitrary private MCP URLs',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'native-artifact-catalog-'));
  const before=process.env.GET3W_RUNTIME_DB;process.env.GET3W_RUNTIME_DB=join(dir,'runtime.sqlite');
  const privateBefore=process.env.GET3W_ALLOW_PRIVATE_MCP_URLS;delete process.env.GET3W_ALLOW_PRIVATE_MCP_URLS;
- const aid='cob_0'+'1'.repeat(25),rid='cov_0'+'1'.repeat(25),uri=`ui://openwork/apps/${aid}/revisions/${rid}/index.html`;
+ const aid='cob_0'+'1'.repeat(25),rid='cov_0'+'1'.repeat(25),uri=`ui://get3w/apps/${aid}/revisions/${rid}/index.html`;
  let published = true;
  let oversized = false;
  const auth='Bearer '+'a'.repeat(43);
@@ -35,11 +35,11 @@ test('native catalog resolves an app through loopback without enabling arbitrary
  try{
   const url=`http://127.0.0.1:${server.port}/mcp`;
   await writeRuntimeOpencodeConfig(config,'ws',()=>({mcp:{'get3w-account':{type:'remote',url,headers:{Authorization:auth}}}}));
-  const catalog=await readOpenWorkConnectMcpAppHostCatalog(config,'ws');expect(catalog.servers).toHaveLength(1);
-  const descriptor=await findOpenWorkConnectMcpAppHostServer(config,'ws',{connectionId:aid});expect(descriptor?.url).toBe(`${url}/apps/${aid}`);
-  expect(await readOpenWorkConnectMcpAppHostAuthorization(config,'ws','https://evil.test/mcp')).toBeNull();
+  const catalog=await readGet3WConnectMcpAppHostCatalog(config,'ws');expect(catalog.servers).toHaveLength(1);
+  const descriptor=await findGet3WConnectMcpAppHostServer(config,'ws',{connectionId:aid});expect(descriptor?.url).toBe(`${url}/apps/${aid}`);
+  expect(await readGet3WConnectMcpAppHostAuthorization(config,'ws','https://evil.test/mcp')).toBeNull();
   oversized=true;
-  await expect(readOpenWorkConnectMcpAppHostCatalog(config,'ws')).rejects.toThrow('too large');
+  await expect(readGet3WConnectMcpAppHostCatalog(config,'ws')).rejects.toThrow('too large');
   oversized=false;
   published = false; // Unsaved drafts never appear in the active inventory.
   const base={serverConfig:config,workspaceId:'ws',workspaceRoot:dir};
@@ -48,9 +48,9 @@ test('native catalog resolves an app through loopback without enabling arbitrary
   if(!opened?.launchId)throw Error('Missing launch');
   const result=await callMcpAppTool({...base,launchId:opened.launchId,sessionId:null,serverName:opened.serverName,name:'open_app',resourceUri:uri,arguments:{}});
   expect(result.content).toEqual([{type:'text',text:'viewer result'}]);
-  const revision=await readOpenWorkConnectMcpAppHostAuthorizationRevision(config,'ws');
+  const revision=await readGet3WConnectMcpAppHostAuthorizationRevision(config,'ws');
   await writeRuntimeOpencodeConfig(config,'ws',()=>({}));
-  expect(await readOpenWorkConnectMcpAppHostAuthorizationRevision(config,'ws')).not.toBe(revision);
+  expect(await readGet3WConnectMcpAppHostAuthorizationRevision(config,'ws')).not.toBe(revision);
   await expect(callMcpAppTool({...base,launchId:opened.launchId,sessionId:null,serverName:opened.serverName,name:'open_app',resourceUri:uri,arguments:{}})).rejects.toBeDefined();
   releaseMcpAppLaunch(config,'ws',opened.launchId);
  }finally{

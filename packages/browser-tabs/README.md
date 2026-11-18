@@ -1,4 +1,4 @@
-# @openwork/browser-tabs
+# @get3w/browser-tabs
 
 The policy layer for Get3W's built-in browser. The desktop app has one
 native browser surface shared by every conversation, but each tab belongs to

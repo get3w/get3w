@@ -53,8 +53,8 @@ function transaction(db: HistoryDatabase, run: () => void): void {
 const yieldTurn = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 function payloadSessions(db: HistoryDatabase): void {
-  db.exec(`CREATE TABLE IF NOT EXISTS openwork_payload_session (token TEXT PRIMARY KEY, session_id TEXT NOT NULL);
-    CREATE INDEX IF NOT EXISTS openwork_payload_session_session ON openwork_payload_session(session_id, token)`);
+  db.exec(`CREATE TABLE IF NOT EXISTS get3w_payload_session (token TEXT PRIMARY KEY, session_id TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS get3w_payload_session_session ON get3w_payload_session(session_id, token)`);
 }
 
 /** Native conversion reads a whole session into JS. Substitute reversible,
@@ -62,17 +62,17 @@ function payloadSessions(db: HistoryDatabase): void {
  * Each session and its payload map commit together, making restart idempotent. */
 export async function externalizeHistory(db: HistoryDatabase, signal?: AbortSignal,
   progress?: (done: number, total: number) => void): Promise<void> {
-  db.exec(`CREATE TABLE IF NOT EXISTS openwork_payload (
+  db.exec(`CREATE TABLE IF NOT EXISTS get3w_payload (
     token TEXT PRIMARY KEY, value TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS openwork_externalized (session_id TEXT PRIMARY KEY)`);
+    CREATE TABLE IF NOT EXISTS get3w_externalized (session_id TEXT PRIMARY KEY)`);
   payloadSessions(db);
-  const mapToken = db.prepare("INSERT INTO openwork_payload_session VALUES (?, ?)");
+  const mapToken = db.prepare("INSERT INTO get3w_payload_session VALUES (?, ?)");
   const sessions = db.prepare("SELECT id FROM session ORDER BY id").all();
   let done = 0;
   for (const session of sessions) {
     signal?.throwIfAborted();
     const sessionId = stringField(session, "id");
-    if (db.prepare("SELECT 1 FROM openwork_externalized WHERE session_id = ?").get(sessionId)) { progress?.(++done, sessions.length); continue; }
+    if (db.prepare("SELECT 1 FROM get3w_externalized WHERE session_id = ?").get(sessionId)) { progress?.(++done, sessions.length); continue; }
     transaction(db, () => {
       for (const table of ["message", "part"]) {
         const rows = db.prepare(`SELECT id FROM ${table} WHERE session_id = ? ORDER BY id`).all(sessionId);
@@ -90,7 +90,7 @@ export async function externalizeHistory(db: HistoryDatabase, signal?: AbortSign
             // survives that normalization, and also survives tool file URIs.
             if (header) {
               const encodedToken = Buffer.from(token).toString("base64");
-              db.prepare(`INSERT INTO openwork_payload SELECT ?, substr(json_extract(data, ?), ?) FROM ${table} WHERE id = ?`)
+              db.prepare(`INSERT INTO get3w_payload SELECT ?, substr(json_extract(data, ?), ?) FROM ${table} WHERE id = ?`)
                 .run(encodedToken, path, header.length + 1, id);
               mapToken.run(encodedToken, sessionId);
               if (!header.endsWith(";base64,")) encodeDataUrl(db, encodedToken);
@@ -99,11 +99,11 @@ export async function externalizeHistory(db: HistoryDatabase, signal?: AbortSign
               // Tool file URLs keep their original encoding; keep a separate
               // full-URI mapping ahead of the normalized attachment mapping.
               const uriToken = normalizedHeader + encodedToken;
-              db.prepare(`INSERT INTO openwork_payload SELECT ?, json_extract(data, ?) FROM original.${table} WHERE id = ?`)
+              db.prepare(`INSERT INTO get3w_payload SELECT ?, json_extract(data, ?) FROM original.${table} WHERE id = ?`)
                 .run(uriToken, path, id);
               mapToken.run(uriToken, sessionId);
             } else {
-              db.prepare(`INSERT INTO openwork_payload SELECT ?, json_extract(data, ?) FROM ${table} WHERE id = ?`)
+              db.prepare(`INSERT INTO get3w_payload SELECT ?, json_extract(data, ?) FROM ${table} WHERE id = ?`)
                 .run(token, path, id);
               mapToken.run(token, sessionId);
               db.prepare(`UPDATE ${table} SET data = json_replace(data, ?, ?) WHERE id = ?`).run(path, token, id);
@@ -111,7 +111,7 @@ export async function externalizeHistory(db: HistoryDatabase, signal?: AbortSign
           }
         }
       }
-      db.prepare("INSERT INTO openwork_externalized VALUES (?)").run(sessionId);
+      db.prepare("INSERT INTO get3w_externalized VALUES (?)").run(sessionId);
     });
     progress?.(++done, sessions.length);
     await yieldTurn();
@@ -128,7 +128,7 @@ function encodeDataUrl(db: HistoryDatabase, token: string): void {
   let remainder = Buffer.alloc(0);
   let n = 0;
   while (true) {
-    const chunk = stringField(db.prepare("SELECT substr(value, ?, 65536) AS value FROM openwork_payload WHERE token = ?").get(offset, token), "value");
+    const chunk = stringField(db.prepare("SELECT substr(value, ?, 65536) AS value FROM get3w_payload WHERE token = ?").get(offset, token), "value");
     if (!chunk) break;
     offset += Array.from(chunk).length;
     let text = suffix + chunk;
@@ -155,26 +155,26 @@ function encodeDataUrl(db: HistoryDatabase, token: string): void {
   }
   if (suffix) throw new Error("Invalid data URL; the original history is unchanged.");
   db.prepare("INSERT INTO temp.payload_chunks VALUES (?, ?)").run(n, remainder.toString("base64"));
-  db.prepare("UPDATE openwork_payload SET value = (SELECT group_concat(data, '') FROM (SELECT data FROM temp.payload_chunks ORDER BY n)) WHERE token = ?").run(token);
+  db.prepare("UPDATE get3w_payload SET value = (SELECT group_concat(data, '') FROM (SELECT data FROM temp.payload_chunks ORDER BY n)) WHERE token = ?").run(token);
 }
 
 /** Old staged copies have no mapping. Walk their still-externalized v1 atoms
  * once, using payload primary-key lookups, never payload-value scans. A data URL
  * has both a full-URI token and its 80-character base64 token. Unmapped tokens
- * remain in openwork_payload and are handled by the exact global fallback. */
+ * remain in get3w_payload and are handled by the exact global fallback. */
 function backfillPayloadSessions(db: HistoryDatabase): void {
   payloadSessions(db);
-  db.exec("CREATE TABLE IF NOT EXISTS openwork_payload_session_backfill (completed INTEGER PRIMARY KEY)");
-  if (db.prepare("SELECT 1 FROM openwork_payload_session_backfill").get()) return;
+  db.exec("CREATE TABLE IF NOT EXISTS get3w_payload_session_backfill (completed INTEGER PRIMARY KEY)");
+  if (db.prepare("SELECT 1 FROM get3w_payload_session_backfill").get()) return;
   transaction(db, () => {
     for (const table of ["message", "part"]) {
-      db.exec(`INSERT OR IGNORE INTO openwork_payload_session (token, session_id)
+      db.exec(`INSERT OR IGNORE INTO get3w_payload_session (token, session_id)
         SELECT p.token, s.session_id FROM ${table} s, json_tree(s.data) j
-        JOIN openwork_payload p ON p.token = j.atom
+        JOIN get3w_payload p ON p.token = j.atom
           OR (j.atom LIKE 'data:%' AND p.token = substr(j.atom, -80))
         WHERE j.type = 'text'`);
     }
-    db.exec("INSERT INTO openwork_payload_session_backfill VALUES (1)");
+    db.exec("INSERT INTO get3w_payload_session_backfill VALUES (1)");
   });
 }
 
@@ -184,16 +184,16 @@ export async function restoreHistoryPayloads(db: HistoryDatabase, signal?: Abort
   progress?: (done: number, total: number) => void): Promise<void> {
   signal?.throwIfAborted();
   backfillPayloadSessions(db);
-  db.exec("CREATE TABLE IF NOT EXISTS openwork_restored (message_id TEXT PRIMARY KEY)");
+  db.exec("CREATE TABLE IF NOT EXISTS get3w_restored (message_id TEXT PRIMARY KEY)");
   const total = numberField(db.prepare("SELECT count(*) AS n FROM session_message").get(), "n");
-  let done = numberField(db.prepare("SELECT count(*) AS n FROM openwork_restored r JOIN session_message m ON m.id = r.message_id").get(), "n");
+  let done = numberField(db.prepare("SELECT count(*) AS n FROM get3w_restored r JOIN session_message m ON m.id = r.message_id").get(), "n");
   progress?.(done, total);
   const marker = db.prepare("SELECT 1 FROM session_message WHERE id = ? AND (instr(data, 'OWPAYLOAD') > 0 OR instr(data, 'T1dQQVlMT0FE') > 0)");
   const replace = db.prepare(`UPDATE session_message SET data = replace(data, ?,
-    (SELECT substr(json_quote(value), 2, length(json_quote(value)) - 2) FROM openwork_payload WHERE token = ?)) WHERE id = ?`);
-  const unmapped = Boolean(db.prepare(`SELECT 1 FROM openwork_payload p LEFT JOIN openwork_payload_session s ON s.token = p.token
+    (SELECT substr(json_quote(value), 2, length(json_quote(value)) - 2) FROM get3w_payload WHERE token = ?)) WHERE id = ?`);
+  const unmapped = Boolean(db.prepare(`SELECT 1 FROM get3w_payload p LEFT JOIN get3w_payload_session s ON s.token = p.token
     WHERE s.token IS NULL LIMIT 1`).get());
-  const globalTokens = db.prepare(`SELECT token FROM openwork_payload WHERE instr((SELECT data FROM session_message WHERE id = ?), token) > 0
+  const globalTokens = db.prepare(`SELECT token FROM get3w_payload WHERE instr((SELECT data FROM session_message WHERE id = ?), token) > 0
     ORDER BY length(token) DESC`);
   let cursor = "";
   while (true) {
@@ -202,10 +202,10 @@ export async function restoreHistoryPayloads(db: HistoryDatabase, signal?: Abort
     for (const row of rows) {
       signal?.throwIfAborted();
       const id = stringField(row, "id"); cursor = id;
-      if (db.prepare("SELECT 1 FROM openwork_restored WHERE message_id = ?").get(id)) continue;
+      if (db.prepare("SELECT 1 FROM get3w_restored WHERE message_id = ?").get(id)) continue;
       transaction(db, () => {
         if (marker.get(id)) {
-          const tokens = unmapped ? globalTokens.all(id) : db.prepare(`SELECT token FROM openwork_payload_session WHERE session_id = ?
+          const tokens = unmapped ? globalTokens.all(id) : db.prepare(`SELECT token FROM get3w_payload_session WHERE session_id = ?
             AND instr((SELECT data FROM session_message WHERE id = ?), token) > 0 ORDER BY length(token) DESC`)
             .all(stringField(row, "session_id"), id);
           for (const item of tokens) {
@@ -213,10 +213,10 @@ export async function restoreHistoryPayloads(db: HistoryDatabase, signal?: Abort
           }
           if (marker.get(id)) {
             if (db.prepare(`SELECT 1 FROM session_message m WHERE m.id = ? AND EXISTS
-              (SELECT 1 FROM openwork_payload p WHERE instr(m.data, p.token) > 0)`).get(id)) throw new Error("Unresolved history payload");
+              (SELECT 1 FROM get3w_payload p WHERE instr(m.data, p.token) > 0)`).get(id)) throw new Error("Unresolved history payload");
           }
         }
-        db.prepare("INSERT INTO openwork_restored VALUES (?)").run(id);
+        db.prepare("INSERT INTO get3w_restored VALUES (?)").run(id);
       });
       done++;
     }
@@ -259,7 +259,7 @@ function refreshExistingSession(db: HistoryDatabase, id: string, sourceKey: stri
     WHERE s.session_id = ? AND t.session_id != s.session_id LIMIT 1`).get(id)) throw new Error("History message identity conflict; existing v2 messages were preserved.");
   const diverged = db.prepare(`SELECT 1 FROM main.session_message t LEFT JOIN converted.session_message s ON s.id = t.id
     WHERE t.session_id = ? AND t.type IN ('user', 'assistant') AND s.id IS NULL LIMIT 1`).get(id);
-  db.prepare(`INSERT INTO openwork_v2_replaced_message (source_key, id, session_id, seq, type, data, time_created, time_updated)
+  db.prepare(`INSERT INTO get3w_v2_replaced_message (source_key, id, session_id, seq, type, data, time_created, time_updated)
     SELECT ?, id, session_id, seq, type, data, time_created, time_updated FROM session_message WHERE session_id = ?`).run(sourceKey, id);
   if (!diverged) {
     db.prepare("DELETE FROM session_message WHERE session_id = ?").run(id);
@@ -295,8 +295,8 @@ function advanceHistorySequence(db: HistoryDatabase, id: string): void {
 /** Pre-ownership checkpoints only represented sessions the copy created.
  * Preserve that meaning when upgrading an already interrupted database. */
 export function ensureHistoryCopyOwnership(db: HistoryDatabase): void {
-  if (db.prepare("SELECT 1 FROM pragma_table_info('openwork_history_copy') WHERE name = 'created_session'").get()) return;
-  db.exec("ALTER TABLE openwork_history_copy ADD COLUMN created_session INTEGER NOT NULL DEFAULT 1");
+  if (db.prepare("SELECT 1 FROM pragma_table_info('get3w_history_copy') WHERE name = 'created_session'").get()) return;
+  db.exec("ALTER TABLE get3w_history_copy ADD COLUMN created_session INTEGER NOT NULL DEFAULT 1");
 }
 
 /** The target engine must be stopped. Rows, their original v1 archive and the
@@ -311,7 +311,7 @@ export async function copyHistoryBatches(options: {
   const sessionTarget = sameSchema(db, "session_v2");
   const sessionColumns = sessionTarget.map(identifier).join(", ");
   // OpenCode v2 cannot unarchive a chat yet, so a copied v1 archive would lock
-  // it read-only forever. Copy it as active; openwork_v1_session keeps the time.
+  // it read-only forever. Copy it as active; get3w_v1_session keeps the time.
   const sessionValues = sessionTarget.map(name => name === "time_archived" ? "NULL" : identifier(name)).join(", ");
   const messageColumns = sameSchema(db, "session_message").map(identifier).join(", ");
   const projectColumns = sameSchema(db, "project").map(identifier).join(", ");
@@ -319,15 +319,15 @@ export async function copyHistoryBatches(options: {
   if (db.prepare("SELECT 1 FROM original.session s LEFT JOIN converted.session_v2 t ON t.id = s.id WHERE t.id IS NULL LIMIT 1").get()) {
     throw new Error("The native converter did not account for every original chat. Original history and staging were preserved.");
   }
-  db.exec(`CREATE TABLE IF NOT EXISTS openwork_history_copy (
+  db.exec(`CREATE TABLE IF NOT EXISTS get3w_history_copy (
       source_key TEXT, session_id TEXT, cursor INTEGER NOT NULL DEFAULT -1, completed INTEGER NOT NULL DEFAULT 0,
       created_session INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (source_key, session_id));
-    CREATE TABLE IF NOT EXISTS openwork_v1_message (source_key TEXT, id TEXT, session_id TEXT,
+    CREATE TABLE IF NOT EXISTS get3w_v1_message (source_key TEXT, id TEXT, session_id TEXT,
       time_created INTEGER, time_updated INTEGER, data TEXT NOT NULL, PRIMARY KEY (source_key, id));
-    CREATE TABLE IF NOT EXISTS openwork_v1_part (source_key TEXT, id TEXT, message_id TEXT, session_id TEXT,
+    CREATE TABLE IF NOT EXISTS get3w_v1_part (source_key TEXT, id TEXT, message_id TEXT, session_id TEXT,
       time_created INTEGER, time_updated INTEGER, data TEXT NOT NULL, PRIMARY KEY (source_key, id));
-    CREATE TABLE IF NOT EXISTS openwork_v1_session (source_key TEXT, id TEXT, data TEXT NOT NULL, PRIMARY KEY (source_key, id));
-    CREATE TABLE IF NOT EXISTS openwork_v2_replaced_message (source_key TEXT, id TEXT, session_id TEXT,
+    CREATE TABLE IF NOT EXISTS get3w_v1_session (source_key TEXT, id TEXT, data TEXT NOT NULL, PRIMARY KEY (source_key, id));
+    CREATE TABLE IF NOT EXISTS get3w_v2_replaced_message (source_key TEXT, id TEXT, session_id TEXT,
       seq INTEGER, type TEXT, data TEXT NOT NULL, time_created INTEGER, time_updated INTEGER, PRIMARY KEY (source_key, id))`);
   ensureHistoryCopyOwnership(db);
   db.exec("PRAGMA foreign_keys = ON");
@@ -340,7 +340,7 @@ export async function copyHistoryBatches(options: {
   for (const session of sessions) {
     options.signal?.throwIfAborted();
     const id = stringField(session, "id");
-    const checkpoint = db.prepare("SELECT cursor, completed FROM openwork_history_copy WHERE source_key = ? AND session_id = ?").get(options.sourceKey, id);
+    const checkpoint = db.prepare("SELECT cursor, completed FROM get3w_history_copy WHERE source_key = ? AND session_id = ?").get(options.sourceKey, id);
     if (numberField(checkpoint, "completed")) { skipped++; options.progress(id, "skipped"); continue; }
     let unchanged = false;
     let cursor = checkpoint ? numberField(checkpoint, "cursor") : -1;
@@ -356,7 +356,7 @@ export async function copyHistoryBatches(options: {
       } else {
         db.prepare(`INSERT INTO session_v2 (${sessionColumns}) SELECT ${sessionValues} FROM converted.session_v2 WHERE id = ?`).run(id);
       }
-      db.prepare("INSERT INTO openwork_history_copy (source_key, session_id, cursor, created_session) VALUES (?, ?, ?, ?)")
+      db.prepare("INSERT INTO get3w_history_copy (source_key, session_id, cursor, created_session) VALUES (?, ?, ?, ?)")
         .run(options.sourceKey, id, cursor, existingSession ? 0 : 1);
     });
     while (true) {
@@ -376,7 +376,7 @@ export async function copyHistoryBatches(options: {
           }
           cursor = numberField(message, "seq");
         }
-        db.prepare("UPDATE openwork_history_copy SET cursor = ? WHERE source_key = ? AND session_id = ?").run(cursor, options.sourceKey, id);
+        db.prepare("UPDATE get3w_history_copy SET cursor = ? WHERE source_key = ? AND session_id = ?").run(cursor, options.sourceKey, id);
       });
       await options.batch?.();
       await yieldTurn();
@@ -392,7 +392,7 @@ export async function copyHistoryBatches(options: {
         const last = stringField(rows[rows.length - 1], "id");
         transaction(db, () => {
           const rawColumns = table === "message" ? "id, session_id, time_created, time_updated, data" : "id, message_id, session_id, time_created, time_updated, data";
-          db.prepare(`INSERT OR IGNORE INTO openwork_v1_${table} SELECT ?, ${rawColumns} FROM original.${table}
+          db.prepare(`INSERT OR IGNORE INTO get3w_v1_${table} SELECT ?, ${rawColumns} FROM original.${table}
             WHERE session_id = ? AND id > ? AND id <= ?`).run(options.sourceKey, id, rowCursor, last);
         });
         rowCursor = last;
@@ -402,16 +402,16 @@ export async function copyHistoryBatches(options: {
     }
     transaction(db, () => {
       const fields = columns(db, "session", "original").flatMap(column => [`'${column.replaceAll("'", "''")}'`, identifier(column)]).join(", ");
-      db.prepare(`INSERT OR IGNORE INTO openwork_v1_session SELECT ?, id, json_object(${fields}) FROM original.session WHERE id = ?`).run(options.sourceKey, id);
+      db.prepare(`INSERT OR IGNORE INTO get3w_v1_session SELECT ?, id, json_object(${fields}) FROM original.session WHERE id = ?`).run(options.sourceKey, id);
       const missing = db.prepare(`SELECT 1 FROM converted.session_message s LEFT JOIN main.session_message t ON t.id = s.id
         WHERE s.session_id = ? AND (t.id IS NULL OR t.session_id != s.session_id OR t.type != s.type) LIMIT 1`).get(id);
       if (missing) throw new Error("History verification failed; migration can be resumed.");
       for (const table of ["message", "part"]) {
-        if (db.prepare(`SELECT 1 FROM original.${table} s LEFT JOIN openwork_v1_${table} t ON t.id = s.id AND t.source_key = ?
+        if (db.prepare(`SELECT 1 FROM original.${table} s LEFT JOIN get3w_v1_${table} t ON t.id = s.id AND t.source_key = ?
           WHERE s.session_id = ? AND (t.id IS NULL OR t.data != s.data) LIMIT 1`).get(options.sourceKey, id)) throw new Error("Original history verification failed");
       }
       advanceHistorySequence(db, id);
-      db.prepare("UPDATE openwork_history_copy SET completed = 1 WHERE source_key = ? AND session_id = ?").run(options.sourceKey, id);
+      db.prepare("UPDATE get3w_history_copy SET completed = 1 WHERE source_key = ? AND session_id = ?").run(options.sourceKey, id);
     });
     if (unchanged) { skipped++; options.progress(id, "skipped"); }
     else { imported++; options.progress(id, "imported"); }

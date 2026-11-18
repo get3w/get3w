@@ -80,7 +80,7 @@ test("a sub-agent's own chat keeps its agent", async () => {
 });
 
 test("an agent the engine does not define runs on the default agent", async () => {
-  const state = engine("openwork");
+  const state = engine("get3w");
   const client = createClientV2(base, "/tmp/ws", { token: "t" });
   expect((await send(client)).error).toBeUndefined();
   expect(state.agent()).toBe("build");

@@ -7,7 +7,7 @@ import { ADVANCED_SETTINGS_SECTIONS } from "../advanced-sections";
 import { Separator } from "@/components/ui/separator";
 
 import type { OpencodeConnectStatus } from "@/app/types";
-import type { OpenworkServerClient, OpenworkCloudMcpHealth, OpenworkRuntimeConfigStatus, OpenworkServerStatus } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wCloudMcpHealth, Get3wRuntimeConfigStatus, Get3wServerStatus } from "@/app/lib/get3w-server";
 import { t } from "@/i18n";
 import { LayoutStack } from "../settings-layout";
 
@@ -26,17 +26,17 @@ export type AdvancedViewProps = {
   busy: boolean;
   clientConnected: boolean;
   opencodeConnectStatus: OpencodeConnectStatus | null;
-  openworkServerStatus: OpenworkServerStatus;
+  get3wServerStatus: Get3wServerStatus;
   developerMode: boolean;
   toggleDeveloperMode: () => void;
   opencodeDevModeEnabled: boolean;
   openDebugDeepLink: (rawUrl: string) => Promise<{ ok: boolean; message: string }>;
   canInspectRuntimeConfig: boolean;
-  getRuntimeConfigStatus: () => Promise<OpenworkRuntimeConfigStatus>;
+  getRuntimeConfigStatus: () => Promise<Get3wRuntimeConfigStatus>;
   cloudMcpUrl: string | null;
-  cloudMcpHealth: OpenworkCloudMcpHealth | null;
-  refreshCloudMcpHealth: () => Promise<OpenworkCloudMcpHealth | null>;
-  engineClient: OpenworkServerClient | null;
+  cloudMcpHealth: Get3wCloudMcpHealth | null;
+  refreshCloudMcpHealth: () => Promise<Get3wCloudMcpHealth | null>;
+  engineClient: Get3wServerClient | null;
 };
 
 type AdvancedStatusTone = "ready" | "warning" | "error" | "neutral";
@@ -58,7 +58,7 @@ export function AdvancedView(props: AdvancedViewProps) {
     advancedLocalReducer,
     initialAdvancedLocalState,
   );
-  const [configStatus, setConfigStatus] = useState<OpenworkRuntimeConfigStatus | null>(null);
+  const [configStatus, setConfigStatus] = useState<Get3wRuntimeConfigStatus | null>(null);
   const [configStatusBusy, setConfigStatusBusy] = useState(false);
   const [configStatusError, setConfigStatusError] = useState<string | null>(null);
   const {
@@ -82,8 +82,8 @@ export function AdvancedView(props: AdvancedViewProps) {
     return props.clientConnected ? "ready" : "neutral";
   })();
 
-  const openworkStatusLabel = (() => {
-    switch (props.openworkServerStatus) {
+  const get3wStatusLabel = (() => {
+    switch (props.get3wServerStatus) {
       case "connected":
         return t("config.status_connected");
       case "limited":
@@ -93,8 +93,8 @@ export function AdvancedView(props: AdvancedViewProps) {
     }
   })();
 
-  const openworkTone: AdvancedStatusTone = (() => {
-    switch (props.openworkServerStatus) {
+  const get3wTone: AdvancedStatusTone = (() => {
+    switch (props.get3wServerStatus) {
       case "connected":
         return "ready";
       case "limited":
@@ -111,7 +111,7 @@ export function AdvancedView(props: AdvancedViewProps) {
         "Get3W server config sources below can still be inspected.",
       ];
 
-  const openworkDetailLines = props.openworkServerStatus === "connected"
+  const get3wDetailLines = props.get3wServerStatus === "connected"
     ? ["Runtime DB, workspace config, and migration diagnostics are available."]
     : ["Runtime config diagnostics need the Get3W server connection."];
 
@@ -163,9 +163,9 @@ export function AdvancedView(props: AdvancedViewProps) {
           clientStatusLabel={clientStatusLabel}
           clientTone={clientTone}
           clientDetailLines={clientDetailLines}
-          openworkStatusLabel={openworkStatusLabel}
-          openworkTone={openworkTone}
-          openworkDetailLines={openworkDetailLines}
+          get3wStatusLabel={get3wStatusLabel}
+          get3wTone={get3wTone}
+          get3wDetailLines={get3wDetailLines}
         />
 
         <AdvancedCloudMcpDiagnosticsSection

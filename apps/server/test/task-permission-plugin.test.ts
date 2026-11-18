@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import plugin from "../src/opencode-plugins/openwork-agent-permissions-v2.js";
+import plugin from "../src/opencode-plugins/get3w-agent-permissions-v2.js";
 test("full access grants ask only for the current task; deny and paid submission stay independent", async () => {
   let evaluate: (event: {sessionID: string; action: string; resources: string[]; effect: "allow" | "ask" | "deny"}) => void | Promise<void> = () => {};
   const server = Bun.serve({port:0,hostname:"127.0.0.1",fetch:async req => Response.json({mode:(await req.json()).sessionId === "full" ? "full_access":"default"})});

@@ -6,7 +6,7 @@ import { getAggregateRowFile,getWorkspacePathResolutions } from '@/lib/tool-aggr
 
 test('completed native writes forward real destinations and requested-to-resolved provenance',()=>{
  const resolved=String.raw`C:\Users\Tester\Workspace\report.html`;
- const source:ToolPart={id:'part-write',sessionID:'session-report',messageID:'message-report',callID:'call-write',type:'tool',tool:'write',state:{status:'completed',input:{filePath:'/report.html',content:'hello'},output:'Wrote file successfully.',title:'report.html',metadata:{filepath:resolved,openworkWorkspacePaths:[{requested:'/report.html',resolved}]},time:{start:1,end:2}}};
+ const source:ToolPart={id:'part-write',sessionID:'session-report',messageID:'message-report',callID:'call-write',type:'tool',tool:'write',state:{status:'completed',input:{filePath:'/report.html',content:'hello'},output:'Wrote file successfully.',title:'report.html',metadata:{filepath:resolved,get3wWorkspacePaths:[{requested:'/report.html',resolved}]},time:{start:1,end:2}}};
  const part=parseDynamicToolUIPart(source);if(!part)throw Error('No write row');
  assert.deepEqual(getAggregateRowFile(part),{verb:'Wrote',path:resolved});assert.deepEqual(getWorkspacePathResolutions(part),[{requested:'/report.html',resolved}]);
 });

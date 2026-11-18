@@ -2,7 +2,7 @@ import type { ModelRef } from "@/app/types";
 import { publicModelTitle } from "@/react-app/domains/models/model-catalog";
 
 export type RememberedModel = ModelRef & { title: string };
-const STORAGE_KEY = "openwork.modelDisplayMemory.v1";
+const STORAGE_KEY = "get3w.modelDisplayMemory.v1";
 const MAX_MODELS = 200;
 const MAX_SCOPES = 20;
 

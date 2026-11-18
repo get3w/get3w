@@ -4,7 +4,7 @@ productName: Get3W
 protocols:
   - name: Get3W
     schemes:
-      - openwork
+      - get3w
 linux:
   executableName: get3w
 artifactName: get3w-${os}-${arch}-${version}.${ext}

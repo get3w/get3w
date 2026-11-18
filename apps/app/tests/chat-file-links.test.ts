@@ -19,7 +19,7 @@ import {
   planFileOpen,
 } from "../src/react-app/domains/session/artifacts/resolve-open-target";
 
-const ROOT = "/Users/me/openwork-repo";
+const ROOT = "/Users/me/get3w-repo";
 const HOME = "/Users/me";
 
 function fileTarget(value: string, extra: Partial<OpenTarget> = {}): OpenTarget {
@@ -28,8 +28,8 @@ function fileTarget(value: string, extra: Partial<OpenTarget> = {}): OpenTarget 
 
 describe("parseLocalPathReference", () => {
   test("reads home-relative paths without resolving them", () => {
-    expect(parseLocalPathReference("~/Downloads/openwork-launch-edit.mp4")).toEqual({
-      path: "~/Downloads/openwork-launch-edit.mp4",
+    expect(parseLocalPathReference("~/Downloads/get3w-launch-edit.mp4")).toEqual({
+      path: "~/Downloads/get3w-launch-edit.mp4",
       anchor: "home",
       bare: false,
     });
@@ -144,7 +144,7 @@ describe("resolveLocalPath", () => {
   });
 
   test("asks the workspace with a workspace-relative path whenever it can", () => {
-    expect(workspaceLookupValue(parseLocalPathReference("~/openwork-repo/docs/plan.md")!, context)).toBe("docs/plan.md");
+    expect(workspaceLookupValue(parseLocalPathReference("~/get3w-repo/docs/plan.md")!, context)).toBe("docs/plan.md");
     expect(workspaceLookupValue(parseLocalPathReference(`${ROOT}/docs/plan.md:4`)!, context)).toBe("docs/plan.md");
     expect(workspaceLookupValue(parseLocalPathReference("~/Downloads/clip.mp4")!, context)).toBe("/Users/me/Downloads/clip.mp4");
     expect(workspaceLookupValue(parseLocalPathReference("main.mjs:3")!, context)).toBe("main.mjs");
@@ -156,7 +156,7 @@ describe("resolveLocalPath", () => {
 describe("inline code links", () => {
   test("links file references, without their line suffix", () => {
     expect(inlineCodeArtifactPath("computer-control.test.mjs:813")).toBe("computer-control.test.mjs");
-    expect(inlineCodeArtifactPath("~/Downloads/openwork-launch-edit.mp4")).toBe("~/Downloads/openwork-launch-edit.mp4");
+    expect(inlineCodeArtifactPath("~/Downloads/get3w-launch-edit.mp4")).toBe("~/Downloads/get3w-launch-edit.mp4");
     expect(inlineCodeArtifactPath("apps/desktop/electron/main.mjs:2341:7")).toBe("apps/desktop/electron/main.mjs");
     expect(inlineCodeArtifactPath("/Users/me/report.pdf")).toBe("/Users/me/report.pdf");
     expect(inlineCodeArtifactPath("data/export.csv")).toBe("data/export.csv");
@@ -185,27 +185,27 @@ describe("rendered chat Markdown", () => {
     const href = "/Users/me/Library/Application%20Support/Get3W%20Chat/final.mp4";
     const html = renderMarkdownHtml(`[Final](${href})`, "chat");
     expect(html).toContain(`data-get3w-file-actions="${href}"`);
-    expect(html).not.toContain(`data-openwork-inline-code-path="${href}"`);
+    expect(html).not.toContain(`data-get3w-inline-code-path="${href}"`);
     const target = openTargetForHref(href, [], "/Users/me/Library/Application Support/Get3W Chat");
     expect(target?.value).toBe("/Users/me/Library/Application Support/Get3W Chat/final.mp4");
   });
 
   test("makes file references clickable with clean paths", () => {
     const html = renderMarkdownHtml("See `computer-control.test.mjs:813` and [the plan](docs/plan.md:3).", "chat");
-    expect(html).toContain("data-openwork-inline-code-path=\"computer-control.test.mjs\"");
+    expect(html).toContain("data-get3w-inline-code-path=\"computer-control.test.mjs\"");
     expect(html).toContain(">computer-control.test.mjs:813</code>");
     expect(html).toContain("data-get3w-file-actions=\"docs/plan.md:3\"");
   });
 
   test("keeps a home-folder video as a reference instead of a player that cannot load", () => {
-    const html = renderMarkdownHtml("Saved to `~/Downloads/openwork-launch-edit.mp4`.", "chat");
-    expect(html).toContain("data-openwork-inline-code-path=\"~/Downloads/openwork-launch-edit.mp4\"");
+    const html = renderMarkdownHtml("Saved to `~/Downloads/get3w-launch-edit.mp4`.", "chat");
+    expect(html).toContain("data-get3w-inline-code-path=\"~/Downloads/get3w-launch-edit.mp4\"");
     expect(html).not.toContain("<video");
   });
 
   test("does not link destinations that cannot open", () => {
     const html = renderMarkdownHtml("[top](#top) and [share](//server/share/a.pdf)", "chat");
-    expect(html).not.toContain("data-openwork-link-href");
+    expect(html).not.toContain("data-get3w-link-href");
     expect(html).toContain("top");
     expect(html).toContain("share");
   });
@@ -247,7 +247,7 @@ describe("native file actions", () => {
   test("open inside the workspace, reveal outside it", () => {
     expect(nativeFileAction(ROOT, "docs/plan.md:3")).toEqual({ path: `${ROOT}/docs/plan.md`, action: "open" });
     expect(nativeFileAction(ROOT, "~/Downloads/clip.mp4", { homeDir: HOME })).toEqual({ path: "/Users/me/Downloads/clip.mp4", action: "reveal" });
-    expect(nativeFileAction(ROOT, "~/openwork-repo/docs/plan.md", { homeDir: HOME })).toEqual({ path: `${ROOT}/docs/plan.md`, action: "open" });
+    expect(nativeFileAction(ROOT, "~/get3w-repo/docs/plan.md", { homeDir: HOME })).toEqual({ path: `${ROOT}/docs/plan.md`, action: "open" });
     expect(nativeFileAction(ROOT, "docs/plan.md", { reveal: true })).toEqual({ path: `${ROOT}/docs/plan.md`, action: "reveal" });
     expect(nativeFileAction(ROOT, `${ROOT}/../escape.sh`)).toEqual({ path: `${ROOT}/../escape.sh`, action: "reveal" });
   });
@@ -335,19 +335,19 @@ describe("planFileOpen", () => {
   });
 
   test("reveals a home-folder file outside the workspace instead of failing", async () => {
-    const plan = await planFileOpen(fileTarget("~/Downloads/openwork-launch-edit.mp4"), {
+    const plan = await planFileOpen(fileTarget("~/Downloads/get3w-launch-edit.mp4"), {
       origin: "local",
       workspaceRoot: ROOT,
       homeDir: HOME,
       canOpenLocally: true,
       findInWorkspace: async () => null,
     });
-    expect(plan).toMatchObject({ kind: "native", path: "/Users/me/Downloads/openwork-launch-edit.mp4", action: "reveal" });
+    expect(plan).toMatchObject({ kind: "native", path: "/Users/me/Downloads/get3w-launch-edit.mp4", action: "reveal" });
   });
 
   test("looks up a home path that lands in the workspace by its workspace path", async () => {
     const lookups: string[] = [];
-    await planFileOpen(fileTarget("~/openwork-repo/docs/plan.md"), {
+    await planFileOpen(fileTarget("~/get3w-repo/docs/plan.md"), {
       origin: "local",
       workspaceRoot: ROOT,
       homeDir: HOME,

@@ -48,7 +48,7 @@ function startEngine(sessions: NativeSession[], options: { undecodable?: Set<str
 }
 
 async function profile(run: (paths: { root: string; v1: string; a: string; b: string; config: ServerConfig }) => Promise<void>) {
-  const root = await mkdtemp(join(tmpdir(), "openwork-v2-session-list-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-v2-session-list-"));
   const previous = { runtime: process.env.GET3W_RUNTIME_DB, v1: process.env.OPENCODE_DB };
   const v1 = join(root, "opencode-v1.db");
   process.env.GET3W_RUNTIME_DB = join(root, "runtime.sqlite");
@@ -88,7 +88,7 @@ async function listWorkspace(config: ServerConfig, engine: Engine, target: Works
   const ids: string[] = [];
   let cursor: string | null = null;
   for (let pages = 0; pages < 20; pages++) {
-    const url = new URL(`http://openwork.test/workspace/${target.id}/opencode2/api/session`);
+    const url = new URL(`http://get3w.test/workspace/${target.id}/opencode2/api/session`);
     url.searchParams.set("limit", "200");
     if (cursor) url.searchParams.set("cursor", cursor);
     const response = await proxyOpencodeV2Request({

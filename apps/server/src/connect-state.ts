@@ -12,13 +12,13 @@ import type { ServerConfig } from "./types.js";
 const CONNECT_STATE_FILE = "connect-state.json";
 const CONNECT_STATE_MAX_BYTES = 16 * 1024;
 const CONNECT_SNAPSHOT_MAX_RUNTIME_ROWS = 100;
-const OPENWORK_CLOUD_MCP_NAME = "openwork-cloud";
+const GET3W_CLOUD_MCP_NAME = "get3w-cloud";
 
 type PersistedConnectState = {
   connectEnabled: boolean;
   updatedAt: number;
   /**
-   * Server-scoped Get3W Connect (`openwork-cloud`) MCP desired config.
+   * Server-scoped Get3W Connect (`get3w-cloud`) MCP desired config.
    * Connect is identity/org scoped, not per-workspace — workspace runtime
    * copies remain for engine registration, but catalog/skill injection reads
    * this host-level entry.
@@ -155,7 +155,7 @@ async function inspectConnectRuntime(
   if (globalInspection.status === "unreadable" || globalInspection.status === "invalid-row") {
     return { cloudMcpPresent: false, complete: false };
   }
-  if (Object.hasOwn(runtimeMcpMap(globalInspection.config), OPENWORK_CLOUD_MCP_NAME)) {
+  if (Object.hasOwn(runtimeMcpMap(globalInspection.config), GET3W_CLOUD_MCP_NAME)) {
     return { cloudMcpPresent: true, complete: true };
   }
 
@@ -182,7 +182,7 @@ async function inspectConnectRuntime(
     if (inspection.status === "unreadable" || inspection.status === "invalid-row") {
       return { cloudMcpPresent: false, complete: false };
     }
-    if (Object.hasOwn(runtimeMcpMap(inspection.config), OPENWORK_CLOUD_MCP_NAME)) {
+    if (Object.hasOwn(runtimeMcpMap(inspection.config), GET3W_CLOUD_MCP_NAME)) {
       return { cloudMcpPresent: true, complete: true };
     }
     if (inspection.status === "database-missing" || inspection.status === "table-missing") {

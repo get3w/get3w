@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { isLiveGeneratedApp } from "./live-generated-app-model";
 import { useAppsClient, dashboardManagementReason } from "./use-apps";
-import type { SavedAppDetail } from "@openwork/types/workflows";
+import type { SavedAppDetail } from "@get3w/types/workflows";
 
 export function getAppUpdatePrompt(app?: SavedAppDetail): string | undefined {
   if (!app?.canManage || (!isLiveGeneratedApp(app.view) && (!app.previewNotice || (app.html && app.payload && app.revision)))) return undefined;

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { DynamicToolUIPart } from "ai"
-import type { RemoteSessionAnswerInput, RemoteSessionPending, RemoteSessionPendingSummary, RemoteSessionThreadStatus } from "@openwork/types/automations"
+import type { RemoteSessionAnswerInput, RemoteSessionPending, RemoteSessionPendingSummary, RemoteSessionThreadStatus } from "@get3w/types/automations"
 import { act, type ReactNode } from "react"
 import { createRoot } from "react-dom/client"
 import { MessageListProvider } from "../src/components/chat/message-list-provider"

@@ -10,12 +10,12 @@ import { ConfirmModal } from "@/react-app/design-system/modals/confirm-modal";
 import { useLocale, currentLocale } from "@/i18n";
 import { useGet3wAccount } from "../cloud/get3w-account";
 import { globalSettingsRoute, workspaceSettingsRoute } from "@/react-app/shell/workspace-routes";
-import { automationScheduleSchema, type CreateAutomation } from "@openwork/types/automations";
+import { automationScheduleSchema, type CreateAutomation } from "@get3w/types/automations";
 import { AutomationEditor } from "./automation-editor";
 import { automationModelOptions, describeAutomationModel, type AutomationProviderCatalog } from "./automation-model-options";
 import { automationErrorMessage, formatAutomationSchedule, formatAutomationTime, runStatusLabel } from "./automation-format";
 import { createPersonalAutomationClient } from "./personal-automation-client";
-import type { AutomationDetail, AutomationRun, AutomationRunReceipt } from "@openwork/types/automations";
+import type { AutomationDetail, AutomationRun, AutomationRunReceipt } from "@get3w/types/automations";
 
 function RunReceipt(props: {models: ReturnType<typeof automationModelOptions>; client: ReturnType<typeof createPersonalAutomationClient>; automationId: string; run: AutomationRun; zh: boolean}) {
   const [receipt, setReceipt] = useState<AutomationRunReceipt | null>(null);

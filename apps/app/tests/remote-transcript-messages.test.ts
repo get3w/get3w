@@ -62,10 +62,10 @@ test("remoteTranscriptToUIMessages keeps the order and maps each step like a loc
   expect(ls).toMatchObject({
     toolName: "bash", toolCallId: "prt_ls", state: "output-available",
     input: { command: "ls", description: "List files" }, output: "a\nb",
-    callProviderMetadata: { openwork: { toolStartedAt: 2_000 } },
+    callProviderMetadata: { get3w: { toolStartedAt: 2_000 } },
   })
   expect(read).toMatchObject({ toolName: "read", state: "output-error", input: { filePath: "/missing" }, errorText: "ENOENT: no such file" })
-  expect(reply?.parts[0]).toMatchObject({ type: "reasoning", text: "Plan the listing", providerMetadata: { openwork: { durationMs: 12_000 } } })
+  expect(reply?.parts[0]).toMatchObject({ type: "reasoning", text: "Plan the listing", providerMetadata: { get3w: { durationMs: 12_000 } } })
 })
 
 test("an open step shows as running only in the latest turn of a running task", () => {

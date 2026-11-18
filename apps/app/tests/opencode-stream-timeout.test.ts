@@ -105,7 +105,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["web URL", "web Request", "desktop Request"])("preserves caller cancellation and the deadline on history GETs (%s)", async (transport) => {
     jest.useFakeTimers();
-    installWindow(transport === "desktop Request" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop Request" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { observedSignal, attempts } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const url = "http://127.0.0.1:8788/workspace/ws_test/opencode/session/ses_1/message";
@@ -130,7 +130,7 @@ describe("OpenCode transport timeouts", () => {
   });
 
   test("desktop history Request init overrides signal and headers without dropping authentication", async () => {
-    installWindow({ __OPENWORK_ELECTRON__: {} });
+    installWindow({ __GET3W_ELECTRON__: {} });
     const { createDesktopFetch } = await import("../src/app/lib/opencode");
     let seen: Request | undefined;
     Object.defineProperty(globalThis, "fetch", {
@@ -142,7 +142,7 @@ describe("OpenCode transport timeouts", () => {
     });
     const original = new AbortController();
     const override = new AbortController();
-    const response = await createDesktopFetch({ mode: "openwork", token: "fixture-token" })(
+    const response = await createDesktopFetch({ mode: "get3w", token: "fixture-token" })(
       new Request("http://127.0.0.1/session/ses_1/message", { signal: original.signal, headers: { "x-old": "old" } }),
       { signal: override.signal, headers: { "x-new": "new" } },
     );
@@ -161,7 +161,7 @@ describe("OpenCode transport timeouts", () => {
     const calls: string[] = [];
     let transferId: string | undefined;
     let rejectFetch: ((error: Error) => void) | undefined;
-    installWindow({ __OPENWORK_ELECTRON__: {
+    installWindow({ __GET3W_ELECTRON__: {
       invokeDesktop: (command: string, value: string, init?: { transferId?: string }) => {
         calls.push(command);
         if (command === "__cancelTransfer") {
@@ -193,7 +193,7 @@ describe("OpenCode transport timeouts", () => {
   test("remote preaborted GETs do not enter IPC and POSTs do not gain read cancellation", async () => {
     const { desktopFetch } = await import("../src/app/lib/desktop");
     const calls: string[] = [];
-    installWindow({ __OPENWORK_ELECTRON__: {
+    installWindow({ __GET3W_ELECTRON__: {
       invokeDesktop: async (command: string, _url: string, init?: { transferId?: string; body?: string }) => {
         calls.push(command);
         expect(init?.transferId).toBeUndefined();
@@ -250,7 +250,7 @@ describe("OpenCode transport timeouts", () => {
   }, 15_000);
 
   test.each(["web URL", "web Request", "desktop Request"])("preserves caller cancellation on ordinary requests (%s)", async (transport) => {
-    installWindow(transport === "desktop Request" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop Request" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { observedSignal } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const controller = new AbortController();
@@ -266,7 +266,7 @@ describe("OpenCode transport timeouts", () => {
   });
 
   test.each(["web", "desktop"])("RequestInit.signal overrides Request.signal (%s)", async (transport) => {
-    installWindow(transport === "desktop" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { observedSignal } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const requestController = new AbortController();
@@ -285,7 +285,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["web", "desktop"])("RequestInit.signal=null disconnects the input Request signal (%s)", async (transport) => {
     jest.useFakeTimers();
-    installWindow(transport === "desktop" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { observedSignal } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const controller = new AbortController();
@@ -302,7 +302,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["web URL", "web Request", "desktop Request"])("transport deadline aborts requests even with a caller signal (%s)", async (transport) => {
     jest.useFakeTimers();
-    installWindow(transport === "desktop Request" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop Request" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { observedSignal } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const controller = new AbortController();
@@ -319,7 +319,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["web URL", "web Request", "desktop Request"])("bounds prompt_async acceptance at 30 seconds without resending (%s)", async (transport) => {
     jest.useFakeTimers();
-    installWindow(transport === "desktop Request" ? { __OPENWORK_ELECTRON__: {} } : undefined);
+    installWindow(transport === "desktop Request" ? { __GET3W_ELECTRON__: {} } : undefined);
     const { cancel, observedSignal, attempts } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
 
@@ -352,7 +352,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["", "/ses_send/prompt"])("desktop v2 cold session write %s survives 21 seconds of organization setup", async (suffix) => {
     jest.useFakeTimers();
-    installWindow({ __OPENWORK_ELECTRON__: {} });
+    installWindow({ __GET3W_ELECTRON__: {} });
     const { observedSignal, attempts, complete, cancel } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
     const pending = fetchImpl(new Request(`http://127.0.0.1:8788/workspace/ws_test/opencode2/api/session${suffix}`, {
@@ -372,7 +372,7 @@ describe("OpenCode transport timeouts", () => {
 
   test.each(["", "/ses_send/prompt"])("desktop v2 session write %s still has a bounded deadline and is not resent", async (suffix) => {
     jest.useFakeTimers();
-    installWindow({ __OPENWORK_ELECTRON__: {} });
+    installWindow({ __GET3W_ELECTRON__: {} });
     const { observedSignal, attempts, cancel } = installControllableFetch();
     const pending = createCapturedFetch()(new Request(`http://127.0.0.1:8788/workspace/ws_test/opencode2/api/session${suffix}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
@@ -390,7 +390,7 @@ describe("OpenCode transport timeouts", () => {
 
   test("desktop v2 session browsing retains its ordinary read deadline", async () => {
     jest.useFakeTimers();
-    installWindow({ __OPENWORK_ELECTRON__: {} });
+    installWindow({ __GET3W_ELECTRON__: {} });
     const { observedSignal, cancel } = installControllableFetch();
     const pending = createCapturedFetch()(new Request("http://127.0.0.1:8788/workspace/ws_test/opencode2/api/session"))
       .catch((error: unknown) => error);
@@ -522,7 +522,7 @@ describe("OpenCode transport timeouts", () => {
   }, 15_000);
 
   test("leaves desktop OpenCode event streams untimed", async () => {
-    installWindow({ __OPENWORK_ELECTRON__: {} });
+    installWindow({ __GET3W_ELECTRON__: {} });
     const { cancel, observedSignal } = installControllableFetch();
     const fetchImpl = createCapturedFetch();
 

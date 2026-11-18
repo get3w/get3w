@@ -9,17 +9,17 @@ import {
   desktopBootstrapPath as resolveDesktopBootstrapPath,
   globalOpencodeConfigDir,
   legacyDesktopBootstrapPath as resolveLegacyDesktopBootstrapPath,
-  openworkEnvStorePath,
-  openworkServerConfigPath as resolveOpenworkServerConfigPath,
+  get3wEnvStorePath,
+  get3wServerConfigPath as resolveGet3wServerConfigPath,
   opencodeCacheDirs as resolveOpencodeCacheDirs,
   opencodeDataDirs as resolveOpencodeDataDirs,
-} from "@openwork/paths";
+} from "@get3w/paths";
 
 const BROWSER_SESSION_PARTITION = "persist:get3w-browser";
 const NUKE_PARTITIONS = ["default", BROWSER_SESSION_PARTITION];
 const PENDING_NUKE_FILENAME = ".nuke-pending.json";
 const WINDOWS_RETRY_CODES = new Set(["EBUSY", "EPERM", "ENOTEMPTY"]);
-const OPENWORK_CONFIG_FILENAMES = [
+const GET3W_CONFIG_FILENAMES = [
   "server.json",
   "runtime.sqlite",
   "runtime.sqlite-wal",
@@ -37,7 +37,7 @@ const USERDATA_WORKSPACE_FILENAMES = [
   "get3w-server-tokens.json",
   "get3w-server-state.json",
 ];
-const LEGACY_ORCHESTRATOR_DIR_NAME = ["openwork", "orchestrator"].join("-");
+const LEGACY_ORCHESTRATOR_DIR_NAME = ["get3w", "orchestrator"].join("-");
 const SHIP_IT_CACHE_DOMAIN = "com.get3w.desktop.ShipIt";
 const NUKE_WORKER_FILENAME = "nuke-worker.mjs";
 const NUKE_WORKER_DEADLINE_MS = 60_000;
@@ -151,12 +151,12 @@ function desktopConfigHome(env, homedir, platform, paths) {
   return paths.join(homedir, ".config");
 }
 
-function openworkServerConfigPath(env, homedir, platform, paths) {
-  return resolveOpenworkServerConfigPath({ env, homeDir: homedir, platform });
+function get3wServerConfigPath(env, homedir, platform, paths) {
+  return resolveGet3wServerConfigPath({ env, homeDir: homedir, platform });
 }
 
 function envStorePath(env, homedir, platform, paths) {
-  return openworkEnvStorePath({ env, homeDir: homedir, platform });
+  return get3wEnvStorePath({ env, homeDir: homedir, platform });
 }
 
 function tokenStorePath(env, serverConfigPath, homedir, paths) {
@@ -208,7 +208,7 @@ function opencodeStateDirs(env, homedir, platform, paths) {
 function orchestratorDataDir(env, homedir, paths) {
   const override = envValue(env, "GET3W_DATA_DIR");
   if (override) return override;
-  return paths.join(homedir, ".openwork", LEGACY_ORCHESTRATOR_DIR_NAME);
+  return paths.join(homedir, ".get3w", LEGACY_ORCHESTRATOR_DIR_NAME);
 }
 
 function serverDataDir(env, homedir, paths) {
@@ -218,13 +218,13 @@ function serverDataDir(env, homedir, paths) {
 }
 
 /** Workspace-local state Get3W owns; the rest of the workspace folder is the user's. */
-function workspaceOpenworkStatePaths(workspacePaths, paths) {
+function workspaceGet3wStatePaths(workspacePaths, paths) {
   const output = [];
   for (const workspacePath of workspacePaths) {
     const value = String(workspacePath ?? "").trim();
     if (!value) continue;
     const opencodeDir = paths.join(paths.resolve(value), ".opencode");
-    output.push(paths.join(opencodeDir, "openwork"), paths.join(opencodeDir, "openwork.json"));
+    output.push(paths.join(opencodeDir, "get3w"), paths.join(opencodeDir, "get3w.json"));
   }
   return output;
 }
@@ -288,10 +288,10 @@ function profileScopedDeletePaths(deletePaths, sharedPaths, profileRoot, paths, 
   });
 }
 
-function addOpenworkConfigFiles(deletePaths, roots, paths) {
+function addGet3wConfigFiles(deletePaths, roots, paths) {
   for (const root of roots) {
     if (!root) continue;
-    for (const filename of OPENWORK_CONFIG_FILENAMES) {
+    for (const filename of GET3W_CONFIG_FILENAMES) {
       deletePaths.push(paths.join(root, filename));
     }
   }
@@ -303,7 +303,7 @@ function resolveNukePlan(input) {
   const bootstrapPath = desktopBootstrapPath(env, homedir, platform, paths, userDataPath);
   const preserveBootstrapPath = input.preserveBootstrap === false ? null : bootstrapPath;
   const legacyBootstrapPath = legacyDesktopBootstrapPath(homedir, platform);
-  const serverConfig = openworkServerConfigPath(env, homedir, platform, paths);
+  const serverConfig = get3wServerConfigPath(env, homedir, platform, paths);
   const runtimeDb = runtimeDbPath(env, serverConfig, homedir, paths);
   const envStore = envStorePath(env, homedir, platform, paths);
   const tokens = tokenStorePath(env, serverConfig, homedir, paths);
@@ -328,21 +328,21 @@ function resolveNukePlan(input) {
     orchestratorDataDir(env, homedir, paths),
     serverDataDir(env, homedir, paths),
     ...USERDATA_WORKSPACE_FILENAMES.map((filename) => paths.join(userDataPath, filename)),
-    ...workspaceOpenworkStatePaths(
+    ...workspaceGet3wStatePaths(
       Array.isArray(input.workspacePaths) ? input.workspacePaths : [],
       paths,
     ),
   ];
 
-  const openworkConfigRoots = [
+  const get3wConfigRoots = [
     paths.join(desktopConfigHome(env, homedir, platform, paths), "get3w"),
     paths.dirname(serverConfig),
     paths.dirname(runtimeDb),
     paths.dirname(tokens),
     paths.dirname(envStore),
   ];
-  deletePaths.push(...openworkConfigRoots);
-  addOpenworkConfigFiles(deletePaths, openworkConfigRoots, paths);
+  deletePaths.push(...get3wConfigRoots);
+  addGet3wConfigFiles(deletePaths, get3wConfigRoots, paths);
 
   if (platform === "darwin") {
     deletePaths.push(paths.join(homedir, "Library", "Caches", SHIP_IT_CACHE_DOMAIN));
@@ -426,7 +426,7 @@ function nukeWorkerScriptPath() {
 }
 
 function nukeWorkerPayloadPath() {
-  return path.join(os.tmpdir(), `openwork-nuke-worker-${Date.now()}-${randomBytes(6).toString("hex")}.json`);
+  return path.join(os.tmpdir(), `get3w-nuke-worker-${Date.now()}-${randomBytes(6).toString("hex")}.json`);
 }
 
 async function writeNukeWorkerPayload(payloadPath, payload) {
@@ -694,7 +694,7 @@ async function writePendingNukeFile(pendingPath, paths, pending = null, options 
 }
 
 async function writeReceipt(receipt) {
-  const receiptPath = path.join(os.tmpdir(), `openwork-nuke-receipt-${Date.now()}.json`);
+  const receiptPath = path.join(os.tmpdir(), `get3w-nuke-receipt-${Date.now()}.json`);
   await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
 }
 
@@ -742,7 +742,7 @@ async function quiesceForNuke({ runtimeManager, uiControlServer, removeWindowsBr
   // default profile may run it; isolated profiles leave containers alone rather
   // than force-removing production's.
   if (!options.scopeToProfile) {
-    await bestEffort(errors, "sandbox-docker-cleanup", () => runtimeManager.sandboxCleanupOpenworkContainers(), 24_000);
+    await bestEffort(errors, "sandbox-docker-cleanup", () => runtimeManager.sandboxCleanupGet3wContainers(), 24_000);
   }
   await bestEffort(errors, "windows-brand-shortcut", removeWindowsBrandShortcut, 5000);
 }
@@ -793,7 +793,7 @@ export async function runPendingNukeCleanup(input, options = {}) {
   return pendingCleanupResult({ ran: true, ...verified });
 }
 
-/** @returns {Promise<import("@openwork/types/desktop-ipc").NukeReceipt>} */
+/** @returns {Promise<import("@get3w/types/desktop-ipc").NukeReceipt>} */
 export async function executeNukeFreshStart({ app, session, runtimeManager, uiControlServer, removeWindowsBrandShortcut }, options = {}) {
   const input = {
     ...(options.input ?? {

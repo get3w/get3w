@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
 import { CircleAlert, Mic, MicOff } from "lucide-react";
-import { DictationWaveform, type useNativeDictation } from "@openwork/ui/react";
+import { DictationWaveform, type useNativeDictation } from "@get3w/ui/react";
 import { Button } from "@/components/ui/button";
 
 export function NativeDictationControl({ dictation, disabled, text }: {

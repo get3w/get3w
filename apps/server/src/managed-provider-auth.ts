@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { selectPrimaryCredentialEnvName } from "@openwork/types/managed-provider-config";
-export { selectPrimaryCredentialEnvName } from "@openwork/types/managed-provider-config";
+import { selectPrimaryCredentialEnvName } from "@get3w/types/managed-provider-config";
+export { selectPrimaryCredentialEnvName } from "@get3w/types/managed-provider-config";
 
 import { enginePoolForConfig } from "./engine-pool.js";
 import { resolveWorkspaceOpencodeConnection } from "./opencode-connection.js";
 import { readGlobalRuntimeOpencodeConfig, runtimeProviderMap } from "./runtime-opencode-config-store.js";
 import type { ServerConfig } from "./types.js";
-import { readOpenworkWorkspaceConfig, writeOpenworkWorkspaceConfig } from "./openwork-workspace-config-store.js";
+import { readGet3wWorkspaceConfig, writeGet3wWorkspaceConfig } from "./get3w-workspace-config-store.js";
 import { findManagedEngineWorkspace } from "./workspaces.js";
 
 /**
@@ -269,13 +269,13 @@ async function reconcileManagedProviderAuth(input: ManagedProviderAuthInput): Pr
 
   const managedIds = new Set(Object.keys(providers));
   const ownershipKey = `__managed_provider_auth__:${target.ownershipScope}`;
-  const persisted = await readOpenworkWorkspaceConfig(input.config, ownershipKey);
+  const persisted = await readGet3wWorkspaceConfig(input.config, ownershipKey);
   const savedIds = Array.isArray(persisted.providerIds)
     ? persisted.providerIds.filter((id): id is string => typeof id === "string") : [];
   const ownedProviderIds = state.ownedProviderIdsByScope.get(target.ownershipScope) ?? new Set<string>();
   for (const id of [...savedIds, ...(input.retiredProviderIds ?? [])]) ownedProviderIds.add(id);
   state.ownedProviderIdsByScope.set(target.ownershipScope, ownedProviderIds);
-  const persist = () => writeOpenworkWorkspaceConfig(input.config, ownershipKey, () => ({ providerIds: [...ownedProviderIds] }));
+  const persist = () => writeGet3wWorkspaceConfig(input.config, ownershipKey, () => ({ providerIds: [...ownedProviderIds] }));
   await persist();
 
   for (const [providerId, entry] of Object.entries(providers)) {

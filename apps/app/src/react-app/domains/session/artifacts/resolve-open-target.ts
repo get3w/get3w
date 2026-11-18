@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 
 import {
   localPathName,
@@ -40,7 +40,7 @@ export function openTargetForHref(href: string, targets: OpenTarget[], root?: st
   return exact ?? target;
 }
 
-type ArtifactTargetResolver = Pick<OpenworkServerClient, "resolveArtifacts">;
+type ArtifactTargetResolver = Pick<Get3wServerClient, "resolveArtifacts">;
 
 export function isWorkspaceContainedArtifactTarget(target: OpenTarget) {
   if (!isOpenableFileTarget(target)) return false;
@@ -85,7 +85,7 @@ export type NativeFileAction = { path: string; action: "open" | "reveal" };
  * file manager and never launched, so a referenced path cannot start a program.
  *
  * This is a string-level pre-check for menu affordances. The desktop process makes the
- * final decision on disk (`__openWorkspaceFile` / `__openWithApp`): it resolves symlinks
+ * final decision on disk (`__get3wspaceFile` / `__openWithApp`): it resolves symlinks
  * for both the workspace root and the file and launches only a real file that stays inside
  * the real workspace, revealing anything else instead.
  */

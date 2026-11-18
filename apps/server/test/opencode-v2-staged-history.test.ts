@@ -67,7 +67,7 @@ async function digest(path: string) {
 // not have (#6548). An archived v1 chat must still arrive unlocked (#6367).
 test("v1 history with project archiving and archived chats copies as active v2 chats", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
-  const directory = await mkdtemp(join(tmpdir(), "openwork-project-schema-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-project-schema-"));
   const rootDir = join(directory, "v2");
   let engine: Awaited<ReturnType<typeof createManagedOpencodeV2Server>> | undefined;
   try {
@@ -95,7 +95,7 @@ test("v1 history with project archiving and archived chats copies as active v2 c
         assert.equal(numberField(target.prepare("SELECT time_archived AS n FROM project WHERE id = 'archived-project'").get(), "n"), 123);
       }
       assert.equal(numberField(target.prepare("SELECT count(*) AS n FROM session_v2 WHERE id = ? AND time_archived IS NULL").get(sessionId), "n"), 1);
-      assert.equal(numberField(target.prepare("SELECT json_extract(data, '$.time_archived') AS n FROM openwork_v1_session WHERE id = ?").get(sessionId), "n"), 456);
+      assert.equal(numberField(target.prepare("SELECT json_extract(data, '$.time_archived') AS n FROM get3w_v1_session WHERE id = ?").get(sessionId), "n"), 456);
     } finally { target.close(); }
     assert.equal(await digest(source), before);
     engine = await createManagedOpencodeV2Server({ bin, rootDir, env: { OPENCODE_DISABLE_MODELS_FETCH: "1" } });
@@ -105,7 +105,7 @@ test("v1 history with project archiving and archived chats copies as active v2 c
 
 test("a complete large-thread copy resumes committed batches and repeated runs preserve v2 messages", { skip: !bin, timeout: 300_000 }, async () => {
   if (!bin) return;
-  const directory = await mkdtemp(join(tmpdir(), "openwork-staged-history-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-staged-history-"));
   const targetRoot = join(directory, "v2");
   let engine: Awaited<ReturnType<typeof createManagedOpencodeV2Server>> | undefined;
   try {
@@ -142,7 +142,7 @@ test("a complete large-thread copy resumes committed batches and repeated runs p
       assert.equal(numberField(target.prepare("SELECT count(*) AS n FROM session_message").get(), "n"), 141);
       const outputLength = numberField(target.prepare("SELECT length(json_extract(data, '$.content[1].state.content[0].text')) AS n FROM session_message WHERE id = ?").get(assistantId), "n");
       assert.equal(outputLength, 260 * 1024 ** 2);
-      assert.equal(numberField(target.prepare("SELECT count(*) AS n FROM openwork_v1_part").get(), "n"), 143);
+      assert.equal(numberField(target.prepare("SELECT count(*) AS n FROM get3w_v1_part").get(), "n"), 143);
       assert.equal(stringField(target.prepare("SELECT json_extract(data, '$.text') AS value FROM session_message WHERE id = ?").get(id("msg", 1)), "value"), "Keep this prompt. " + "界🦆\"\\\n".repeat(1000));
       assert.equal(stringField(target.prepare("SELECT json_extract(data, '$.files[0].data') AS value FROM session_message WHERE id = ?").get(id("msg", 1)), "value"), Buffer.from("image-payload".repeat(600)).toString("base64"));
       assert.equal(stringField(target.prepare("SELECT json_extract(data, '$.files[1].data') AS value FROM session_message WHERE id = ?").get(id("msg", 1)), "value"), Buffer.from("界🦆 /%".repeat(2000)).toString("base64"));
@@ -181,7 +181,7 @@ test("a complete large-thread copy resumes committed batches and repeated runs p
 
 test("active engines block the copy and diverged chats merge without losing native turns", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
-  const directory = await mkdtemp(join(tmpdir(), "openwork-history-existing-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-history-existing-"));
   const rootDir = join(directory, "v2");
   let engine: Awaited<ReturnType<typeof createManagedOpencodeV2Server>> | undefined;
   try {
@@ -213,14 +213,14 @@ test("active engines block the copy and diverged chats merge without losing nati
       assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM session_message").get(), "n"), 142);
       assert.equal(stringField(db.prepare("SELECT data FROM session_message WHERE id = ?").get(id("msg", 999)), "data"), existingData);
       assert.equal(stringField(db.prepare("SELECT id FROM session_message ORDER BY seq DESC LIMIT 1").get(), "id"), id("msg", 999));
-      assert.equal(numberField(db.prepare("SELECT seq FROM openwork_v2_replaced_message WHERE id = ?").get(id("msg", 999)), "seq"), 50);
+      assert.equal(numberField(db.prepare("SELECT seq FROM get3w_v2_replaced_message WHERE id = ?").get(id("msg", 999)), "seq"), 50);
     } finally { db.close(); }
   } finally { await engine?.close(); await rm(directory, { recursive: true, force: true }); }
 });
 
 test("default boot copies history and selects healthy v2 despite legacy off policy", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
-  const directory = await mkdtemp(join(tmpdir(), "openwork-default-history-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-default-history-"));
   const overrides = { GET3W_RUNTIME_DB: join(directory, "runtime.sqlite"), OPENCODE_DB: join(directory, "v1.db"),
     GET3W_ENGINE_V2_PREVIEW: "", OPENCODE_DISABLE_MODELS_FETCH: "1" };
   const previous = new Map(Object.keys(overrides).map(key => [key, process.env[key]]));
@@ -266,7 +266,7 @@ test("default boot copies history and selects healthy v2 despite legacy off poli
 
 test("closing Get3W pauses a copy and startup resumes it before serving v2", { skip: !bin, timeout: 60_000 }, async () => {
   if (!bin) return;
-  const directory = await mkdtemp(join(tmpdir(), "openwork-history-lifecycle-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-history-lifecycle-"));
   const previous = { db: process.env.GET3W_RUNTIME_DB, source: process.env.OPENCODE_DB, preview: process.env.GET3W_ENGINE_V2_PREVIEW };
   let preview: ReturnType<typeof createEngineV2Preview> | undefined;
   try {

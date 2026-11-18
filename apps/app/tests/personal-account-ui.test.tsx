@@ -82,9 +82,9 @@ test('personal translations exist in both languages with matching placeholders a
 
 
 test('all merged preference groups translate and switch languages',async()=>{
- const types=['image-to-layers','image-upscale','video-edit','video-extend','video-upscale'];
- const chinese=['图片分层','图片放大','视频编辑','视频延长','视频放大'];
- const english=['Image to layers','Image upscaling','Video editing','Video extension','Video upscaling'];
+ const types=['image-to-layers','image-upscale','video-edit','video-extend','video-upscale','search','fetch'];
+ const chinese=['图片分层','图片放大','视频编辑','视频延长','视频放大','网页搜索','网页抓取'];
+ const english=['Image to layers','Image upscaling','Video editing','Video extension','Video upscaling','Web search','Web fetch'];
  const models=types.map(type=>({...model,model_id:`demo/${type}`,type}));
  Reflect.set(window,'__GET3W_ACCOUNT__',{taskCatalog:async()=>({catalog_version:'v1',models,offline:false})});
  const node=document.createElement('div');document.body.append(node);const root=createRoot(node);
@@ -92,7 +92,10 @@ test('all merged preference groups translate and switch languages',async()=>{
  try{
   {
    setLocale('zh');await act(async()=>root.render(<PreferenceFields userId="translated-groups"/>));
+   expect(headings()).toEqual([]);
+   await act(async()=>node.querySelector<HTMLButtonElement>('[data-slot=collapsible-trigger]')?.click());
    expect(headings()).toEqual(chinese);
+   expect(node.querySelectorAll('section')[5]?.className).toContain('@min-[32rem]/preferences:col-start-1');
    await act(async()=>setLocale('en'));expect(headings()).toEqual(english);
    await act(async()=>setLocale('zh'));expect(headings()).toEqual(chinese);
 
@@ -147,4 +150,25 @@ test('known offline catalog blocks draft execution before engine access',async()
   await act(async()=>{await loadTaskCatalog('offline-execution');});
   expect(requireGet3wSignIn()).toBe(false);
  }finally{await act(async()=>root.unmount());node.remove();delete window.__GET3W_ACCOUNT__;}
+});
+
+
+test('more preferences collapse secondary models while primary categories remain available',async()=>{
+ const types=['text-to-image','text-to-video','text-to-speech','speech-to-text','panorama','search','fetch'];
+ Reflect.set(window,'__GET3W_ACCOUNT__',{taskCatalog:async()=>({catalog_version:'more',models:types.map(type=>({...model,model_id:`demo/${type}`,type})),offline:false})});
+ const node=document.createElement('div');document.body.append(node);const root=createRoot(node);
+ const headings=()=>Array.from(node.querySelectorAll('h3'),heading=>heading.textContent);
+ try{
+  setLocale('zh');await act(async()=>root.render(<PreferenceFields userId="more-groups"/>));
+  expect(headings()).toEqual(['图片生成','视频生成','语音生成','语音转文字']);
+  const trigger=node.querySelector<HTMLButtonElement>('[data-slot=collapsible-trigger]');
+  expect(trigger?.textContent).toContain('更多');
+  await act(async()=>trigger?.click());
+  expect(headings()).toEqual(['图片生成','视频生成','语音生成','语音转文字','全景生成','网页搜索','网页抓取']);
+  await act(async()=>setLocale('en'));
+  expect(trigger?.textContent).toContain('More');
+  await act(async()=>trigger?.click());
+  expect(node.querySelector('[aria-label="Web search Model"]')).toBeNull();
+  expect(node.querySelector('[aria-label="Speech generation Model"]')).not.toBeNull();
+ }finally{await act(async()=>root.unmount());node.remove();delete window.__GET3W_ACCOUNT__;setLocale('zh');}
 });

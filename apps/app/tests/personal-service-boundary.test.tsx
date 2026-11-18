@@ -15,10 +15,10 @@ test("old organization credentials cannot fetch inventory, solicit a key, or pre
  const originalFetch = globalThis.fetch;
  let requests = 0;
  globalThis.fetch = Object.assign(async () => { requests++; throw new Error("Unexpected organization request"); }, originalFetch);
- localStorage.setItem("openwork.den.authToken", "retained-synthetic-token");
+ localStorage.setItem("get3w.den.authToken", "retained-synthetic-token");
  const before = [...Object.keys(localStorage)].map(key => [key, localStorage.getItem(key)]);
  const host = document.createElement("div"); const root = createRoot(host);
- const part: DynamicToolUIPart = { type: "dynamic-tool", toolName: "openwork-cloud_credential_prompt", toolCallId: "old", state: "output-available", input: {}, output: {} };
+ const part: DynamicToolUIPart = { type: "dynamic-tool", toolName: "get3w-cloud_credential_prompt", toolCallId: "old", state: "output-available", input: {}, output: {} };
  function Probe() {
   const profile = useWorkspaceModelProfile();
   return <><span data-profile>{profile}</span><CredentialPromptCard part={part} /><DashboardPage onCreateApp={async () => { throw new Error("unexpected cloud app"); }} /></>;

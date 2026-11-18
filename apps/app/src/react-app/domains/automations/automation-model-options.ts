@@ -1,14 +1,14 @@
 import type { DenOrgLlmProvider } from "@/app/lib/den"
 import { getModelBehaviorSummary } from "@/app/lib/model-behavior"
 import type { ModelOption, ProviderListItem } from "@/app/types"
-import type { AutomationModel } from "@openwork/types/automations"
-import { AUTOMATION_FREE_MODEL, isDenAuthorizedAutomationProvider } from "@openwork/types/automations"
+import type { AutomationModel } from "@get3w/types/automations"
+import { AUTOMATION_FREE_MODEL, isDenAuthorizedAutomationProvider } from "@get3w/types/automations"
 import {
   automationModelOptions as sharedAutomationModelOptions,
   compareAutomationModelOptions,
   findAutomationModelOption,
   type AutomationModelOption,
-} from "@openwork/types/automation-models"
+} from "@get3w/types/automation-models"
 
 /** The local runtime's model record, with the name of the provider it belongs to. */
 export type AutomationCatalogModel = ProviderListItem["models"][string] & { providerName?: string }
@@ -105,7 +105,7 @@ export function resolveProposalModel(
   }
 
   const matches = providers.filter((candidate) =>
-    candidate.source !== "openwork"
+    candidate.source !== "get3w"
     && candidate.providerId === proposed.providerId
     && candidate.models.some((model) => model.id === proposed.modelId))
   const provider = matches.length === 1 ? matches[0] : undefined

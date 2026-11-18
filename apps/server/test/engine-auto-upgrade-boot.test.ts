@@ -8,7 +8,7 @@ import type { ServerConfig } from "../src/types.js";
 import { resolveServerConfig } from "../src/config.js";
 
 async function profile(run: (config: ServerConfig, dir: string) => Promise<void>): Promise<void> {
-  const dir = mkdtempSync(join(tmpdir(), "openwork-auto-upgrade-"));
+  const dir = mkdtempSync(join(tmpdir(), "get3w-auto-upgrade-"));
   const previous = { GET3W_RUNTIME_DB: process.env.GET3W_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB };
   process.env.GET3W_RUNTIME_DB = join(dir, "runtime.sqlite");
   process.env.OPENCODE_DB = join(dir, "v1.db");

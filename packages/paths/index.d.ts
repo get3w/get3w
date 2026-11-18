@@ -28,9 +28,9 @@ export declare function setEnv<T extends PathEnv>(env: T, name: string, value: s
 export declare function mergeEnv(layers: ReadonlyArray<PathEnv | null | undefined>, opts?: EnvPlatformOptions): PathEnv;
 
 export declare function normalizeWorkspaceRootPath(value: unknown, opts?: PathOptions): string;
-export declare function openworkConfigDir(opts?: PathOptions): string;
-export declare function openworkServerConfigPath(opts?: PathOptions): string;
-export declare function openworkEnvStorePath(opts?: PathOptions): string;
+export declare function get3wConfigDir(opts?: PathOptions): string;
+export declare function get3wServerConfigPath(opts?: PathOptions): string;
+export declare function get3wEnvStorePath(opts?: PathOptions): string;
 export declare function globalOpencodeConfigDir(opts?: PathOptions): string;
 export declare function resolveGlobalOpencodeConfigPath(opts?: PathOptions): string;
 export declare function workspaceOpencodeConfigCandidates(workspaceRoot: string): string[];
@@ -38,7 +38,13 @@ export declare function resolveWorkspaceOpencodeConfigPath(workspaceRoot: string
 export declare function desktopBootstrapPath(opts?: PathOptions): string;
 export declare function legacyDesktopBootstrapPath(opts?: PathOptions): string;
 export declare function expandHomePath(value: string, opts?: PathOptions): string;
-export declare function openworkServerDataDir(opts?: PathOptions): string;
+export declare function get3wServerDataDir(opts?: PathOptions): string;
 export declare function opencodeDataDirs(opts?: PathOptions): string[];
 export declare function opencodeDbCandidates(opts?: OpencodeDbPathOptions): string[];
 export declare function opencodeCacheDirs(opts?: PathOptions): string[];
+
+export interface Get3wProjectConfig { version: number; workspace: { name?: string }; runtime?: string; }
+export declare function get3wProjectConfig(value?: unknown): Get3wProjectConfig;
+export declare function get3wProjectConfigPath(workspaceRoot: string): string;
+export declare function readGet3wProjectConfig(workspaceRoot: string): Promise<Get3wProjectConfig | null>;
+export declare function ensureGet3wProjectConfig(workspaceRoot: string, seed?: unknown): Promise<Get3wProjectConfig>;

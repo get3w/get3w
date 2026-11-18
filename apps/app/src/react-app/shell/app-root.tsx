@@ -19,12 +19,12 @@ import { EngineMigrationOverlay } from "./engine-migration";
 import { useEngineMigrationAnalytics } from "./use-engine-migration-analytics";
 import { AppMenuProvider } from "./app-menu";
 import {
-  OpenworkControlProvider,
-  OpenworkRouteControlActions,
+  Get3wControlProvider,
+  Get3wRouteControlActions,
   useControlAction,
-  type OpenworkControlAction,
+  type Get3wControlAction,
 } from "./control/control-provider";
-import { OpenworkContextPublisher } from "./openwork-context-publisher";
+import { Get3wContextPublisher } from "./get3w-context-publisher";
 import { SessionRoute } from "./session-route";
 import { DesktopUpdaterProvider } from "../domains/settings/state/desktop-updater-provider";
 import { SettingsRoute } from "./settings-route";
@@ -35,10 +35,10 @@ import { DesktopAccountGate } from "../domains/cloud/get3w-account";
 
 /**
  * Control action for eval automation: inject brand theme (logo, icon, accent color)
- * via the dev-only desktop config bridge. Placed inside OpenworkControlProvider.
+ * via the dev-only desktop config bridge. Placed inside Get3wControlProvider.
  */
 function BrandThemeControlActions() {
-  const applyAction = useMemo<OpenworkControlAction | null>(() => {
+  const applyAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.brand_theme.apply",
@@ -51,7 +51,7 @@ function BrandThemeControlActions() {
         { name: "brandAccentColor", type: "string", description: t("ui.a08692b9df14") },
       ],
       execute: (args) => {
-        const bridge = (window as unknown as Record<string, unknown>).__openworkApplyDesktopConfig;
+        const bridge = (window as unknown as Record<string, unknown>).__get3wApplyDesktopConfig;
         if (typeof bridge !== "function") {
           return { ok: false, error: t("ui.03486f41ef65") };
         }
@@ -62,7 +62,7 @@ function BrandThemeControlActions() {
   }, []);
   useControlAction(applyAction);
 
-  const relaunchAction = useMemo<OpenworkControlAction | null>(() => {
+  const relaunchAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.app.relaunch",
@@ -75,7 +75,7 @@ function BrandThemeControlActions() {
   useControlAction(relaunchAction);
 
   const [renderThrow, setRenderThrow] = useState<string | null>(null);
-  const renderThrowAction = useMemo<OpenworkControlAction | null>(() => {
+  const renderThrowAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.app.render_throw",
@@ -132,11 +132,11 @@ export function AppRoot() {
         <DesktopUpdaterProvider>
         <ShellConfigProvider>
         <AppMenuProvider>
-        <OpenworkControlProvider>
+        <Get3wControlProvider>
           <DesktopAccountGate>
-          <OpenworkRouteControlActions />
+          <Get3wRouteControlActions />
           <ChatDeepLinkListener />
-          <OpenworkContextPublisher />
+          <Get3wContextPublisher />
           <BrandThemeControlActions />
 
                   {/* Settings unmounts the chat; computer use stays connected on every route. */}
@@ -251,7 +251,7 @@ export function AppRoot() {
                   <EngineMigrationOverlay />
 
           </DesktopAccountGate>
-        </OpenworkControlProvider>
+        </Get3wControlProvider>
         </AppMenuProvider>
         </ShellConfigProvider>
         </DesktopUpdaterProvider>

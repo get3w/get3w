@@ -4,7 +4,7 @@ import { t } from "@/i18n";
 import { useState } from "react"
 import type { DynamicToolUIPart } from "ai"
 import { Braces, Check, Loader2, Lock } from "lucide-react"
-import type { ConnectionActionPayload } from "@openwork/types/connection-action-app"
+import type { ConnectionActionPayload } from "@get3w/types/connection-action-app"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -21,7 +21,7 @@ const ACTION_OWNER = {
   organization_admin: t("ui.432f56152eba"),
   provider_admin: "The provider admin",
   network_admin: t("ui.15fef8ea51ff"),
-  openwork: "Get3W support",
+  get3w: "Get3W support",
 }
 
 const BLOCKED_VERB: Partial<Record<ConnectionActionType, string>> = {

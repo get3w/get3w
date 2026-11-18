@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { create } from "zustand";
 
-const STORAGE_KEY = "openwork.sessionAgents.v1";
+const STORAGE_KEY = "get3w.sessionAgents.v1";
 const MAX_REMEMBERED_SESSIONS = 200;
 
 type SessionAgentSelections = Record<string, string | null>;

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
-import { latestStep } from "@openwork/headless-threads"
-import { parseProgress, parseReadResult, SessionRunnerError } from "@openwork/remote-sessions"
+import { latestStep } from "@get3w/headless-threads"
+import { parseProgress, parseReadResult, SessionRunnerError } from "@get3w/remote-sessions"
 import {
   classifyRemoteSessionCommandError,
   classifyRemoteSessionRequestError,
@@ -42,7 +42,7 @@ function definitiveFailure(error, creating) {
  * Native desktop APIs only. The shared remote-session runner owns all
  * durability, prompt IDs, outboxes and admission. It never runs a scheduled
  * Automation or answers a permission/question on the person's behalf.
- * @returns {import("@openwork/remote-sessions").HarnessAdapter}
+ * @returns {import("@get3w/remote-sessions").HarnessAdapter}
  */
 export function createDesktopSessionAdapter(options) {
   const fetchImpl = options.fetchImpl ?? fetch
@@ -53,7 +53,7 @@ export function createDesktopSessionAdapter(options) {
   const runtime = async () => {
     const local = await options.getLocalRuntime()
     if (!local?.baseUrl || !local?.token) {
-      throw new SessionRunnerError("openwork_unreachable", "Can't reach OpenWork on your desktop. Make sure OpenWork is running.")
+      throw new SessionRunnerError("get3w_unreachable", "Can't reach Get3W on your desktop. Make sure Get3W is running.")
     }
     return local
   }
@@ -141,7 +141,7 @@ export function createDesktopSessionAdapter(options) {
         // before the core sends the initial stable message ID.
         const identity = selectedEngine === "v2" && options.creationOwner ? {
           id: `ses_${createHash("sha256").update(JSON.stringify([options.creationOwner, workspaceId, command.commandId])).digest("hex")}`,
-          metadata: { openworkRemoteSessionOwner: options.creationOwner, openworkRemoteSessionCommand: command.commandId },
+          metadata: { get3wRemoteSessionOwner: options.creationOwner, get3wRemoteSessionCommand: command.commandId },
         } : {}
         created = await client.createThread({
           title: command.title,

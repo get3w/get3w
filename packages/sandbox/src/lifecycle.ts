@@ -3,7 +3,7 @@ import { SandboxError, isSandboxError } from "./errors.js"
 import type { SandboxBlocks } from "./blocks.js"
 import type { ProviderTimeout, SandboxHandle, SandboxProvider, SandboxSpec } from "./provider.js"
 
-export const SCOPE_LABEL = "openwork.sandbox.scope"
+export const SCOPE_LABEL = "get3w.sandbox.scope"
 
 export function sandboxName(scope: string, job: string, key: string): string {
   if (!scope.trim() || !job.trim() || !key.trim()) throw new Error("scope, job and key must not be empty")

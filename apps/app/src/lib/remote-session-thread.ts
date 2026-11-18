@@ -1,6 +1,6 @@
 import type { DynamicToolUIPart } from "ai"
 
-import type { RemoteSessionPending } from "@openwork/types/automations"
+import type { RemoteSessionPending } from "@get3w/types/automations"
 
 import { parseRecord } from "@/lib/capability-call"
 import { parseRemotePending } from "@/lib/remote-session-answers"
@@ -67,7 +67,7 @@ function titleFor(body: Record<string, unknown>, prompt: string | null): string 
 
 /** When the call that started or followed up on a task began, as the engine recorded it. */
 export function remoteToolCallStartedAt(part: DynamicToolUIPart): number | null {
-  const value = part.callProviderMetadata?.openwork?.toolStartedAt
+  const value = part.callProviderMetadata?.get3w?.toolStartedAt
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 

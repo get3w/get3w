@@ -10,5 +10,5 @@ test("legacy service requests fail before sending saved credentials", async () =
   assert.equal(sent, 0);
 });
 test("Get3W, localhost and user-configured third-party services remain possible", () => {
-  for (const url of ["https://api.get3w.com", "http://127.0.0.1:6604", "https://api.openai.com", "https://openworklabs.com.example.test"]) assert.doesNotThrow(() => assertGet3wServiceTarget(url));
+  for (const url of ["https://api.get3w.com", "http://127.0.0.1:6604", "https://api.openai.com", "https://get3wlabs.com.example.test"]) assert.doesNotThrow(() => assertGet3wServiceTarget(url));
 });

@@ -475,7 +475,7 @@ export const useSessionManagementStore = create<SessionManagementStore>()(
           const ws = state.groupsByWorkspace[workspaceId] ?? EMPTY_GROUP_STATE;
           const knownGroupIds = new Set(serverState.groups.map((group) => group.id));
           const collapsedGroupIds = (ws.collapsedGroupIds ?? []).filter(
-            (id) => id === "__openwork_ungrouped" || knownGroupIds.has(id),
+            (id) => id === "__get3w_ungrouped" || knownGroupIds.has(id),
           );
           if (
             sameGroupDefinitions(ws.groups, serverState.groups)
@@ -540,7 +540,7 @@ export const useSessionManagementStore = create<SessionManagementStore>()(
         }),
     }),
     {
-      name: "openwork.react.sessionManagement",
+      name: "get3w.react.sessionManagement",
       storage: createJSONStorage(() => localStorage),
     },
   ),

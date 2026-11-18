@@ -12,7 +12,7 @@ import { trackTaskCompleted, trackTaskFailed } from "@/app/lib/den-telemetry";
 import { createClient, unwrap } from "@/app/lib/opencode";
 import { AUTO_ROUTES_EVENT, createClientV2, isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
 import { useAutoRouteStore } from "./auto-route-store";
-import { autoRouterReplyRoutes } from "@openwork/types/den/auto-router";
+import { autoRouterReplyRoutes } from "@get3w/types/den/auto-router";
 import { perfNow, recordPerfLog } from "@/app/lib/perf-log";
 import { isGeneratedSessionTitle } from "@/app/lib/session-title";
 import { normalizeEvent } from "@/app/utils";
@@ -34,7 +34,7 @@ import {
   reasoningTime,
   STRUCTURED_OUTPUT_TOOL,
 } from "./parse-tool-parts";
-import type { OpenworkSessionHistory, OpenworkSessionSnapshot } from "@/app/lib/openwork-server";
+import type { Get3wSessionHistory, Get3wSessionSnapshot } from "@/app/lib/get3w-server";
 import type { LatestSessionHistory } from "../surface/session-render-state";
 import { applyRevertCursor, reconcileTranscriptMessages } from "./transcript-reconcile";
 import { messageCreated, upsertMessageByChronology } from "./message-merge";
@@ -91,7 +91,7 @@ export {
 type SyncOptions = {
   workspaceId: string;
   baseUrl: string;
-  openworkToken: string;
+  get3wToken: string;
   visibleSessionId?: string | null;
   onSessionCreated?: (session: Session) => void;
   onSessionUpdated?: (update: { sessionId: string; info: Record<string, unknown> }) => void;
@@ -111,7 +111,7 @@ type MessageReconcile = {
 
 type SyncEntry = {
   input: SyncOptions;
-  openworkToken: string;
+  get3wToken: string;
   // Reattachment can rotate the token after the stream already failed. This
   // hook advances the stream lifecycle's connection generation so a stream
   // parked in auth backoff restarts immediately with the new credential.
@@ -171,8 +171,8 @@ function credentialProviderId(value: unknown): string | null {
 
 const idleStatus: SessionStatus = { type: "idle" };
 const syncs = new Map<string, SyncEntry>();
-const sessionSnapshotFetchStarts = new WeakMap<OpenworkSessionHistory, number>();
-const todoSnapshotFirstSeen = new WeakMap<OpenworkSessionHistory, number>();
+const sessionSnapshotFetchStarts = new WeakMap<Get3wSessionHistory, number>();
+const todoSnapshotFirstSeen = new WeakMap<Get3wSessionHistory, number>();
 const workspaceSyncDisposeGraceMs = 2_000;
 const retainedSessionTtlMs = 10 * 60_000;
 const idleRetainedSessionTtlMs = 10_000;
@@ -211,7 +211,7 @@ export function activeSessionStatusReconcileDelayMs(consecutiveFailures: number)
 function developerDiagnosticsEnabled() {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem("openwork.developerMode") === "1";
+    return window.localStorage.getItem("get3w.developerMode") === "1";
   } catch {
     return false;
   }
@@ -254,30 +254,30 @@ function releaseListener<Listener>(registry: ListenerRegistry<Listener>, listene
 
 type SyncSubscriptionFactory = (
   baseUrl: string,
-  openworkToken: string,
+  get3wToken: string,
   signal: AbortSignal,
 ) => Promise<AsyncIterable<unknown>>;
 
 type SessionStatusFetcher = (
   baseUrl: string,
-  openworkToken: string,
+  get3wToken: string,
   signal: AbortSignal,
 ) => Promise<Record<string, SessionStatus>>;
 
-function createSyncClient(baseUrl: string, openworkToken: string) {
+function createSyncClient(baseUrl: string, get3wToken: string) {
   return isOpencodeV2BaseUrl(baseUrl)
-    ? createClientV2(baseUrl, undefined, { token: openworkToken })
-    : createClient(baseUrl, undefined, { token: openworkToken, mode: "openwork" });
+    ? createClientV2(baseUrl, undefined, { token: get3wToken })
+    : createClient(baseUrl, undefined, { token: get3wToken, mode: "get3w" });
 }
 
-const defaultSyncSubscriptionFactory: SyncSubscriptionFactory = async (baseUrl, openworkToken, signal) => {
-  const client = createSyncClient(baseUrl, openworkToken);
+const defaultSyncSubscriptionFactory: SyncSubscriptionFactory = async (baseUrl, get3wToken, signal) => {
+  const client = createSyncClient(baseUrl, get3wToken);
   const subscription = await client.event.subscribe(undefined, { signal });
   return subscription.stream;
 };
 
-const defaultSessionStatusFetcher: SessionStatusFetcher = async (baseUrl, openworkToken, signal) => {
-  const client = createSyncClient(baseUrl, openworkToken);
+const defaultSessionStatusFetcher: SessionStatusFetcher = async (baseUrl, get3wToken, signal) => {
+  const client = createSyncClient(baseUrl, get3wToken);
   const result = await client.session.status(undefined, { signal });
   if (result.data !== undefined) return result.data;
   throw result.error;
@@ -288,7 +288,7 @@ let sessionStatusFetcher = defaultSessionStatusFetcher;
 const defaultSessionPermissionFetcher = async (baseUrl: string, token: string, sessionID: string, signal: AbortSignal) =>
   unwrap(await createSyncClient(baseUrl, token).v2.session.permission.list({ sessionID }, { signal })).data;
 let sessionPermissionFetcher = defaultSessionPermissionFetcher;
-type RunningShellFetcher = (baseUrl: string, openworkToken: string, signal: AbortSignal) => Promise<EngineShell[]>;
+type RunningShellFetcher = (baseUrl: string, get3wToken: string, signal: AbortSignal) => Promise<EngineShell[]>;
 const defaultRunningShellFetcher: RunningShellFetcher = async (baseUrl, token, signal) =>
   unwrap(await createClientV2(baseUrl, undefined, { token }).listRunningShells({ signal }));
 let runningShellFetcher = defaultRunningShellFetcher;
@@ -318,7 +318,7 @@ const defaultDeltaFlushScheduler: DeltaFlushScheduler = (lane, run) => {
 
 let deltaFlushScheduler = defaultDeltaFlushScheduler;
 
-export function markSessionSnapshotFetchStart(snapshot: OpenworkSessionHistory, startedAt: number) {
+export function markSessionSnapshotFetchStart(snapshot: Get3wSessionHistory, startedAt: number) {
   sessionSnapshotFetchStarts.set(snapshot, startedAt);
 }
 
@@ -336,8 +336,8 @@ export function sessionHistoryCredential(token?: string | null) {
   return credential;
 }
 
-export const sessionMetadataKey = (input: Pick<SyncOptions, "workspaceId" | "baseUrl" | "openworkToken">, sessionId: string) =>
-  ["react-session-metadata", input.workspaceId, input.baseUrl, sessionHistoryCredential(input.openworkToken), sessionId] as const;
+export const sessionMetadataKey = (input: Pick<SyncOptions, "workspaceId" | "baseUrl" | "get3wToken">, sessionId: string) =>
+  ["react-session-metadata", input.workspaceId, input.baseUrl, sessionHistoryCredential(input.get3wToken), sessionId] as const;
 
 export const snapshotKey = (workspaceId: string, sessionId: string) =>
   ["react-session-snapshot", workspaceId, sessionId] as const;
@@ -1115,7 +1115,7 @@ function historyBackgroundShellKey(workspaceId: string, sessionId: string) {
   return JSON.stringify([workspaceId, sessionId]);
 }
 
-function rememberHistoryBackgroundShells(workspaceId: string, snapshot: OpenworkSessionHistory) {
+function rememberHistoryBackgroundShells(workspaceId: string, snapshot: Get3wSessionHistory) {
   const ids = new Set<string>();
   for (const message of snapshot.messages) {
     for (const part of message.parts) {
@@ -1147,7 +1147,7 @@ async function reconcileBackgroundShells(entry: SyncEntry, scope: "all" | string
   entry.backgroundShellReads.add(controller);
   const startedAt = Date.now();
   try {
-    const listed = await runningShellFetcher(entry.input.baseUrl, entry.openworkToken,
+    const listed = await runningShellFetcher(entry.input.baseUrl, entry.get3wToken,
       AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]));
     if (controller.signal.aborted || syncs.get(syncKey(entry.input)) !== entry) return;
     const workspaceId = entry.input.workspaceId;
@@ -1175,7 +1175,7 @@ function applyEvent(entry: SyncEntry, workspaceId: string, event: OpencodeEvent)
   const queryClient = getReactQueryClient();
   const input = entry.input;
 
-  if (event.type === "openwork.message.refresh") {
+  if (event.type === "get3w.message.refresh") {
     const sessionId = sessionIdFromProperties(event.properties);
     const props = event.properties;
     const messageId = props && typeof props === "object" && "messageID" in props ? props.messageID : undefined;
@@ -1277,13 +1277,13 @@ function applyEvent(entry: SyncEntry, workspaceId: string, event: OpencodeEvent)
     const title = typeof update.info.title === "string" ? update.info.title : "";
     if (title && !isGeneratedSessionTitle(title)) entry.titleRecovery?.resolve(update.sessionId);
     if (!isTrackedSession(entry, update.sessionId)) return;
-    const revert = (update.info as { revert?: OpenworkSessionSnapshot["session"]["revert"] }).revert;
+    const revert = (update.info as { revert?: Get3wSessionSnapshot["session"]["revert"] }).revert;
     queryClient.setQueryData(sessionMetadataKey(input, update.sessionId), { revert });
     // Keep the cached snapshot's revert cursor in sync with the server. The
     // renderer derives the visible transcript from this cursor, so a revert
     // (or its cleanup on the next prompt) must reach the snapshot cache or
     // the transcript stays frozen on stale history.
-    queryClient.setQueryData<OpenworkSessionHistory>(
+    queryClient.setQueryData<Get3wSessionHistory>(
       snapshotKey(workspaceId, update.sessionId),
       (current) => {
         if (!current) return current;
@@ -1567,7 +1567,7 @@ function applyEvent(entry: SyncEntry, workspaceId: string, event: OpencodeEvent)
       source: applyRevertCursor(current.source, messageID),
     } : current);
     queryClient.setQueryData<UIMessage[]>(transcriptKey(workspaceId, sessionID), (current = []) => applyRevertCursor(current, messageID));
-    queryClient.setQueryData<OpenworkSessionHistory>(fullKey, current => {
+    queryClient.setQueryData<Get3wSessionHistory>(fullKey, current => {
       if (!current) return current;
       const boundary = current.messages.findIndex(message => message.info.id === messageID);
       return boundary < 0 ? current : { ...current, messages: current.messages.slice(0, boundary) };
@@ -1595,7 +1595,7 @@ function applyEvent(entry: SyncEntry, workspaceId: string, event: OpencodeEvent)
     queryClient.setQueryData<UIMessage[]>(transcriptKey(workspaceId, props.sessionID), (current = []) =>
       current.filter(keep),
     );
-    queryClient.setQueryData<OpenworkSessionHistory>(
+    queryClient.setQueryData<Get3wSessionHistory>(
       snapshotKey(workspaceId, props.sessionID),
       (current) => {
         if (!current) return current;
@@ -1805,7 +1805,7 @@ function startSync(input: SyncOptions, entry: SyncEntry) {
   const lifecycle = startSyncStreamLifecycle({
     // Read the token at connect time so every retry — including a
     // generation-triggered restart — uses the latest credential.
-    subscribe: (signal) => syncSubscriptionFactory(input.baseUrl, entry.openworkToken, signal),
+    subscribe: (signal) => syncSubscriptionFactory(input.baseUrl, entry.get3wToken, signal),
     onEvent: (raw) => {
       const event = normalizeEvent(raw);
       if (!event) return;
@@ -1984,7 +1984,7 @@ async function reconcileSessionMessages(entry: SyncEntry, sessionId: string, mes
     read.dirty = false;
     read.timer = null;
     try {
-      const client = createSyncClient(entry.input.baseUrl, entry.openworkToken);
+      const client = createSyncClient(entry.input.baseUrl, entry.get3wToken);
       const options = { signal: AbortSignal.any([read.controller.signal, AbortSignal.timeout(10_000)]) };
       const messages = messageId
         ? [unwrap(await client.session.message({ sessionID: sessionId, messageID: messageId }, options))]
@@ -1998,7 +1998,7 @@ async function reconcileSessionMessages(entry: SyncEntry, sessionId: string, mes
       flushSessionDeltas(entry, workspaceId, sessionId);
       queryClient.setQueryData<UIMessage[]>(transcriptKey(workspaceId, sessionId), (current = []) => applyRevertCursor(
         reconcileTranscriptMessages({ currentMessages: current, snapshotMessages: snapshotToUIMessages({ messages }) }),
-        queryClient.getQueryData<OpenworkSessionHistory>(snapshotKey(workspaceId, sessionId))?.session.revert?.messageID,
+        queryClient.getQueryData<Get3wSessionHistory>(snapshotKey(workspaceId, sessionId))?.session.revert?.messageID,
       ));
       settleOrphanedInteractions(workspaceId, sessionId, terminalToolCallIds(messages));
       if (!messageId) {
@@ -2043,7 +2043,7 @@ async function reconcileSessionQuestions(entry: SyncEntry, sessionId: string) {
   const snapshotStartedAt = Date.now();
   const snapshotRevision = getReactQueryClient().getQueryState(questionKey(workspaceId, sessionId))?.dataUpdateCount ?? 0;
   try {
-    const questions = unwrap(await createClientV2(entry.input.baseUrl, undefined, { token: entry.openworkToken })
+    const questions = unwrap(await createClientV2(entry.input.baseUrl, undefined, { token: entry.get3wToken })
       .listSessionQuestions({ sessionID: sessionId }, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) }));
     if (controller.signal.aborted || syncs.get(syncKey(entry.input)) !== entry) return;
     seedQuestionState(workspaceId, sessionId, questions, { snapshotStartedAt, snapshotRevision });
@@ -2062,7 +2062,7 @@ async function reconcileSessionPermissions(entry: SyncEntry, sessionId: string) 
   const snapshotStartedAt = Date.now();
   const snapshotRevision = getReactQueryClient().getQueryState(permissionKey(entry.input.workspaceId, sessionId))?.dataUpdateCount ?? 0;
   try {
-    const permissions = await sessionPermissionFetcher(entry.input.baseUrl, entry.openworkToken, sessionId,
+    const permissions = await sessionPermissionFetcher(entry.input.baseUrl, entry.get3wToken, sessionId,
       AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]));
     if (controller.signal.aborted || syncs.get(syncKey(entry.input)) !== entry) return;
     seedPermissionState(entry.input.workspaceId, sessionId, permissions, { snapshotStartedAt, snapshotRevision });
@@ -2111,7 +2111,7 @@ async function reconcileSessionRunStatuses(
   }
   let statuses: Record<string, SessionStatus>;
   try {
-    statuses = await sessionStatusFetcher(input.baseUrl, entry.openworkToken, signal);
+    statuses = await sessionStatusFetcher(input.baseUrl, entry.get3wToken, signal);
   } catch {
     // The run state itself is deliberately left untouched: a failed fetch is
     // not evidence that work stopped. It is evidence that the busy state can
@@ -2267,11 +2267,11 @@ export function ensureWorkspaceSessionSync(input: SyncOptions) {
   const existing = syncs.get(key);
   if (existing) {
     existing.input = input;
-    if (existing.openworkToken !== input.openworkToken) {
+    if (existing.get3wToken !== input.get3wToken) {
       // Reattachment with a rotated token (or a restarted runtime's fresh
       // credential) is a new connection generation: restart a stream parked
       // in auth backoff instead of leaving the task streaming nowhere.
-      existing.openworkToken = input.openworkToken;
+      existing.get3wToken = input.get3wToken;
       existing.notifyStreamGenerationChanged?.();
     }
     if (existing.disposeTimer) {
@@ -2289,7 +2289,7 @@ export function ensureWorkspaceSessionSync(input: SyncOptions) {
 
   const created: SyncEntry = {
     input,
-    openworkToken: input.openworkToken,
+    get3wToken: input.get3wToken,
     notifyStreamGenerationChanged: null,
     refs: 1,
     dispose: () => {},
@@ -2323,7 +2323,7 @@ export function ensureWorkspaceSessionSync(input: SyncOptions) {
   };
   created.titleRecovery = createSessionTitleRecovery({
     fetch: async (sessionId) => {
-      const client = createSyncClient(input.baseUrl, created.openworkToken);
+      const client = createSyncClient(input.baseUrl, created.get3wToken);
       const [session, messages] = await Promise.all([
         client.session.get({ sessionID: sessionId }).then(unwrap),
         client.session.messages({ sessionID: sessionId, limit: 20 }).then(unwrap),
@@ -2338,7 +2338,7 @@ export function ensureWorkspaceSessionSync(input: SyncOptions) {
       };
     },
     onResolved: (sessionId, title) => {
-      getReactQueryClient().setQueryData<OpenworkSessionHistory>(
+      getReactQueryClient().setQueryData<Get3wSessionHistory>(
         snapshotKey(input.workspaceId, sessionId),
         (current) => current
           ? { ...current, session: { ...current.session, title } }
@@ -2473,7 +2473,7 @@ export function observeProviderCredentialMessages(workspaceId: string, messages:
 
 export function seedSessionState(
   workspaceId: string,
-  snapshot: OpenworkSessionHistory,
+  snapshot: Get3wSessionHistory,
   options: { preview?: boolean; engine?: SessionSyncEngine } = {},
 ) {
   // A reverted window cannot establish which messages are still visible.
@@ -2576,7 +2576,7 @@ export function seedSessionState(
  * that is already on screen.
  */
 export function seedCreatedSessionSnapshot(workspaceId: string, session: Session) {
-  getReactQueryClient().setQueryData<OpenworkSessionSnapshot>(
+  getReactQueryClient().setQueryData<Get3wSessionSnapshot>(
     snapshotKey(workspaceId, session.id),
     { session, messages: [], todos: [], status: { type: "idle" } },
     { updatedAt: 0 },
@@ -2596,7 +2596,7 @@ export function applySessionRevert(workspaceId: string, session: Session) {
   const queryClient = getReactQueryClient();
   const revertMessageId = session.revert?.messageID ?? null;
 
-  queryClient.setQueryData<OpenworkSessionHistory>(
+  queryClient.setQueryData<Get3wSessionHistory>(
     snapshotKey(workspaceId, session.id),
     (current) => (current ? { ...current, session: { ...current.session, revert: session.revert } } : current),
   );
@@ -2613,7 +2613,7 @@ export async function applySessionArchived(workspaceId: string, sessionId: strin
   const queryKey = snapshotKey(workspaceId, sessionId);
   // An older in-flight snapshot must not put the archived flag back after Restore.
   await queryClient.cancelQueries({ queryKey, exact: true });
-  queryClient.setQueryData<OpenworkSessionHistory>(queryKey, current => current ? {
+  queryClient.setQueryData<Get3wSessionHistory>(queryKey, current => current ? {
     ...current,
     session: { ...current.session, time: { ...current.session.time, archived: archived ? Date.now() : 0 } },
   } : current);
@@ -2624,7 +2624,7 @@ export async function applySessionArchived(workspaceId: string, sessionId: strin
 export function applySessionUnrevert(workspaceId: string, sessionId: string) {
   const queryClient = getReactQueryClient();
   void queryClient.cancelQueries({ queryKey: snapshotKey(workspaceId, sessionId) });
-  queryClient.setQueryData<OpenworkSessionHistory>(
+  queryClient.setQueryData<Get3wSessionHistory>(
     snapshotKey(workspaceId, sessionId),
     (current) => (current ? { ...current, session: { ...current.session, revert: undefined } } : current),
   );
@@ -2677,7 +2677,7 @@ export function __createWorkspaceSessionSyncForTest(input: SyncOptions) {
   const key = syncKey(input);
   syncs.set(key, {
     input,
-    openworkToken: input.openworkToken,
+    get3wToken: input.get3wToken,
     notifyStreamGenerationChanged: null,
     refs: 1,
     dispose: () => {},
@@ -2737,4 +2737,15 @@ export function __setWorkspaceSessionSyncRunningShellFetcherForTest(fetcher: Run
 export function __reconcileBackgroundShellsForTest(input: SyncOptions, scope: "all" | string) {
   const entry = syncs.get(syncKey(input));
   return entry ? reconcileBackgroundShells(entry, scope) : Promise.resolve();
+}
+
+/** Use the active workspace credential and verify shell ownership in the engine. */
+export async function manageBackgroundShell(input: { workspaceId: string; baseUrl: string; sessionId: string; shellId: string }, stop: boolean, signal?: AbortSignal) {
+  const entry = syncs.get(syncKey(input));
+  if (!entry) throw new Error(t("backgroundTasks.unavailable"));
+  const client = createClientV2(input.baseUrl, undefined, { token: entry.get3wToken });
+  const parameters = { shellID: input.shellId, sessionID: input.sessionId };
+  const output = unwrap(await (stop ? client.stopBackgroundShell(parameters, { signal }) : client.readBackgroundShell(parameters, { signal })));
+  if (stop) useBackgroundShellStore.getState().update(input.workspaceId, book => settleBackgroundShell(book, input.shellId));
+  return output;
 }

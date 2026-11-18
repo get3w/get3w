@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import type { McpDirectoryInfo } from "../../../app/constants";
 import { extensionContribution } from "../../../app/extensions";
-import type { OpenworkServerClient } from "../../../app/lib/openwork-server";
+import type { Get3wServerClient } from "../../../app/lib/get3w-server";
 import type { LocalProviderInstallInput, LocalProviderSyncInput } from "./openai-image-extension";
 
 /**
@@ -10,8 +10,8 @@ import type { LocalProviderInstallInput, LocalProviderSyncInput } from "./openai
  * Each extension picks what it needs; unused fields are ignored.
  */
 export type ExtensionConfigContext = {
-  openworkServerClient?: OpenworkServerClient | null;
-  hostOpenworkServerClient?: OpenworkServerClient | null;
+  get3wServerClient?: Get3wServerClient | null;
+  hostGet3wServerClient?: Get3wServerClient | null;
   restartLocalServer?: () => Promise<boolean>;
   localProvider: {
     busy: boolean;

@@ -1,5 +1,5 @@
 import { dirname, join, resolve } from "node:path";
-import { openworkConfigDir } from "@openwork/paths";
+import { get3wConfigDir } from "@get3w/paths";
 import type { Database as BunDatabase } from "bun:sqlite";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { DatabaseSync } from "node:sqlite";
@@ -36,7 +36,7 @@ export function runtimeDbPath(config: Pick<ServerConfig, "configPath">): string 
   const override = process.env.GET3W_RUNTIME_DB?.trim();
   if (override) return resolve(override);
   const configPath = config.configPath?.trim();
-  const configDir = configPath ? dirname(configPath) : openworkConfigDir();
+  const configDir = configPath ? dirname(configPath) : get3wConfigDir();
   return join(configDir, "runtime.sqlite");
 }
 

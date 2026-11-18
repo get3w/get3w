@@ -13,13 +13,13 @@ import {
 import os from "node:os";
 import path from "node:path";
 
-/** @typedef {import("@openwork/types/desktop-ipc").DesktopIntegrationIssue} DesktopIntegrationIssue */
-/** @typedef {import("@openwork/types/desktop-ipc").DesktopIntegrationResult} DesktopIntegrationResult */
-/** @typedef {import("@openwork/types/desktop-ipc").DesktopIntegrationStatus} DesktopIntegrationStatus */
+/** @typedef {import("@get3w/types/desktop-ipc").DesktopIntegrationIssue} DesktopIntegrationIssue */
+/** @typedef {import("@get3w/types/desktop-ipc").DesktopIntegrationResult} DesktopIntegrationResult */
+/** @typedef {import("@get3w/types/desktop-ipc").DesktopIntegrationStatus} DesktopIntegrationStatus */
 
-export const OPENWORK_DESKTOP_ID = "com.get3w.desktop.desktop";
-export const OPENWORK_DESKTOP_NAME = "com.get3w.desktop";
-export const OPENWORK_PROTOCOL_MIME = "x-scheme-handler/openwork";
+export const GET3W_DESKTOP_ID = "com.get3w.desktop.desktop";
+export const GET3W_DESKTOP_NAME = "com.get3w.desktop";
+export const GET3W_PROTOCOL_MIME = "x-scheme-handler/get3w";
 
 const INTEGRATION_STATE_VERSION = 1;
 const OWNERSHIP_MARKER = "X-Get3W-Managed";
@@ -87,11 +87,11 @@ function entryTargetsAppImage(fields, appImagePath) {
     || exec.includes(`'${appImagePath.replaceAll("'", "'\\''")}'`);
 }
 
-function entryHandlesOpenwork(fields) {
+function entryHandlesGet3w(fields) {
   return (fields.get("MimeType") ?? "")
     .split(";")
     .map((value) => value.trim())
-    .includes(OPENWORK_PROTOCOL_MIME);
+    .includes(GET3W_PROTOCOL_MIME);
 }
 
 function entryAcceptsUrl(fields) {
@@ -145,7 +145,7 @@ async function removeDesktopAssociation(filePath, desktopId) {
     }
     if (
       (section !== "[Default Applications]" && section !== "[Added Associations]")
-      || !trimmed.startsWith(`${OPENWORK_PROTOCOL_MIME}=`)
+      || !trimmed.startsWith(`${GET3W_PROTOCOL_MIME}=`)
     ) {
       return line;
     }
@@ -175,7 +175,7 @@ function unsupportedStatus() {
   };
 }
 
-export function buildOpenworkDesktopEntry({
+export function buildGet3wDesktopEntry({
   appImagePath,
   appName,
   appVersion,
@@ -188,11 +188,11 @@ Name=${cleanDesktopValue(appName)}
 Comment=Run agents, skills, and MCP with Get3W
 Exec=${quoteDesktopExec(appImagePath)} %U
 TryExec=${cleanDesktopValue(appImagePath)}
-Icon=${OPENWORK_DESKTOP_NAME}
-StartupWMClass=${OPENWORK_DESKTOP_NAME}
+Icon=${GET3W_DESKTOP_NAME}
+StartupWMClass=${GET3W_DESKTOP_NAME}
 Terminal=false
 Categories=Development;Utility;
-MimeType=${OPENWORK_PROTOCOL_MIME};
+MimeType=${GET3W_PROTOCOL_MIME};
 X-AppImage-Name=${cleanDesktopValue(appName)}
 X-AppImage-Version=${cleanDesktopValue(appVersion)}
 ${OWNERSHIP_MARKER}=true
@@ -220,10 +220,10 @@ export function createLinuxDesktopIntegration({
   const supported = platform === "linux" && app.isPackaged && appImagePath != null;
   const dataHome = env.XDG_DATA_HOME?.trim() || path.join(homeDir, ".local", "share");
   const configHome = env.XDG_CONFIG_HOME?.trim() || path.join(homeDir, ".config");
-  const desktopEntryPath = path.join(dataHome, "applications", OPENWORK_DESKTOP_ID);
+  const desktopEntryPath = path.join(dataHome, "applications", GET3W_DESKTOP_ID);
   const iconPaths = Object.fromEntries(ICON_SIZES.map((size) => [
     size,
-    path.join(dataHome, "icons", "hicolor", `${size}x${size}`, "apps", `${OPENWORK_DESKTOP_NAME}.png`),
+    path.join(dataHome, "icons", "hicolor", `${size}x${size}`, "apps", `${GET3W_DESKTOP_NAME}.png`),
   ]));
   const iconSources = Object.fromEntries(ICON_SIZES.map((size) => [
     size,
@@ -246,7 +246,7 @@ export function createLinuxDesktopIntegration({
   }
 
   async function queryDefaultHandler() {
-    const result = await runCommand("xdg-mime", ["query", "default", OPENWORK_PROTOCOL_MIME]);
+    const result = await runCommand("xdg-mime", ["query", "default", GET3W_PROTOCOL_MIME]);
     return result.ok && result.stdout.trim() ? result.stdout.trim() : null;
   }
 
@@ -276,7 +276,7 @@ export function createLinuxDesktopIntegration({
       path: candidate,
       managed: fields.get(OWNERSHIP_MARKER) === "true",
       acceptsUrl: entryAcceptsUrl(fields),
-      handlesProtocol: entryHandlesOpenwork(fields),
+      handlesProtocol: entryHandlesGet3w(fields),
     };
   }
 
@@ -290,7 +290,7 @@ export function createLinuxDesktopIntegration({
     const applicationsRoot = path.join(dataHome, "applications");
     const entries = await readdir(applicationsRoot, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".desktop") || entry.name === OPENWORK_DESKTOP_ID) continue;
+      if (!entry.isFile() || !entry.name.endsWith(".desktop") || entry.name === GET3W_DESKTOP_ID) continue;
       const candidate = await inspectDesktopFile(path.join(applicationsRoot, entry.name), entry.name);
       if (candidate && !candidate.managed) return candidate;
     }
@@ -309,17 +309,17 @@ export function createLinuxDesktopIntegration({
       /** @type {DesktopIntegrationIssue[]} */
       const issues = [];
       if (!entryTargetsAppImage(ownFields, appImagePath)) issues.push("appimage-path");
-      if (!entryHandlesOpenwork(ownFields)) issues.push("desktop-entry");
+      if (!entryHandlesGet3w(ownFields)) issues.push("desktop-entry");
       if (ownFields.get(MANAGED_VERSION_MARKER) !== app.getVersion()) issues.push("version");
       const iconsPresent = await Promise.all(
         ICON_SIZES.map((size) => fileExists(iconPaths[size])),
       );
       if (!iconsPresent.every(Boolean)) issues.push("icon");
-      if (handlerDesktopId !== OPENWORK_DESKTOP_ID) issues.push("protocol-handler");
+      if (handlerDesktopId !== GET3W_DESKTOP_ID) issues.push("protocol-handler");
       return {
         supported: true,
         state: issues.length ? "needs_repair" : "integrated",
-        ownership: "openwork",
+        ownership: "get3w",
         appImagePath,
         desktopEntryPath,
         handlerDesktopId,
@@ -394,7 +394,7 @@ export function createLinuxDesktopIntegration({
       const registration = await runCommand("xdg-mime", [
         "default",
         path.basename(before.desktopEntryPath),
-        OPENWORK_PROTOCOL_MIME,
+        GET3W_PROTOCOL_MIME,
       ]);
       if (!registration.ok) {
         return {
@@ -408,12 +408,12 @@ export function createLinuxDesktopIntegration({
       return {
         ok: false,
         status,
-        error: "The external launcher was not selected for openwork:// callbacks.",
+        error: "The external launcher was not selected for get3w:// callbacks.",
       };
     }
     if (
       await fileExists(desktopEntryPath)
-      && before.ownership !== "openwork"
+      && before.ownership !== "get3w"
     ) {
       return {
         ok: false,
@@ -427,7 +427,7 @@ export function createLinuxDesktopIntegration({
         await mkdir(path.dirname(iconPaths[size]), { recursive: true });
         await copyFile(iconSources[size], iconPaths[size]);
       }
-      await atomicWrite(desktopEntryPath, buildOpenworkDesktopEntry({
+      await atomicWrite(desktopEntryPath, buildGet3wDesktopEntry({
         appImagePath,
         appName,
         appVersion: app.getVersion(),
@@ -435,20 +435,20 @@ export function createLinuxDesktopIntegration({
       }));
 
       const state = await readState();
-      if (before.handlerDesktopId && before.handlerDesktopId !== OPENWORK_DESKTOP_ID) {
+      if (before.handlerDesktopId && before.handlerDesktopId !== GET3W_DESKTOP_ID) {
         state.previousProtocolHandler = before.handlerDesktopId;
       }
       state.dismissedAppImages = state.dismissedAppImages.filter((candidate) => candidate !== appImagePath);
       await writeState(state);
 
       await refreshDesktopCaches();
-      const registration = await runCommand("xdg-mime", ["default", OPENWORK_DESKTOP_ID, OPENWORK_PROTOCOL_MIME]);
+      const registration = await runCommand("xdg-mime", ["default", GET3W_DESKTOP_ID, GET3W_PROTOCOL_MIME]);
       if (!registration.ok) {
-        throw new Error(registration.stderr || "xdg-mime could not register openwork://.");
+        throw new Error(registration.stderr || "xdg-mime could not register get3w://.");
       }
       const status = await getStatus();
       if (status.state !== "integrated") {
-        throw new Error("The desktop entry was installed, but the desktop did not select it as the openwork:// handler.");
+        throw new Error("The desktop entry was installed, but the desktop did not select it as the get3w:// handler.");
       }
       return { ok: true, status };
     } catch (error) {
@@ -466,7 +466,7 @@ export function createLinuxDesktopIntegration({
       return { ok: false, status: unsupportedStatus(), error: "Desktop integration is unavailable." };
     }
     const before = await getStatus();
-    if (before.ownership !== "openwork") {
+    if (before.ownership !== "get3w") {
       return {
         ok: false,
         status: before,
@@ -481,13 +481,13 @@ export function createLinuxDesktopIntegration({
       await rm(desktopEntryPath, { force: true });
       await Promise.all(Object.values(iconPaths).map((target) => rm(target, { force: true })));
 
-      if (before.handlerDesktopId === OPENWORK_DESKTOP_ID) {
+      if (before.handlerDesktopId === GET3W_DESKTOP_ID) {
         const previousPath = await locateDesktopEntry(state.previousProtocolHandler);
         if (state.previousProtocolHandler && previousPath) {
-          await runCommand("xdg-mime", ["default", state.previousProtocolHandler, OPENWORK_PROTOCOL_MIME]);
+          await runCommand("xdg-mime", ["default", state.previousProtocolHandler, GET3W_PROTOCOL_MIME]);
         } else {
-          await removeDesktopAssociation(path.join(configHome, "mimeapps.list"), OPENWORK_DESKTOP_ID);
-          await removeDesktopAssociation(path.join(dataHome, "applications", "mimeapps.list"), OPENWORK_DESKTOP_ID);
+          await removeDesktopAssociation(path.join(configHome, "mimeapps.list"), GET3W_DESKTOP_ID);
+          await removeDesktopAssociation(path.join(dataHome, "applications", "mimeapps.list"), GET3W_DESKTOP_ID);
         }
       }
 
@@ -533,7 +533,7 @@ export function createLinuxDesktopIntegration({
     // owns is maintenance rather than a new decision. A self-update lands under a
     // new versioned filename and a moved AppImage changes its path; both stale the
     // launcher. Repair silently instead of prompting after every release.
-    if (status.ownership === "openwork") {
+    if (status.ownership === "get3w") {
       const repaired = await install();
       if (!repaired.ok) {
         console.warn("[desktop-integration] silent repair failed", repaired.error);

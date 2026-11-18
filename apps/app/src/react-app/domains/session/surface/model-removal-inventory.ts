@@ -15,7 +15,7 @@ const legacyInventory = z.object({
     id: identity,
     providerId: identity,
     name: z.string(),
-    source: z.enum(["models_dev", "custom", "openwork"]),
+    source: z.enum(["models_dev", "custom", "get3w"]),
     credentialMode: z.enum(["shared", "per_member"]).optional(),
     hasMyCredential: z.boolean().optional(),
     models: z.array(legacyModel),
@@ -36,7 +36,7 @@ const gatewayInventory = z.object({
     id: identity.regex(/^ipr_.+/),
     providerId: identity,
     name: z.string(),
-    source: z.literal("openwork_gateway"),
+    source: z.literal("get3w_gateway"),
     credentialStatus: z.enum(["ready", "member_auth_required", "org_credential_missing"]),
     // Aggregate readiness is not completeness: another granted credential set
     // may have omitted aliases. Old servers cannot attest to this contract.
@@ -66,7 +66,7 @@ export function parseModelRemovalInventory(
   const models: ModelRemovalInventory["models"] = [];
   const lockedModels: ModelRef[] = [];
   for (const provider of legacy.llmProviders) {
-    const providerID = provider.source === "openwork" ? "openwork" : provider.id;
+    const providerID = provider.source === "get3w" ? "get3w" : provider.id;
     for (const model of provider.models) {
       const ref = { providerID, modelID: model.id };
       models.push({ ...ref, title: model.name });

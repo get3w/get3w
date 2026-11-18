@@ -1,4 +1,4 @@
-export const DASHBOARD_TILE_CACHE_STORAGE_PREFIX = "openwork.react.dashboardTileCache.v1";
+export const DASHBOARD_TILE_CACHE_STORAGE_PREFIX = "get3w.react.dashboardTileCache.v1";
 
 const PERSIST_DELAY_MS = 150;
 const CLEAR_STORAGE_KEY = `${DASHBOARD_TILE_CACHE_STORAGE_PREFIX}.clear`;

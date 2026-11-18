@@ -11,7 +11,7 @@ import {
   type AgentPermissionAction,
   type AgentPermissionDecision,
   type AgentPermissionRule,
-} from "@openwork/types/den/agent-permissions-runtime";
+} from "@get3w/types/den/agent-permissions-runtime";
 import { mcpServerUrl, type OrganizationMcpServers } from "./reserved-mcp-names.js";
 
 export type { AgentPermissionRule };
@@ -98,7 +98,7 @@ function v2Action(action: string): AgentPermissionAction | null {
  * pattern.
  */
 /** A skill name no folder can have (skill ids are folder names), allowed natively only to keep the skill tool registered. */
-const SKILL_TOOL_KEEPER = "openwork/agent-permissions/no-skill";
+const SKILL_TOOL_KEEPER = "get3w/agent-permissions/no-skill";
 
 export function agentPermissionEngineV2Rules(rules: readonly AgentPermissionRule[]): EngineV2PermissionRule[] {
   return rules.flatMap((rule) => {

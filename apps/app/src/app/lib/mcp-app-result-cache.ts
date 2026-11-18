@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpAppOrigin } from "../../components/chat/mcp-app-origin";
-import type { OpenworkMcpAppResource } from "./openwork-server";
+import type { Get3wMcpAppResource } from "./get3w-server";
 import { createDashboardTileCacheStore, DASHBOARD_TILE_CACHE_STORAGE_PREFIX } from "./dashboard-cache-storage";
 import { mcpAppPresentationScope } from "./mcp-app-presentation-cache";
 
@@ -9,13 +9,13 @@ import { mcpAppPresentationScope } from "./mcp-app-presentation-cache";
  * arguments, answered from storage without calling anything) or "store"
  * (call the tool and keep its result if the server marked it read-only).
  */
-export const MCP_APP_CACHE_REQUEST_META = "openwork/cache";
-export const MCP_APP_CACHED_RESULT_META = "openwork/cached";
-export const MCP_APP_CACHED_AT_META = "openwork/cachedAt";
+export const MCP_APP_CACHE_REQUEST_META = "get3w/cache";
+export const MCP_APP_CACHED_RESULT_META = "get3w/cached";
+export const MCP_APP_CACHED_AT_META = "get3w/cachedAt";
 // Set by the Get3W server, never by the App or provider: the tool's
 // annotations, and a hash of the verified server the result came from.
-const READ_ONLY_RESULT_META = "openwork/readOnly";
-const PROVIDER_IDENTITY_META = "openwork/providerIdentity";
+const READ_ONLY_RESULT_META = "get3w/readOnly";
+const PROVIDER_IDENTITY_META = "get3w/providerIdentity";
 
 const STORAGE_KEY = `${DASHBOARD_TILE_CACHE_STORAGE_PREFIX}.appResults`;
 const TTL_MS = 24 * 60 * 60_000;
@@ -77,7 +77,7 @@ async function digest(value: string): Promise<string> {
  * One entry per signed-in account and deployment, workspace, App revision,
  * tool and arguments. Nothing is kept while signed out, and the key is a hash.
  */
-async function entryKey(origin: McpAppOrigin, app: OpenworkMcpAppResource, name: string, args: Record<string, unknown>) {
+async function entryKey(origin: McpAppOrigin, app: Get3wMcpAppResource, name: string, args: Record<string, unknown>) {
   const scope = await mcpAppPresentationScope(origin);
   if (!scope) return null;
   const key = await digest(JSON.stringify([scope.key, origin.workspaceId, app.serverName, app.resourceUri, name, canonicalMcpAppArguments(args)]));
@@ -89,7 +89,7 @@ async function entryKey(origin: McpAppOrigin, app: OpenworkMcpAppResource, name:
  * from, or null. Calls no tool; the caller must match the server first.
  */
 export async function cachedMcpAppResult(
-  origin: McpAppOrigin, app: OpenworkMcpAppResource, name: string, args: Record<string, unknown>,
+  origin: McpAppOrigin, app: Get3wMcpAppResource, name: string, args: Record<string, unknown>,
 ): Promise<{ providerIdentity: string; result: CallToolResult } | null> {
   try {
     const entry = await entryKey(origin, app, name, args);
@@ -112,7 +112,7 @@ export async function cachedMcpAppResult(
 
 /** Keeps a successful result only when the Get3W server marked its tool read-only. */
 export async function rememberMcpAppResult(
-  origin: McpAppOrigin, app: OpenworkMcpAppResource, name: string, args: Record<string, unknown>, result: CallToolResult,
+  origin: McpAppOrigin, app: Get3wMcpAppResource, name: string, args: Record<string, unknown>, result: CallToolResult,
 ): Promise<void> {
   try {
     const entry = await entryKey(origin, app, name, args);
@@ -142,7 +142,7 @@ export async function rememberMcpAppResult(
 
 /** Drops a kept result, e.g. when its call is no longer allowed. */
 export async function forgetMcpAppResult(
-  origin: McpAppOrigin, app: OpenworkMcpAppResource, name: string, args: Record<string, unknown>,
+  origin: McpAppOrigin, app: Get3wMcpAppResource, name: string, args: Record<string, unknown>,
 ): Promise<void> {
   try {
     const entry = await entryKey(origin, app, name, args);

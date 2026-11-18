@@ -1,4 +1,4 @@
-import type { RemoteSessionThreadState } from "@openwork/types/automations"
+import type { RemoteSessionThreadState } from "@get3w/types/automations"
 
 import { formatRelativeTime } from "@/app/utils"
 import { t } from "@/i18n"

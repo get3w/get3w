@@ -62,7 +62,7 @@ export async function spawnOpencodeServe({
   assert.ok(Number.isInteger(port) && port > 0, "port must be a positive integer");
 
   const cwd = realpathSync(directory);
-  const isolatedRoot = mkdtempSync(join(tmpdir(), "openwork-opencode-smoke-"));
+  const isolatedRoot = mkdtempSync(join(tmpdir(), "get3w-opencode-smoke-"));
   const configDir = join(isolatedRoot, "config");
   const xdgConfigHome = join(isolatedRoot, "xdg");
   mkdirSync(configDir);
@@ -101,7 +101,7 @@ export async function spawnOpencodeServe({
         : {}),
       ...env,
       // Make it explicit we're a non-TUI client.
-      OPENCODE_CLIENT: "openwork-test",
+      OPENCODE_CLIENT: "get3w-test",
     },
   });
 

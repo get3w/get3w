@@ -22,12 +22,12 @@ test("published launcher rejects unsupported runtimes before importing its bundl
   try {
     mkdirSync(join(dir, "bin"));
     mkdirSync(join(dir, "dist"));
-    for (const file of ["platform.mjs", "openwork-server.mjs"]) copyFileSync(new URL(`../bin/${file}`, import.meta.url), join(dir, "bin", file));
-    writeFileSync(join(dir, "dist/openwork-server.mjs"), 'console.log("BUNDLE_IMPORTED")');
+    for (const file of ["platform.mjs", "get3w-server.mjs"]) copyFileSync(new URL(`../bin/${file}`, import.meta.url), join(dir, "bin", file));
+    writeFileSync(join(dir, "dist/get3w-server.mjs"), 'console.log("BUNDLE_IMPORTED")');
     const fixture = join(dir, "version.mjs");
     writeFileSync(fixture, 'Object.defineProperty(process.versions, "node", { value: process.env.TEST_NODE_VERSION })');
     for (const version of ["22.13.0", "24.18.0", "24.22.0", "24.22.1", "24.23.0", "25.0.0", "26.0.0"]) {
-      const result = spawnSync(process.execPath, ["--import", fixture, join(dir, "bin/openwork-server.mjs")], { encoding: "utf8", env: { ...process.env, TEST_NODE_VERSION: version } });
+      const result = spawnSync(process.execPath, ["--import", fixture, join(dir, "bin/get3w-server.mjs")], { encoding: "utf8", env: { ...process.env, TEST_NODE_VERSION: version } });
       assert.ifError(result.error);
       assert.equal(result.status, nodeVersionSupported(version) ? 0 : 1, result.stderr);
       assert.equal(result.stdout.includes("BUNDLE_IMPORTED"), nodeVersionSupported(version));

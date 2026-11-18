@@ -55,7 +55,7 @@ export function activityScopeKey(scope: ActivityScope): string {
   return JSON.stringify([scope.baseUrl.replace(/\/+$/, ""), scope.organizationId, scope.memberId]);
 }
 
-export const ACTIVITY_REFRESH_EVENT = "openwork-member-activity-refresh";
+export const ACTIVITY_REFRESH_EVENT = "get3w-member-activity-refresh";
 
 export function requestMemberActivityRefresh() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(ACTIVITY_REFRESH_EVENT));

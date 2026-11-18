@@ -80,7 +80,7 @@ function observePage(id, options = {}) {
   const interactive = mode === "interactive";
   const limit = Number.isInteger(options.limit) && options.limit > 0 ? Math.min(options.limit, 500) : interactive ? 200 : 500;
   const includeText = options.includeText ?? !interactive;
-  const registry = globalThis.__openworkBrowserRefs ??= { byElement: new WeakMap(), byRef: new Map(), identities: new WeakMap(), next: 0,
+  const registry = globalThis.__get3wBrowserRefs ??= { byElement: new WeakMap(), byRef: new Map(), identities: new WeakMap(), next: 0,
     observations: new Map(), latest: null, last: null, describe: null, identify: null };
   const elements = [];
   registry.snapshots ??= new WeakMap();
@@ -98,7 +98,7 @@ function observePage(id, options = {}) {
   // Values the page or person filled (autofill, a typed address) stay in the page: the model sees
   // only whether a field is filled, unless the agent entered that exact value itself. In-page
   // staleness and verification checks read the real value (reveal).
-  const entered = globalThis.__openworkAgentEntered ??= new WeakMap();
+  const entered = globalThis.__get3wAgentEntered ??= new WeakMap();
   const isSensitive = element => element.matches('input[type="password"]') ||
     (element.getAttribute("autocomplete") || "").toLowerCase().split(/\s+/).some(token => token === "one-time-code" || token.startsWith("cc-"));
   const isTextValue = element => element instanceof HTMLTextAreaElement ||
@@ -315,9 +315,9 @@ function observePage(id, options = {}) {
 // counters, clocks) are ignored; elements appearing, disappearing, showing,
 // hiding or turning busy are not.
 function readSettle(arm) {
-  let state = globalThis.__openworkBrowserSettle;
+  let state = globalThis.__get3wBrowserSettle;
   if (!state) {
-    state = globalThis.__openworkBrowserSettle = { at: performance.now() };
+    state = globalThis.__get3wBrowserSettle = { at: performance.now() };
     new MutationObserver((records) => {
       if (records.some((record) => record.type === "attributes" || [...record.addedNodes, ...record.removedNodes].some((node) => node.nodeType === Node.ELEMENT_NODE))) state.at = performance.now();
     }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "disabled", "aria-busy", "aria-hidden", "open"] });
@@ -326,7 +326,7 @@ function readSettle(arm) {
   return { quietMs: performance.now() - state.at, readyState: document.readyState, busy: !!document.querySelector('[aria-busy="true"]') };
 }
 function prepareAction(id, action) {
-  const registry = globalThis.__openworkBrowserRefs;
+  const registry = globalThis.__get3wBrowserRefs;
   const observation = registry?.observations.get(id);
   if (!observation) throw new Error("stale_observation");
   // Image coordinates are only meaningful for the latest, unchanged view.
@@ -395,13 +395,13 @@ function prepareAction(id, action) {
   return { x, y, unchanged: action.type === "set_checked" && control.checked === action.checked };
 }
 function applyFormAction(action) {
-  const registry = globalThis.__openworkBrowserRefs;
+  const registry = globalThis.__get3wBrowserRefs;
   const element = registry?.byRef.get(action.ref)?.deref();
   if (!element?.isConnected) throw new Error("stale_element");
   if (registry.identities.get(element) !== registry.identify(element, registry.describe(element))) throw new Error("stale_element");
   if (registry.snapshots.get(element) !== JSON.stringify(registry.describe(element, true))) throw new Error("stale_observation");
   // The agent may read back exactly what it entered.
-  if (action.type === "fill" || action.type === "select") globalThis.__openworkAgentEntered?.set(element, action.type === "select"
+  if (action.type === "fill" || action.type === "select") globalThis.__get3wAgentEntered?.set(element, action.type === "select"
     ? JSON.stringify([...element.options].filter(option => action.values.includes(registry.optionRefs.get(option)?.ref)).map(option => option.value))
     : element instanceof HTMLTextAreaElement ? action.text.replace(/\r\n?/g, "\n") : action.text);
   element.focus();
@@ -427,7 +427,7 @@ function applyFormAction(action) {
   return { inserted: false };
 }
 async function verifyFormAction(action) {
-  const registry = globalThis.__openworkBrowserRefs;
+  const registry = globalThis.__get3wBrowserRefs;
   const element = registry?.byRef.get(action.ref)?.deref();
   const deadline = performance.now() + 1500;
   let matchingSince = null, control;

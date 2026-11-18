@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 import { create } from "zustand"
-import type { ComputerRequest } from "@openwork/types/desktop-ipc"
+import type { ComputerRequest } from "@get3w/types/desktop-ipc"
 
 import { desktopBridge } from "@/app/lib/desktop"
 import { isActiveWorkSessionStatus } from "../sidebar/utils"
@@ -45,7 +45,7 @@ export function ComputerBridge() {
   useEffect(() => {
     void desktopBridge.computerSetFeatureEnabled(enabled).catch(() => {})
     if (!enabled) return
-    return window.__OPENWORK_ELECTRON__?.computer?.onRequest?.(({ sessionId, request }) => {
+    return window.__GET3W_ELECTRON__?.computer?.onRequest?.(({ sessionId, request }) => {
       useComputerStore.getState().setRequest(sessionId, request)
     })
   }, [enabled])

@@ -1,6 +1,6 @@
 import { formatMoney } from "@/i18n/money";
 import { z } from "zod";
-import { GATEWAY_USAGE_LIMIT_ERROR_CODE, hasGatewayUsageLimitHttpMarker, gatewayUsageTimeframeSchema, type GatewayUsageBucket, type GatewayUsageStatus } from "@openwork/types/den/gateway-usage-limits";
+import { GATEWAY_USAGE_LIMIT_ERROR_CODE, hasGatewayUsageLimitHttpMarker, gatewayUsageTimeframeSchema, type GatewayUsageBucket, type GatewayUsageStatus } from "@get3w/types/den/gateway-usage-limits";
 
 export const gatewayUsageQueryPrefix = ["gateway-own-usage"];
 
@@ -18,14 +18,14 @@ export const gatewayUsageErrorDetailsSchema = z.object({
 export const gatewayUsageErrorEvidenceSchema = z.object({
   statusCode: z.literal(429),
   responseHeaders: z.object({
-    "x-openwork-error-code": z.literal(GATEWAY_USAGE_LIMIT_ERROR_CODE),
-    "x-openwork-usage-state": z.literal("blocked"),
+    "x-get3w-error-code": z.literal(GATEWAY_USAGE_LIMIT_ERROR_CODE),
+    "x-get3w-usage-state": z.literal("blocked"),
   }).strict(),
   details: gatewayUsageErrorDetailsSchema,
 });
 export type GatewayUsageErrorEvidence = z.infer<typeof gatewayUsageErrorEvidenceSchema>;
 const envelope = z.object({ error: z.object({
-  code: z.literal(GATEWAY_USAGE_LIMIT_ERROR_CODE), source: z.literal("openwork_gateway"),
+  code: z.literal(GATEWAY_USAGE_LIMIT_ERROR_CODE), source: z.literal("get3w_gateway"),
   type: z.literal("usage_limit_error"), details: gatewayUsageErrorDetailsSchema,
 }) });
 
@@ -44,7 +44,7 @@ export function parseGatewayUsageError(value: unknown): GatewayUsageErrorEvidenc
     if (!(rawHeaders instanceof Headers) && rawHeaders && typeof rawHeaders === "object") {
       for (const [name, value] of Object.entries(rawHeaders)) {
         const key = name.toLowerCase();
-        if (key !== "x-openwork-error-code" && key !== "x-openwork-usage-state") continue;
+        if (key !== "x-get3w-error-code" && key !== "x-get3w-usage-state") continue;
         if (typeof value !== "string") return null;
         try { headers.append(key, value); } catch { return null; }
       }
@@ -56,7 +56,7 @@ export function parseGatewayUsageError(value: unknown): GatewayUsageErrorEvidenc
       const parsed = envelope.safeParse(JSON.parse(body));
       if (parsed.success) return {
         statusCode: 429,
-        responseHeaders: { "x-openwork-error-code": GATEWAY_USAGE_LIMIT_ERROR_CODE, "x-openwork-usage-state": "blocked" },
+        responseHeaders: { "x-get3w-error-code": GATEWAY_USAGE_LIMIT_ERROR_CODE, "x-get3w-usage-state": "blocked" },
         details: parsed.data.error.details,
       };
     } catch { continue; }
@@ -65,7 +65,7 @@ export function parseGatewayUsageError(value: unknown): GatewayUsageErrorEvidenc
 }
 
 export function isGatewayUsageModel(providerId: string, gatewayProviderIds?: ReadonlySet<string>): boolean {
-  return providerId !== "openwork" && gatewayProviderIds?.has(providerId) === true;
+  return providerId !== "get3w" && gatewayProviderIds?.has(providerId) === true;
 }
 
 export function gatewayUsageNoticeState(input: {

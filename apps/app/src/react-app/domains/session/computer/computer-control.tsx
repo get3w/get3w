@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react"
-import type { ComputerSnapshot } from "@openwork/types/desktop-ipc"
+import type { ComputerSnapshot } from "@get3w/types/desktop-ipc"
 
 import { desktopBridge } from "@/app/lib/desktop"
 import { useSessionFloatingSlot } from "../panel/floating-slot"

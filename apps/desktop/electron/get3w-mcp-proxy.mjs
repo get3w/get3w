@@ -19,6 +19,7 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
       if(name==='execute_capability' && nativeDiscovery) {
         guardFor(host.sessionId)?.observe({type:'search'},nativeDiscovery);
       }
+      // loopback-fetch: Native coordinator calls only its authenticated local proxy.
       const response=await fetch(`http://127.0.0.1:${serverPort()}/mcp`,{method:"POST",signal,
         headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json",Accept:"application/json, text/event-stream","X-Get3W-Host-Token":hostToken},
         body:JSON.stringify({jsonrpc:"2.0",id:randomBytes(8).toString("hex"),method:"tools/call",params:{name,arguments:args},hostContext:host})});
@@ -41,6 +42,19 @@ export async function createGet3wMcpProxy({ auth, userId, sessionId = randomByte
     // Browsers cannot use this endpoint, even if they can reach loopback.
     if (request.headers.origin || request.headers.host !== `127.0.0.1:${serverPort()}` ||
       supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return fail(401, "Local Gateway authorization required");
+    if (["/web-tools/search", "/web-tools/fetch"].includes(request.url) && request.method === "POST") {
+      const controller = new AbortController(); controllers.add(controller);
+      response.once("close", () => controller.abort());
+      try {
+        const chunks = []; let size = 0;
+        for await (const chunk of request) { size += chunk.length; if (size > 32_768) return fail(413, "Request too large"); chunks.push(chunk); }
+        const result = await auth.webTools({ userId, operation: request.url.endsWith("/search") ? "search" : "fetch", body: JSON.parse(Buffer.concat(chunks).toString("utf8")), signal: controller.signal });
+        response.writeHead(result.status, {"Content-Type":"application/json", "Cache-Control":"no-store"});
+        response.end(JSON.stringify(result.json));
+      } catch { fail(502, "Web service unavailable. Sign in and retry."); }
+      finally { controllers.delete(controller); }
+      return;
+    }
     if (request.url === "/app-index" && request.method === "GET") {
       try {
         const result = await auth.artifacts({userId,method:"GET",path:"/v1/mcp-apps"});

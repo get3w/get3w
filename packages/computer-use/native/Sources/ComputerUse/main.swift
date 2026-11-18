@@ -44,7 +44,7 @@ case "permissions-guide":
     withExtendedLifetime(coach) { NSApplication.shared.run() }
 case "mcp", "mcp-embedded":
     // mcp-embedded: the Get3W desktop hosts Take over, Continue and Stop over the
-    // private openwork/ui channel. mcp: standalone, with native controls.
+    // private get3w/ui channel. mcp: standalone, with native controls.
     SessionControls.embedded = command == "mcp-embedded"
     if !HostTrust.embeddedHostIsTrusted() {
         fputs("Computer control requires the signed Get3W desktop app as its host.\n", stderr)

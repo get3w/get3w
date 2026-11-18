@@ -7,7 +7,7 @@
  * Consumer: apps/app/src/app/lib/desktop.ts — the `desktopBridge` Proxy and
  * its named exports derive per-command signatures from `DesktopCommandMap`.
  *
- * Every command sent over the `openwork:desktop` channel has exactly one
+ * Every command sent over the `get3w:desktop` channel has exactly one
  * entry here: `args` is the tuple the renderer passes, `result` what the
  * main process resolves. Results marked `unknown` are not yet modeled —
  * tighten them instead of widening call sites.
@@ -71,7 +71,7 @@ export type DesktopIntegrationIssue =
 export type DesktopIntegrationStatus = {
   supported: boolean;
   state: "unsupported" | "not_integrated" | "integrated" | "needs_repair" | "managed_externally";
-  ownership: "none" | "openwork" | "external";
+  ownership: "none" | "get3w" | "external";
   appImagePath: string | null;
   desktopEntryPath: string | null;
   handlerDesktopId: string | null;
@@ -84,7 +84,7 @@ export type DesktopIntegrationResult = {
   error?: string;
 };
 
-export type OpenworkServerInfo = {
+export type Get3wServerInfo = {
   running: boolean;
   /**
    * Monotonic per-start identity of the embedded server within this desktop
@@ -149,7 +149,7 @@ export type OpencodeCommandDraft = {
   subtask?: boolean;
 };
 
-export type WorkspaceOpenworkConfig = {
+export type WorkspaceGet3wConfig = {
   version: number;
   workspace?: {
     name?: string | null;
@@ -167,7 +167,7 @@ export type AppBuildInfo = {
   version: string;
   gitSha?: string | null;
   buildEpoch?: string | null;
-  openworkDevMode?: boolean;
+  get3wDevMode?: boolean;
   os?: string | null;
   arch?: string | null;
 };
@@ -202,7 +202,7 @@ export type DesktopBootstrapConfig = {
   fromFile?: boolean;
 };
 
-export type OpenworkDockerCleanupResult = {
+export type Get3wDockerCleanupResult = {
   candidates: string[];
   removed: string[];
   errors: string[];
@@ -406,12 +406,12 @@ export type DesktopCommandMap = {
   workspaceSetRuntimeActive: { args: [workspaceId: string | null]; result: WorkspaceList };
   workspaceCreate: { args: [input: WorkspaceCreateInput]; result: WorkspaceList };
   workspaceForget: { args: [workspaceId: string]; result: WorkspaceList };
-  workspaceOpenworkRead: {
+  workspaceGet3wRead: {
     args: [input: { workspacePath: string }];
-    result: WorkspaceOpenworkConfig;
+    result: WorkspaceGet3wConfig;
   };
-  workspaceOpenworkWrite: {
-    args: [input: { workspacePath: string; config: WorkspaceOpenworkConfig }];
+  workspaceGet3wWrite: {
+    args: [input: { workspacePath: string; config: WorkspaceGet3wConfig }];
     result: unknown;
   };
 
@@ -444,8 +444,8 @@ export type DesktopCommandMap = {
   };
   desktopIntegrationRemove: { args: []; result: DesktopIntegrationResult };
   getUiControlBridgeInfo: { args: []; result: UiControlBridgeInfo | null };
-  getOpenworkUiMcpCommand: { args: []; result: string[] };
-  getOpenworkUiMcpEnvironment: { args: []; result: Record<string, string> };
+  getGet3wUiMcpCommand: { args: []; result: string[] };
+  getGet3wUiMcpEnvironment: { args: []; result: Record<string, string> };
 
   // Computer use (macOS): chat ownership, the watch view and permission setup
   computerSnapshot: { args: [sessionId: string]; result: ComputerSnapshot };
@@ -476,18 +476,18 @@ export type DesktopCommandMap = {
     result: DesktopBootstrapConfig;
   };
 
-  nukeOpenworkAndOpencodeConfigPreview: { args: [options?: NukeOptions]; result: NukeManifestPreview };
-  nukeOpenworkAndOpencodeConfigAndExit: { args: [options?: NukeOptions]; result: NukeReceipt };
+  nukeGet3wAndOpencodeConfigPreview: { args: [options?: NukeOptions]; result: NukeManifestPreview };
+  nukeGet3wAndOpencodeConfigAndExit: { args: [options?: NukeOptions]; result: NukeReceipt };
 
   // Get3W server sidecar
-  openworkServerInfo: { args: []; result: OpenworkServerInfo };
+  get3wServerInfo: { args: []; result: Get3wServerInfo };
   automationRunnerConfigure: {
     args: [configuration: { baseUrl: string; token: string; runnerId: string } | null];
     result: { connected: boolean };
   };
-  openworkServerRestart: {
+  get3wServerRestart: {
     args: [options?: Record<string, unknown>];
-    result: OpenworkServerInfo;
+    result: Get3wServerInfo;
   };
 
   // Dialogs
@@ -537,14 +537,14 @@ export type DesktopCommandMap = {
    * the renderer's localStorage cleanup is mode-scoped. Follow-up: decide
    * whether "onboarding" should preserve desktop workspace state.
    */
-  resetOpenworkState: { args: [mode?: "onboarding" | "all"]; result: unknown };
+  resetGet3wState: { args: [mode?: "onboarding" | "all"]; result: unknown };
   opencodeMcpAuth: { args: [action: string, name: string]; result: ExecResult };
 
   // Window / OS utilities (dunder commands)
   __showContextMenu: { args: [request: NativeContextMenuRequest]; result: string | null };
   __cancelContextMenu: { args: [requestId: string]; result: boolean };
   __openPath: { args: [target: string]; result: unknown };
-  __openWorkspaceFile: { args: [workspaceRoot: string, target: string, options?: { reveal?: boolean }]; result: DesktopWorkspaceFileOpenResult };
+  __get3wspaceFile: { args: [workspaceRoot: string, target: string, options?: { reveal?: boolean }]; result: DesktopWorkspaceFileOpenResult };
   __revealItemInDir: { args: [target: string]; result: unknown };
   __applyBrandAppName: { args: [appName: string | null]; result: { ok: true; appName: string } };
   __applyBrandIcon: { args: [url: string | null]; result: BrandIconApplyResult };

@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Service readiness; replace only with an audited service.
-export const OPENWORK_DESKTOP_TELEMETRY_SERVICE = null;
+export const GET3W_DESKTOP_TELEMETRY_SERVICE = null;
 
 let sentry = null;
 let initialized = false;
@@ -20,15 +20,15 @@ function normalizeIdentifier(value) {
   return trimmed || null;
 }
 
-export function resolveOpenworkSentryAppVersion({ app, packageMetadata }) {
+export function resolveGet3wSentryAppVersion({ app, packageMetadata }) {
   const electronAppVersion = normalizeIdentifier(app?.getVersion?.());
   const packageVersion = normalizeIdentifier(packageMetadata?.version);
   if (app?.isPackaged) return electronAppVersion || packageVersion || "unknown";
   return packageVersion || electronAppVersion || "unknown";
 }
 
-export function resolveOpenworkSentryRelease({ appVersion, environmentRelease = process.env.SENTRY_RELEASE }) {
-  return normalizeIdentifier(environmentRelease) || `openwork-desktop@${normalizeIdentifier(appVersion) || "unknown"}`;
+export function resolveGet3wSentryRelease({ appVersion, environmentRelease = process.env.SENTRY_RELEASE }) {
+  return normalizeIdentifier(environmentRelease) || `get3w-desktop@${normalizeIdentifier(appVersion) || "unknown"}`;
 }
 
 function parseBuildConfig(path) {
@@ -49,22 +49,22 @@ function parseBuildConfig(path) {
 
 function readBuildConfig(app) {
   if (app.isPackaged) {
-    return parseBuildConfig(resolve(process.resourcesPath, "openwork-sentry.json"));
+    return parseBuildConfig(resolve(process.resourcesPath, "get3w-sentry.json"));
   }
-  return parseBuildConfig(resolve(__dirname, "..", ".electron-runtime", "openwork-sentry.json"));
+  return parseBuildConfig(resolve(__dirname, "..", ".electron-runtime", "get3w-sentry.json"));
 }
 
-export async function initOpenworkSentry({ app, distribution, packageMetadata }) {
+export async function initGet3wSentry({ app, distribution, packageMetadata }) {
   // No Get3W telemetry destination/consent contract is ready. Inherited DSNs
   // must not initialize an SDK, including background integrations.
-  if (!OPENWORK_DESKTOP_TELEMETRY_SERVICE) return false;
+  if (!GET3W_DESKTOP_TELEMETRY_SERVICE) return false;
   const buildConfig = readBuildConfig(app);
   const dsn = buildConfig.dsn;
   if (!dsn || envFlagEnabled("GET3W_DESKTOP_SENTRY_DISABLED")) return false;
 
   sentry = await import("@sentry/electron/main");
-  const appVersion = resolveOpenworkSentryAppVersion({ app, packageMetadata });
-  const release = resolveOpenworkSentryRelease({ appVersion });
+  const appVersion = resolveGet3wSentryAppVersion({ app, packageMetadata });
+  const release = resolveGet3wSentryRelease({ appVersion });
   const sampleRate = buildConfig.tracesSampleRate;
 
   sentry.init({
@@ -96,32 +96,32 @@ export async function initOpenworkSentry({ app, distribution, packageMetadata })
   });
 
   initialized = true;
-  globalThis.__openworkDesktopTelemetry = {
+  globalThis.__get3wDesktopTelemetry = {
     captureException,
-    clearSession: clearOpenworkSentrySession,
-    setSession: setOpenworkSentrySession,
+    clearSession: clearGet3wSentrySession,
+    setSession: setGet3wSentrySession,
   };
   return true;
 }
 
-export function setOpenworkSentrySession(input) {
+export function setGet3wSentrySession(input) {
   const userId = normalizeIdentifier(input?.userId);
   if (!initialized || !sentry || !userId) return false;
 
   telemetryActive = true;
   sentry.setUser({ id: userId });
-  sentry.setContext("openwork_cloud", {
+  sentry.setContext("get3w_cloud", {
     user_id: userId,
   });
   return true;
 }
 
-export function clearOpenworkSentrySession() {
+export function clearGet3wSentrySession() {
   telemetryActive = false;
   if (!initialized || !sentry) return false;
 
   sentry.setUser(null);
-  sentry.setContext("openwork_cloud", null);
+  sentry.setContext("get3w_cloud", null);
   return true;
 }
 

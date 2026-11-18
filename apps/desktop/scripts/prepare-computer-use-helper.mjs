@@ -117,12 +117,12 @@ function infoPlist() {
 
 /** This PC: the Windows helper, built with the .NET Framework compiler every
  * Windows 10/11 install carries, so it needs no SDK. electron-builder signs it
- * with Get3W's identity like openwork-dictation.exe. A missing compiler is
+ * with Get3W's identity like get3w-dictation.exe. A missing compiler is
  * not fatal: This PC then reports the helper missing. */
 function prepareWindowsHelper() {
   const source = resolve(repoRoot, "packages", "computer-use", "windows", "ComputerUse.cs");
-  const executable = join(outDir, "openwork-computer-use.exe");
-  const fingerprintPath = join(outDir, "openwork-computer-use.sha256");
+  const executable = join(outDir, "get3w-computer-use.exe");
+  const fingerprintPath = join(outDir, "get3w-computer-use.sha256");
   const sourceHash = createHash("sha256").update(readFileSync(source)).update(readFileSync(fileURLToPath(import.meta.url))).digest("hex");
   if (!force && existsSync(executable) && existsSync(fingerprintPath) && readFileSync(fingerprintPath, "utf8").trim() === sourceHash) {
     process.stdout.write(JSON.stringify({ ok: true, skipped: true, executable }, null, 2) + "\n");

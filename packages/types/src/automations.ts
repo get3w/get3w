@@ -118,7 +118,7 @@ export const AUTOMATION_LEGACY_SCHEDULE_KINDS = ["once", "daily", "weekly"] as c
  * since August 2026; one that sends it without this header is a released
  * desktop that reads only the legacy kinds.
  */
-export const AUTOMATION_SCHEDULE_KINDS_HEADER = "x-openwork-automation-schedule-kinds" as const
+export const AUTOMATION_SCHEDULE_KINDS_HEADER = "x-get3w-automation-schedule-kinds" as const
 
 function isAutomationScheduleKind(value: string): value is AutomationScheduleKind {
   return AUTOMATION_SCHEDULE_KINDS.some((kind) => kind === value)
@@ -203,7 +203,7 @@ export const AUTOMATION_FREE_MODEL = {
  * runs them, so neither a person nor an agent has to pick a provider.
  */
 export const AUTOMATION_CLOUD_DEFAULT_MODEL = {
-  providerId: "openwork-cloud",
+  providerId: "get3w-cloud",
   modelId: "default",
   providerName: "Get3W Cloud",
   modelName: "Cloud default",
@@ -223,7 +223,7 @@ export function isAutomationCloudDefaultModel(model: { providerId: string; model
  */
 export function isDenAuthorizedAutomationProvider(providerId: string): boolean {
   return /^lpr_/i.test(providerId)
-    || providerId === "openwork"
+    || providerId === "get3w"
     || providerId === AUTOMATION_FREE_MODEL.providerId
     || providerId === AUTOMATION_CLOUD_DEFAULT_MODEL.providerId
 }
@@ -234,7 +234,7 @@ export const automationNeedsAttentionReasonSchema = z.object({
     "model_access_lost",
     "provider_unavailable",
     "connect_access_unavailable",
-    "openwork_web_access_required",
+    "get3w_web_access_required",
     "execution_runtime_unavailable",
   ]),
   message: z.string().trim().min(1).max(2_000),
@@ -292,7 +292,7 @@ export const automationErrorSchema = z.object({
     "model_access_lost",
     "provider_unavailable",
     "connect_access_unavailable",
-    "openwork_web_access_required",
+    "get3w_web_access_required",
     "execution_runtime_unavailable",
     "execution_failed",
     "connection_action_required",
@@ -352,7 +352,7 @@ export const REMOTE_SESSION_RECOVERY_RUNNER_CAPABILITY = "remote_session_recover
  * the person's answer to it. Den sends answer requests only to these runners.
  */
 export const REMOTE_SESSION_ANSWER_RUNNER_CAPABILITY = "remote_session_answer_v1"
-export const AUTOMATION_MODEL_ATTENTION_CAPABILITY_HEADER = "x-openwork-automation-model-attention" as const
+export const AUTOMATION_MODEL_ATTENTION_CAPABILITY_HEADER = "x-get3w-automation-model-attention" as const
 export const automationDesktopRunnerCapabilitySchema = z.enum([
   AUTOMATION_MODEL_ATTENTION_CAPABILITY,
   REMOTE_SESSION_DESKTOP_RUNNER_CAPABILITY,

@@ -1,6 +1,6 @@
 // These engine versions are verified against the native catalog and executable registry.
 export const isMcpReadinessVersionSupported = (version: string) => ["2.0.26", "2.2.0"].includes(version);
-export const MCP_READINESS_RPC_ID = "openwork.mcp-readiness";
+export const MCP_READINESS_RPC_ID = "get3w.mcp-readiness";
 export type McpPublishedTool = { readonly id: string; readonly options?: { readonly namespace?: string } };
 type Registration = { dispose(): Promise<void> };
 export type McpReadinessRegistry = {

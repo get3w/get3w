@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   mcpAppIdSchema,
   parseMcpAppResourceUri,
-} from "@openwork/types/mcp-app";
+} from "@get3w/types/mcp-app";
 
 const entrySchema = z
   .object({

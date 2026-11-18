@@ -1,7 +1,7 @@
 // Engine reload wiring for the session route: UI-triggered engine reload,
 // reload-coordinator registration, the post-org-onboarding reload latch,
 // server reload-event polling, and desktop engine info. Extracted verbatim
-// from session-route.tsx; reload events are now typed (OpenworkReloadEvent)
+// from session-route.tsx; reload events are now typed (Get3wReloadEvent)
 // instead of `any`.
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -9,7 +9,7 @@ import { engineInfo } from "@/app/lib/desktop";
 import { isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
 import type { EngineInfo } from "@/app/lib/desktop-types";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import type { ResolvedWorkspaceEndpoint } from "@/app/lib/workspace-endpoint";
 import { t } from "@/i18n";
 import { reloadEngineWithDesktopFallback } from "./engine-reload-escalation";
@@ -21,14 +21,14 @@ import { toast } from "@/components/ui/sonner";
 import { useLiveProviderSync } from "@/react-app/domains/connections/provider-auth/use-live-provider-sync";
 import { shouldRefreshProvidersForReloadEvent } from "@/react-app/domains/connections/provider-auth/live-provider-sync";
 
-const reloadAfterOrgOnboardingKey = "openwork.reloadAfterOrgOnboarding";
+const reloadAfterOrgOnboardingKey = "get3w.reloadAfterOrgOnboarding";
 
 function taskCreateUnavailableToastId(workspaceId: string) {
   return `opencode-unavailable:${workspaceId}`;
 }
 
 export type UseEngineReloadInput = {
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string;
   opencodeBaseUrl: string;
   workspace: RouteWorkspace | null | undefined;
@@ -99,7 +99,7 @@ export function useEngineReload(input: UseEngineReloadInput) {
     }
     setEngineReloadVersion((v) => v + 1);
     try {
-      window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+      window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
     } catch {
       // ignore browser event dispatch failures
     }

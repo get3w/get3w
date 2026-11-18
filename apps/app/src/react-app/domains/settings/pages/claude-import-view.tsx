@@ -17,7 +17,7 @@ import {
   type ClaudeImportResult,
 } from "@/app/lib/claude-import";
 import { openDesktopUrl } from "@/app/lib/desktop";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { SettingsNotice } from "../settings-section";
@@ -41,7 +41,7 @@ import {
 export const CLAUDE_IMPORT_GUIDE_URL = "https://get3w.com/docs/help/troubleshooting";
 
 export type ClaudeImportViewProps = {
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string;
   onOpenSession: (sessionId: string) => void;
 };

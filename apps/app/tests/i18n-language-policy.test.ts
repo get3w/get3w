@@ -8,7 +8,7 @@ afterEach(() => {
 });
 function storage(value: string | null) {
   const values = new Map<string, string>();
-  if (value !== null) values.set("openwork.language", value);
+  if (value !== null) values.set("get3w.language", value);
   Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, next: string) => values.set(key, next),
@@ -24,11 +24,11 @@ test("fresh and retired language preferences initialize to Chinese", () => {
   for (const previous of [null, "ja", "ru", "invalid"]) {
     const values = storage(previous);
     setLocale("en");
-    if (previous === null) values.delete("openwork.language");
-    else values.set("openwork.language", previous);
+    if (previous === null) values.delete("get3w.language");
+    else values.set("get3w.language", previous);
     expect(initLocale()).toBe("zh");
     expect(currentLocale()).toBe("zh");
-    expect(values.get("openwork.language")).toBe("zh");
+    expect(values.get("get3w.language")).toBe("zh");
   }
 });
 test("existing English choice is preserved", () => {

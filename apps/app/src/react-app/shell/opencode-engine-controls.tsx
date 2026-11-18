@@ -1,7 +1,7 @@
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { useEffect, useState } from "react";
-import type { EngineV2PreviewStatus } from "@/app/lib/openwork-server";
+import type { EngineV2PreviewStatus } from "@/app/lib/get3w-server";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import type { PaletteItem } from "./command-palette-search";
 import {

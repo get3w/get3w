@@ -1,6 +1,6 @@
 /**
  * A connection an agent could not use because a person has to connect or
- * reconnect it first. OpenWork Cloud reports this in a capability call's
+ * reconnect it first. Get3W Cloud reports this in a capability call's
  * result as a connection status; a run that ended with one did not do what it
  * was asked, whatever the agent wrote afterwards.
  */
@@ -43,20 +43,20 @@ function parseRecord(text: string | null | undefined): Record<string, unknown> |
 }
 
 /**
- * Reads one connection status. Only OpenWork Cloud's own statuses count (its
+ * Reads one connection status. Only Get3W Cloud's own statuses count (its
  * versioned connection action, or the connection card's payload), so a tool
  * that merely echoes similar JSON is not mistaken for one.
  */
 function blockerFrom(value: unknown): ConnectionBlocker | null {
   if (!isRecord(value)) return null;
-  const fromCloud = (value.source === "openwork-cloud" && value.kind === "connection_action")
+  const fromCloud = (value.source === "get3w-cloud" && value.kind === "connection_action")
     || value.schemaVersion === "1";
   if (!fromCloud) return null;
   const { connectionId, connectionName, state } = value;
   if (typeof connectionId !== "string" || !connectionId.trim()) return null;
   if (typeof connectionName !== "string" || !connectionName.trim()) return null;
   if (state !== "needs_connection" && state !== "reauth_required") return null;
-  // A tool result is not proof of where to go: callers link to OpenWork's own
+  // A tool result is not proof of where to go: callers link to Get3W's own
   // connections page by id rather than to any URL the result carries.
   return { connectionId: connectionId.slice(0, 240), connectionName: connectionName.trim().slice(0, MAX_NAME_LENGTH), state };
 }
@@ -89,6 +89,6 @@ export function connectionBlockerFromToolCalls(calls: Iterable<ConnectionBlocker
 /** What the run's owner reads: which connection and what to do. */
 export function connectionBlockerMessage(blocker: ConnectionBlocker): string {
   return blocker.state === "needs_connection"
-    ? `${blocker.connectionName} is not connected, so this run could not use it. Connect ${blocker.connectionName} in OpenWork, then run the Automation again.`
-    : `${blocker.connectionName} needs to be reconnected, so this run could not use it. Reconnect ${blocker.connectionName} in OpenWork, then run the Automation again.`;
+    ? `${blocker.connectionName} is not connected, so this run could not use it. Connect ${blocker.connectionName} in Get3W, then run the Automation again.`
+    : `${blocker.connectionName} needs to be reconnected, so this run could not use it. Reconnect ${blocker.connectionName} in Get3W, then run the Automation again.`;
 }

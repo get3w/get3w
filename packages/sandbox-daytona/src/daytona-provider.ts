@@ -18,7 +18,7 @@ import {
   type SandboxState,
   type SandboxStorage,
   type SandboxPlatform,
-} from "@openwork/sandbox"
+} from "@get3w/sandbox"
 import { toRuntimeProviderError } from "./errors.js"
 import { memorySnapshots } from "./memory-snapshots.js"
 
@@ -100,8 +100,8 @@ export type DaytonaProviderDeps = {
 const maxSignedPreviewExpirySeconds = 60 * 60 * 24
 const sandboxCacheCapacity = 256
 const helperResources: SandboxResources = { cpu: 1, memoryGb: 1, diskGb: 4 }
-const probeMountPath = "/mnt/openwork-probe"
-const eraseMountRoot = "/mnt/openwork-erase"
+const probeMountPath = "/mnt/get3w-probe"
+const eraseMountRoot = "/mnt/get3w-erase"
 
 const stateMap: Record<string, SandboxState> = {
   started: "running",
@@ -413,7 +413,7 @@ export function createDaytonaProvider(config: DaytonaProviderConfig, deps: Dayto
   }
 
   async function execScript(sandbox: DaytonaSandboxClient, sessionId: string, spec: ExecSpec & { script: string }) {
-    const directory = `/tmp/openwork-exec-${randomUUID()}`
+    const directory = `/tmp/get3w-exec-${randomUUID()}`
     const path = `${directory}/script.sh`
     const timeoutMs = Number.isFinite(spec.timeoutMs) && spec.timeoutMs > 0 ? spec.timeoutMs : 30_000
     const deadline = now() + timeoutMs
@@ -489,7 +489,7 @@ export function createDaytonaProvider(config: DaytonaProviderConfig, deps: Dayto
   }
 
   async function execOn(sandbox: DaytonaSandboxClient, spec: ExecSpec): Promise<ExecHandle> {
-    const sessionId = spec.sessionId ?? `openwork-exec-${randomSuffix()}`
+    const sessionId = spec.sessionId ?? `get3w-exec-${randomSuffix()}`
     let command: { cmdId: string }
     if (spec.script === undefined) {
       await wrap(() => sandbox.process.createSession(sessionId))
@@ -737,7 +737,7 @@ export function createDaytonaProvider(config: DaytonaProviderConfig, deps: Dayto
             if (spec.activity !== "maintenance") await renewLease(sandbox)
             const download = sandbox.fs.downloadFile
             if (!download) throw new RuntimeProviderError({ providerId, code: "invalid_state", retryable: false, message: "Exact run output requires file downloads" })
-            const directory = `/tmp/openwork-run-${randomUUID()}`
+            const directory = `/tmp/get3w-run-${randomUUID()}`
             await wrap(() => sandbox.fs.createFolder(directory, "700"))
             let completed = false
             try {

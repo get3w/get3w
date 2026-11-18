@@ -1,7 +1,7 @@
 import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import type { ComputerPermission, ComputerStatus } from "@openwork/types/desktop-ipc";
+import type { ComputerPermission, ComputerStatus } from "@get3w/types/desktop-ipc";
 
 import { desktopBridge } from "@/app/lib/desktop";
 import { isElectronRuntime, isMacPlatform } from "@/app/utils";

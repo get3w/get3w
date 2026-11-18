@@ -23,7 +23,7 @@ const PUBLIC_DISTRIBUTION = {
   flavor: "public",
   appName: "Get3W",
   appIdentifier: "com.get3w.desktop",
-  protocolScheme: "openwork",
+  protocolScheme: "get3w",
   requireSignin: false,
   requireActivation: false,
 } as const;
@@ -44,7 +44,7 @@ const ACTIVATED_BOOTSTRAP = {
 const GATED_DESKTOP_COMMANDS = new Set([
   "workspaceBootstrap",
   "runtimeBootstrap",
-  "openworkServerRestart",
+  "get3wServerRestart",
   "engineStart",
   "automationRunnerConfigure",
 ]);
@@ -58,7 +58,7 @@ function installElectronBridge() {
   const meta: { distribution: typeof PUBLIC_DISTRIBUTION; desktopBootstrap?: typeof ACTIVATED_BOOTSTRAP } = {
     distribution: PUBLIC_DISTRIBUTION,
   };
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {
+  Reflect.set(window, "__GET3W_ELECTRON__", {
     meta,
     invokeDesktop: async (command: string) => {
       commands.push(command);

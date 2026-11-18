@@ -116,7 +116,7 @@ function runningScript(toolCallId: string): UIMessage {
     toolCallId,
     state: "input-streaming",
     input: { prompt: "Summarize the changes and post them" },
-    callProviderMetadata: { openwork: { codeMode: { calls: [] } } },
+    callProviderMetadata: { get3w: { codeMode: { calls: [] } } },
   }
   return {
     id: "reply_script",

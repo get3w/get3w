@@ -134,9 +134,9 @@ const taxonomyDesc: Record<ExtensionTaxonomy, string> = {
 
 const uiControlClientConfig = `{
   "mcpServers": {
-    "openwork-ui": {
+    "get3w-ui": {
       "command": "npx",
-      "args": ["-y", "openwork-ui-mcp"]
+      "args": ["-y", "get3w-ui-mcp"]
     }
   }
 }`;
@@ -144,7 +144,7 @@ const uiControlClientConfig = `{
 function uiControlOpencodeConfig(command: string[], environment?: Record<string, string>) {
   return JSON.stringify({
     mcp: {
-      "openwork-ui": {
+      "get3w-ui": {
         type: "local",
         command,
         ...(environment ? { environment } : {}),
@@ -154,13 +154,13 @@ function uiControlOpencodeConfig(command: string[], environment?: Record<string,
   }, null, 2);
 }
 
-const fallbackUiControlCommand = ["npx", "-y", "openwork-ui-mcp"];
+const fallbackUiControlCommand = ["npx", "-y", "get3w-ui-mcp"];
 
 const fallbackUiControlOpencodeConfig = `{
   "mcp": {
-    "openwork-ui": {
+    "get3w-ui": {
       "type": "local",
-      "command": ["npx", "-y", "openwork-ui-mcp"],
+      "command": ["npx", "-y", "get3w-ui-mcp"],
       "enabled": true
     }
   }
@@ -797,7 +797,7 @@ function UiControlConnectionDetails(props: UiControlConnectionDetailsProps) {
         <CardContent>
           <div className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
             <div>{t("ui.3b689a6de4e2")}</div>
-            <div>{t("ui.771bfc904852")} <span className="font-mono text-card-foreground">{"openwork-ui-mcp"}</span> {t("ui.5cb6605eac91")}</div>
+            <div>{t("ui.771bfc904852")} <span className="font-mono text-card-foreground">{"get3w-ui-mcp"}</span> {t("ui.5cb6605eac91")}</div>
             <div>{t("ui.eaf719470ae2")}</div>
           </div>
         </CardContent>

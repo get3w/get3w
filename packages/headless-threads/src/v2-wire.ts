@@ -49,7 +49,7 @@ export const v2SessionSchema = data(
       id: z.string(),
       metadata: z.record(z.string(), z.unknown()).nullish(),
       title: z.string().nullish(),
-      openworkHomeDirectory: z.string().optional(),
+      get3wHomeDirectory: z.string().optional(),
       location: z.object({ directory: z.string().optional() }).passthrough().optional(),
       time: z.object({ created: z.number().optional() }).passthrough().optional(),
       model: modelRefSchema.optional(),
@@ -87,6 +87,14 @@ const v2ContentSchema = z
   })
   .passthrough();
 
+const v2FileSchema = z.object({
+  data: z.string().optional(),
+  mime: z.string().optional(),
+  uri: z.string().optional(),
+  name: z.string().optional(),
+  source: z.object({ type: z.string() }).passthrough().optional(),
+}).passthrough();
+
 const v2MessageSchema = z
   .object({
     id: z.string(),
@@ -95,6 +103,7 @@ const v2MessageSchema = z
     time: z.object({ created: z.number().optional(), completed: z.number().optional() }).passthrough().optional(),
     text: z.string().optional(),
     content: z.array(v2ContentSchema).optional(),
+    files: z.array(v2FileSchema).optional(),
     error: z.unknown().optional(),
     cost: z.number().nonnegative().optional(),
     tokens: tokensSchema.optional(),
@@ -128,7 +137,7 @@ export function v2SessionModel(session: V2Session): HeadlessThreadModel | null {
 }
 
 export function fromV2Session(session: V2Session): SessionWire {
-  const directory = session.openworkHomeDirectory ?? session.location?.directory;
+  const directory = session.get3wHomeDirectory ?? session.location?.directory;
   return {
     id: session.id,
     ...(session.title === undefined ? {} : { title: session.title }),
@@ -231,6 +240,18 @@ export function fromV2Messages(messages: V2Message[]): MessageWire[] {
     const parts = message.content
       ? message.content.flatMap((content, index) => fromV2Content(message.id, content, index))
       : message.text === undefined ? [] : [{ id: `${message.id}:0`, type: "text", text: message.text }];
+    for (const [index, file] of (message.files ?? []).entries()) {
+      // Native 2.3.0 persists inline bytes as data/mime/source, rather than
+      // the uri used by its prompt input. Do not invent bytes for other sources.
+      const url = file.source?.type === "inline" && file.data !== undefined && file.mime !== undefined
+        ? `data:${file.mime};base64,${file.data}` : file.uri;
+      parts.push({
+        id: `${message.id}:file:${index}`, type: "file",
+        ...(url === undefined ? {} : { url }),
+        ...(file.mime === undefined ? {} : { mime: file.mime }),
+        ...(file.name === undefined ? {} : { filename: file.name }),
+      });
+    }
     return [{
       info: {
         id: message.id,

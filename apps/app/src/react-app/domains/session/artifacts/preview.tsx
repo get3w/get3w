@@ -51,7 +51,7 @@ function mermaidSourceMarkdown(content: string) {
 
 export function MarkdownPreview({ content, mermaidSource = false, className, ...props }: MarkdownPreviewProps) {
   return (
-    <div data-openwork-markdown-preview="" data-openwork-mermaid-artifact={mermaidSource ? "" : undefined} className={cn("h-full overflow-auto p-4", className)} {...props}>
+    <div data-get3w-markdown-preview="" data-get3w-mermaid-artifact={mermaidSource ? "" : undefined} className={cn("h-full overflow-auto p-4", className)} {...props}>
       <MarkdownBlock text={mermaidSource ? mermaidSourceMarkdown(content) : content} />
     </div>
   );

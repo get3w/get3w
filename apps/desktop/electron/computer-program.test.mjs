@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { runComputerProgram } from "@openwork/computer-use/runtime";
-import { createComputerControl, COMPUTER_PROTOCOL } from "@openwork/computer-use/computer-control";
+import { runComputerProgram } from "@get3w/computer-use/runtime";
+import { createComputerControl, COMPUTER_PROTOCOL } from "@get3w/computer-use/computer-control";
 
 function browserFixture() {
   let value = "";
@@ -244,7 +244,7 @@ test("the broker gates programs and cancels old waits across off/on", async (t) 
     browserTask: ({ operation, args }, { signal }) => f.host.browser(operation, args, signal),
   });
   t.after(() => control.reset(true));
-  /** @type {import("@openwork/computer-use/runtime").ProgramRequest & { sessionId: string }} */
+  /** @type {import("@get3w/computer-use/runtime").ProgramRequest & { sessionId: string }} */
   const input = { sessionId: "chat", surface: "browser", code: 'return await tools.ui.waitFor({target:{name:"Not here"},timeoutMs:5000});' };
   assert.equal((await control.program(input)).ok, false);
   assert.deepEqual(f.calls, []);

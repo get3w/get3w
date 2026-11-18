@@ -10,7 +10,7 @@ import {
   useSubagentRunState,
 } from "@/components/chat/subagent-run-line"
 import { isTaskToolPart, type TaskToolPart } from "@/lib/build-in-tools"
-import { REMOTE_SESSION_STATUS_THREADS_MAX } from "@openwork/types/automations"
+import { REMOTE_SESSION_STATUS_THREADS_MAX } from "@get3w/types/automations"
 import { readDenSettings } from "@/app/lib/den"
 import {
   remoteFollowUpMatches,

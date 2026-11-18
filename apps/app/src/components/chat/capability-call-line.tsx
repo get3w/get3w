@@ -1,5 +1,7 @@
-import { t } from "@/i18n";
 "use client"
+
+import { t, useLocale } from "@/i18n";
+import { workspaceFileFailure } from "@/lib/workspace-file-activity";
 
 import { useState } from "react"
 import type { DynamicToolUIPart } from "ai"
@@ -15,13 +17,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { getCapabilityCallSentence, type CapabilityCallSentence } from "@/lib/capability-call"
 import {
-  isOpenWorkSkillCall,
+  isGet3WSkillCall,
   savedSkillSentence,
   skillShareFailureReason,
   skillShareRequest,
   skillShareSentence,
 } from "@/lib/created-skill"
-import { OPENWORK_NATIVE_TOOL, openWorkNativeFailure, openWorkNativeSentence } from "@/lib/openwork-native-activity"
+import { GET3W_NATIVE_TOOL, get3wNativeFailure, get3wNativeSentence } from "@/lib/get3w-native-activity"
 import { resolveExtensionIconSrc } from "@/react-app/design-system/extension-icon-src"
 import { RAIL_LINE, RAIL_ROW, TextSentenceLine } from "./activity-rail"
 import { TextTechnicalDetails } from "./text-activity-details"
@@ -45,44 +47,44 @@ type CapabilityCallLineProps = ChatToolReconnectCallbacks & {
 }
 
 /** Get3W's own skill tools are first-party work: they carry the Get3W mark. */
-export const OPENWORK_IDENTITY: ConnectorToolIdentity = {
-  id: "openwork",
+export const GET3W_IDENTITY: ConnectorToolIdentity = {
+  id: "get3w",
   name: "Get3W",
-  iconUrl: resolveExtensionIconSrc("/openwork-sidebar-mark.svg"),
+  iconUrl: resolveExtensionIconSrc("/get3w-sidebar-mark.svg"),
   serviceUrl: null,
   toolNamespace: null,
   connectionId: null,
 }
 
-const OPENWORK_MARK_SRC = resolveExtensionIconSrc("/openwork-sidebar-mark.svg")
+const GET3W_MARK_SRC = resolveExtensionIconSrc("/get3w-sidebar-mark.svg")
 
 /**
  * Is this identity Get3W's own (our skills, or the Connect/Cloud server
  * reached as a connection)? Matched by id, by our mark asset, or by an
  * Get3W host, since connection identities carry their own ids.
  */
-export function isOpenWorkIdentity(connector: ConnectorToolIdentity): boolean {
-  if (connector.id === OPENWORK_IDENTITY.id) return true
+export function isGet3WIdentity(connector: ConnectorToolIdentity): boolean {
+  if (connector.id === GET3W_IDENTITY.id) return true
   const icon = connector.iconUrl ?? ""
-  if (/\/openwork-(?:sidebar-)?mark\.svg(?:$|[?#])/.test(icon)) return true
+  if (/\/get3w-(?:sidebar-)?mark\.svg(?:$|[?#])/.test(icon)) return true
   const host = (value: string | null | undefined) => {
     if (!value) return ""
     try { return new URL(value).hostname } catch { return "" }
   }
-  return [host(connector.serviceUrl), host(connector.iconUrl)].some((name) => /(?:^|\.)openworklabs\.com$/.test(name))
+  return [host(connector.serviceUrl), host(connector.iconUrl)].some((name) => /(?:^|\.)get3wlabs\.com$/.test(name))
 }
 
 /**
  * The Get3W mark drawn in the current text colour (a mask, not an image),
  * so it reads on light and dark and dims with the sentence around it.
  */
-export function OpenWorkMark({ className }: { className?: string }) {
+export function Get3WMark({ className }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      data-openwork-mark=""
+      data-get3w-mark=""
       className={cn("inline-block shrink-0 bg-current", className)}
-      style={{ maskImage: `url("${OPENWORK_MARK_SRC}")`, maskSize: "contain", maskRepeat: "no-repeat", maskPosition: "center", WebkitMaskImage: `url("${OPENWORK_MARK_SRC}")`, WebkitMaskSize: "contain", WebkitMaskRepeat: "no-repeat", WebkitMaskPosition: "center" }}
+      style={{ maskImage: `url("${GET3W_MARK_SRC}")`, maskSize: "contain", maskRepeat: "no-repeat", maskPosition: "center", WebkitMaskImage: `url("${GET3W_MARK_SRC}")`, WebkitMaskSize: "contain", WebkitMaskRepeat: "no-repeat", WebkitMaskPosition: "center" }}
     />
   )
 }
@@ -91,13 +93,13 @@ export function ConnectorMark({ connector }: { connector: ConnectorToolIdentity 
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   // Text-first: the mark sits inline in the sentence at the text's size.
 
-  const openwork = isOpenWorkIdentity(connector)
+  const get3w = isGet3WIdentity(connector)
   const showImage = Boolean(connector.iconUrl && failedUrl !== connector.iconUrl)
-  if (openwork) {
+  if (get3w) {
     return (
       <span data-connector-icon={connector.id} data-connector-name={connector.name} title={connector.name} aria-hidden="true" className="inline-flex size-3.5 shrink-0 items-center justify-center">
         {/* Full ink, not the sentence's muted tone: white on dark, ink on light. */}
-        <OpenWorkMark className="size-3.5 text-foreground" />
+        <Get3WMark className="size-3.5 text-foreground" />
       </span>
     )
   }
@@ -174,7 +176,7 @@ function shortError(text: string | undefined): string | null {
 
 function failureInstruction(part: DynamicToolUIPart, reconnectName: string | null): string {
   if (reconnectName) {
-    return `${reconnectName} needs a fresh sign-in.`
+    return t("activity.sign_in", { name: reconnectName })
   }
   const errorText = part.state === "output-error" ? part.errorText : null
   return describeChatToolFailure(errorText ?? "")
@@ -223,7 +225,7 @@ export function DetailsToggle({ open, onToggle, label, alwaysVisible = false }: 
     <Button type="button" variant="ghost" size="icon-xs"
       className={cn("shrink-0 text-muted-foreground/70 transition-opacity duration-150 motion-reduce:transition-none",
         open || alwaysVisible ? "opacity-100" : "opacity-0 group-hover/step:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100")}
-      aria-label={`${open ? "Hide" : "Show"} technical details for ${label}`} title={t("ui.890ab358a55d")}
+      aria-label={t(open ? "activity.details.hide" : "activity.details.show", { label })} title={t("ui.890ab358a55d")}
       aria-expanded={open} onClick={onToggle} data-testid="tool-details-toggle">
       <ChevronRight aria-hidden="true" className={cn("size-3 transition-transform duration-150 ease-out motion-reduce:transition-none", open && "rotate-90")} />
     </Button>
@@ -242,9 +244,9 @@ export function DetailsToggle({ open, onToggle, label, alwaysVisible = false }: 
  * API capabilities) carry the Get3W mark. A capability that reaches
  * another service ("mcp:", "native:", "plugin:") is that service's, never ours.
  */
-export function isOpenWorkActivity(part: DynamicToolUIPart): boolean {
-  if (OPENWORK_NATIVE_TOOL.test(part.toolName) || ["media_prepare", "media_generate", "resource_upload"].includes(part.toolName)) return true
-  if (!/^(?:openwork|openwork-cloud)_/.test(part.toolName)) return false
+export function isGet3WActivity(part: DynamicToolUIPart): boolean {
+  if (GET3W_NATIVE_TOOL.test(part.toolName) || ["media_prepare", "media_generate", "resource_upload"].includes(part.toolName)) return true
+  if (!/^(?:get3w|get3w-cloud)_/.test(part.toolName)) return false
   const input = part.input
   const name = typeof input === "object" && input !== null && "name" in input && typeof input.name === "string" ? input.name : ""
   return !/^(?:mcp|native|plugin):/.test(name)
@@ -263,6 +265,7 @@ export function CapabilityCallLine({
   onReconnect,
   onReopenAuthorization,
 }: CapabilityCallLineProps) {
+  useLocale()
   const [open, setOpen] = useState(false)
 
   const { shareLabels } = useCreatedSkills()
@@ -281,13 +284,13 @@ export function CapabilityCallLine({
   const shareRequest = skillShareRequest(part)
   const skillSentence = savedSkillSentence(part)
     ?? (shareRequest ? skillShareSentence(shareLabels.get(part.toolCallId) ?? null) : null)
-  const mark = connector ?? (isOpenWorkSkillCall(part) || isOpenWorkActivity(part) ? OPENWORK_IDENTITY : null)
-  const nativeSentence = openWorkNativeSentence(part)
+  const mark = connector ?? (isGet3WSkillCall(part) || isGet3WActivity(part) ? GET3W_IDENTITY : null)
+  const nativeSentence = get3wNativeSentence(part)
   const sentenceFor = (includeQuery: boolean): CapabilityCallSentence => skillSentence
     ? { service: null, ...skillSentence }
     : nativeSentence ?? getCapabilityCallSentence(part, { includeQuery, connectionName: connector?.name })
   // Get3W's own commands report a refusal in their result; that is a failure, not a success.
-  const reportedFailure = openWorkNativeFailure(part)
+  const reportedFailure = get3wNativeFailure(part)
 
   // A share whose answer never arrived: sharing is unverified, not done.
   if (shareRequest && isToolPartInFlight(part) && (statusUnknown || syncDegraded)) {
@@ -304,7 +307,7 @@ export function CapabilityCallLine({
 
   // Blocked by policy is not an error: neutral ink, a lock, and who can change it.
   if (shareRequest && skillShareFailureReason(part) === "blocked") {
-    const label = "Sharing is blocked by your organization"
+    const label = t("activity.sharing_blocked")
     return (
       <div data-capability-call={part.toolName} data-skill-share="blocked" className={cn(RAIL_ROW, className)}>
         <div className={RAIL_LINE}>
@@ -322,7 +325,7 @@ export function CapabilityCallLine({
   // in the rail without turning a failed call into a prominent card.
   if (isFailed && quietFailure && !reconnectAction) {
     const sentence = sentenceFor(false)
-    const label = sentence.failure ?? `${sentence.past} failed`
+    const label = sentence.failure ?? t("activity.failed", { action: sentence.past })
     return (
       <div data-capability-call={part.toolName} className={cn(RAIL_ROW, className)}>
         <div className={RAIL_LINE}>
@@ -340,11 +343,12 @@ export function CapabilityCallLine({
   // never repeats the call; the person or agent decides that afterwards.
   if (isFailed || reportedFailure) {
     const sentence = sentenceFor(false)
-    const failureLabel = sentence.failure ?? `${sentence.past} failed`
+    const failureLabel = sentence.failure ?? t("activity.failed", { action: sentence.past })
     const reason = reconnectState === "connected"
       ? t("ui.c811cf9c3a60")
       : reconnectAction ? failureInstruction(part, reconnectAction.connectionName)
-        : shortError(part.state === "output-error" ? part.errorText : reportedFailure ?? undefined)
+        : part.toolName === "workspace_file" ? workspaceFileFailure(part.state === "output-error" ? part.errorText : reportedFailure ?? undefined)
+          : shortError(part.state === "output-error" ? part.errorText : reportedFailure ?? undefined)
     return (
       <div data-capability-call={part.toolName} className={cn(RAIL_ROW, className)}>
         <div className="flex min-h-6.5 min-w-0 items-center gap-2 text-sm">
@@ -390,12 +394,12 @@ export function CapabilityCallLine({
   const withoutService = (text: string) => groupService
     ? text.replace(` · ${groupService}`, "").replace(new RegExp(`^(Search(?:ed|ing)) ${groupService.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} for`), "$1 for")
     : text
-  const line = withoutService(statusUnknown ? `${sentence.present}, status unavailable` : inFlight ? sentence.present : sentence.past)
+  const line = withoutService(statusUnknown ? t("activity.status_unknown", { action: sentence.present }) : inFlight ? sentence.present : sentence.past)
   return (
     <div data-capability-call={part.toolName} className={cn(RAIL_ROW, className)}>
       <div className={RAIL_LINE}>
         <TextSentenceLine {...splitSentence(line)} mark={mark ? <ConnectorMark connector={mark} /> : null} tone={shimmer && inFlight ? "running" : "normal"} />
-        {repeat > 1 ? <span className="shrink-0 text-xs text-muted-foreground">{repeat} {"times"}</span> : null}
+        {repeat > 1 ? <span className="shrink-0 text-xs text-muted-foreground">{repeat} {t("ui.2bf61a3bc850")}</span> : null}
         <DetailsToggle open={open} onToggle={() => setOpen(!open)} label={line} />
       </div>
       {open ? <TechnicalDetailsPanel part={part} /> : null}

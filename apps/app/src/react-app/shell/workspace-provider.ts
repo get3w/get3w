@@ -1,12 +1,12 @@
 import * as React from "react";
 
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import type { Client } from "@/app/types";
 
 type WorkspaceContextValue = {
   client: Client | null;
   opencodeBaseUrl: string;
-  openworkServerClient: OpenworkServerClient | null;
+  get3wServerClient: Get3wServerClient | null;
   workspaceId: string;
   selectedWorkspaceRoot: string;
 };
@@ -16,7 +16,7 @@ const WorkspaceContext = React.createContext<WorkspaceContextValue | null>(null)
 type WorkspaceProviderProps = {
   client: Client | null;
   opencodeBaseUrl?: string;
-  openworkServerClient?: OpenworkServerClient | null;
+  get3wServerClient?: Get3wServerClient | null;
   workspaceId?: string;
   selectedWorkspaceRoot: string;
   children: React.ReactNode;
@@ -25,14 +25,14 @@ type WorkspaceProviderProps = {
 export function WorkspaceProvider({
   client,
   opencodeBaseUrl = "",
-  openworkServerClient = null,
+  get3wServerClient = null,
   workspaceId = "",
   selectedWorkspaceRoot,
   children,
 }: WorkspaceProviderProps) {
   const value = React.useMemo(
-    () => ({ client, opencodeBaseUrl, openworkServerClient, workspaceId, selectedWorkspaceRoot }),
-    [client, opencodeBaseUrl, openworkServerClient, workspaceId, selectedWorkspaceRoot],
+    () => ({ client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot }),
+    [client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot],
   );
 
   return React.createElement(WorkspaceContext.Provider, { value }, children);

@@ -45,7 +45,7 @@ test("single seed never throws on extraction failure and leaves normal installat
 });
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "openwork-plugin-deps-test-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-plugin-deps-test-"));
   const source = join(root, "source");
   await mkdir(join(source, "node_modules", "fixture-plugin"), { recursive: true });
   await writeFile(join(source, "package.json"), manifest);
@@ -65,7 +65,7 @@ async function assertSeeded(directory: string) {
   assert.equal(await readFile(join(directory, "package.json"), "utf8"), manifest);
   assert.equal(await readFile(join(directory, "package-lock.json"), "utf8"), lockfile);
   assert.equal(await readFile(join(directory, "node_modules", "fixture-plugin", "index.js"), "utf8"), moduleSource);
-  assert.equal((await readdir(directory)).some((entry) => entry.startsWith(".openwork-plugin-deps-")), false);
+  assert.equal((await readdir(directory)).some((entry) => entry.startsWith(".get3w-plugin-deps-")), false);
 }
 
 test("seeds global, explicit, project and discovery-home installs without changing user configs", async () => {

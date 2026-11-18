@@ -8,7 +8,7 @@ test("old saved Den endpoints cannot receive Get3W service calls", () => {
   expect(() => assertGet3wServiceTarget("https://api.get3w.com/path")).not.toThrow();
 });
 test("legacy provider IDs use bundled branding without upstream logo requests", () => {
-  for (const providerId of ["openwork", "openwork-auto"]) expect(providerLogoCandidates({providerId})).toEqual([]);
+  for (const providerId of ["get3w", "get3w-auto"]) expect(providerLogoCandidates({providerId})).toEqual([]);
 });
 test("the default engine catalog uses its actual third-party source", async () => {
   expect(await resolveOpencodeModelsUrl({env:{}})).toBe("https://models.dev");

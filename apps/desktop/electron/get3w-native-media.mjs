@@ -152,7 +152,11 @@ export function createNativeMedia({auth,userId,directory,dispatch,findTask,now=D
    if(match.length)candidates=match;
   }
   const model=candidates.sort((a,b)=>(a.base_price??Infinity)-(b.base_price??Infinity))[0];
-  if(!model)return failure('model_unavailable','Select an available model supporting this task');
+  if(!model)return failure('model_unavailable','The requested model is unavailable or does not support this task. If the user did not request a specific model, retry media_prepare without model so the host can apply the saved selection and defaults. Otherwise use an exact available model_id or ask the user to select again; do not silently substitute.',{
+   task_type:input.task_type,
+   ...(explicit?{requested_model:explicit}:{}),
+   available_models:cat.models.filter(model=>model.type===input.task_type).map(model=>({model_id:model.model_id,name:model.name})),
+  });
   const trace=randomUUID();
   if(Number.isFinite(host.receivedAt))onTiming({traceId:trace,stage:'model_wait_before_prepare',durationMs:Math.max(0,now()-host.receivedAt)});
   const schemaKey=`${cat.catalog_version}:${model.model_id}`;

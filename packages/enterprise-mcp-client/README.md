@@ -1,4 +1,4 @@
-# `@openwork/enterprise-mcp-client`
+# `@get3w/enterprise-mcp-client`
 
 Reference implementation for server-side remote MCP consumption in Get3W.
 

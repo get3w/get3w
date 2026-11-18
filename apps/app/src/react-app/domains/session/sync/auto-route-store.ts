@@ -4,7 +4,7 @@ import {
   AUTO_ROUTER_SESSION_ROUTES_MAX,
   autoRouterReplyRoutes,
   type AutoRouterReplyRoute,
-} from "@openwork/types/den/auto-router";
+} from "@get3w/types/den/auto-router";
 
 const EMPTY: readonly AutoRouterReplyRoute[] = [];
 

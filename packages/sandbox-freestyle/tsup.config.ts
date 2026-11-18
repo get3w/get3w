@@ -10,5 +10,5 @@ export default defineConfig({
   sourcemap: false,
   splitting: false,
   treeshake: true,
-  external: ["@openwork/sandbox", "freestyle"],
+  external: ["@get3w/sandbox", "freestyle"],
 })

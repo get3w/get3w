@@ -1,6 +1,6 @@
-import { mcpAppIdSchema } from "@openwork/types/mcp-app";
+import { mcpAppIdSchema } from "@get3w/types/mcp-app";
 
-const placementChangedEvent = "openwork:built-dashboard-placement-changed";
+const placementChangedEvent = "get3w:built-dashboard-placement-changed";
 
 class PlacementChangedEvent extends Event {
   constructor(readonly scope: string, readonly ids: string[]) {

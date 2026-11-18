@@ -3,11 +3,11 @@
 // They never enter demonstration steps, persisted drafts, or model context.
 import { readFile, writeFile, rename, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { demonstrationCommandSchema, demonstrationSchema } from "@openwork/types/browser-demonstration";
+import { demonstrationCommandSchema, demonstrationSchema } from "@get3w/types/browser-demonstration";
 import { publicDestination } from "./chromium.mjs";
 
-const WORLD = "openwork-browser-demonstration";
-const BINDING = "__openworkDemonstrationEvent";
+const WORLD = "get3w-browser-demonstration";
+const BINDING = "__get3wDemonstrationEvent";
 const MISSING_LABEL_NOTICE = "The selected information has no label. Explain how to locate it before saving.";
 function privacyFilter() {
   const values = new Map();
@@ -37,7 +37,7 @@ function privacyFilter() {
   };
 }
 function pageRecorder(makePrivacyFilter) {
-  if (window.top !== window || globalThis.__openworkTeaching) return;
+  if (window.top !== window || globalThis.__get3wTeaching) return;
   let recording = false, picking = false, sequence = 0;
   const privacy = makePrivacyFilter();
   const controls = new WeakMap();
@@ -52,7 +52,7 @@ function pageRecorder(makePrivacyFilter) {
       if (privacy.remember(element.value, protectedField(element))) {
         const snapshot = privacy.snapshot();
         // A separate private message feeds only the guest's in-memory filter.
-        globalThis.__openworkDemonstrationEvent(JSON.stringify(snapshot.concealed ? { kind: "privacy", overflow: true } : { kind: "privacy", value: element.value, sensitive: protectedField(element) }));
+        globalThis.__get3wDemonstrationEvent(JSON.stringify(snapshot.concealed ? { kind: "privacy", overflow: true } : { kind: "privacy", value: element.value, sensitive: protectedField(element) }));
       }
     }
   };
@@ -71,7 +71,7 @@ function pageRecorder(makePrivacyFilter) {
     collect();
     if (protectedField(element) || element.closest('[contenteditable="true"]')) return;
     if (!controls.has(element)) controls.set(element, ++sequence);
-    globalThis.__openworkDemonstrationEvent(JSON.stringify({ kind, control: controls.get(element), target: describe(element, kind === "extract"), ...extra }));
+    globalThis.__get3wDemonstrationEvent(JSON.stringify({ kind, control: controls.get(element), target: describe(element, kind === "extract"), ...extra }));
   };
   const click = event => {
     if (!event.isTrusted || !recording) return;
@@ -106,13 +106,13 @@ function pageRecorder(makePrivacyFilter) {
   window.addEventListener("input", input, true);
   window.addEventListener("change", change, true);
   window.addEventListener("keydown", key, true);
-  globalThis.__openworkTeaching = {
+  globalThis.__get3wTeaching = {
     set(active, pick = false, history = { values: [], concealed: false }) {
       for (const [value, sensitive] of history.values) privacy.remember(value, sensitive);
       if (history.concealed) privacy.conceal();
       recording = active; picking = active && pick; collect();
     },
-    dispose() { recording = false; window.removeEventListener("click", click, true); for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"]) window.removeEventListener(type, preventActivation, true); window.removeEventListener("beforeinput", collect, true); window.removeEventListener("input", input, true); window.removeEventListener("change", change, true); window.removeEventListener("keydown", key, true); privacy.clear(); delete globalThis.__openworkTeaching; },
+    dispose() { recording = false; window.removeEventListener("click", click, true); for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"]) window.removeEventListener(type, preventActivation, true); window.removeEventListener("beforeinput", collect, true); window.removeEventListener("input", input, true); window.removeEventListener("change", change, true); window.removeEventListener("keydown", key, true); privacy.clear(); delete globalThis.__get3wTeaching; },
   };
 }
 const SCRIPT = `(${pageRecorder.toString()})(${privacyFilter.toString()})`;
@@ -188,7 +188,7 @@ export function createBrowserDemonstration({ path, endpoint = "http://127.0.0.1:
     if (demo.steps.at(-1)?.kind !== "navigate") append({ kind: "navigate" });
   };
   const setMode = async (pick = false) => {
-    if (wire && contextId !== null) await wire.send("Runtime.evaluate", { contextId, expression: `${SCRIPT}; globalThis.__openworkTeaching?.set(${active()}, ${pick}, ${JSON.stringify(privacy.snapshot())})` });
+    if (wire && contextId !== null) await wire.send("Runtime.evaluate", { contextId, expression: `${SCRIPT}; globalThis.__get3wTeaching?.set(${active()}, ${pick}, ${JSON.stringify(privacy.snapshot())})` });
   };
   async function attach(target) {
     const address = new URL(target.webSocketDebuggerUrl);
@@ -240,7 +240,7 @@ export function createBrowserDemonstration({ path, endpoint = "http://127.0.0.1:
   async function detach() {
     if (!wire) return;
     connectionGeneration++;
-    await wire.send("Runtime.evaluate", { contextId, expression: "globalThis.__openworkTeaching?.dispose()" }).catch(() => {});
+    await wire.send("Runtime.evaluate", { contextId, expression: "globalThis.__get3wTeaching?.dispose()" }).catch(() => {});
     if (scriptId) await wire.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: scriptId }).catch(() => {});
     wire.close(); wire = null; contextId = null; scriptId = null; contexts.clear();
   }

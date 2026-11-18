@@ -12,8 +12,8 @@ import {
 } from "../../app/utils";
 import { normalizeModelBehaviorValue } from "../../app/lib/model-behavior";
 
-export const storedDefaultModelChangedEvent = "openwork.defaultModelChanged";
-export const workspaceDefaultModelChangedEvent = "openwork.workspaceDefaultModelChanged";
+export const storedDefaultModelChangedEvent = "get3w.defaultModelChanged";
+export const workspaceDefaultModelChangedEvent = "get3w.workspaceDefaultModelChanged";
 
 export type WorkspaceModelScope = { profileId: string; runtime: string; workspaceId: string };
 export type WorkspaceDefaultModel = { model: ModelRef; variant: string | null };
@@ -35,7 +35,7 @@ export function workspaceModelScope(input: {
 
 export function workspaceDefaultModelKey(scope: WorkspaceModelScope | null): string | null {
   return scope?.profileId && scope.runtime && scope.workspaceId
-    ? `openwork.workspaceDefaultModel.v1.${JSON.stringify([scope.profileId, scope.runtime, scope.workspaceId])}` : null;
+    ? `get3w.workspaceDefaultModel.v1.${JSON.stringify([scope.profileId, scope.runtime, scope.workspaceId])}` : null;
 }
 
 function readWorkspaceDefaultRaw(key: string | null) {

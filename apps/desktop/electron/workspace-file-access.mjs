@@ -85,7 +85,7 @@ export async function resolveWorkspaceFileLaunch(workspaceRoot, target, deps = {
  * @param {string} workspaceRoot
  * @param {string} target
  * @param {{ reveal?: boolean; openPath: (path: string) => Promise<string>; revealPath: (path: string) => void }} actions
- * @returns {Promise<import("@openwork/types/desktop-ipc").DesktopWorkspaceFileOpenResult>}
+ * @returns {Promise<import("@get3w/types/desktop-ipc").DesktopWorkspaceFileOpenResult>}
  */
 export async function openChatWorkspaceFile(workspaceRoot, target, actions) {
   const decision = await resolveWorkspaceFileLaunch(workspaceRoot, target);

@@ -26,9 +26,9 @@ async function touch(root: string, path: string) {
 }
 
 beforeAll(async () => {
-  base = await mkdtemp(join(tmpdir(), "openwork-artifact-search-"));
+  base = await mkdtemp(join(tmpdir(), "get3w-artifact-search-"));
   home = join(base, "home");
-  workspace = join(home, "openwork-repo");
+  workspace = join(home, "get3w-repo");
   await touch(workspace, "apps/desktop/electron/computer-control.test.mjs");
   await touch(workspace, "apps/desktop/electron/main.mjs");
   await touch(workspace, "apps/server/src/main.mjs");
@@ -37,7 +37,7 @@ beforeAll(async () => {
   await touch(workspace, "dist/only-in-build.mjs");
   await touch(workspace, "docs/deep/a/b/c/notes.md");
   await touch(workspace, "notes.md");
-  await touch(home, "Downloads/openwork-launch-edit.mp4");
+  await touch(home, "Downloads/get3w-launch-edit.mp4");
 });
 
 afterAll(async () => {
@@ -89,10 +89,10 @@ describe("resolveWorkspaceArtifactTargets", () => {
   });
 
   test("expands ~/ and accepts it only inside the workspace", async () => {
-    const [inside] = await resolveWorkspaceArtifactTargets(workspace, [fileTarget("~/openwork-repo/README.md")], { homeDir: home });
+    const [inside] = await resolveWorkspaceArtifactTargets(workspace, [fileTarget("~/get3w-repo/README.md")], { homeDir: home });
     expect(inside).toMatchObject({ value: "README.md", exists: true });
 
-    const outside = await resolveWorkspaceArtifactTargets(workspace, [fileTarget("~/Downloads/openwork-launch-edit.mp4")], { homeDir: home, search: true });
+    const outside = await resolveWorkspaceArtifactTargets(workspace, [fileTarget("~/Downloads/get3w-launch-edit.mp4")], { homeDir: home, search: true });
     expect(outside).toEqual([]);
 
     expect(await resolveWorkspaceArtifactTargets(workspace, [fileTarget("~someone/notes.md")], { homeDir: home, search: true })).toEqual([]);
@@ -176,7 +176,7 @@ describe("resolveWorkspaceArtifactTargets", () => {
   });
 
   test("never searches for paths that leave the workspace", async () => {
-    expect(await resolveWorkspaceArtifactTargets(workspace, [fileTarget("../Downloads/openwork-launch-edit.mp4")], { search: true })).toEqual([]);
-    expect(await resolveWorkspaceArtifactTargets(workspace, [fileTarget(join(home, "Downloads/openwork-launch-edit.mp4"))], { search: true })).toEqual([]);
+    expect(await resolveWorkspaceArtifactTargets(workspace, [fileTarget("../Downloads/get3w-launch-edit.mp4")], { search: true })).toEqual([]);
+    expect(await resolveWorkspaceArtifactTargets(workspace, [fileTarget(join(home, "Downloads/get3w-launch-edit.mp4"))], { search: true })).toEqual([]);
   });
 });

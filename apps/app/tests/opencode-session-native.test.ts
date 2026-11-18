@@ -213,7 +213,7 @@ describe("native OpenCode session operations", () => {
         location: { directory: session.directory }, time: { created: 3, updated: 3 },
       } });
     }, async () => {
-      const client = createClientV2(baseUrl, session.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClientV2(baseUrl, session.directory, { token: endpoint.token, mode: "get3w" });
       const atMessage = unwrap(await client.session.fork({ sessionID: session.id, messageID: "msg_next" }));
       const whole = unwrap(await client.session.fork({ sessionID: session.id }));
       expect(bodies).toEqual([{ before: "msg_next" }, {}]);
@@ -594,7 +594,7 @@ describe("native OpenCode session operations", () => {
       },
     });
     try {
-      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "get3w" });
       const messageID = createPromptMessageID();
       expect(await hasAcceptedPromptMessage(client, session.id, messageID)).toBe(false);
       for (const info of [
@@ -639,7 +639,7 @@ describe("native OpenCode session operations", () => {
       },
     });
     try {
-      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "get3w" });
       expect(await readPromptAdmission(client, session.id, messageID)).toBe("absent");
       statuses = { [session.id]: { type: "busy" } };
       expect(await readPromptAdmission(client, session.id, messageID)).toBe("unknown");
@@ -660,7 +660,7 @@ describe("native OpenCode session operations", () => {
     let response = () => Response.json(body, { status: 507 });
     Object.defineProperty(globalThis, "fetch", { configurable: true, value: async () => response() });
     try {
-      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClient(endpoint.opencodeBaseUrl, session.directory, { token: endpoint.token, mode: "get3w" });
       const settled = await client.session.promptAsync({ sessionID: session.id, parts: [] }).catch((error: unknown) => error);
       if (!(settled instanceof PromptAdmissionUnknownError)) throw new Error("Expected an unknown admission");
       expect(promptAdmissionFailure(settled)).toEqual(body);
@@ -1407,7 +1407,7 @@ describe("native Stop and follow-up handoff", () => {
       if (action === "prompt") { events.push(`prompt:${id}`); return Response.json({ data: {} }); }
       throw new Error(`Unexpected v2 request: ${request.method} ${path}`);
     }, async (requests) => {
-      const client = createClientV2(baseUrl, session.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClientV2(baseUrl, session.directory, { token: endpoint.token, mode: "get3w" });
       const current = unwrap(await client.session.messages({ sessionID: rootID }));
       const send = async () => unwrap(await client.session.promptAsync({
         sessionID: rootID, model: { providerID: "mock", modelID: "mock" }, parts: [{ type: "text", text: "new turn" }],
@@ -1581,7 +1581,7 @@ describe("native Stop and follow-up handoff", () => {
       if (!action && id && sessions[id]) return Response.json(sessions[id]);
       throw new Error(`Unexpected request: ${request.method} ${path}`);
     }, async (requests) => {
-      const client = createClient(baseUrl, root.directory, { token: endpoint.token, mode: "openwork" });
+      const client = createClient(baseUrl, root.directory, { token: endpoint.token, mode: "get3w" });
       const current = unwrap(await client.session.messages({ sessionID: root.id, directory: root.directory }));
       const stop = immediate ? undefined : interruptSessionTurn(baseUrl, client, root.id, root.directory, {
         timeoutMs: 1_000, onStopped: () => { admissionReconciled = true; },

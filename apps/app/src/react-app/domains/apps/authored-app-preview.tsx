@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { GeneratedArtifactView, GeneratedArtifactViewRevision } from "@openwork/types/workflows";
+import type { GeneratedArtifactView, GeneratedArtifactViewRevision } from "@get3w/types/workflows";
 import { McpAppTile, type DashboardLaunchEndpoint } from "../dashboard/mcp-app-tile";
 import { liveGeneratedAppCacheScope } from "./live-generated-app-model";
 import { useAppsClient } from "./use-apps";
@@ -16,7 +16,7 @@ export function AuthoredAppPreview({ view, revision, fallbackEndpoints }: {
     staleTime: Infinity,
     queryFn: async () => {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(view.id));
-      return "openwork-app-host-connect-" + [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("").slice(0, 12);
+      return "get3w-app-host-connect-" + [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("").slice(0, 12);
     },
   });
   if (!host.data) return <p role="status">{host.isError ? "Preview unavailable." : "Loading preview…"}</p>;

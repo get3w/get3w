@@ -1,4 +1,4 @@
-import { desktopConfigSchema, type DesktopConfig } from "@openwork/types/den/desktop-policies-runtime";
+import { desktopConfigSchema, type DesktopConfig } from "@get3w/types/den/desktop-policies-runtime";
 import { existsSync } from "node:fs";
 import { importNodeSqlite, runtimeDbPath } from "./runtime-db.js";
 import type { ServerConfig } from "./types.js";
@@ -25,10 +25,10 @@ export type RuntimeOpencodeConfig = {
   provider?: Record<string, unknown>;
 };
 
-export const ENGINE_GLOBAL_RUNTIME_CONFIG_ID = "__openwork_engine_global__";
+export const ENGINE_GLOBAL_RUNTIME_CONFIG_ID = "__get3w_engine_global__";
 
 /** Reserved Connect MCP name; retained to recognize existing runtime rows. */
-const OPENWORK_CLOUD_MCP_RESERVED_NAME = "openwork-cloud";
+const GET3W_CLOUD_MCP_RESERVED_NAME = "get3w-cloud";
 
 export function isEngineGlobalRuntimeConfigId(workspaceId: string): boolean {
   return workspaceId === ENGINE_GLOBAL_RUNTIME_CONFIG_ID;
@@ -270,8 +270,8 @@ export function mergeRuntimeOpencodeConfigLayers(
   // The Connect MCP is account-scoped: the global row is authoritative, so a
   // stale legacy per-workspace copy must not shadow it. Mirrors
   // the retired organization connection name.
-  const globalCloudMcp = runtimeMcpMap(base)[OPENWORK_CLOUD_MCP_RESERVED_NAME];
-  if (globalCloudMcp) mcp[OPENWORK_CLOUD_MCP_RESERVED_NAME] = globalCloudMcp;
+  const globalCloudMcp = runtimeMcpMap(base)[GET3W_CLOUD_MCP_RESERVED_NAME];
+  if (globalCloudMcp) mcp[GET3W_CLOUD_MCP_RESERVED_NAME] = globalCloudMcp;
   const basePermission = isRecord(base.permission) ? base.permission : {};
   const overlayPermission = isRecord(overlay.permission) ? overlay.permission : {};
   const externalDirectory = {

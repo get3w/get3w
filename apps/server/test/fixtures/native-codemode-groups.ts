@@ -30,7 +30,7 @@ export function groupHost() {
       const body = z.object({ kind: z.literal("context") }).parse(JSON.parse(String(init?.body)));
       assert.equal(body.kind, "context");
       return { ok: true, context: { revision: 9, availableAffordances: [
-        { id: "session.create", kind: "command", executor: { kind: "openwork" } },
+        { id: "session.create", kind: "command", executor: { kind: "get3w" } },
         { id: "connect.call", kind: "command", executor: { kind: "tool", tool: "remote" } },
       ] } };
     }

@@ -9,7 +9,7 @@ import type { ReleaseChannel } from "../types";
 
 declare global {
   interface Window {
-    __openworkReadDesktopVersionMetadataEval?: () => DenAppVersionMetadata | Promise<DenAppVersionMetadata>;
+    __get3wReadDesktopVersionMetadataEval?: () => DenAppVersionMetadata | Promise<DenAppVersionMetadata>;
   }
 }
 
@@ -224,8 +224,8 @@ async function readDenLatestAppVersion(): Promise<string | null> {
 }
 
 export async function readFreshDenAppVersionMetadata(): Promise<DenAppVersionMetadata> {
-  if (import.meta.env.DEV && typeof window !== "undefined" && window.__openworkReadDesktopVersionMetadataEval) {
-    return window.__openworkReadDesktopVersionMetadataEval();
+  if (import.meta.env.DEV && typeof window !== "undefined" && window.__get3wReadDesktopVersionMetadataEval) {
+    return window.__get3wReadDesktopVersionMetadataEval();
   }
   // Read the public electron-builder manifest without routing through the
   // updater bridge (the bridge itself uses this gate for policy checks).

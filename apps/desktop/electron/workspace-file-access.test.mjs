@@ -8,7 +8,7 @@ import { openChatWorkspaceFile } from "./workspace-file-access.mjs";
 let root;
 let workspace;
 before(async () => {
-  root = await mkdtemp(path.join(tmpdir(), "openwork-file-open-"));
+  root = await mkdtemp(path.join(tmpdir(), "get3w-file-open-"));
   workspace = path.join(root, "workspace");
   await mkdir(workspace);
   await writeFile(path.join(workspace, "notes.md"), "notes");

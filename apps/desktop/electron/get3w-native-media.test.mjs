@@ -413,3 +413,28 @@ test('image edits preserve source pixels by default across refresh and restart; 
   }
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+
+test('unknown style-derived model returns current task models and native automatic retry honors saved selection',async()=>{
+ const signal=new AbortController().signal;
+ const models=[
+  {model_id:'provider/preferred/text-to-image',type:'text-to-image',name:'Preferred',base_price:2},
+  {model_id:'provider/cheap/text-to-image',type:'text-to-image',name:'Cheap',base_price:1},
+  {model_id:'provider/video/text-to-video',type:'text-to-video',name:'Video',base_price:1},
+ ];
+ const auth={status:async()=>({status:'signed_in',user:{id:'owner'}}),taskCatalog:async()=>({catalog_version:'v1',models:models.map(model=>({...model,api_schema:{api_schemas:[{request_schema:schema}]}})),desktop_defaults:{tasks:{image:{slug:'provider/preferred'}}}})};
+ const media=createNativeMedia({auth,userId:'owner',dispatch:async()=>{throw Error('No gateway discovery expected');}});
+ const failed=await media.call('media_prepare',{task_type:'text-to-image',model:'flair-art-3.0'},host,signal);
+ assert.equal(failed.error.code,'model_unavailable');
+ assert.equal(failed.error.requested_model,'flair-art-3.0');
+ assert.deepEqual(failed.error.available_models,models.slice(0,2).map(({model_id,name})=>({model_id,name})));
+ assert.match(failed.error.message,/retry media_prepare without model/);
+ const retry=await media.call('media_prepare',{task_type:'text-to-image'},host,signal);
+ assert.equal(retry.model.id,'provider/preferred/text-to-image');
+ const selected={...host,generationPolicy:{selectedModels:[{slug:'provider/cheap'}]}};
+ assert.equal((await media.call('media_prepare',{task_type:'text-to-image'},selected,signal)).model.id,'provider/cheap/text-to-image');
+ const unavailable={...host,generationPolicy:{models:{'text-to-image':{slug:'removed/model',source:'explicit'}}}};
+ assert.equal((await media.call('media_prepare',{task_type:'text-to-image'},unavailable,signal)).error.code,'model_unavailable');
+ const unsupported={...host,generationPolicy:{selectedModels:[{slug:'provider/video'}]}};
+ assert.equal((await media.call('media_prepare',{task_type:'text-to-image'},unsupported,signal)).error.code,'model_unavailable');
+});

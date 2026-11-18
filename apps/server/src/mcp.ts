@@ -1,5 +1,5 @@
 import { minimatch } from "minimatch";
-import { resolveGlobalOpencodeConfigPath } from "@openwork/paths";
+import { resolveGlobalOpencodeConfigPath } from "@get3w/paths";
 import type { McpItem, ServerConfig } from "./types.js";
 import { sanitizeDiagnosticString } from "./diagnostic-sanitizer.js";
 import { readJsoncFile } from "./jsonc.js";
@@ -23,9 +23,9 @@ export type McpToolDeny = {
 
 type McpToolAllow = McpToolDeny;
 
-const OPENWORK_CLOUD_DIAGNOSTIC_TOOL_IDS = [
-  "openwork-cloud_search_capabilities",
-  "openwork-cloud_execute_capability",
+const GET3W_CLOUD_DIAGNOSTIC_TOOL_IDS = [
+  "get3w-cloud_search_capabilities",
+  "get3w-cloud_execute_capability",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,7 +73,7 @@ function getToolIdsForDiagnostics(name: string, toolIds: string[]): string[] {
 }
 
 function diagnosticToolIdsForMcp(name: string): string[] {
-  return name === "openwork-cloud" ? OPENWORK_CLOUD_DIAGNOSTIC_TOOL_IDS : [];
+  return name === "get3w-cloud" ? GET3W_CLOUD_DIAGNOSTIC_TOOL_IDS : [];
 }
 
 function permissionCandidates(name: string, toolId: string): string[] {
@@ -471,7 +471,7 @@ function deniedToolIds(
 
 function isMcpDisabledByTools(config: Record<string, unknown>, name: string): boolean {
   const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return deniedToolIds([config], "", [`${sanitizedName}___openwork_mcp_probe__`]).length > 0;
+  return deniedToolIds([config], "", [`${sanitizedName}___get3w_mcp_probe__`]).length > 0;
 }
 
 export async function listMcp(serverConfig: ServerConfig, workspaceId: string, workspaceRoot: string): Promise<McpItem[]> {

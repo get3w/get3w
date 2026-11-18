@@ -2,7 +2,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { createClient } from "../src/app/lib/opencode";
 import { createClientV2 } from "../src/app/lib/opencode-v2-adapter";
-import { createOpenworkServerClient } from "../src/app/lib/openwork-server";
+import { createGet3wServerClient } from "../src/app/lib/get3w-server";
 import { readManagedDisabledProviders } from "../src/react-app/domains/connections/managed-engine-config";
 import { reconcilePolicyDisabledProviders } from "../src/react-app/domains/connections/policy-provider-reconcile";
 
@@ -35,7 +35,7 @@ function mockServer(runtime: { list: string[] }, v1Config: Record<string, unknow
   return { writes, restore: () => fetch.mockRestore() };
 }
 
-const server = () => createOpenworkServerClient({ baseUrl: "http://localhost:8787", token: "client", hostToken: "host" });
+const server = () => createGet3wServerClient({ baseUrl: "http://localhost:8787", token: "client", hostToken: "host" });
 
 test("ENG-994: v1 reads include a provider disabled on the server before v1 reloads", async () => {
   // v2 chat routing never reloads v1, so its config still lacks the provider
@@ -45,8 +45,8 @@ test("ENG-994: v1 reads include a provider disabled on the server before v1 relo
   const mock = mockServer(runtime, { disabled_providers: ["opencode"] });
   try {
     const disabled = await readManagedDisabledProviders({
-      opencodeClient: createClient("http://localhost:8787/opencode", "/workspace", { mode: "openwork", token: "client" }),
-      openworkClient: server(),
+      opencodeClient: createClient("http://localhost:8787/opencode", "/workspace", { mode: "get3w", token: "client" }),
+      get3wClient: server(),
       workspaceId: "workspace",
       workspaceType: "local",
     });
@@ -61,8 +61,8 @@ test("ENG-994: v1 reads outside a managed local workspace still come from the en
   const mock = mockServer(runtime, { disabled_providers: ["opencode"] });
   try {
     const disabled = await readManagedDisabledProviders({
-      opencodeClient: createClient("http://localhost:8787/opencode", "/workspace", { mode: "openwork", token: "client" }),
-      openworkClient: server(),
+      opencodeClient: createClient("http://localhost:8787/opencode", "/workspace", { mode: "get3w", token: "client" }),
+      get3wClient: server(),
       workspaceId: "workspace",
       workspaceType: "remote",
     });
@@ -81,7 +81,7 @@ test("ENG-994: policy reconcile builds on the current list, not a route's stale 
   try {
     const result = await reconcilePolicyDisabledProviders({
       opencodeClient: createClientV2("http://localhost:8787/opencode2", "/workspace", {}),
-      openworkClient: server(),
+      get3wClient: server(),
       workspaceId: "workspace",
       workspaceType: "local",
       allProviders: [{ id: "anthropic" }, { id: "remote" }],
@@ -107,7 +107,7 @@ test("ENG-994: policy reconcile does not write when the current list already sat
   try {
     await reconcilePolicyDisabledProviders({
       opencodeClient: createClientV2("http://localhost:8787/opencode2", "/workspace", {}),
-      openworkClient: server(),
+      get3wClient: server(),
       workspaceId: "workspace",
       workspaceType: "local",
       allProviders: [{ id: "anthropic" }, { id: "remote" }],

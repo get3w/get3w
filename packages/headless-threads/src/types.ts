@@ -1,14 +1,14 @@
 /**
  * The Headless Threads contract.
  *
- * A "thread" is a native OpenWork session: the same workspace, the same
+ * A "thread" is a native Get3W session: the same workspace, the same
  * managed OpenCode engine, the same session id, the same persisted messages
  * and tool activity the desktop UI shows. Nothing here introduces a second
  * chat engine, a second session store, or a second model gateway — the types
- * below only describe the session surface OpenWork already serves.
+ * below only describe the session surface Get3W already serves.
  */
 
-/** Model selection, in OpenWork's server casing (`providerId`/`modelId`). */
+/** Model selection, in Get3W's server casing (`providerId`/`modelId`). */
 export interface HeadlessThreadModel {
   providerId: string;
   modelId: string;
@@ -34,6 +34,10 @@ export interface HeadlessThreadMessagePart {
   id: string;
   type?: string;
   text?: string;
+  /** File content or location, as recorded by the engine. */
+  url?: string;
+  mime?: string;
+  filename?: string;
   tool?: string;
   callId?: string;
   toolStatus?: string;
@@ -94,7 +98,7 @@ export interface CreateThreadInput {
 
 export interface HeadlessThread {
   /**
-   * The native OpenCode session id. It is the same id the OpenWork UI uses,
+   * The native OpenCode session id. It is the same id the Get3W UI uses,
    * so a headless thread can be opened in the app afterwards.
    */
   id: string;
@@ -110,8 +114,16 @@ export interface HeadlessThread {
   model?: HeadlessThreadModel;
 }
 
+export interface HeadlessThreadAttachment {
+  mime: string;
+  url: string;
+  filename?: string;
+}
+
 export interface HeadlessThreadTurnInput {
   prompt: string;
+  /** File parts for v1; v2 accepts base64 data URLs and maps them to native inline files. */
+  attachments?: HeadlessThreadAttachment[];
   model?: HeadlessThreadModel;
   /** Stable message identity. V2 deduplicates admission atomically; V1 only checks history before submitting. */
   messageId?: string;
@@ -179,6 +191,7 @@ export interface HeadlessTranscriptToolCall {
 
 /** One step of a message, in the order the engine recorded it. */
 export type HeadlessTranscriptPart =
+  | { type: "file"; partId: string; url: string | null; mime: string | null; filename: string | null }
   | { type: "text"; text: string }
   | { type: "reasoning"; text: string; durationMs: number | null }
   | {
@@ -204,7 +217,7 @@ export interface HeadlessTranscriptMessage {
   text: string;
   reasoning: string;
   toolCalls: HeadlessTranscriptToolCall[];
-  /** Text, reasoning and tool steps in order. */
+  /** Text, files, reasoning and tool steps in order. */
   parts: HeadlessTranscriptPart[];
 }
 
@@ -279,10 +292,10 @@ export type HeadlessFetch = (
 ) => Promise<Response>;
 
 export interface HeadlessThreadClientOptions {
-  /** OpenWork server base URL, e.g. `http://127.0.0.1:8787`. */
+  /** Get3W server base URL, e.g. `http://127.0.0.1:8787`. */
   baseUrl: string;
   workspaceId: string;
-  /** A collaborator-scoped OpenWork client token. */
+  /** A collaborator-scoped Get3W client token. */
   token: string;
   /** Host credential for server-to-server execution against the resolved Cloud runtime. */
   hostToken?: string;

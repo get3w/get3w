@@ -1,8 +1,8 @@
 /** @jsxImportSource react */
-import { ProviderIcon as SharedProviderIcon, type ProviderIconProps } from "@openwork/ui/provider-icon"
+import { ProviderIcon as SharedProviderIcon, type ProviderIconProps } from "@get3w/ui/provider-icon"
 
 export type { ProviderIconProps }
-export { OpenWorkMark } from "@openwork/ui/provider-icon"
+export { Get3WMark } from "@get3w/ui/provider-icon"
 
 /** The shared provider logo, with the app's own monogram tokens. */
 export function ProviderIcon(props: ProviderIconProps) {

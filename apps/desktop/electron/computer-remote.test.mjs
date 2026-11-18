@@ -5,8 +5,8 @@ import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
-import { createX11Driver } from "@openwork/computer-use/computer-x11-driver";
-import { createRemoteComputerAdapter } from "@openwork/computer-use/computer-remote";
+import { createX11Driver } from "@get3w/computer-use/computer-x11-driver";
+import { createRemoteComputerAdapter } from "@get3w/computer-use/computer-remote";
 
 const payload = (result) => JSON.parse(result.content.find((item) => item.type === "text").text);
 
@@ -41,7 +41,7 @@ async function fixture(t, overrides = {}) {
   const inputs = [];
   const events = [];
   const region = { x: 50, y: 60, width: 400, height: 300 };
-  /** @type {import("@openwork/computer-use/computer-remote").ComputerDriver} */
+  /** @type {import("@get3w/computer-use/computer-remote").ComputerDriver} */
   const driver = {
     platform: "linux", describe: async () => ({ readiness: "ready", detail: "Ready" }),
     windows: async () => [{ id: 42, title: "Draft", app: "Editor", region }],

@@ -10,7 +10,7 @@ const phases = new Set([
   "org.activation", "bootstrap.apply", "server.restart.requested", "engine.restart.requested",
 ]);
 const restartCauses = new Set(["requested", "startup-recovery", "settings", "connection-recovery", "provider-auth", "reload-escalation"]);
-const events = channel("openwork.desktop.startup-phase");
+const events = channel("get3w.desktop.startup-phase");
 
 /** Static labels only: never pass errors, paths, URLs, arguments or configuration. */
 export function startupPhase(name, cause = undefined) {

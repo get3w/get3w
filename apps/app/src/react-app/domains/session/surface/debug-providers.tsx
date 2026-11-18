@@ -55,7 +55,7 @@ export function DebugProviders(props: {
   const [copying, setCopying] = useState(false);
   const engine = useMemo(() => isOpencodeV2BaseUrl(props.baseUrl)
     ? createClientV2(props.baseUrl, props.workspaceRoot, { token: props.token })
-    : createClient(props.baseUrl, props.workspaceRoot, { mode: "openwork", token: props.token }),
+    : createClient(props.baseUrl, props.workspaceRoot, { mode: "get3w", token: props.token }),
   [props.baseUrl, props.workspaceRoot, props.token]);
   const providers = useProviderListQuery({ client: engine, baseUrl: props.baseUrl, directory: props.workspaceRoot });
   const history = useQuery({
@@ -193,7 +193,7 @@ export function DebugProviders(props: {
 export function DebugWorkspaceProviders(props: { workspaceRoot: string; baseUrl: string; token: string }) {
   const engine = useMemo(() => isOpencodeV2BaseUrl(props.baseUrl)
     ? createClientV2(props.baseUrl, props.workspaceRoot, { token: props.token })
-    : createClient(props.baseUrl, props.workspaceRoot, { mode: "openwork", token: props.token }),
+    : createClient(props.baseUrl, props.workspaceRoot, { mode: "get3w", token: props.token }),
   [props.baseUrl, props.workspaceRoot, props.token]);
   const providers = useProviderListQuery({ client: engine, baseUrl: props.baseUrl, directory: props.workspaceRoot });
   const connected = new Set(providers.data?.connected ?? []);

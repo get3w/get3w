@@ -3,14 +3,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { openworkInstallMarkerPaths, resolveDesktopEngineAutoUpgrade, resolveFreshInstallEngine } from "../electron/runtime.mjs";
+import { get3wInstallMarkerPaths, resolveDesktopEngineAutoUpgrade, resolveFreshInstallEngine } from "../electron/runtime.mjs";
 
 function withProfile(run) {
-  const dir = mkdtempSync(join(tmpdir(), "openwork-fresh-install-"));
+  const dir = mkdtempSync(join(tmpdir(), "get3w-fresh-install-"));
   try {
-    const markerPaths = openworkInstallMarkerPaths({
+    const markerPaths = get3wInstallMarkerPaths({
       userDataDir: join(dir, "userData"),
-      serverConfigPath: join(dir, "config", "openwork", "server.json"),
+      serverConfigPath: join(dir, "config", "get3w", "server.json"),
       env: {},
     });
     run({ dir, markerPaths });
@@ -35,9 +35,9 @@ test("any file an earlier Get3W run left behind marks an update, which keeps its
 
 test("an updated install with a server config stays on its engine", () => {
   withProfile(({ dir, markerPaths }) => {
-    const serverConfig = join(dir, "config", "openwork", "server.json");
+    const serverConfig = join(dir, "config", "get3w", "server.json");
     assert.ok(markerPaths.includes(serverConfig));
-    mkdirSync(join(dir, "config", "openwork"), { recursive: true });
+    mkdirSync(join(dir, "config", "get3w"), { recursive: true });
     writeFileSync(serverConfig, "{}");
     assert.equal(resolveFreshInstallEngine({ markerPaths, env: {} }), undefined);
   });

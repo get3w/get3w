@@ -38,7 +38,7 @@ export function LoadingOverlay() {
   useEffect(() => {
     if (!error) return;
     let cancelled = false;
-    const bridge = window.__OPENWORK_ELECTRON__?.recovery;
+    const bridge = window.__GET3W_ELECTRON__?.recovery;
     if (!bridge?.list) return;
     const cachedPolicy = {
       versions: [],
@@ -52,7 +52,7 @@ export function LoadingOverlay() {
         if (!cancelled && result.ok) setReleases(result.releases);
       })
       .catch(() => undefined);
-    if (window.__openworkRecoveryControl) {
+    if (window.__get3wRecoveryControl) {
       return () => {
         cancelled = true;
       };
@@ -87,7 +87,7 @@ export function LoadingOverlay() {
     }
   };
 
-  const useRelease = window.__OPENWORK_ELECTRON__?.recovery?.use;
+  const useRelease = window.__GET3W_ELECTRON__?.recovery?.use;
 
   if (!visible || (orgOnboardingOnScreen && !error)) return null;
 
@@ -118,7 +118,7 @@ export function LoadingOverlay() {
               type="button"
               disabled={!releases.some((release) => release.marking === "previous")}
               className="rounded-md bg-dls-accent px-3 py-2 font-medium text-[var(--dls-accent-fg)] disabled:opacity-50"
-              onClick={() => void runRecovery(window.__OPENWORK_ELECTRON__?.recovery?.restorePrevious)}
+              onClick={() => void runRecovery(window.__GET3W_ELECTRON__?.recovery?.restorePrevious)}
             >
               {t("ui.90e4ec974b29")}
             </button>

@@ -4,24 +4,24 @@ import type { ServerConfig } from "./types.js";
 import type { OrganizationMcpServers } from "./reserved-mcp-names.js";
 import { readEffectiveRuntimeOpencodeConfig } from "./runtime-opencode-config-store.js";
 import { loopbackFetch } from "./server-fetch.js";
-export const CONNECT_MCP_SERVER_INDEX_URI = "openwork://connect/mcp-servers/index.json";
-export const CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION = "openwork.connect/mcp-servers/1";
-export const CONNECT_MCP_APP_HOST_NAME_PREFIX = "openwork-app-host-connect-";
-export const CONNECT_MCP_SERVER_NAME_PREFIX = "openwork-connect-";
-export const CONNECT_DIRECT_MCP_SERVER_NAME_PREFIX = "openwork-direct-";
-export const CONNECT_MCP_APP_HOST_CAPABILITY_HEADER = "x-openwork-mcp-client-capabilities";
+export const CONNECT_MCP_SERVER_INDEX_URI = "get3w://connect/mcp-servers/index.json";
+export const CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION = "get3w.connect/mcp-servers/1";
+export const CONNECT_MCP_APP_HOST_NAME_PREFIX = "get3w-app-host-connect-";
+export const CONNECT_MCP_SERVER_NAME_PREFIX = "get3w-connect-";
+export const CONNECT_DIRECT_MCP_SERVER_NAME_PREFIX = "get3w-direct-";
+export const CONNECT_MCP_APP_HOST_CAPABILITY_HEADER = "x-get3w-mcp-client-capabilities";
 export const CONNECT_MCP_APP_HOST_CAPABILITY = "mcp-app-host-v1";
-export type OpenWorkConnectMcpServerIndex = { schemaVersion: typeof CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION; servers: { connectionId: string; name: string; description: string | null; url: string; exposeDirectly: boolean }[] };
-export type OpenWorkConnectMcpServerIndexInput = OpenWorkConnectMcpServerIndex;
+export type Get3WConnectMcpServerIndex = { schemaVersion: typeof CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION; servers: { connectionId: string; name: string; description: string | null; url: string; exposeDirectly: boolean }[] };
+export type Get3WConnectMcpServerIndexInput = Get3WConnectMcpServerIndex;
 export type ConnectMcpCatalogDiagnostic = "ready" | "empty" | "missing_app_host_auth" | "untrusted_origin" | "invalid_catalog" | "invalid_proxy_descriptor" | "discovery_unavailable";
-export type ConnectMcpCatalogReadResult = { index: OpenWorkConnectMcpServerIndex | null; diagnostic: ConnectMcpCatalogDiagnostic };
+export type ConnectMcpCatalogReadResult = { index: Get3WConnectMcpServerIndex | null; diagnostic: ConnectMcpCatalogDiagnostic };
 export const trustedAppHostCloudEndpoint = async (_config: Record<string, unknown>) => false;
 export function connectMcpAppHostName(connectionId: string) { return `${CONNECT_MCP_APP_HOST_NAME_PREFIX}${createHash("sha256").update(connectionId).digest("hex").slice(0, 12)}`; }
 export const registeredOrganizationMcpServers = async (_config: ServerConfig, _workspaces: Iterable<string>): Promise<OrganizationMcpServers> => ({});
 const appId = z.string().regex(/^cob_[0-7][0-9a-hjkmnp-tv-z]{25}$/);
 const gatewaySchema = z.object({type:z.literal("remote"),enabled:z.boolean().optional(),url:z.string(),headers:z.object({Authorization:z.string().regex(/^Bearer [A-Za-z0-9_-]{43}$/)})});
 const catalogSchema = z.object({apps:z.array(z.object({connectionId:appId,title:z.string().max(120),description:z.string().nullable()})).max(500)});
-async function gateway(config:ServerConfig,workspaceId:string) {
+export async function gateway(config:ServerConfig,workspaceId:string) {
   const runtime=await readEffectiveRuntimeOpencodeConfig(config,workspaceId);
   const parsed=gatewaySchema.safeParse(runtime.mcp?.['get3w-account']);
   if(!parsed.success || parsed.data.enabled===false)return null;
@@ -29,7 +29,7 @@ async function gateway(config:ServerConfig,workspaceId:string) {
   if(url.protocol!=="http:"||url.hostname!=="127.0.0.1"||!url.port||url.pathname!=="/mcp"||url.search||url.hash||url.username||url.password)return null;
   return {origin:url.origin,authorization:parsed.data.headers.Authorization};
 }
-export async function readOpenWorkConnectMcpAppHostCatalog(config:ServerConfig,workspaceId:string):Promise<OpenWorkConnectMcpServerIndex> {
+export async function readGet3WConnectMcpAppHostCatalog(config:ServerConfig,workspaceId:string):Promise<Get3WConnectMcpServerIndex> {
   const current=await gateway(config,workspaceId);
   if(!current)return {schemaVersion:CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION,servers:[]};
   const response=await loopbackFetch(`${current.origin}/app-index`,{headers:{Authorization:current.authorization},redirect:"error",signal:AbortSignal.timeout(10_000)});
@@ -55,28 +55,28 @@ export async function readOpenWorkConnectMcpAppHostCatalog(config:ServerConfig,w
   if(latest?.authorization!==current.authorization||latest.origin!==current.origin)throw Error("Native account changed");
   return {schemaVersion:CONNECT_MCP_SERVER_INDEX_SCHEMA_VERSION,servers:payload.apps.map(app=>({connectionId:app.connectionId,name:app.title,description:app.description,url:`${current.origin}/mcp/apps/${app.connectionId}`,exposeDirectly:false}))};
 }
-export async function readOpenWorkConnectMcpAppHostAuthorization(config:ServerConfig,workspaceId:string,url:string):Promise<string|null> {
+export async function readGet3WConnectMcpAppHostAuthorization(config:ServerConfig,workspaceId:string,url:string):Promise<string|null> {
   const current=await gateway(config,workspaceId);if(!current)return null;
   const parsed=new URL(url);
   if(parsed.origin!==current.origin||!/^\/mcp\/apps\/cob_[0-7][0-9a-hjkmnp-tv-z]{25}$/.test(parsed.pathname)||parsed.search||parsed.hash||parsed.username||parsed.password)return null;
   return current.authorization;
 }
-export async function readOpenWorkConnectMcpAppHostAuthorizationRevision(config:ServerConfig,workspaceId:string):Promise<number|null> {
+export async function readGet3WConnectMcpAppHostAuthorizationRevision(config:ServerConfig,workspaceId:string):Promise<number|null> {
   const current=await gateway(config,workspaceId);
   return current ? Number.parseInt(createHash('sha256').update(JSON.stringify(current)).digest('hex').slice(0,12),16) : null;
 }
-export async function findOpenWorkConnectMcpAppHostServer(config:ServerConfig,workspaceId:string,input:{connectionId?:string;serverName?:string}):Promise<OpenWorkConnectMcpServerIndex['servers'][number]|null> {
+export async function findGet3WConnectMcpAppHostServer(config:ServerConfig,workspaceId:string,input:{connectionId?:string;serverName?:string}):Promise<Get3WConnectMcpServerIndex['servers'][number]|null> {
   const current=await gateway(config,workspaceId);if(!current)return null;
   // A draft is not in the public active catalog. Discovery of this exact id is
   // allowed; the native server must authorize it before serving any tool/source.
   if(input.connectionId && appId.safeParse(input.connectionId).success)return {connectionId:input.connectionId,name:'Artifact',description:null,url:`${current.origin}/mcp/apps/${input.connectionId}`,exposeDirectly:false};
-  const catalog=await readOpenWorkConnectMcpAppHostCatalog(config,workspaceId);
+  const catalog=await readGet3WConnectMcpAppHostCatalog(config,workspaceId);
   return catalog.servers.find(server=>connectMcpAppHostName(server.connectionId)===input.serverName)??null;
 }
-export async function refreshOpenWorkConnectMcpAppHostCatalog(config:ServerConfig,workspaceId:string,_fetcher?:(input:string,init?:RequestInit)=>Promise<Response>):Promise<{status:"unavailable"|"synced";appHostNames:string[];diagnostic:ConnectMcpCatalogDiagnostic}> {
+export async function refreshGet3WConnectMcpAppHostCatalog(config:ServerConfig,workspaceId:string,_fetcher?:(input:string,init?:RequestInit)=>Promise<Response>):Promise<{status:"unavailable"|"synced";appHostNames:string[];diagnostic:ConnectMcpCatalogDiagnostic}> {
   try {
     if (!await gateway(config,workspaceId)) return {status:'unavailable',appHostNames:[],diagnostic:'missing_app_host_auth'};
-    const catalog=await readOpenWorkConnectMcpAppHostCatalog(config,workspaceId);return {status:'synced',appHostNames:catalog.servers.map(s=>connectMcpAppHostName(s.connectionId)),diagnostic:catalog.servers.length?'ready':'empty'};}
+    const catalog=await readGet3WConnectMcpAppHostCatalog(config,workspaceId);return {status:'synced',appHostNames:catalog.servers.map(s=>connectMcpAppHostName(s.connectionId)),diagnostic:catalog.servers.length?'ready':'empty'};}
   catch{return {status:'unavailable',appHostNames:[],diagnostic:'discovery_unavailable'};}
 }
 // Only configs constructed from the authenticated native descriptor are trusted
@@ -84,7 +84,7 @@ export async function refreshOpenWorkConnectMcpAppHostCatalog(config:ServerConfi
 const nativeConfigs=new WeakSet<object>();
 export function nativeArtifactTransportConfig(url:string,authorization:string,resourceUri?:string):Record<string,unknown> {
   const config={type:'remote',url,enabled:true,headers:{Authorization:authorization,[CONNECT_MCP_APP_HOST_CAPABILITY_HEADER]:CONNECT_MCP_APP_HOST_CAPABILITY}};
-  const revision=resourceUri ? /^ui:\/\/openwork\/apps\/cob_[0-7][0-9a-hjkmnp-tv-z]{25}\/revisions\/(cov_[0-7][0-9a-hjkmnp-tv-z]{25})\/index\.html$/.exec(resourceUri)?.[1] : undefined;
+  const revision=resourceUri ? /^ui:\/\/get3w\/apps\/cob_[0-7][0-9a-hjkmnp-tv-z]{25}\/revisions\/(cov_[0-7][0-9a-hjkmnp-tv-z]{25})\/index\.html$/.exec(resourceUri)?.[1] : undefined;
   if(revision)Object.assign(config.headers,{'x-get3w-app-revision':revision});
   nativeConfigs.add(config);return config;
 }

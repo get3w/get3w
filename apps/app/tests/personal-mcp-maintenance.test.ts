@@ -8,12 +8,12 @@ test("personal MCP maintenance reconnects manual OAuth without organization prov
   globalThis.fetch = Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input, init); const path = new URL(req.url).pathname;
     requests.push(`${req.method} ${path}`);
-    if (path === "/mcp") return Response.json({ manual: { status: "needs_auth" }, "openwork-cloud": { status: "needs_auth" }, "openwork-direct-fixture": { status: "needs_auth" } });
+    if (path === "/mcp") return Response.json({ manual: { status: "needs_auth" }, "get3w-cloud": { status: "needs_auth" }, "get3w-direct-fixture": { status: "needs_auth" } });
     if (path === "/mcp/manual/connect") return Response.json(true);
     throw new Error(`Unexpected request: ${req.url}`);
   }, original);
   try {
-    const names = ["manual", "openwork-cloud", "openwork-direct-fixture"];
+    const names = ["manual", "get3w-cloud", "get3w-direct-fixture"];
     const client = { listMcp: async () => ({ items: names.map(name => ({ name, config: { type: "remote" as const, url: "https://mcp.example.test", oauth: true } })) }) };
     const healed = await healWorkspaceMcpInBackground({ client, workspaceId: "local", directory: "/fixture-personal", opencodeClient: createClient("http://127.0.0.1:8787") });
     expect(healed).toBe(true);

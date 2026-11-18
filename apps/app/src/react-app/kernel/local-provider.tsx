@@ -88,7 +88,7 @@ type LocalContextValue = {
 
 const LocalContext = createContext<LocalContextValue | undefined>(undefined);
 
-const UI_STORAGE_KEY = "openwork.ui";
+const UI_STORAGE_KEY = "get3w.ui";
 export { DEFAULT_SHOW_THINKING };
 
 const INITIAL_UI: LocalUIState = { view: "settings", tab: "general" };
@@ -103,7 +103,7 @@ const INITIAL_PREFS: LocalPreferences = {
   hasCompletedOnboarding: false,
   analyticsEnabled: true,
   desktopNotifications: DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE,
-  linkOpenDestination: "openwork",
+  linkOpenDestination: "get3w",
   askBeforeOpeningLinks: true,
   keepAwake: true,
 };
@@ -157,7 +157,7 @@ export function LocalProvider({ children }: LocalProviderProps) {
     persisted.askBeforeOpeningLinks = persisted.askBeforeOpeningLinks !== false;
     persisted.linkOpenDestination = isLinkOpenDestination(persisted.linkOpenDestination)
       ? persisted.linkOpenDestination
-      : "openwork";
+      : "get3w";
     persisted.desktopNotifications = isDesktopNotificationPreference(persisted.desktopNotifications)
       ? persisted.desktopNotifications
       : DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE;

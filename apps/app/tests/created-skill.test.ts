@@ -15,17 +15,17 @@ const saved = { schemaVersion: "1", name: "Update CRM", pluginId: "plg_crm", ski
 
 function createSkill(id: string, payload: Record<string, unknown> = saved, state: "output-available" | "input-available" = "output-available"): DynamicToolUIPart {
   const input = { pluginName: "Update CRM", skillMarkdown: "---\nname: update-crm\ndescription: x\n---\nSteps" }
-  if (state === "input-available") return { type: "dynamic-tool", toolName: "openwork-cloud_create_skill", toolCallId: id, state, input }
+  if (state === "input-available") return { type: "dynamic-tool", toolName: "get3w-cloud_create_skill", toolCallId: id, state, input }
   return {
-    type: "dynamic-tool", toolName: "openwork-cloud_create_skill", toolCallId: id, state, input,
+    type: "dynamic-tool", toolName: "get3w-cloud_create_skill", toolCallId: id, state, input,
     output: "# Skill created: Update CRM",
-    callProviderMetadata: { openwork: { mcpResult: { content: [{ type: "text", text: "# Skill created: Update CRM" }], structuredContent: payload } } },
+    callProviderMetadata: { get3w: { mcpResult: { content: [{ type: "text", text: "# Skill created: Update CRM" }], structuredContent: payload } } },
   }
 }
 
 function share(id: string, state: "done" | "running" | "forbidden" | "other-member" | "unauthorized", member = "om_sam"): DynamicToolUIPart {
   const input = { name: "postPluginsAccess", path: { pluginId: "plg_crm" }, body: { orgMembershipId: member, role: "viewer" } }
-  const base = { type: "dynamic-tool" as const, toolName: "openwork-cloud_execute_capability", toolCallId: id, input }
+  const base = { type: "dynamic-tool" as const, toolName: "get3w-cloud_execute_capability", toolCallId: id, input }
   if (state === "running") return { ...base, state: "input-available" }
   if (state === "forbidden") return { ...base, state: "output-error", errorText: JSON.stringify({ error: "forbidden", message: "Not allowed." }) }
   if (state === "unauthorized") return { ...base, state: "output-error", errorText: JSON.stringify({ error: "unauthorized" }) }
@@ -34,7 +34,7 @@ function share(id: string, state: "done" | "running" | "forbidden" | "other-memb
 }
 
 const directory: DynamicToolUIPart = {
-  type: "dynamic-tool", toolName: "openwork-cloud_execute_capability", toolCallId: "call_org", state: "output-available",
+  type: "dynamic-tool", toolName: "get3w-cloud_execute_capability", toolCallId: "call_org", state: "output-available",
   input: { name: "getOrg" },
   output: { currentMember: { id: "om_me" }, members: [{ id: "om_sam", user: { name: "Sam Taylor", email: "sam@example.com" } }, { id: "om_nameless", user: {} }], teams: [] },
 }
@@ -67,12 +67,12 @@ describe("created skill results", () => {
   test("a result that fails the saved-skill schema renders no card", () => {
     const { skillId: _skillId, ...withoutId } = saved
     expect(collectCreatedSkills(turn([createSkill("call_create", withoutId)]), { live: false }).cards).toEqual([])
-    const invocation: DynamicToolUIPart = { type: "dynamic-tool", toolName: "openwork-cloud_get_skill", toolCallId: "call_use", state: "output-available", input: { name: "update-crm" }, output: "---\nname: update-crm\n---" }
+    const invocation: DynamicToolUIPart = { type: "dynamic-tool", toolName: "get3w-cloud_get_skill", toolCallId: "call_use", state: "output-available", input: { name: "update-crm" }, output: "---\nname: update-crm\n---" }
     expect(collectCreatedSkills(turn([invocation]), { live: false }).cards).toEqual([])
   })
 
   test("a later version and a later share update the same card instead of adding one", () => {
-    const update: DynamicToolUIPart = { ...createSkill("call_update", { ...saved, mode: "updated", name: "Update CRM v2" }), toolName: "openwork-cloud_update_skill" }
+    const update: DynamicToolUIPart = { ...createSkill("call_update", { ...saved, mode: "updated", name: "Update CRM v2" }), toolName: "get3w-cloud_update_skill" }
     const messages = [...turn([createSkill("call_create")]), { id: "reply_2", role: "assistant" as const, parts: [update, directory, share("call_share", "done")] }]
     const { cards, shareLabels } = collectCreatedSkills(messages, { live: false })
     const [card] = ready(cards)
@@ -115,13 +115,13 @@ describe("created skill results", () => {
     const script = (details: unknown[], status: "running" | "completed"): DynamicToolUIPart => ({
       type: "dynamic-tool", toolName: "execute", toolCallId: "call_script",
       ...(status === "running" ? { state: "input-available" as const } : { state: "output-available" as const, output: "done" }),
-      input: { code: "await tools['openwork-cloud'].create_skill({...})" },
-      callProviderMetadata: { openwork: { codeMode: {
-        calls: [{ tool: "openwork-cloud.create_skill", status: "completed", input: { pluginName: "Update CRM" } }],
+      input: { code: "await tools['get3w-cloud'].create_skill({...})" },
+      callProviderMetadata: { get3w: { codeMode: {
+        calls: [{ tool: "get3w-cloud.create_skill", status: "completed", input: { pluginName: "Update CRM" } }],
         details,
       } } },
     })
-    const withResult = collectCreatedSkills(turn([script([{ tool: "openwork-cloud.create_skill", ordinal: 0, invocationId: "call_script:1", output: { structuredContent: saved } }], "completed")]), { live: false })
+    const withResult = collectCreatedSkills(turn([script([{ tool: "get3w-cloud.create_skill", ordinal: 0, invocationId: "call_script:1", output: { structuredContent: saved } }], "completed")]), { live: false })
     expect(ready(withResult.cards)[0]).toMatchObject({ skillId: "cob_crm", anchorToolCallId: "call_script" })
 
     const pending = turn([script([], "running")])

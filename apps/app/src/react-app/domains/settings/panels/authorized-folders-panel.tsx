@@ -14,10 +14,10 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { t } from "@/i18n";
 import type {
-  OpenworkServerCapabilities,
-  OpenworkServerClient,
-  OpenworkServerStatus,
-} from "../../../../app/lib/openwork-server";
+  Get3wServerCapabilities,
+  Get3wServerClient,
+  Get3wServerStatus,
+} from "../../../../app/lib/get3w-server";
 import { pickDirectory } from "../../../../app/lib/desktop";
 import {
   safeStringify,
@@ -41,9 +41,9 @@ import {
 } from "../settings-layout";
 
 export type AuthorizedFoldersPanelProps = {
-  openworkServerClient: OpenworkServerClient | null;
-  openworkServerStatus: OpenworkServerStatus;
-  openworkServerCapabilities: OpenworkServerCapabilities | null;
+  get3wServerClient: Get3wServerClient | null;
+  get3wServerStatus: Get3wServerStatus;
+  get3wServerCapabilities: Get3wServerCapabilities | null;
   runtimeWorkspaceId: string | null;
   selectedWorkspaceRoot: string;
   onConfigUpdated: () => void;
@@ -132,24 +132,24 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
   const setAuthorizedFoldersStatus = (value: SetStateAction<string | null>) => dispatchFolderState({ type: "set", key: "status", value });
   const setAuthorizedFoldersError = (value: SetStateAction<string | null>) => dispatchFolderState({ type: "set", key: "error", value });
 
-  const openworkServerReady = props.openworkServerStatus === "connected";
-  const openworkServerWorkspaceReady = Boolean(props.runtimeWorkspaceId);
+  const get3wServerReady = props.get3wServerStatus === "connected";
+  const get3wServerWorkspaceReady = Boolean(props.runtimeWorkspaceId);
   const canReadConfig =
-    openworkServerReady &&
-    openworkServerWorkspaceReady &&
-    (props.openworkServerCapabilities?.config?.read ?? false);
+    get3wServerReady &&
+    get3wServerWorkspaceReady &&
+    (props.get3wServerCapabilities?.config?.read ?? false);
   const canWriteConfig =
-    openworkServerReady &&
-    openworkServerWorkspaceReady &&
-    (props.openworkServerCapabilities?.config?.write ?? false);
+    get3wServerReady &&
+    get3wServerWorkspaceReady &&
+    (props.get3wServerCapabilities?.config?.write ?? false);
 
   const authorizedFoldersHint = useMemo(() => {
-    if (!openworkServerReady) return t("context_panel.server_disconnected");
-    if (!openworkServerWorkspaceReady) return t("context_panel.no_server_workspace");
+    if (!get3wServerReady) return t("context_panel.server_disconnected");
+    if (!get3wServerWorkspaceReady) return t("context_panel.no_server_workspace");
     if (!canReadConfig) return t("context_panel.config_access_unavailable");
     if (!canWriteConfig) return t("context_panel.config_read_only");
     return null;
-  }, [canReadConfig, canWriteConfig, openworkServerReady, openworkServerWorkspaceReady]);
+  }, [canReadConfig, canWriteConfig, get3wServerReady, get3wServerWorkspaceReady]);
 
   const canUseNativeFilePicker = platform.capabilities.nativeFilePicker;
   const canPickAuthorizedFolder =
@@ -161,10 +161,10 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
   }, [authorizedFolders, workspaceRootFolder]);
 
   useEffect(() => {
-    const openworkClient = props.openworkServerClient;
-    const openworkWorkspaceId = props.runtimeWorkspaceId;
+    const get3wClient = props.get3wServerClient;
+    const get3wWorkspaceId = props.runtimeWorkspaceId;
 
-    if (!openworkClient || !openworkWorkspaceId || !canReadConfig) {
+    if (!get3wClient || !get3wWorkspaceId || !canReadConfig) {
       setServerWorkspaceRoot("");
       dispatchFolderState({ type: "reset" });
       return;
@@ -175,7 +175,7 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
 
     void (async () => {
       try {
-        const response = await openworkClient.listAuthorizedFolders(openworkWorkspaceId);
+        const response = await get3wClient.listAuthorizedFolders(get3wWorkspaceId);
         if (cancelled) return;
         setServerWorkspaceRoot(response.workspaceRoot.trim());
         dispatchFolderState({
@@ -195,12 +195,12 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [canReadConfig, props.openworkServerClient, props.runtimeWorkspaceId]);
+  }, [canReadConfig, props.get3wServerClient, props.runtimeWorkspaceId]);
 
   const persistAuthorizedFolders = useCallback(async (nextFolders: string[]) => {
-    const openworkClient = props.openworkServerClient;
-    const openworkWorkspaceId = props.runtimeWorkspaceId;
-    if (!openworkClient || !openworkWorkspaceId || !canWriteConfig) {
+    const get3wClient = props.get3wServerClient;
+    const get3wWorkspaceId = props.runtimeWorkspaceId;
+    if (!get3wClient || !get3wWorkspaceId || !canWriteConfig) {
       setAuthorizedFoldersError(t("context_panel.writable_workspace_required"));
       return false;
     }
@@ -210,7 +210,7 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
     setAuthorizedFoldersStatus(t("context_panel.saving_folders"));
 
     try {
-      const response = await openworkClient.setAuthorizedFolders(openworkWorkspaceId, nextFolders);
+      const response = await get3wClient.setAuthorizedFolders(get3wWorkspaceId, nextFolders);
       setAuthorizedFolders(response.folders);
       setAuthorizedFoldersStatus(
         buildAuthorizedFoldersStatus(
@@ -228,7 +228,7 @@ export function AuthorizedFoldersPanel(props: AuthorizedFoldersPanelProps) {
     } finally {
       setAuthorizedFoldersSaving(false);
     }
-  }, [canWriteConfig, props.onConfigUpdated, props.openworkServerClient, props.runtimeWorkspaceId]);
+  }, [canWriteConfig, props.onConfigUpdated, props.get3wServerClient, props.runtimeWorkspaceId]);
 
   const removeAuthorizedFolder = useCallback(async (folder: string) => {
     const nextFolders = authorizedFolders.filter((entry) => entry !== folder);

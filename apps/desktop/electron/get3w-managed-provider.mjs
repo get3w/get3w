@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import path from "node:path";
-import { migrateGet3wStateFile } from "./get3w-state-file.mjs";
 import { createGet3wInferenceProxy } from "./get3w-inference-proxy.mjs";
 import { get3wModelName } from "./get3w-model-name.mjs";
 
@@ -42,7 +41,6 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
   const serial = fn => { const result = queue.then(fn, fn); queue = result.catch(() => {}); return result; };
   async function load() {
     if (record !== undefined) return;
-    await migrateGet3wStateFile(userData, "get3w-managed-provider.json", "openwork-managed-provider.json");
     try { record = JSON.parse(await readFile(file, "utf8")); }
     catch (error) { if (error.code !== "ENOENT") throw new Error("Could not restore Get3W model preferences."); record = {}; }
   }
@@ -86,13 +84,6 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     if (!enabled && !record.fingerprint) return {enabled:false,state:"disconnected"};
     const target=await server();
     const providers=(await request(target,"GET")).provider ?? {};
-    const legacy=providers['openwork-account'];
-    // Only the fingerprint we previously wrote authorizes renaming an old id.
-    // Persist it separately so a lost PATCH response can be retried safely.
-    if (legacy) {
-      if (fingerprint(legacy) !== (record.legacyFingerprint || record.fingerprint)) throw new Error("Legacy Get3W provider was edited locally. Rename it before connecting.");
-      record.legacyFingerprint=fingerprint(legacy);await save();
-    }
     const current=providers[GET3W_MANAGED_PROVIDER];
     let preservedProvider;
     // Directory migration can retain an existing target runtime DB while the
@@ -107,7 +98,6 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     }
     if (!enabled) {
       await closeProxy();await removeOwned(target,current);
-      if (legacy) await request(target,"PATCH",{"openwork-account":null});
       record={};await save();return {enabled:false,state:"disconnected"};
     }
     if (current && canRecoverLegacy && generatedAccountProvider(current, record, userId)) {
@@ -118,7 +108,7 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
       record.enabled=true;record.account=fingerprint(userId);await save();
     }
     const labelsCurrent = current?.name === "Get3W Models" && current?.models && Object.entries(current.models).every(([id, model]) => model.name === get3wModelName(id));
-    if (!legacy && proxy && owner===`${userId}:personal` && serverScope===target.scope && current && labelsCurrent) {
+    if (proxy && owner===`${userId}:personal` && serverScope===target.scope && current && labelsCurrent) {
       // A provider definition survives app restarts, but its loopback proxy does
       // not. Probe the live loopback endpoint before reusing it; a stale port
       // otherwise surfaces as the vague “couldn\'t reach the model provider”.
@@ -161,7 +151,7 @@ export function createGet3wManagedProvider({ auth, userData, getServerInfo, fetc
     // Write ownership first so a timeout after the server applies the patch is recoverable.
     record.fingerprint=fingerprint(definition);await save();
     try {
-      const result=await request(target,"PATCH",{...preservedProvider,[GET3W_MANAGED_PROVIDER]:definition,...(legacy ? {"openwork-account":null} : {})});
+      const result=await request(target,"PATCH",{...preservedProvider,[GET3W_MANAGED_PROVIDER]:definition});
       delete record.legacyFingerprint;await save();
       providerState=result.reload==="deferred"?"pending":"connected";
       return {enabled:true,state:providerState};

@@ -61,7 +61,7 @@ describe("session reference pill", () => {
     const [visible, instruction] = composerPillPromptParts(pill);
     // The route is stable across renames; the transcript renders it with the current title.
     expect(visible.text).toBe("/workspace/ws_1/session/ses_login");
-    expect(visible.metadata).toMatchObject({ openworkComposerPill: pill, openworkComposerToken: "[session ws_1 ses_login Fix login bug]" });
+    expect(visible.metadata).toMatchObject({ get3wComposerPill: pill, get3wComposerToken: "[session ws_1 ses_login Fix login bug]" });
     expect(instruction.synthetic).toBe(true);
     expect(instruction.text).toContain('"session.read"');
     expect(instruction.text).toContain("ses_login");

@@ -26,13 +26,13 @@ import {
   type DesktopStartupPlatform,
   type DesktopStartupReport,
   type DesktopStartupStep,
-} from "@openwork/types/den/diagnostics";
+} from "@get3w/types/den/diagnostics";
 import { z } from "zod";
 
 import { appBuildInfo, startupTimings, type DesktopStartupTimings } from "./desktop";
 import { isDesktopRuntime } from "./runtime-env";
 
-export const STARTUP_PENDING_STORAGE_KEY = "openwork.startup.pending";
+export const STARTUP_PENDING_STORAGE_KEY = "get3w.startup.pending";
 /** A launch that is not connected this long after process start is reported as timed out. */
 export const STARTUP_DEADLINE_MS = 120_000;
 export const STARTUP_PENDING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -571,13 +571,13 @@ async function readAppVersion(): Promise<string | null> {
   const build = await appBuildInfo().catch(() => null);
   const version = build?.version?.trim()
     || String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim()
-    || (typeof window === "undefined" ? "" : window.__OPENWORK_ELECTRON__?.meta?.version?.trim() ?? "");
+    || (typeof window === "undefined" ? "" : window.__GET3W_ELECTRON__?.meta?.version?.trim() ?? "");
   return version || null;
 }
 
 function readPlatform(): string | null {
   if (typeof window === "undefined") return null;
-  return window.__OPENWORK_ELECTRON__?.meta?.platform
+  return window.__GET3W_ELECTRON__?.meta?.platform
     ?? (typeof navigator === "undefined" ? null : navigator.platform || null);
 }
 

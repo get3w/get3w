@@ -1,5 +1,5 @@
 // Desktop workspace persistence and bootstrap configuration. This module owns
-// on-disk workspace state, per-workspace openwork.json files, and the
+// on-disk workspace state, runtime-neutral get3w.json files, and the
 // workspace-facing command operations.
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -7,11 +7,12 @@ import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/
 import os from "node:os";
 import path from "node:path";
 import {
+  ensureGet3wProjectConfig, get3wProjectConfig, get3wProjectConfigPath,
   desktopBootstrapPath as resolveDesktopBootstrapPath,
   legacyDesktopBootstrapPath as resolveLegacyDesktopBootstrapPath,
   normalizeWorkspaceRootPath,
-  openworkServerConfigPath as resolveOpenworkServerConfigPath,
-} from "@openwork/paths";
+  get3wServerConfigPath as resolveGet3wServerConfigPath,
+} from "@get3w/paths";
 
 import { exportWorkspaceConfig, importWorkspaceConfig } from "./workspace-archive.mjs";
 import { GET3W_SERVICES } from "./get3w-services.mjs";
@@ -170,14 +171,14 @@ export function createWorkspaceStore({
     return path.join(app.getPath("userData"), "get3w-workspaces.json");
   }
 
-  function openworkServerTokenStorePath() {
+  function get3wServerTokenStorePath() {
     const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(app.getPath("userData"), "get3w-server-tokens.json");
   }
 
-  function openworkServerConfigPath() {
-    return resolveOpenworkServerConfigPath({ env: process.env, homeDir: os.homedir() });
+  function get3wServerConfigPath() {
+    return resolveGet3wServerConfigPath({ env: process.env, homeDir: os.homedir() });
   }
 
   // Earlier Electron alpha builds copied Tauri's get3w-workspaces.json into
@@ -442,7 +443,7 @@ export function createWorkspaceStore({
     return undefined;
   }
 
-  function defaultWorkspaceOpenworkConfig(workspacePath, preset = null) {
+  function defaultWorkspaceGet3wConfig(workspacePath, preset = null) {
     return {
       version: 1,
       workspace: workspacePath
@@ -492,7 +493,7 @@ export function createWorkspaceStore({
   }
 
   async function recoverWorkspacesFromTokenStore() {
-    const store = await readJsonFile(openworkServerTokenStorePath(), null);
+    const store = await readJsonFile(get3wServerTokenStorePath(), null);
     if (!isRecord(store) || !isRecord(store.workspaces)) return [];
 
     const candidates = [];
@@ -528,7 +529,7 @@ export function createWorkspaceStore({
     const workspaceKey = normalizeWorkspacePathKey(workspacePath);
     if (!workspaceKey) return;
 
-    const store = await readJsonFile(openworkServerTokenStorePath(), null);
+    const store = await readJsonFile(get3wServerTokenStorePath(), null);
     if (!isRecord(store) || !isRecord(store.workspaces)) return;
 
     const workspaces = { ...store.workspaces };
@@ -539,12 +540,12 @@ export function createWorkspaceStore({
       changed = true;
     }
     if (changed) {
-      await writeJsonFileAtomic(openworkServerTokenStorePath(), { ...store, workspaces });
+      await writeJsonFileAtomic(get3wServerTokenStorePath(), { ...store, workspaces });
     }
   }
 
   async function recoverWorkspacesFromServerConfig() {
-    const config = await readJsonFile(openworkServerConfigPath(), null);
+    const config = await readJsonFile(get3wServerConfigPath(), null);
     if (!isRecord(config) || !Array.isArray(config.workspaces)) return [];
 
     const seen = new Set();
@@ -612,20 +613,26 @@ export function createWorkspaceStore({
     };
   }
 
-  async function readWorkspaceOpenworkConfig(workspacePath) {
-    const openworkPath = path.join(workspacePath, ".opencode", "openwork.json");
-    if (!(await pathExists(openworkPath))) {
-      return defaultWorkspaceOpenworkConfig(workspacePath);
+  async function readWorkspaceGet3wConfig(workspacePath) {
+    const project = await ensureGet3wProjectConfig(workspacePath, defaultWorkspaceGet3wConfig(workspacePath));
+    const statePath = path.join(path.dirname(workspaceStatePath()), 'workspace-local-configs.json');
+    const local = await readJsonFile(statePath, {});
+    if (!local[workspacePath]) {
+      local[workspacePath] = { createdAt: Date.now(), authorizedRoots: [workspacePath], reload: null };
+      await writeJsonFileAtomic(statePath, local);
     }
-    const raw = await readFile(openworkPath, "utf8");
-    return JSON.parse(raw);
+    return { ...defaultWorkspaceGet3wConfig(workspacePath), ...local[workspacePath], ...project };
   }
 
-  async function writeWorkspaceOpenworkConfig(workspacePath, config) {
-    const openworkPath = path.join(workspacePath, ".opencode", "openwork.json");
-    await mkdir(path.dirname(openworkPath), { recursive: true });
-    await writeFile(openworkPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
-    return execResult(true, `Wrote ${openworkPath}`);
+  async function writeWorkspaceGet3wConfig(workspacePath, config) {
+    await mkdir(workspacePath, { recursive: true });
+    const projectPath = get3wProjectConfigPath(workspacePath);
+    await writeJsonFileAtomic(projectPath, get3wProjectConfig(config));
+    const statePath = path.join(path.dirname(workspaceStatePath()), 'workspace-local-configs.json');
+    const local = await readJsonFile(statePath, {});
+    local[workspacePath] = { createdAt: local[workspacePath]?.createdAt ?? config.workspace?.createdAt ?? Date.now(), authorizedRoots: config.authorizedRoots ?? [workspacePath], reload: config.reload ?? null };
+    await writeJsonFileAtomic(statePath, local);
+    return execResult(true, `Wrote ${projectPath}`);
   }
 
   async function writeWorkspaceState(nextState) {
@@ -781,9 +788,7 @@ export function createWorkspaceStore({
       workspaceType: "local",
     });
     await mkdir(path.join(folderPath, ".opencode"), { recursive: true });
-    if (!(await pathExists(path.join(folderPath, ".opencode", "openwork.json")))) {
-      await writeWorkspaceOpenworkConfig(folderPath, defaultWorkspaceOpenworkConfig(folderPath, preset));
-    }
+    await ensureGet3wProjectConfig(folderPath, defaultWorkspaceGet3wConfig(folderPath, preset));
 
     return mutateWorkspaceState((state) => {
       const key = workspacePathKey(workspace);
@@ -831,14 +836,14 @@ export function createWorkspaceStore({
     if (!workspacePath || !authorizedRoot) {
       throw new Error("workspacePath and folderPath are required");
     }
-    const config = await readWorkspaceOpenworkConfig(workspacePath);
+    const config = await readWorkspaceGet3wConfig(workspacePath);
     if (!Array.isArray(config.authorizedRoots)) {
       config.authorizedRoots = [];
     }
     if (!config.authorizedRoots.includes(authorizedRoot)) {
       config.authorizedRoots.push(authorizedRoot);
     }
-    return writeWorkspaceOpenworkConfig(workspacePath, config);
+    return writeWorkspaceGet3wConfig(workspacePath, config);
   }
 
   async function exportConfig(input = {}) {
@@ -884,7 +889,7 @@ export function createWorkspaceStore({
     });
   }
 
-  async function resetOpenworkState() {
+  async function resetGet3wState() {
     await rm(workspaceStatePath(), { force: true });
     await clearDesktopBootstrapFiles();
     return undefined;
@@ -896,7 +901,7 @@ export function createWorkspaceStore({
     createWorkspace,
     clearDesktopBootstrapConfig,
     debugDesktopBootstrapConfig,
-    defaultWorkspaceOpenworkConfig,
+    defaultWorkspaceGet3wConfig,
     exportConfig,
     forgetWorkspace,
     getDesktopBootstrapConfig,
@@ -904,14 +909,14 @@ export function createWorkspaceStore({
     listLocalWorkspacePaths,
     migrateLegacyElectronWorkspaceStateIfNeeded,
     readDesktopBootstrapConfigSync,
-    readWorkspaceOpenworkConfig,
+    readWorkspaceGet3wConfig,
     readWorkspaceState,
-    resetOpenworkState,
+    resetGet3wState,
     setDesktopBootstrapConfig,
     setRuntimeActiveWorkspace,
     setSelectedWorkspace,
     updateWorkspaceDisplayName,
-    writeWorkspaceOpenworkConfig,
+    writeWorkspaceGet3wConfig,
     writeWorkspaceState,
   };
 }

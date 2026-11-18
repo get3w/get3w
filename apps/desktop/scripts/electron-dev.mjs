@@ -1,4 +1,3 @@
-import { migrateGet3wStorage } from "../electron/get3w-storage-migration.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { cpSync, rmSync } from "node:fs";
@@ -10,7 +9,6 @@ const desktopRoot = resolve(__dirname, "..");
 const repoRoot = resolve(desktopRoot, "../..");
 const electronSidecarDir = resolve(desktopRoot, "resources", "sidecars");
 const electronHelperDir = resolve(desktopRoot, "resources", "helpers");
-migrateGet3wStorage({ userDataDir: process.env.GET3W_ELECTRON_USERDATA || resolve(repoRoot, ".get3w-dev-profile") });
 const defaultDevDataDir = resolve(
   process.env.HOME ?? process.env.USERPROFILE ?? repoRoot,
   ".get3w",
@@ -232,11 +230,11 @@ if (process.env.GET3W_ELECTRON_SKIP_SHARED_PREPARE !== "1") {
 // Build workspace packages that Electron imports from their dist output.
 if (process.env.GET3W_ELECTRON_SKIP_WORKSPACE_BUILD !== "1") {
   console.log("[electron-dev] Building Electron workspace dependencies...");
-  runSync(pnpmCmd, ["--filter", "@openwork/remote-sessions", "build"], { cwd: repoRoot });
-  runSync(pnpmCmd, ["--filter", "@openwork/computer-use", "build"], { cwd: repoRoot });
+  runSync(pnpmCmd, ["--filter", "@get3w/remote-sessions", "build"], { cwd: repoRoot });
+  runSync(pnpmCmd, ["--filter", "@get3w/computer-use", "build"], { cwd: repoRoot });
   // Remote computers for computer use load these lazily from their builds.
-  runSync(pnpmCmd, ["--filter", "@openwork/sandbox", "--filter", "@openwork/sandbox-freestyle", "--filter", "@openwork/sandbox-daytona", "build"], { cwd: repoRoot });
-  runSync(pnpmCmd, ["--filter", "openwork-server", "build"], { cwd: repoRoot });
+  runSync(pnpmCmd, ["--filter", "@get3w/sandbox", "--filter", "@get3w/sandbox-freestyle", "--filter", "@get3w/sandbox-daytona", "build"], { cwd: repoRoot });
+  runSync(pnpmCmd, ["--filter", "get3w-server", "build"], { cwd: repoRoot });
   const embeddedDist = resolve(desktopRoot, "server/dist");
   rmSync(embeddedDist, { recursive: true, force: true });
   cpSync(resolve(repoRoot, "apps/server/dist"), embeddedDist, { recursive: true });
@@ -288,7 +286,7 @@ if (process.env.GET3W_ELECTRON_SKIP_NATIVE_REBUILD === "1") {
   console.log("[electron-dev] Using prebuilt Electron native dependencies.");
 } else {
   console.log("[electron-dev] Rebuilding native dependencies for Electron...");
-  runSync(pnpmCmd, ["--filter", "@openwork/desktop", "run", "rebuild:electron-native"], { cwd: repoRoot });
+  runSync(pnpmCmd, ["--filter", "@get3w/desktop", "run", "rebuild:electron-native"], { cwd: repoRoot });
 }
 
 // Optional Electron CDP for external debugging / raw CDP clients.
@@ -312,7 +310,7 @@ electronChild = run(nodeCmd, [resolve(__dirname, "electron-launch.mjs"), "./elec
 });
 
 if (cdpPort) {
-  console.log(`[openwork] Electron CDP exposed at http://127.0.0.1:${cdpPort}`);
+  console.log(`[get3w] Electron CDP exposed at http://127.0.0.1:${cdpPort}`);
 }
 
 electronChild.on("exit", (code) => {

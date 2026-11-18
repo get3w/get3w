@@ -18,7 +18,7 @@ afterAll(async () => { await GlobalRegistrator.unregister(); });
 const { createRoot } = await import("react-dom/client");
 const { UpdatesView } = await import("../src/react-app/domains/settings/pages/updates-view");
 
-type Bridge = NonNullable<NonNullable<Window["__OPENWORK_ELECTRON__"]>["updater"]>;
+type Bridge = NonNullable<NonNullable<Window["__GET3W_ELECTRON__"]>["updater"]>;
 type CheckResult = Awaited<ReturnType<NonNullable<Bridge["check"]>>>;
 type Updater = ReturnType<typeof useElectronUpdaterState>;
 const installedVersion = "0.18.0";
@@ -178,7 +178,7 @@ describe("Settings staged-update discovery", () => {
     autoCheck = false;
     autoDownload = true;
     activeRuns = false;
-    window.__openworkReadDesktopVersionMetadataEval = () => ({
+    window.__get3wReadDesktopVersionMetadataEval = () => ({
       minAppVersion: "0.1.0",
       latestAppVersion: releaseChannel === "alpha" ? "0.18.46" : latestVersion,
       publishedDesktopVersions: releaseChannel === "alpha" ? ["0.18.46"] : [latestVersion],
@@ -214,7 +214,7 @@ describe("Settings staged-update discovery", () => {
         return { ok: !installReason, reason: installReason };
       },
     };
-    Reflect.set(window, "__OPENWORK_ELECTRON__", { updater: bridge });
+    Reflect.set(window, "__GET3W_ELECTRON__", { updater: bridge });
     useUpdateCheckRequestStore.getState().clearUpdateCheckRequest();
     host = document.createElement("div");
     document.body.append(host);

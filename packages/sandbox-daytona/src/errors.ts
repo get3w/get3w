@@ -11,7 +11,7 @@ import {
   DaytonaServiceUnavailableError,
   DaytonaTimeoutError,
 } from "@daytonaio/sdk"
-import { RuntimeProviderError, isRuntimeProviderError, type RuntimeProviderErrorCode } from "@openwork/sandbox"
+import { RuntimeProviderError, isRuntimeProviderError, type RuntimeProviderErrorCode } from "@get3w/sandbox"
 
 const transientMarkers = [
   "econnreset",

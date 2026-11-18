@@ -2,7 +2,7 @@ import type { DynamicToolUIPart, UIMessage } from "ai";
 import {
   mcpAppSummarySchema,
   parseMcpAppResourceUri,
-} from "@openwork/types/mcp-app";
+} from "@get3w/types/mcp-app";
 import {
   builtMcpAppId,
   hasPreservedMcpAppResult,
@@ -15,7 +15,7 @@ export function isAppBuilderPart(part: DynamicToolUIPart): boolean {
 export function appBuilderResultFailed(part: DynamicToolUIPart): boolean {
   if (part.state === "output-error" || part.state === "output-denied")
     return true;
-  const metadata = part.callProviderMetadata?.openwork;
+  const metadata = part.callProviderMetadata?.get3w;
   const result =
     metadata && typeof metadata === "object"
       ? Reflect.get(metadata, "mcpResult")
@@ -35,7 +35,7 @@ export function builtAppSummary(part: DynamicToolUIPart) {
     !hasPreservedMcpAppResult(part)
   )
     return null;
-  const metadata = part.callProviderMetadata?.openwork;
+  const metadata = part.callProviderMetadata?.get3w;
   if (!metadata || typeof metadata !== "object") return null;
   const result = Reflect.get(metadata, "mcpResult");
   if (

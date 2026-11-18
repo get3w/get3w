@@ -1,12 +1,12 @@
 {
-  "name": "@openwork/types",
+  "name": "@get3w/types",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     "./workbot-context": {
       "types": {
-        "openwork-build": "./dist/types/src/workbot-context.d.ts",
+        "get3w-build": "./dist/types/src/workbot-context.d.ts",
         "default": "./src/workbot-context.ts"
       },
       "development": "./src/workbot-context.ts",
@@ -14,7 +14,7 @@
     },
     "./google-drive-upload": {
       "types": {
-        "openwork-build": "./dist/types/src/google-drive-upload.d.ts",
+        "get3w-build": "./dist/types/src/google-drive-upload.d.ts",
         "default": "./src/google-drive-upload.ts"
       },
       "development": "./src/google-drive-upload.ts",
@@ -23,7 +23,7 @@
     },
     "./microsoft-drive-transfer": {
       "types": {
-        "openwork-build": "./dist/types/src/microsoft-drive-transfer.d.ts",
+        "get3w-build": "./dist/types/src/microsoft-drive-transfer.d.ts",
         "default": "./src/microsoft-drive-transfer.ts"
       },
       "development": "./src/microsoft-drive-transfer.ts",
@@ -32,7 +32,7 @@
     },
     "./cloud-model-fast": {
       "types": {
-        "openwork-build": "./dist/types/src/cloud-model-fast.d.ts",
+        "get3w-build": "./dist/types/src/cloud-model-fast.d.ts",
         "default": "./src/cloud-model-fast.ts"
       },
       "development": "./src/cloud-model-fast.ts",
@@ -42,7 +42,7 @@
     },
     ".": {
       "types": {
-        "openwork-build": "./dist/types/src/index.d.ts",
+        "get3w-build": "./dist/types/src/index.d.ts",
         "default": "./src/index.ts"
       },
       "development": "./src/index.ts",
@@ -50,39 +50,39 @@
     },
     "./agent-context-diagnostics": {
       "types": {
-        "openwork-build": "./dist/types/src/agent-context-diagnostics.d.ts",
+        "get3w-build": "./dist/types/src/agent-context-diagnostics.d.ts",
         "default": "./src/agent-context-diagnostics.ts"
       },
       "development": "./src/agent-context-diagnostics.ts",
       "default": "./src/agent-context-diagnostics.ts"
     },
-    "./openwork-affordance": {
+    "./get3w-affordance": {
       "types": {
-        "openwork-build": "./dist/types/src/openwork-affordance.d.ts",
-        "default": "./src/openwork-affordance.ts"
+        "get3w-build": "./dist/types/src/get3w-affordance.d.ts",
+        "default": "./src/get3w-affordance.ts"
       },
-      "development": "./src/openwork-affordance.ts",
-      "default": "./src/openwork-affordance.ts"
+      "development": "./src/get3w-affordance.ts",
+      "default": "./src/get3w-affordance.ts"
     },
-    "./openwork-context": {
+    "./get3w-context": {
       "types": {
-        "openwork-build": "./dist/types/src/openwork-context.d.ts",
-        "default": "./src/openwork-context.ts"
+        "get3w-build": "./dist/types/src/get3w-context.d.ts",
+        "default": "./src/get3w-context.ts"
       },
-      "development": "./src/openwork-context.ts",
-      "default": "./src/openwork-context.ts"
+      "development": "./src/get3w-context.ts",
+      "default": "./src/get3w-context.ts"
     },
-    "./openwork-provider": {
+    "./get3w-provider": {
       "types": {
-        "openwork-build": "./dist/types/src/openwork-provider.d.ts",
-        "default": "./src/openwork-provider.ts"
+        "get3w-build": "./dist/types/src/get3w-provider.d.ts",
+        "default": "./src/get3w-provider.ts"
       },
-      "development": "./src/openwork-provider.ts",
-      "default": "./src/openwork-provider.ts"
+      "development": "./src/get3w-provider.ts",
+      "default": "./src/get3w-provider.ts"
     },
     "./automations": {
       "types": {
-        "openwork-build": "./dist/types/src/automations.d.ts",
+        "get3w-build": "./dist/types/src/automations.d.ts",
         "default": "./src/automations.ts"
       },
       "development": "./src/automations.ts",
@@ -90,7 +90,7 @@
     },
     "./automation-models": {
       "types": {
-        "openwork-build": "./dist/types/src/automation-models.d.ts",
+        "get3w-build": "./dist/types/src/automation-models.d.ts",
         "default": "./src/automation-models.ts"
       },
       "development": "./src/automation-models.ts",
@@ -98,7 +98,7 @@
     },
     "./automation-schedule": {
       "types": {
-        "openwork-build": "./dist/types/src/automation-schedule.d.ts",
+        "get3w-build": "./dist/types/src/automation-schedule.d.ts",
         "default": "./src/automation-schedule.ts"
       },
       "development": "./src/automation-schedule.ts",
@@ -106,7 +106,7 @@
     },
     "./workflows": {
       "types": {
-        "openwork-build": "./dist/types/src/workflows.d.ts",
+        "get3w-build": "./dist/types/src/workflows.d.ts",
         "default": "./src/workflows.ts"
       },
       "development": "./src/workflows.ts",
@@ -114,7 +114,7 @@
     },
     "./mcp-app-timing": {
       "types": {
-        "openwork-build": "./dist/types/src/mcp-app-timing.d.ts",
+        "get3w-build": "./dist/types/src/mcp-app-timing.d.ts",
         "default": "./src/mcp-app-timing.ts"
       },
       "development": "./src/mcp-app-timing.ts",
@@ -124,7 +124,7 @@
     },
     "./mcp-app": {
       "types": {
-        "openwork-build": "./dist/types/src/mcp-app.d.ts",
+        "get3w-build": "./dist/types/src/mcp-app.d.ts",
         "default": "./src/mcp-app.ts"
       },
       "development": "./src/mcp-app.ts",
@@ -132,7 +132,7 @@
     },
     "./skill-created-app": {
       "types": {
-        "openwork-build": "./dist/types/src/skill-created-app.d.ts",
+        "get3w-build": "./dist/types/src/skill-created-app.d.ts",
         "default": "./src/skill-created-app.ts"
       },
       "development": "./src/skill-created-app.ts",
@@ -140,7 +140,7 @@
     },
     "./connection-action-app": {
       "types": {
-        "openwork-build": "./dist/types/src/connection-action-app.d.ts",
+        "get3w-build": "./dist/types/src/connection-action-app.d.ts",
         "default": "./src/connection-action-app.ts"
       },
       "development": "./src/connection-action-app.ts",
@@ -150,7 +150,7 @@
     },
     "./den/agent-permissions": {
       "types": {
-        "openwork-build": "./dist/types/src/den/agent-permissions.d.ts",
+        "get3w-build": "./dist/types/src/den/agent-permissions.d.ts",
         "default": "./src/den/agent-permissions.ts"
       },
       "development": "./src/den/agent-permissions.ts",
@@ -158,7 +158,7 @@
     },
     "./den/desktop-policies": {
       "types": {
-        "openwork-build": "./dist/types/src/den/desktop-policies.d.ts",
+        "get3w-build": "./dist/types/src/den/desktop-policies.d.ts",
         "default": "./src/den/desktop-policies.ts"
       },
       "development": "./src/den/desktop-policies.ts",
@@ -166,7 +166,7 @@
     },
     "./den/connect-diagnostics": {
       "types": {
-        "openwork-build": "./dist/types/src/den/connect-diagnostics.d.ts",
+        "get3w-build": "./dist/types/src/den/connect-diagnostics.d.ts",
         "default": "./src/den/connect-diagnostics.ts"
       },
       "development": "./src/den/connect-diagnostics.ts",
@@ -174,7 +174,7 @@
     },
     "./den/egress-diagnostics": {
       "types": {
-        "openwork-build": "./dist/types/src/den/egress-diagnostics.d.ts",
+        "get3w-build": "./dist/types/src/den/egress-diagnostics.d.ts",
         "default": "./src/den/egress-diagnostics.ts"
       },
       "development": "./src/den/egress-diagnostics.ts",
@@ -182,7 +182,7 @@
     },
     "./den/diagnostics": {
       "types": {
-        "openwork-build": "./dist/types/src/den/diagnostics.d.ts",
+        "get3w-build": "./dist/types/src/den/diagnostics.d.ts",
         "default": "./src/den/diagnostics.ts"
       },
       "development": "./src/den/diagnostics.ts",
@@ -190,7 +190,7 @@
     },
     "./den/gateway": {
       "types": {
-        "openwork-build": "./dist/types/src/den/gateway.d.ts",
+        "get3w-build": "./dist/types/src/den/gateway.d.ts",
         "default": "./src/den/gateway.ts"
       },
       "development": "./src/den/gateway.ts",
@@ -198,7 +198,7 @@
     },
     "./den/gateway-usage-limits": {
       "types": {
-        "openwork-build": "./dist/types/src/den/gateway-usage-limits.d.ts",
+        "get3w-build": "./dist/types/src/den/gateway-usage-limits.d.ts",
         "default": "./src/den/gateway-usage-limits.ts"
       },
       "development": "./src/den/gateway-usage-limits.ts",
@@ -207,7 +207,7 @@
     },
     "./den/gateway-usage": {
       "types": {
-        "openwork-build": "./dist/types/src/den/gateway-usage.d.ts",
+        "get3w-build": "./dist/types/src/den/gateway-usage.d.ts",
         "default": "./src/den/gateway-usage.ts"
       },
       "development": "./src/den/gateway-usage.ts",
@@ -215,7 +215,7 @@
     },
     "./den/inference": {
       "types": {
-        "openwork-build": "./dist/types/src/den/inference.d.ts",
+        "get3w-build": "./dist/types/src/den/inference.d.ts",
         "default": "./src/den/inference.ts"
       },
       "development": "./src/den/inference.ts",
@@ -225,7 +225,7 @@
     },
     "./den/microsoft-365": {
       "types": {
-        "openwork-build": "./dist/types/src/den/microsoft-365.d.ts",
+        "get3w-build": "./dist/types/src/den/microsoft-365.d.ts",
         "default": "./src/den/microsoft-365.ts"
       },
       "development": "./src/den/microsoft-365.ts",
@@ -233,7 +233,7 @@
     },
     "./den/auto-router": {
       "types": {
-        "openwork-build": "./dist/types/src/den/auto-router.d.ts",
+        "get3w-build": "./dist/types/src/den/auto-router.d.ts",
         "default": "./src/den/auto-router.ts"
       },
       "development": "./src/den/auto-router.ts",
@@ -243,7 +243,7 @@
     },
     "./den/credential-prompt": {
       "types": {
-        "openwork-build": "./dist/types/src/den/credential-prompt.d.ts",
+        "get3w-build": "./dist/types/src/den/credential-prompt.d.ts",
         "default": "./src/den/credential-prompt.ts"
       },
       "development": "./src/den/credential-prompt.ts",
@@ -251,7 +251,7 @@
     },
     "./den/mcp-connection-action": {
       "types": {
-        "openwork-build": "./dist/types/src/den/mcp-connection-action.d.ts",
+        "get3w-build": "./dist/types/src/den/mcp-connection-action.d.ts",
         "default": "./src/den/mcp-connection-action.ts"
       },
       "development": "./src/den/mcp-connection-action.ts",
@@ -259,7 +259,7 @@
     },
     "./workspace": {
       "types": {
-        "openwork-build": "./dist/types/src/workspace.d.ts",
+        "get3w-build": "./dist/types/src/workspace.d.ts",
         "default": "./src/workspace.ts"
       },
       "development": "./src/workspace.ts",
@@ -267,7 +267,7 @@
     },
     "./desktop-ipc": {
       "types": {
-        "openwork-build": "./dist/types/src/desktop-ipc.d.ts",
+        "get3w-build": "./dist/types/src/desktop-ipc.d.ts",
         "default": "./src/desktop-ipc.ts"
       },
       "development": "./src/desktop-ipc.ts",
@@ -275,7 +275,7 @@
     },
     "./opencode-config-error": {
       "types": {
-        "openwork-build": "./dist/types/src/opencode-config-error.d.ts",
+        "get3w-build": "./dist/types/src/opencode-config-error.d.ts",
         "default": "./src/opencode-config-error.ts"
       },
       "development": "./src/opencode-config-error.ts",
@@ -285,7 +285,7 @@
     },
     "./url": {
       "types": {
-        "openwork-build": "./dist/types/src/url.d.ts",
+        "get3w-build": "./dist/types/src/url.d.ts",
         "default": "./src/url.ts"
       },
       "development": "./src/url.ts",
@@ -293,7 +293,7 @@
     },
     "./den/desktop-policies-runtime": {
       "types": {
-        "openwork-build": "./dist/types/src/den/desktop-policies.d.ts",
+        "get3w-build": "./dist/types/src/den/desktop-policies.d.ts",
         "default": "./src/den/desktop-policies.ts"
       },
       "development": "./src/den/desktop-policies.ts",
@@ -302,7 +302,7 @@
     },
     "./den/agent-permissions-runtime": {
       "types": {
-        "openwork-build": "./dist/types/src/den/agent-permissions.d.ts",
+        "get3w-build": "./dist/types/src/den/agent-permissions.d.ts",
         "default": "./src/den/agent-permissions.ts"
       },
       "development": "./src/den/agent-permissions.ts",
@@ -311,7 +311,7 @@
     },
     "./den/service-readiness": {
       "types": {
-        "openwork-build": "./dist/types/src/den/service-readiness.d.ts",
+        "get3w-build": "./dist/types/src/den/service-readiness.d.ts",
         "default": "./src/den/service-readiness.ts"
       },
       "development": "./src/den/service-readiness.ts",
@@ -319,7 +319,7 @@
     },
     "./den/connection-state": {
       "types": {
-        "openwork-build": "./dist/types/src/den/connection-state.d.ts",
+        "get3w-build": "./dist/types/src/den/connection-state.d.ts",
         "default": "./src/den/connection-state.ts"
       },
       "development": "./src/den/connection-state.ts",
@@ -329,7 +329,7 @@
     },
     "./managed-provider-config": {
       "types": {
-        "openwork-build": "./dist/types/src/managed-provider-config.d.ts",
+        "get3w-build": "./dist/types/src/managed-provider-config.d.ts",
         "default": "./src/managed-provider-config.ts"
       },
       "development": "./src/managed-provider-config.ts",
@@ -339,7 +339,7 @@
     },
     "./browser-demonstration": {
       "types": {
-        "openwork-build": "./dist/types/src/browser-demonstration.d.ts",
+        "get3w-build": "./dist/types/src/browser-demonstration.d.ts",
         "default": "./src/browser-demonstration.ts"
       },
       "development": "./src/browser-demonstration.ts",
@@ -354,7 +354,7 @@
     "build": "tsup && tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@openwork/managed-deployments": "workspace:*",
+    "@get3w/managed-deployments": "workspace:*",
     "zod": "^4.6.6"
   },
   "devDependencies": {

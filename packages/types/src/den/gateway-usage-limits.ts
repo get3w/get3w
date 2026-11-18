@@ -424,8 +424,8 @@ export function gatewayRequestScope(
     ? providerId
     : GATEWAY_DEFAULT_USAGE_SCOPE
 }
-export const GATEWAY_USAGE_LIMIT_ERROR_CODE = "openwork_gateway_usage_limit_exceeded"
-export const GATEWAY_USAGE_ACCOUNTING_ERROR_CODE = "openwork_gateway_accounting_unavailable"
+export const GATEWAY_USAGE_LIMIT_ERROR_CODE = "get3w_gateway_usage_limit_exceeded"
+export const GATEWAY_USAGE_ACCOUNTING_ERROR_CODE = "get3w_gateway_accounting_unavailable"
 export function hasGatewayUsageLimitHttpMarker(
   response: Pick<Response, "status" | "headers">,
 ): boolean {
@@ -460,7 +460,7 @@ export function gatewayUsageLimitResponse(
       error: {
         type: "usage_limit_error",
         code: GATEWAY_USAGE_LIMIT_ERROR_CODE,
-        source: "openwork_gateway",
+        source: "get3w_gateway",
         message: provider
           ? `You have reached your AI Gateway usage limit for ${provider.name}. Models from another provider may still be available.`
           : "You have reached your AI Gateway usage limit.",
@@ -485,7 +485,7 @@ export function gatewayAccountingUnavailableResponse(): Response {
       error: {
         type: "accounting_unavailable_error",
         code: GATEWAY_USAGE_ACCOUNTING_ERROR_CODE,
-        source: "openwork_gateway",
+        source: "get3w_gateway",
         message: "Gateway estimated-cost accounting is unavailable for this request.",
       },
     },

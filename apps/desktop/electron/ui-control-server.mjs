@@ -1,6 +1,6 @@
 // Local UI-control HTTP bridge: a loopback server exposing the legacy
 // /snapshot, /actions and /execute routes plus the semantic /context, /query
-// and /command surface. Dispatched to the renderer's window.__openworkControl.
+// and /command surface. Dispatched to the renderer's window.__get3wControl.
 // Extracted from main.mjs; state and lifecycle live in this factory
 // (createRuntimeManager pattern).
 import { randomBytes } from "node:crypto";
@@ -68,7 +68,7 @@ export function createUiControlServer({
     return JSON.stringify(JSON.stringify(value ?? {}));
   }
 
-  async function evaluateOpenworkControl(expression) {
+  async function evaluateGet3wControl(expression) {
     const win = await getWindow();
     // Commands mutate renderer state directly and do not require the desktop
     // window to become active. Foreground activation must be an explicit
@@ -76,34 +76,34 @@ export function createUiControlServer({
     return win.webContents.executeJavaScript(expression, true);
   }
 
-  async function runOpenworkControlCommand(command, args = {}) {
+  async function runGet3wControlCommand(command, args = {}) {
     const argsJsonLiteral = jsonForJavaScript(args);
     if (command === "snapshot") {
-      return evaluateOpenworkControl(`(async () => {
-        const control = window.__openworkControl;
+      return evaluateGet3wControl(`(async () => {
+        const control = window.__get3wControl;
         if (!control) return { ok: false, error: "Get3W control surface is not available yet." };
         control.setEnabled?.(true);
         return { ok: true, ...control.snapshot() };
       })()`);
     }
     if (command === "actions") {
-      return evaluateOpenworkControl(`(async () => {
-        const control = window.__openworkControl;
+      return evaluateGet3wControl(`(async () => {
+        const control = window.__get3wControl;
         if (!control) return { ok: false, error: "Get3W control surface is not available yet." };
         control.setEnabled?.(true);
         return { ok: true, actions: control.listActions() };
       })()`);
     }
     if (command === "context") {
-      return evaluateOpenworkControl(`(async () => {
-        const control = window.__openworkControl;
+      return evaluateGet3wControl(`(async () => {
+        const control = window.__get3wControl;
         if (!control) return { ok: false, error: "Get3W control surface is not available yet." };
         return { ok: true, context: control.context() };
       })()`);
     }
     if (command === "query" || command === "command") {
-      return evaluateOpenworkControl(`(async () => {
-        const control = window.__openworkControl;
+      return evaluateGet3wControl(`(async () => {
+        const control = window.__get3wControl;
         const input = JSON.parse(${argsJsonLiteral});
         if (!control) return { ok: false, error: "Get3W control surface is not available yet." };
         if (!input || typeof input.id !== "string" || !input.id.trim()) {
@@ -113,8 +113,8 @@ export function createUiControlServer({
       })()`);
     }
     if (command === "execute") {
-      return evaluateOpenworkControl(`(async () => {
-        const control = window.__openworkControl;
+      return evaluateGet3wControl(`(async () => {
+        const control = window.__get3wControl;
         const input = JSON.parse(${argsJsonLiteral});
         if (!control) return { ok: false, error: "Get3W control surface is not available yet." };
         if (!input || typeof input.actionId !== "string" || !input.actionId.trim()) {
@@ -141,27 +141,27 @@ export function createUiControlServer({
           return;
         }
         if (request.method === "GET" && url.pathname === "/snapshot") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("snapshot"));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("snapshot"));
           return;
         }
         if (request.method === "GET" && url.pathname === "/actions") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("actions"));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("actions"));
           return;
         }
         if (request.method === "GET" && url.pathname === "/context") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("context"));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("context"));
           return;
         }
         if (request.method === "POST" && url.pathname === "/query") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("query", await readJsonRequestBody(request)));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("query", await readJsonRequestBody(request)));
           return;
         }
         if (request.method === "POST" && url.pathname === "/command") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("command", await readJsonRequestBody(request)));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("command", await readJsonRequestBody(request)));
           return;
         }
         if (request.method === "POST" && url.pathname === "/execute") {
-          sendJsonResponse(response, 200, await runOpenworkControlCommand("execute", await readJsonRequestBody(request)));
+          sendJsonResponse(response, 200, await runGet3wControlCommand("execute", await readJsonRequestBody(request)));
           return;
         }
         if (request.method === "POST" && url.pathname === "/browser/task") {

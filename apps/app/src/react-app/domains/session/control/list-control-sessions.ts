@@ -1,4 +1,4 @@
-import { labelOpenworkSessionModel, type OpenworkCatalogModel, type OpenworkSessionActivityInventory, type OpenworkSessionModel } from "@openwork/types/openwork-affordance";
+import { labelGet3wSessionModel, type Get3wCatalogModel, type Get3wSessionActivityInventory, type Get3wSessionModel } from "@get3w/types/get3w-affordance";
 
 import { getDisplaySessionTitle } from "../../../../app/lib/session-title";
 import type { SessionActivityStatus } from "../status/session-activity-store";
@@ -35,7 +35,7 @@ export type ControlSessionLike = {
   model?: ControlSessionEngineModel | null;
 };
 
-export type ListedControlSession = OpenworkSessionActivityInventory & {
+export type ListedControlSession = Get3wSessionActivityInventory & {
   sessionId: string;
   title: string;
   workspace: string;
@@ -44,14 +44,14 @@ export type ListedControlSession = OpenworkSessionActivityInventory & {
   /** Live activity, the same source as the sidebar indicator. */
   status: SessionActivityStatus;
   /** Model and reasoning effort the session is bound to; null before any model is bound. */
-  model: OpenworkSessionModel | null;
+  model: Get3wSessionModel | null;
 };
 
 export type ListControlSessionsState = {
   workspaces: ControlSessionWorkspace[];
   sessionsByWorkspaceId: Record<string, ControlSessionLike[]>;
   pinnedIds: readonly string[];
-  modelCatalogByWorkspaceId?: Record<string, readonly OpenworkCatalogModel[]>;
+  modelCatalogByWorkspaceId?: Record<string, readonly Get3wCatalogModel[]>;
   statusFor: (workspaceId: string, sessionId: string) => SessionActivityStatus;
   attentionFor?: (workspaceId: string, sessionId: string) => SessionAttention | undefined;
 };
@@ -66,7 +66,7 @@ export function isWorkingStatus(status: SessionActivityStatus): boolean {
  * bound. The engine writes the literal variant "default" for a turn that
  * named none; agents read null for that, the composer pill's value.
  */
-export function controlSessionModel(session: ControlSessionLike): OpenworkSessionModel | null {
+export function controlSessionModel(session: ControlSessionLike): Get3wSessionModel | null {
   const model = session.model;
   const providerId = model?.providerID?.trim();
   const modelId = model?.id?.trim();
@@ -123,7 +123,7 @@ export function listControlSessions(args: unknown, state: ListControlSessionsSta
         working: activity.working,
         descendantActivity: activity.descendantActivity,
         inventoryComplete: activity.inventoryComplete,
-        model: labelOpenworkSessionModel(controlSessionModel(session), state.modelCatalogByWorkspaceId?.[workspace.id] ?? []),
+        model: labelGet3wSessionModel(controlSessionModel(session), state.modelCatalogByWorkspaceId?.[workspace.id] ?? []),
       });
     }
   }

@@ -8,7 +8,7 @@ import { attachHistory, copyHistoryBatches, externalizeHistory, numberField, ope
 // No native engine binary is required: exercise the real SQLite connection and
 // staging path on Bun (including Linux, whose default URI support differs).
 test("history attachments externalize copied payloads while enforcing read-only sources", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-history-store-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-history-store-"));
   const source = join(directory, "source '界 %?#.db");
   const converted = join(directory, "converted '界 %?#.db");
   const text = "Original text 界🦆\"\\\n".repeat(1000);
@@ -34,14 +34,14 @@ test("history attachments externalize copied payloads while enforcing read-only 
       await externalizeHistory(db);
       const token = stringField(db.prepare("SELECT json_extract(data, '$.text') AS value FROM message").get(), "value");
       assert.match(token, /^OWPAYLOAD[0-9a-f]+END$/);
-      assert.equal(stringField(db.prepare("SELECT value FROM openwork_payload WHERE token = ?").get(token), "value"), text);
+      assert.equal(stringField(db.prepare("SELECT value FROM get3w_payload WHERE token = ?").get(token), "value"), text);
       const uriToken = stringField(db.prepare("SELECT json_extract(data, '$.url') AS value FROM part").get(), "value");
       assert.match(uriToken, /^data:text\/plain;base64,/);
-      assert.equal(stringField(db.prepare("SELECT value FROM openwork_payload WHERE token = ?").get(uriToken), "value"), url);
-      assert.equal(stringField(db.prepare("SELECT value FROM openwork_payload WHERE token = ?").get(uriToken.split(",")[1] ?? ""), "value"), Buffer.from("Original attachment 界🦆 /%".repeat(1000)).toString("base64"));
-      const count = numberField(db.prepare("SELECT count(*) AS n FROM openwork_payload").get(), "n");
+      assert.equal(stringField(db.prepare("SELECT value FROM get3w_payload WHERE token = ?").get(uriToken), "value"), url);
+      assert.equal(stringField(db.prepare("SELECT value FROM get3w_payload WHERE token = ?").get(uriToken.split(",")[1] ?? ""), "value"), Buffer.from("Original attachment 界🦆 /%".repeat(1000)).toString("base64"));
+      const count = numberField(db.prepare("SELECT count(*) AS n FROM get3w_payload").get(), "n");
       await externalizeHistory(db);
-      assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_payload").get(), "n"), count);
+      assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_payload").get(), "n"), count);
       assert.equal(stringField(db.prepare("SELECT json_extract(data, '$.url') AS value FROM original.part").get(), "value"), url);
     } finally { db.close(); }
     const target = await openHistoryDatabase(join(directory, "target.db"));
@@ -60,11 +60,11 @@ test("history attachments externalize copied payloads while enforcing read-only 
 function oldRestore(db: HistoryDatabase) {
   for (const row of db.prepare("SELECT id FROM session_message ORDER BY id").all()) {
     const id = stringField(row, "id");
-    for (const item of db.prepare(`SELECT token FROM openwork_payload WHERE instr((SELECT data FROM session_message WHERE id = ?), token) > 0 ORDER BY length(token) DESC`).all(id)) {
+    for (const item of db.prepare(`SELECT token FROM get3w_payload WHERE instr((SELECT data FROM session_message WHERE id = ?), token) > 0 ORDER BY length(token) DESC`).all(id)) {
       const token = stringField(item, "token");
-      db.prepare(`UPDATE session_message SET data = replace(data, ?, (SELECT substr(json_quote(value), 2, length(json_quote(value)) - 2) FROM openwork_payload WHERE token = ?)) WHERE id = ?`).run(token, token, id);
+      db.prepare(`UPDATE session_message SET data = replace(data, ?, (SELECT substr(json_quote(value), 2, length(json_quote(value)) - 2) FROM get3w_payload WHERE token = ?)) WHERE id = ?`).run(token, token, id);
     }
-    assert.ok(!db.prepare(`SELECT 1 FROM session_message m WHERE m.id = ? AND EXISTS (SELECT 1 FROM openwork_payload p WHERE instr(m.data, p.token) > 0)`).get(id));
+    assert.ok(!db.prepare(`SELECT 1 FROM session_message m WHERE m.id = ? AND EXISTS (SELECT 1 FROM get3w_payload p WHERE instr(m.data, p.token) > 0)`).get(id));
   }
 }
 
@@ -89,11 +89,11 @@ for (const unmapped of [false, true]) test(`restore is byte-identical to the old
       db.prepare("INSERT INTO original.part VALUES (?, ?)").run(String(n), JSON.stringify(value));
     }
     await externalizeHistory(db);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_payload_session").get(), "n"), 7);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_payload_session").get(), "n"), 7);
     db.exec(`INSERT INTO session_message SELECT id, session_id, CASE WHEN id IN ('1','2')
       THEN json_object('data', substr(json_extract(data, '$.url'), instr(json_extract(data, '$.url'), ',') + 1)) ELSE data END FROM part;
       INSERT INTO session_message VALUES ('no-marker', 's', '{"text":"unchanged"}');
-      DROP TABLE openwork_payload_session`);
+      DROP TABLE get3w_payload_session`);
     if (unmapped) db.exec("DELETE FROM part WHERE id = '3'"); // Full URI and encoded suffix must both take the global path.
     db.close();
     await copyFile(join(root, "new.db"), join(root, "old.db"));
@@ -108,7 +108,7 @@ for (const unmapped of [false, true]) test(`restore is byte-identical to the old
           const statement = db.prepare(sql);
           return {
             all: (...params) => {
-              if (sql.startsWith("SELECT token FROM openwork_payload WHERE")) globalScans++;
+              if (sql.startsWith("SELECT token FROM get3w_payload WHERE")) globalScans++;
               return statement.all(...params);
             },
             get: (...params) => statement.get(...params), run: (...params) => statement.run(...params),
@@ -120,7 +120,7 @@ for (const unmapped of [false, true]) test(`restore is byte-identical to the old
       await restoreHistoryPayloads(traced);
       assert.equal(globalScans > 0, unmapped, "mapped messages must never scan global payloads");
       assert.deepEqual(db.prepare("SELECT id, data FROM session_message ORDER BY id").all(), old.prepare("SELECT id, data FROM session_message ORDER BY id").all());
-      assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_restored").get(), "n"), 5);
+      assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_restored").get(), "n"), 5);
       await restoreHistoryPayloads(db);
       assert.deepEqual(db.prepare("SELECT id, data FROM session_message ORDER BY id").all(), old.prepare("SELECT id, data FROM session_message ORDER BY id").all());
     } finally { old.close(); }
@@ -135,13 +135,13 @@ test("a token introduced by a payload value still fails the old exact unresolved
     db.exec(`CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, data TEXT);
       CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT, data TEXT);
       CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT, data TEXT);
-      CREATE TABLE openwork_payload (token TEXT PRIMARY KEY, value TEXT)`);
-    db.prepare("INSERT INTO openwork_payload VALUES (?, ?), (?, 'must not recursively substitute')").run(a, b, b);
+      CREATE TABLE get3w_payload (token TEXT PRIMARY KEY, value TEXT)`);
+    db.prepare("INSERT INTO get3w_payload VALUES (?, ?), (?, 'must not recursively substitute')").run(a, b, b);
     db.prepare("INSERT INTO message VALUES ('a', 's', json_object('text', ?)), ('b', 's', json_object('text', ?))").run(a, b);
     db.exec("INSERT INTO session_message SELECT * FROM message WHERE id = 'a'");
     await assert.rejects(restoreHistoryPayloads(db), /Unresolved history payload/);
     assert.equal(stringField(db.prepare("SELECT json_extract(data, '$.text') AS value FROM session_message").get(), "value"), a);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_restored").get(), "n"), 0);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_restored").get(), "n"), 0);
   } finally { db.close(); }
 });
 
@@ -180,17 +180,17 @@ for (const diverged of [false, true]) test(`stale projection is losslessly recon
     const before = db.prepare("SELECT * FROM session_message ORDER BY id").all();
     const request = { database: db, sourceKey: "source", progress: () => {} };
     await assert.rejects(copyHistoryBatches({ ...request, batch: async () => { throw new Error("kill boundary"); } }), /kill boundary/);
-    assert.equal(numberField(db.prepare("SELECT cursor FROM openwork_history_copy").get(), "cursor"), 2);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 0);
+    assert.equal(numberField(db.prepare("SELECT cursor FROM get3w_history_copy").get(), "cursor"), 2);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 0);
     await copyHistoryBatches(request);
-    assert.equal(numberField(db.prepare("SELECT completed FROM openwork_history_copy").get(), "completed"), 1);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 0);
-    assert.deepEqual(db.prepare("SELECT id, session_id, seq, type, data, time_created, time_updated FROM openwork_v2_replaced_message ORDER BY id").all(), before);
+    assert.equal(numberField(db.prepare("SELECT completed FROM get3w_history_copy").get(), "completed"), 1);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 0);
+    assert.deepEqual(db.prepare("SELECT id, session_id, seq, type, data, time_created, time_updated FROM get3w_v2_replaced_message ORDER BY id").all(), before);
     assert.deepEqual(db.prepare("SELECT id FROM session_message ORDER BY seq").all().map(row => stringField(row, "id")), diverged ? ["a", "b", "extra", "c"] : ["a", "b", "c"]);
     assert.equal(numberField(db.prepare("SELECT seq FROM event_sequence").get(), "seq"), 100);
     assert.equal(stringField(db.prepare("SELECT owner_id FROM event_sequence").get(), "owner_id"), "existing-owner");
     assert.equal(stringField(db.prepare("SELECT title FROM session_v2").get(), "title"), "Keep target title");
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_v1_part").get(), "n"), 1);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_v1_part").get(), "n"), 1);
     assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM converted.session_message s JOIN session_message t ON t.id = s.id AND t.data = s.data").get(), "n"), 3);
     assert.equal((await copyHistoryBatches(request)).skipped, 1);
   } finally { db.close(); }
@@ -202,10 +202,10 @@ test("new-session ownership survives an interrupted copy and resume", async () =
     db.exec("DELETE FROM session_message; DELETE FROM session_v2");
     const request = { database: db, sourceKey: "source", progress: () => {} };
     await assert.rejects(copyHistoryBatches({ ...request, batch: async () => { throw new Error("kill boundary"); } }), /kill boundary/);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 1);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 1);
     await copyHistoryBatches(request);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 1);
-    assert.equal(numberField(db.prepare("SELECT completed FROM openwork_history_copy").get(), "completed"), 1);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 1);
+    assert.equal(numberField(db.prepare("SELECT completed FROM get3w_history_copy").get(), "completed"), 1);
     assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM session_message").get(), "n"), 3);
   } finally { db.close(); }
 });
@@ -213,16 +213,16 @@ test("new-session ownership survives an interrupted copy and resume", async () =
 test("legacy checkpoints gain created-session ownership once, preserving existing rows as created", async () => {
   const db = await copyFixture();
   try {
-    db.exec(`CREATE TABLE openwork_history_copy (source_key TEXT, session_id TEXT, cursor INTEGER NOT NULL DEFAULT -1,
+    db.exec(`CREATE TABLE get3w_history_copy (source_key TEXT, session_id TEXT, cursor INTEGER NOT NULL DEFAULT -1,
       completed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (source_key, session_id));
-      INSERT INTO openwork_history_copy VALUES ('legacy', 'legacy-created', 63, 0)`);
+      INSERT INTO get3w_history_copy VALUES ('legacy', 'legacy-created', 63, 0)`);
     const request = { database: db, sourceKey: "source", progress: () => {} };
     await copyHistoryBatches(request);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy WHERE source_key = 'legacy'").get(), "created_session"), 1);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy WHERE source_key = 'source'").get(), "created_session"), 0);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy WHERE source_key = 'legacy'").get(), "created_session"), 1);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy WHERE source_key = 'source'").get(), "created_session"), 0);
     await copyHistoryBatches(request);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM pragma_table_info('openwork_history_copy') WHERE name = 'created_session'").get(), "n"), 1);
-    assert.equal(numberField(db.prepare("SELECT cursor FROM openwork_history_copy WHERE source_key = 'legacy'").get(), "cursor"), 63);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM pragma_table_info('get3w_history_copy') WHERE name = 'created_session'").get(), "n"), 1);
+    assert.equal(numberField(db.prepare("SELECT cursor FROM get3w_history_copy WHERE source_key = 'legacy'").get(), "cursor"), 63);
   } finally { db.close(); }
 });
 
@@ -233,13 +233,13 @@ test("equal id sets preserve v2 edits but still archive all raw v1 rows", async 
     const before = db.prepare("SELECT * FROM session_message ORDER BY id").all();
     const request = { database: db, sourceKey: "source", progress: () => {} };
     await assert.rejects(copyHistoryBatches({ ...request, batch: async () => { throw new Error("kill boundary"); } }), /kill boundary/);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 0);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 0);
     const result = await copyHistoryBatches(request);
-    assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 0);
+    assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 0);
     assert.equal(result.imported, 1);
     assert.deepEqual(db.prepare("SELECT * FROM session_message ORDER BY id").all(), before);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_v1_message").get(), "n"), 1);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_v1_part").get(), "n"), 1);
-    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM openwork_v2_replaced_message").get(), "n"), 0);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_v1_message").get(), "n"), 1);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_v1_part").get(), "n"), 1);
+    assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM get3w_v2_replaced_message").get(), "n"), 0);
   } finally { db.close(); }
 });

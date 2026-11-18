@@ -4,7 +4,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import { act } from "react"
 import type { Root } from "react-dom/client"
 import type { UIMessage } from "ai"
-import type { RemoteSessionThreadStatus } from "@openwork/types/automations"
+import type { RemoteSessionThreadStatus } from "@get3w/types/automations"
 import type { RemoteThreadStart } from "../src/lib/remote-session-thread"
 import type { RemoteThreadEntry } from "../src/react-app/domains/session/remote-threads/remote-thread-store"
 
@@ -34,7 +34,7 @@ afterEach(async () => {
 function createCall(id: string, commandId: string, title: string): UIMessage["parts"][number] {
   return {
     type: "dynamic-tool",
-    toolName: "openwork_execute_capability",
+    toolName: "get3w_execute_capability",
     toolCallId: id,
     state: "output-available",
     input: { name: "remote-session:create", body: { target: "registered", computerId: "cmp_1", title, prompt: title } },

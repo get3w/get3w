@@ -4,7 +4,7 @@ import http from 'node:http';
 import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
 import {createCloudComputer} from '../cloud.mjs';
-const computer=await createCloudComputer({directory:'/tmp/openwork-cloud-proof-state/control',enabled:async()=>true});
+const computer=await createCloudComputer({directory:'/tmp/get3w-cloud-proof-state/control',enabled:async()=>true});
 const parse=result=>result.content?.filter(p=>p.type==='text').map(p=>JSON.parse(p.text))??[];
 const call=(operation,args={})=>computer.task('/browser/task',{sessionId:'proof-chat',operation,args});
 const native=(name,args={})=>computer.task('/computer/task',{sessionId:'proof-chat',name,args});
@@ -31,18 +31,18 @@ const server=http.createServer(async(req,res)=>{
    const zoomed=await native('computer_act',{observation_id:latest.observation_id,action:{type:'key',key:'equal',modifiers:['control']}});assert.notEqual(zoomed.isError,true,JSON.stringify(parse(zoomed)));
    const zoomView=await call('observe',{tabId,includeImage:true});assert.equal(zoomView.ok,true,JSON.stringify(zoomView));
    const png=Buffer.from(zoomView.image.data,'base64');assert.equal(png.readUInt32BE(16),zoomView.viewport.width);assert.equal(png.readUInt32BE(20),zoomView.viewport.height);
-   const frame=await computer.frame();await writeFile('/tmp/openwork-cloud-proof-desktop.png',Buffer.from(frame.dataUrl.split(',')[1],'base64'));
+   const frame=await computer.frame();await writeFile('/tmp/get3w-cloud-proof-desktop.png',Buffer.from(frame.dataUrl.split(',')[1],'base64'));
    await computer.interact({action:'takeover'});
    await assert.rejects(call('observe',{tabId}),{code:'paused'});
    await assert.rejects(native('computer_observe',{}),{code:'paused'});
    await computer.interact({action:'resume'});
    const result={browserAndComputerShareDesktop:true,browserFillThenNativeSave:true,bothToolsPauseOnTakeover:true,zoomImageCoordinatesMatch:true,applicationConsentPrompts:0,pid:process.pid,memoryMarker:originalMarker};
-   await writeFile('/tmp/openwork-cloud-proof-before.json',JSON.stringify(result));res.end(JSON.stringify(result));return;
+   await writeFile('/tmp/get3w-cloud-proof-before.json',JSON.stringify(result));res.end(JSON.stringify(result));return;
   }
   if(req.url==='/after'){
    const after=await call('observe',{tabId});assert.equal(after.ok,true,JSON.stringify(after));
    assert.ok(after.text.includes('Saved: Cloud verified'));assert.ok(after.text.includes(originalMarker));
-   res.end(JSON.stringify({sameProcess:process.pid===JSON.parse(await readFile('/tmp/openwork-cloud-proof-before.json')).pid,browserMemoryPreserved:true,browserFormPreserved:true}));return;
+   res.end(JSON.stringify({sameProcess:process.pid===JSON.parse(await readFile('/tmp/get3w-cloud-proof-before.json')).pid,browserMemoryPreserved:true,browserFormPreserved:true}));return;
   }
   res.writeHead(404).end();
  }catch(error){console.error(error);res.writeHead(500).end(String(error.stack));}

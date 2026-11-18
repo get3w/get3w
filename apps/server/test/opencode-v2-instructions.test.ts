@@ -4,11 +4,11 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { buildOpenWorkV2Instructions, readConfiguredInstructions } from "../src/opencode-v2-instructions.js";
+import { buildGet3WV2Instructions, readConfiguredInstructions } from "../src/opencode-v2-instructions.js";
 
 test("personal instructions do not advertise organization tools or a cloud runner", () => {
   for (const ready of [true, false]) {
-    const instructions = buildOpenWorkV2Instructions(ready);
+    const instructions = buildGet3WV2Instructions(ready);
     assert.match(instructions.operatingInstructions, /Get3W/);
     assert.match(instructions.operatingInstructions, /Call one outer tool at a time/);
     assert.match(instructions.operatingInstructions, /read needs path, shell needs command, and execute needs code/);
@@ -21,7 +21,7 @@ test("personal instructions do not advertise organization tools or a cloud runne
 });
 
 test("configured instructions load workspace files the engine skips", async () => {
-  const base = await mkdtemp(join(tmpdir(), "openwork-configured-instructions-"));
+  const base = await mkdtemp(join(tmpdir(), "get3w-configured-instructions-"));
   try {
     const workspace = join(base, "workspace");
     await mkdir(join(workspace, ".opencode"), { recursive: true });
@@ -52,7 +52,7 @@ test("configured instructions load workspace files the engine skips", async () =
 });
 
 test("configured instructions never send local or secret files", async () => {
-  const workspace = await mkdtemp(join(tmpdir(), "openwork-configured-instructions-git-"));
+  const workspace = await mkdtemp(join(tmpdir(), "get3w-configured-instructions-git-"));
   try {
     execFileSync("git", ["init", "-q"], { cwd: workspace });
     await mkdir(join(workspace, "rules"));
@@ -76,8 +76,12 @@ test("configured instructions never send local or secret files", async () => {
 
 
 test("connected model gateway guides native generation and image editing without advertising it offline", () => {
-  const connected = buildOpenWorkV2Instructions(false, true);
+  const connected = buildGet3WV2Instructions(false, true);
   assert.match(connected.connect, /media_prepare and media_generate/);
+  assert.match(connected.connect, /omit model unless the user explicitly requested/);
+  assert.match(connected.connect, /Never invent a model identifier from an artistic style/);
+  assert.match(connected.connect, /retry media_prepare without model/);
+  assert.match(connected.connect, /never silently substitute another model/);
   assert.match(connected.connect, /direct tools, not Code Mode/);
   assert.match(connected.connect, /Never discover media capabilities/);
   assert.match(connected.connect, /background polling/);
@@ -93,19 +97,19 @@ test("connected model gateway guides native generation and image editing without
   assert.match(connected.connect, /also preserve the cup from the original scene/);
   assert.match(connected.connect, /continuous scene content across the entire canvas/);
   assert.match(connected.connect, /pass both URLs to a model that supports multiple image references/);
-  assert.doesNotMatch(buildOpenWorkV2Instructions(false).connect, /gateway is connected|search_capabilities/);
+  assert.doesNotMatch(buildGet3WV2Instructions(false).connect, /gateway is connected|search_capabilities/);
 });
 
 
 test("deliverables use the user workspace rather than engine scratch space", () => {
-  const instructions=buildOpenWorkV2Instructions(false,true,"/user/workspace");
+  const instructions=buildGet3WV2Instructions(false,true,"/user/workspace");
   assert.match(instructions.context,/\/user\/workspace/);
   assert.match(instructions.context,/absolute Markdown file links/);
 });
 
 
 test("presentations require confirmation, bounded geometry and verified isolated revisions", () => {
-  const instructions = buildOpenWorkV2Instructions(false, true);
+  const instructions = buildGet3WV2Instructions(false, true);
   assert.match(instructions.presentations, /wait for the user's confirmation/);
   assert.match(instructions.presentations, /both width and height limits/);
   assert.match(instructions.presentations, /out-of-bounds objects/);
@@ -123,7 +127,7 @@ test("presentations require confirmation, bounded geometry and verified isolated
 
 
 test("documents require actual editable files, live fields and isolated revisions", () => {
-  const { documents } = buildOpenWorkV2Instructions(false, true);
+  const { documents } = buildGet3WV2Instructions(false, true);
   assert.match(documents, /do not hand a prose instruction to computer_open/);
   assert.match(documents, /Discover installed apps/);
   assert.match(documents, /real TOC, PAGE, SEQ and REF\/PAGEREF fields/);
@@ -136,7 +140,7 @@ test("documents require actual editable files, live fields and isolated revision
 
 
 test("song requests use music directly while explicit spoken reading uses speech", () => {
-  const { connect } = buildOpenWorkV2Instructions(false, true);
+  const { connect } = buildGet3WV2Instructions(false, true);
   assert.match(connect, /Songs, singing, setting lyrics or poems to music, music and background scores require text-to-music/);
   assert.match(connect, /Spoken reading, narration, dubbing and text read aloud require text-to-speech/);
   assert.match(connect, /生成一首歌，歌词为王国维的蝶恋花.*requires text-to-music/);
@@ -144,12 +148,12 @@ test("song requests use music directly while explicit spoken reading uses speech
   assert.match(connect, /supplied lyrics in lyrics/);
   assert.match(connect, /request vocals rather than instrumental output/);
   assert.match(connect, /unavailable, report the concrete error instead of falling back to speech/);
-  assert.doesNotMatch(buildOpenWorkV2Instructions(false, false).connect, /Songs, singing/);
+  assert.doesNotMatch(buildGet3WV2Instructions(false, false).connect, /Songs, singing/);
 });
 
 
 test("video extension retains the actual source video and distinguishes added duration", () => {
-  const { connect } = buildOpenWorkV2Instructions(false, true);
+  const { connect } = buildGet3WV2Instructions(false, true);
   assert.match(connect, /requires video-extend/);
   assert.match(connect, /480x854 is not exact 9:16/);
   assert.match(connect, /proportional scaling and minimal cropping, never stretching/);
@@ -160,7 +164,7 @@ test("video extension retains the actual source video and distinguishes added du
 });
 
 test("active brief output requirements survive quote and recovery turns", () => {
-  const instructions = buildOpenWorkV2Instructions(false, true);
+  const instructions = buildGet3WV2Instructions(false, true);
   assert.match(instructions.connect, /active project brief/);
   assert.match(instructions.connect, /earlier turn or a brief file/);
   assert.match(instructions.connect, /never silently fall back to defaults to obtain a quote/);

@@ -8,7 +8,7 @@ import { t } from "../../../i18n";
 import type { ExtensionTaxonomy } from "./extension-taxonomy";
 
 /** Where a Library row sits: on this computer, added by the member, or shared by Get3W. */
-export type LibrarySection = "mac" | "mine" | "openwork";
+export type LibrarySection = "mac" | "mine" | "get3w";
 
 export type LibraryAudience = {
   orgWide: boolean;

@@ -3,7 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act, createElement, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import type { OpenworkSessionHistory } from "../src/app/lib/openwork-server";
+import type { Get3wSessionHistory } from "../src/app/lib/get3w-server";
 import { useOpeningSessionHistory, type OpeningHistoryWindow } from "../src/react-app/domains/session/surface/session-history";
 import { snapshotToUIMessages } from "../src/react-app/domains/session/sync/usechat-adapter";
 import { sessionScrollKey, useSessionScrollStore } from "../src/react-app/domains/session/surface/scroll-store";
@@ -19,7 +19,7 @@ afterAll(async () => {
   if (ownedDom) await GlobalRegistrator.unregister();
 });
 
-function history(text: string, running = false): OpenworkSessionHistory {
+function history(text: string, running = false): Get3wSessionHistory {
   return {
     session: { id: "ses_shared", title: text, version: "1", time: { created: 1, updated: 2 } },
     messages: [{ info: { id: "msg_assistant", sessionID: "ses_shared", role: "assistant", parentID: "msg_user", time: { created: 2 },
@@ -53,7 +53,7 @@ async function fixture(pageBefore?: string | null) {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  const reads: { owner: string; token: string; signal: AbortSignal; window?: OpeningHistoryWindow; options?: { desktopTransport: "main" }; resolve: (value: OpenworkSessionHistory) => void }[] = [];
+  const reads: { owner: string; token: string; signal: AbortSignal; window?: OpeningHistoryWindow; options?: { desktopTransport: "main" }; resolve: (value: Get3wSessionHistory) => void }[] = [];
   let current: ReturnType<typeof useOpeningSessionHistory> | undefined;
   function Harness({ owner, token }: { owner: string; token: string }) {
     const opening = useOpeningSessionHistory({ owner, authToken: token, sessionId: "ses_shared", snapshotQueryKey: key, transcriptQueryKey: transcriptKey,
@@ -89,7 +89,7 @@ async function fixture(pageBefore?: string | null) {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     return { result };
   };
-  const resolve = async (index: number, value: OpenworkSessionHistory) => {
+  const resolve = async (index: number, value: Get3wSessionHistory) => {
     await act(async () => { reads[index].resolve(value); });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
   };
@@ -109,7 +109,7 @@ for (const replacement of ["owner", "credential", "removed"]) {
     } else {
       await view.render(replacement === "owner" ? "owner-b" : "owner-a", "token-b");
     }
-    const newRead = Promise.withResolvers<OpenworkSessionHistory>();
+    const newRead = Promise.withResolvers<Get3wSessionHistory>();
     let signal: AbortSignal | undefined;
     const newRefresh = view.client.fetchQuery({ queryKey: view.key, staleTime: 0, queryFn: context => { signal = context.signal; return newRead.promise; } })
       .then(() => true, () => false);
@@ -118,7 +118,7 @@ for (const replacement of ["owner", "credential", "removed"]) {
     expect(view.reads).toHaveLength(0);
     expect((await old.result).ok).toBe(false);
     await act(async () => { newRead.resolve(history("New owner result")); await newRefresh; });
-    expect(view.client.getQueryData<OpenworkSessionHistory>(view.key)?.session.title).toBe("New owner result");
+    expect(view.client.getQueryData<Get3wSessionHistory>(view.key)?.session.title).toBe("New owner result");
   });
 }
 

@@ -44,6 +44,20 @@ test("edits stay beside the source; local exports register; traversal and symlin
  await expect(planDeliverable(config,workspace,{key:"bad",directory:"../escape",extension:".png"})).rejects.toThrow();
  await symlink(tmpdir(),join(workspace.path,"link"));await expect(planDeliverable(config,workspace,{key:"link",directory:"link",extension:".png"})).rejects.toThrow();
 }));
+test("explicit workspace root and absolute child destinations retain safety boundaries",()=>fixture(async(config,workspace)=>{
+ for(const [key,directory] of [["absolute-root",workspace.path],["relative-root","."]]){
+  const plan=await planDeliverable(config,workspace,{key,directory,filename:key,extension:".csv"});
+  expect(plan.path).toBe(`${key}.csv`);
+ }
+ const child=await planDeliverable(config,workspace,{key:"child",directory:join(workspace.path,"reports"),filename:"report",extension:".docx"});
+ expect(child.path).toBe("reports/report.docx");
+ await writeFile(join(workspace.path,"source.docx"),"source");
+ const edit=await planDeliverable(config,workspace,{key:"absolute-source",sourcePath:join(workspace.path,"source.docx"),filename:"source",extension:".docx"});
+ expect(edit.path).toBe("source-2.docx");
+ await expect(planDeliverable(config,workspace,{key:"outside",directory:tmpdir(),extension:".csv"})).rejects.toThrow();
+ await symlink(tmpdir(),join(workspace.path,"outside-link"));
+ await expect(planDeliverable(config,workspace,{key:"linked",directory:join(workspace.path,"outside-link"),extension:".csv"})).rejects.toThrow();
+}));
 test("native media uses the shared plan and retry does not redownload, including refreshed query tokens",()=>fixture(async(config,workspace)=>{
  let calls=0;const fetcher:typeof fetch=async()=>{calls++;return new Response("image");};
  const managed={config,workspace,request:{taskName:"品牌宣传片",filename:"产品主视觉",sessionId:"ses_one"}};
@@ -77,4 +91,13 @@ test("older hashed media files are reused in place without downloading or renami
  const legacy=await saveModelOutput(workspace.path,key,url,async()=>new Response("old"));
  const result=await saveModelOutput(workspace.path,key,url,async()=>{throw Error("Must not download");},{config,workspace,request:{taskName:"新目录",filename:"新名称"}});
  expect(result.path).toBe(legacy.path);expect(await readFile(join(workspace.path,legacy.path),"utf8")).toBe("old");
+}));
+
+test("extension names with or without a leading dot allocate the same safe filename",()=>fixture(async(config,workspace)=>{
+ const request={key:"json-export",directory:".",filename:"report.json"};
+ const bare=await planDeliverable(config,workspace,{...request,extension:"json"});
+ expect(bare.path).toBe("report.json");
+ expect(await planDeliverable(config,workspace,{...request,extension:".json"})).toEqual(bare);
+ await expect(planDeliverable(config,workspace,{key:"escape-extension",extension:"../json"})).rejects.toThrow("Invalid deliverable");
+ await expect(planDeliverable(config,workspace,{key:"empty-extension",extension:""})).rejects.toThrow("Invalid deliverable");
 }));

@@ -11,7 +11,7 @@ const run = promisify(execFile)
 test("installed default exports run as JavaScript inside node_modules and resolve standalone declarations", async () => {
   const directory = await mkdtemp(fileURLToPath(new URL("./.package-test-", import.meta.url)))
   try {
-    const installed = join(directory, "node_modules", "@openwork", "remote-sessions")
+    const installed = join(directory, "node_modules", "@get3w", "remote-sessions")
     await mkdir(installed, { recursive: true })
     await cp(new URL("../package.json", import.meta.url), join(installed, "package.json"))
     await cp(new URL("../dist", import.meta.url), join(installed, "dist"), { recursive: true })
@@ -19,10 +19,10 @@ test("installed default exports run as JavaScript inside node_modules and resolv
     await writeFile(join(directory, "package.json"), JSON.stringify({ type: "module" }))
     await writeFile(join(directory, "consumer.mjs"), `
       import assert from "node:assert/strict"
-      import { emptyJournal, sessionIdForCommand, stableMessageId, createSessionRunner } from "@openwork/remote-sessions"
-      import { createRemoteSessionTransport } from "@openwork/remote-sessions/remote-client"
-      assert.equal(import.meta.resolve("@openwork/remote-sessions").endsWith("/dist/index.js"), true)
-      assert.equal(import.meta.resolve("@openwork/remote-sessions/remote-client").endsWith("/dist/remote-client.js"), true)
+      import { emptyJournal, sessionIdForCommand, stableMessageId, createSessionRunner } from "@get3w/remote-sessions"
+      import { createRemoteSessionTransport } from "@get3w/remote-sessions/remote-client"
+      assert.equal(import.meta.resolve("@get3w/remote-sessions").endsWith("/dist/index.js"), true)
+      assert.equal(import.meta.resolve("@get3w/remote-sessions/remote-client").endsWith("/dist/remote-client.js"), true)
       assert.equal(sessionIdForCommand("cmd_test-1"), "ses_cmdtest1")
       assert.equal(stableMessageId("cmd_test-1"), "msg_cmdtest1")
       assert.equal(emptyJournal().version, 1)
@@ -33,9 +33,9 @@ test("installed default exports run as JavaScript inside node_modules and resolv
     await rm(join(installed, "src"), { recursive: true, force: true }) // Declarations must be self-contained even without source.
     await mkdir(join(directory, "types"))
     await writeFile(join(directory, "consumer.mts"), `
-      import { createSessionRunner, sessionIdForCommand } from "@openwork/remote-sessions"
-      import type { HarnessAdapter, ReadResult } from "@openwork/remote-sessions"
-      import { createRemoteSessionTransport } from "@openwork/remote-sessions/remote-client"
+      import { createSessionRunner, sessionIdForCommand } from "@get3w/remote-sessions"
+      import type { HarnessAdapter, ReadResult } from "@get3w/remote-sessions"
+      import { createRemoteSessionTransport } from "@get3w/remote-sessions/remote-client"
       const capability: HarnessAdapter["creation"] = "idempotent"
       const replay: HarnessAdapter["sendReplay"] = "at_most_once"
       const scope: ReadResult["historyScope"] = "context"

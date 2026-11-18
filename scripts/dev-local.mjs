@@ -63,8 +63,10 @@ try {
   }
   // API uses the existing api/.env development database and Redis settings.
   run(python, ["-m", "celery", "-A", "celery_app", "worker", "-Q", "celery", "-P", "solo", "-c", "1", "--hostname=get3w-local@%h", "--loglevel=info"], api);
-  run(python, ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "6600"], api);
-  run(python, ["-m", "uvicorn", "services.cloud.app:app", "--host", "127.0.0.1", "--port", "6605"], api);
+  // Reload both HTTP services when Python source changes, including shared modules.
+  const reloadArgs = ["--reload", "--reload-dir", api];
+  run(python, ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "6600", ...reloadArgs], api);
+  run(python, ["-m", "uvicorn", "services.cloud.app:app", "--host", "127.0.0.1", "--port", "6605", ...reloadArgs], api);
   run(pnpm, ["dev", "--host", "127.0.0.1", "--port", "7700", "--strictPort"], web, {
     VITE_GET3W_API_ORIGIN: apiOrigin,
   });

@@ -14,7 +14,7 @@ async function invoke(command: string, ...args: unknown[]) {
   if (command === "computerHalt") output.textContent = "Current work stopped"
   return result
 }
-Reflect.set(window, "__OPENWORK_ELECTRON__", { invokeDesktop: invoke })
+Reflect.set(window, "__GET3W_ELECTRON__", { invokeDesktop: invoke })
 const output = document.createElement("output")
 output.setAttribute("role", "status")
 output.textContent = "Computer use enabled"

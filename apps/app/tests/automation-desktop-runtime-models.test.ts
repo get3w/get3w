@@ -33,7 +33,7 @@ test("Den's own providers stay Den's, and retired Zen is never offered from the 
   const catalog = automationProviderCatalog([
     runtimeProvider("lpr_team", "Team", ["team-model", "unassigned"]),
     runtimeProvider("opencode", "OpenCode Zen", ["big-pickle"]),
-    runtimeProvider("openwork", "Get3W", ["unknown"]),
+    runtimeProvider("get3w", "Get3W", ["unknown"]),
   ]);
   const options = automationModelOptions([team], { includeFreeStarter: false, catalog });
   expect(options.map((option) => `${option.providerId}/${option.modelId}`)).toEqual(["lpr_team/team-model"]);

@@ -7,15 +7,16 @@ import {createGet3wManagedMcp,mediaOutputNaming} from './get3w-managed-mcp.mjs';
 import {createGet3wMcpProxy} from './get3w-mcp-proxy.mjs';
 
 test('attachment edits save in visible task folders, including restored output metadata',()=>{
- const source='.opencode/openwork/inbox/chat-attachments/ses_test';
+ for (const source of ['.get3w/inbox/chat-attachments/ses_test']) {
  assert.deepEqual(mediaOutputNaming({nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:source+'/fixed',source_path:source+'/original.png'}}}),{taskName:'修复杯子',filename:'杯子.png',directory:undefined,sourcePath:undefined});
+ }
  assert.deepEqual(mediaOutputNaming({nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:'产品图',source_path:'产品图/原图.png'}}}),{taskName:'修复杯子',filename:'杯子.png',directory:'产品图',sourcePath:'产品图/原图.png'});
  // Other invalid destinations still reach the workspace validator unchanged.
  assert.equal(mediaOutputNaming({nativeMedia:{output:{directory:'../outside'}}}).directory,'../outside');
 });
 
 test('workspace ownership, explicit reconnect, account changes and policy failures',async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-mcp-'));
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-mcp-'));
  let snapshot={status:'signed_in',user:{id:'u'}},closed=0,created=0,deny=false;
  const configs={existing:{type:'remote',url:'https://existing.example/mcp'}},original=structuredClone(configs);
  const deps={userData,auth:{status:async()=>({...snapshot})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',clientToken:'client',pid:1}),createProxy:async()=>({url:'http://127.0.0.1:2345/mcp',token:'local-only-'+(++created),close:async()=>{closed++;}}),fetchImpl:async(url,opt)=>{
@@ -89,7 +90,7 @@ test('host submit approval runs before forwarding and denial never reaches cloud
 });
 
 test('offline disconnect closes the proxy without cloud checks, retains edited config and retries local cleanup',async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-mcp-offline-'));
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-mcp-offline-'));
  let offline=false,localDown=false,closed=0,config;
  const input={action:'enable',workspaceId:'ws',userId:'u'};
  const auth={status:async()=>{if(offline)throw Error('offline identity');return {status:'signed_in',user:{id:'u'}};}};
@@ -119,7 +120,7 @@ test('output download failures retry without submission and local reads stay off
  const scope={userId:'u',workspaceId:'ws',sessionId:'chat-session-123456'};
  const {createModelTaskJournal}=await import('./get3w-model-task-journal.mjs');
  const journal=createModelTaskJournal({userData});
- const context={type:'get3w.submit',messageId:'original-message',hash:'h',nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:'.opencode/openwork/inbox/chat-attachments/ses_test/fixed'}},quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
+ const context={type:'get3w.submit',messageId:'original-message',hash:'h',nativeMedia:{output:{task_name:'修复杯子',filename:'杯子.png',directory:'.get3w/inbox/chat-attachments/ses_test/fixed'}},quote:{amountUsd:'0.02'},call:{arguments:{slug:'image',idempotency_key:'one'}}};
  const key=await journal.beforeSubmit(scope,context);
  await journal.observe(scope,context,{result:{structuredContent:{status:'succeeded',result:{request_id:'r',status:'completed',outputs:['https://xianchou.com/image.png']}}}});
  let identity={userId:'u'},fail=true,saves=0,cloud=0;

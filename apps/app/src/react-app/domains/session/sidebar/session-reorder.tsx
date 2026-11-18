@@ -1,7 +1,7 @@
 import * as React from "react";
 import { moveSessionInOrder } from "./session-order";
 
-export const SESSION_DRAG_TYPE = "application/x-openwork-session-id";
+export const SESSION_DRAG_TYPE = "application/x-get3w-session-id";
 
 type DraggedSession = { id: string; workspaceId: string };
 const SessionDragContext = React.createContext<{

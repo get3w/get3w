@@ -10,8 +10,8 @@ files:
   - from: .electron-runtime/node_modules
     to: node_modules
   # Workspace dependency collection also runs outside our runtime staging.
-  - "!**/node_modules/@openwork/computer-use/native/**"
-  - "!**/node_modules/@openwork/computer-use/**/*.test.mjs"
+  - "!**/node_modules/@get3w/computer-use/native/**"
+  - "!**/node_modules/@get3w/computer-use/**/*.test.mjs"
   - "!**/node_modules/**/.build/**"
 extraResources:
   - from: ../../LICENSE
@@ -22,8 +22,8 @@ extraResources:
     to: legal/THIRD_PARTY_NOTICES.md
   - from: ../../third-party
     to: legal/third-party
-  - from: .electron-runtime/openwork-sentry.json
-    to: openwork-sentry.json
+  - from: .electron-runtime/get3w-sentry.json
+    to: get3w-sentry.json
   - from: ../app/dist
     to: app-dist
   - from: server/dist/opencode-plugins
@@ -32,7 +32,7 @@ extraResources:
       - "*.js"
       - "*.wasm"
   - from: ../../packages/docs
-    to: openwork-docs
+    to: get3w-docs
     filter:
       - "**/*.md"
       - "**/*.mdx"
@@ -82,7 +82,7 @@ mac:
       to: helpers
       filter:
         - "Get3W Computer Use.app/**"
-        - openwork-dictation
+        - get3w-dictation
   target:
     - dmg
     - zip
@@ -121,8 +121,8 @@ win:
     - from: resources/helpers
       to: helpers
       filter:
-        - openwork-dictation.exe
-        - openwork-computer-use.exe
+        - get3w-dictation.exe
+        - get3w-computer-use.exe
     - from: resources/sidecars
       to: sidecars
       filter:

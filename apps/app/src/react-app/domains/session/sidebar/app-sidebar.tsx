@@ -1300,7 +1300,7 @@ function DraftSessionRow({ workspaceId, groupId, title, pending }: { workspaceId
   </SidebarMenuSubItem>;
 }
 const EMPTY_PINNED_IDS = new Set<string>();
-const UNGROUPED_GROUP_ID = "__openwork_ungrouped";
+const UNGROUPED_GROUP_ID = "__get3w_ungrouped";
 
 function SessionGroupActions({ group, groups, workspaceId, count }: {
   group: SessionGroupDefinition;

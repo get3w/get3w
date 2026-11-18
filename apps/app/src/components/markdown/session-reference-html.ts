@@ -16,7 +16,7 @@ function escape(value: string) {
 export function sessionReferenceHtml(reference: SessionReference) {
   const href = escape(sessionReferenceHref(reference));
   const title = escape(reference.title);
-  return `<a href="${href}" data-openwork-session-reference="${href}" aria-label="Open ${reference.archived ? "archived task" : "task"}: ${title}" title="${title}" class="${SESSION_REFERENCE_LINK_CLASS_NAME}"><img src="${escape(resolveExtensionIconSrc("/openwork-sidebar-mark.svg"))}" alt="" aria-hidden="true" class="${SESSION_REFERENCE_ICON_CLASS_NAME}"><span class="min-w-0 max-w-64 truncate">${title}</span></a>`;
+  return `<a href="${href}" data-get3w-session-reference="${href}" aria-label="Open ${reference.archived ? "archived task" : "task"}: ${title}" title="${title}" class="${SESSION_REFERENCE_LINK_CLASS_NAME}"><img src="${escape(resolveExtensionIconSrc("/get3w-sidebar-mark.svg"))}" alt="" aria-hidden="true" class="${SESSION_REFERENCE_ICON_CLASS_NAME}"><span class="min-w-0 max-w-64 truncate">${title}</span></a>`;
 }
 
 // Raw HTML may contain an anchor, button, or another interactive element that
@@ -54,10 +54,10 @@ export function stripSessionReferenceAttributes(html: string) {
   let copied = 0;
   const tokenizer = new Tokenizer({ decodeEntities: false }, {
     onattribname(start, end) {
-      if (html.slice(start, end).toLowerCase() !== "data-openwork-session-reference") return;
+      if (html.slice(start, end).toLowerCase() !== "data-get3w-session-reference") return;
       // Rename only the actual attribute name. Keeping its value and delimiters
       // intact also preserves malformed-but-browser-accepted HTML faithfully.
-      result += html.slice(copied, start) + "data-openwork-untrusted-reference";
+      result += html.slice(copied, start) + "data-get3w-untrusted-reference";
       copied = end;
     },
     onattribdata() {}, onattribentity() {}, onattribend() {},

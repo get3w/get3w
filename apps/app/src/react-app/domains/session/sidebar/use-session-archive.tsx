@@ -52,7 +52,7 @@ export type ArchiveSessionOptions = {
 function archiveClient(endpoint: ResolvedWorkspaceEndpoint, directory: string) {
   return isOpencodeV2BaseUrl(endpoint.opencodeBaseUrl)
     ? createClientV2(endpoint.opencodeBaseUrl, directory, { token: endpoint.token })
-    : createClient(endpoint.opencodeBaseUrl, directory, { token: endpoint.token, mode: "openwork" }, { desktopTransport: "main" });
+    : createClient(endpoint.opencodeBaseUrl, directory, { token: endpoint.token, mode: "get3w" }, { desktopTransport: "main" });
 }
 
 export function useSessionArchive(input: {

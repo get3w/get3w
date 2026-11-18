@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DenAuthStatus } from "../cloud/den-auth-provider";
-import type { OpenworkCloudMcpProviderModelContext, OpenworkServerClient } from "../../../app/lib/openwork-server";
+import type { Get3wCloudMcpProviderModelContext, Get3wServerClient } from "../../../app/lib/get3w-server";
 import {
   IDLE_CLOUD_MCP_SUBMISSION_GATE_STATE,
   type CloudMcpSubmissionGateState,
@@ -11,9 +11,9 @@ import {
 // Sending never waits for a retired organization Gateway or account resolution.
 export function useCloudMcpSubmitReadiness(input: {
   cloudAuthStatus: DenAuthStatus;
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string | null;
-  providerModel?: OpenworkCloudMcpProviderModelContext;
+  providerModel?: Get3wCloudMcpProviderModelContext;
 }) {
   const [state, setState] = useState<CloudMcpSubmissionGateState>(IDLE_CLOUD_MCP_SUBMISSION_GATE_STATE);
   const pending = useRef(new Map<() => Promise<void>, Promise<CloudMcpSubmissionResult>>());

@@ -3,7 +3,7 @@ import type { UIMessage } from "ai";
 import { replyModelFromInfo } from "./reply-model";
 import type { FilePart, Part, TextPart, ToolPart } from "@opencode-ai/sdk/v2/client";
 
-import type { OpenworkSessionSnapshot } from "../../../../app/lib/openwork-server";
+import type { Get3wSessionSnapshot } from "../../../../app/lib/get3w-server";
 import { SYNTHETIC_SESSION_ERROR_MESSAGE_PREFIX } from "../../../../app/types";
 import {
   parseDynamicToolUIPart,
@@ -129,7 +129,7 @@ function mapSnapshotToolParts(part: ToolPart): UIMessage["parts"] {
 /** Recover display-only attachments without sending unsupported binary parts to the model. */
 export function attachmentNoteToUIParts(part: TextPart): UIMessage["parts"] {
   if (!part.synthetic || part.ignored) return [];
-  const attachments = part.metadata?.openworkAttachments;
+  const attachments = part.metadata?.get3wAttachments;
   if (!Array.isArray(attachments)) return [];
   return attachments.flatMap<UIMessage["parts"][number]>((attachment: unknown, index) => {
     if (!attachment || typeof attachment !== "object"
@@ -150,8 +150,8 @@ export function attachmentNoteToUIParts(part: TextPart): UIMessage["parts"] {
 
 export function textPartToUIPart(part: TextPart): UIMessage["parts"][number] | null {
   if (part.synthetic || part.ignored) return null;
-  const composerToken = part.metadata?.openworkComposerToken;
-  const composerPill = readComposerPill(part.metadata?.openworkComposerPill);
+  const composerToken = part.metadata?.get3wComposerToken;
+  const composerPill = readComposerPill(part.metadata?.get3wComposerPill);
   const backgroundShell = readBackgroundShellNotice(part.metadata?.[BACKGROUND_SHELL_NOTICE_KEY]);
   const subagentNotice = readSubagentNotice(part.metadata?.[SUBAGENT_NOTICE_KEY]);
   return {
@@ -164,19 +164,19 @@ export function textPartToUIPart(part: TextPart): UIMessage["parts"][number] | n
       ...(composerPill ? { composerPill } : {}),
       ...(backgroundShell ? { backgroundShell } : {}),
       ...(subagentNotice ? { subagentNotice } : {}),
-      ...(part.metadata?.openworkPastedText === true ? { pastedText: true } : {}),
+      ...(part.metadata?.get3wPastedText === true ? { pastedText: true } : {}),
     } },
   };
 }
 
-type SnapshotMessages = OpenworkSessionSnapshot["messages"];
+type SnapshotMessages = Get3wSessionSnapshot["messages"];
 const snapshotMessagesCache = new WeakMap<SnapshotMessages, UIMessage[]>();
 const snapshotMessageCache = new WeakMap<SnapshotMessages[number], UIMessage[]>();
 
 // Query snapshots are immutable. Share the projection between rendering and
 // hydration; a refreshed tail can also reuse unchanged historical messages.
 // Callers must copy before applying live updates to these cached messages.
-export function snapshotToUIMessages(snapshot: Pick<OpenworkSessionSnapshot, "messages">): UIMessage[] {
+export function snapshotToUIMessages(snapshot: Pick<Get3wSessionSnapshot, "messages">): UIMessage[] {
   const cached = snapshotMessagesCache.get(snapshot.messages);
   if (cached) return cached;
   const messages = snapshot.messages.flatMap((message) => {

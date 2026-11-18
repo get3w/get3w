@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { GatewayUsageBucket, GatewayUsageStatus } from "@openwork/types/den/gateway-usage-limits";
+import type { GatewayUsageBucket, GatewayUsageStatus } from "@get3w/types/den/gateway-usage-limits";
 import {
   allGatewayUsageBuckets,
   gatewayUsageCanSwitchProvider,

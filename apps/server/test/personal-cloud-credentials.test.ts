@@ -19,7 +19,7 @@ test("personal transport never recovers retained organization credentials", asyn
     expect(state.status).toBe("available");
     expect(state.state.cloudMcp).toBeNull();
     expect(await readFile(path, "utf8")).toBe(original);
-    expect(listExperimentalExtensionActions("openwork-cloud-uploads")).toEqual([]);
+    expect(listExperimentalExtensionActions("get3w-cloud-uploads")).toEqual([]);
     expect(listExperimentalExtensionActions("openai-image-generation").length).toBeGreaterThan(0);
   } finally {
     if (previous === undefined) delete process.env.GET3W_RUNTIME_DB;

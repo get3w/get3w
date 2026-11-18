@@ -1,11 +1,11 @@
-import { AUTOMATION_CLOUD_DEFAULT_MODEL, AUTOMATION_FREE_MODEL, automationModelAllowedByProvider } from "@openwork/types/automations"
-import { INFERENCE_MODEL_ALIASES } from "@openwork/types/den/inference"
+import { AUTOMATION_CLOUD_DEFAULT_MODEL, AUTOMATION_FREE_MODEL, automationModelAllowedByProvider } from "@get3w/types/automations"
+import { INFERENCE_MODEL_ALIASES } from "@get3w/types/den/inference"
 
 /**
  * The models an Automation can use, from Den's usable-provider list
  * (`GET /v1/llm-providers`). Shared by the desktop editor, its Calendar and
  * Workbot's Calendar so every surface offers the same models with the same IDs
- * the server revalidates: `opencode`, `openwork`, a concrete `lpr_*` record, or
+ * the server revalidates: `opencode`, `get3w`, a concrete `lpr_*` record, or
  * the cloud default.
  */
 
@@ -17,7 +17,7 @@ export type AutomationModelOption = {
   /** The catalog provider family (e.g. "anthropic") for the logo; the record id is often opaque. */
   logoProviderId?: string
   /** `desktop_runtime`: connected only in the desktop runtime that runs the Automation (Desktop placement only). */
-  accessKind: "free" | "openwork_managed" | "authorized_custom" | "cloud_default" | "desktop_runtime"
+  accessKind: "free" | "get3w_managed" | "authorized_custom" | "cloud_default" | "desktop_runtime"
 }
 
 /** The fields of a Den usable provider this needs. */
@@ -33,9 +33,9 @@ export type AutomationModelProvider = {
 
 const freeStarterModel: AutomationModelOption = { ...AUTOMATION_FREE_MODEL, logoProviderId: "opencode", accessKind: "free" }
 
-export const cloudDefaultModelOption: AutomationModelOption = { ...AUTOMATION_CLOUD_DEFAULT_MODEL, logoProviderId: "openwork", accessKind: "cloud_default" }
+export const cloudDefaultModelOption: AutomationModelOption = { ...AUTOMATION_CLOUD_DEFAULT_MODEL, logoProviderId: "get3w", accessKind: "cloud_default" }
 
-const KIND_ORDER: ReadonlyArray<AutomationModelOption["accessKind"]> = ["cloud_default", "free", "openwork_managed", "authorized_custom", "desktop_runtime"]
+const KIND_ORDER: ReadonlyArray<AutomationModelOption["accessKind"]> = ["cloud_default", "free", "get3w_managed", "authorized_custom", "desktop_runtime"]
 
 export function compareAutomationModelOptions(left: AutomationModelOption, right: AutomationModelOption) {
   return KIND_ORDER.indexOf(left.accessKind) - KIND_ORDER.indexOf(right.accessKind)
@@ -48,16 +48,16 @@ export function automationModelOptions(
   options: { includeFreeStarter?: boolean; includeCloudDefault?: boolean } = {},
 ): AutomationModelOption[] {
   const fromProviders = providers.flatMap((provider) => {
-    const models: AutomationModelOption[] = provider.source === "openwork"
+    const models: AutomationModelOption[] = provider.source === "get3w"
       ? Object.entries(INFERENCE_MODEL_ALIASES)
           .filter(([, model]) => model.enabled)
           .map(([modelId, model]) => ({
-            providerId: "openwork",
+            providerId: "get3w",
             modelId,
             providerName: provider.name,
             modelName: model.displayName.replace(/^Get3W:\s*/, ""),
-            logoProviderId: "openwork",
-            accessKind: "openwork_managed",
+            logoProviderId: "get3w",
+            accessKind: "get3w_managed",
           }))
       : provider.models.map((model) => ({
           providerId: provider.id,

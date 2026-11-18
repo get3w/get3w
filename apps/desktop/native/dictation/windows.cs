@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 using Windows.Globalization;
 using Windows.Media.SpeechRecognition;
 
-static class OpenWorkDictation {
+static class Get3WDictation {
   static readonly object Gate = new object();
   static readonly List<string> Committed = new List<string>();
   static readonly ManualResetEvent Done = new ManualResetEvent(false);

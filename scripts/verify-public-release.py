@@ -28,7 +28,7 @@ run('typecheck', ['pnpm', 'typecheck'])
 run('native-regressions', ['node', '--test', *['apps/desktop/electron/' + n + '.test.mjs' for n in [
     'get3w-auth', 'get3w-managed-provider', 'get3w-managed-mcp', 'get3w-egress', 'updater', 'workspace-file-access', 'local-package-profile']]])
 # The automation runner imports this workspace package's built ESM, which is not committed.
-run('headless-threads-build', ['pnpm', '--filter', '@openwork/headless-threads', 'build'])
+run('headless-threads-build', ['pnpm', '--filter', '@get3w/headless-threads', 'build'])
 run('automation-native', ['node', '--test', *[str(path.relative_to(root)) for path in sorted((root / 'apps/desktop/electron').glob('get3w-automation-*.test.mjs'))]])
 run('automation-ui', ['bun', 'test', 'apps/app/tests/personal-automations.test.tsx', 'apps/app/tests/personal-automation-client.test.ts', 'apps/app/tests/automation-proposal-model.test.ts', 'apps/app/tests/automation-desktop-runtime-models.test.ts'])
 # Navigation mocks replace the account module; keep them isolated from other UI suites.
@@ -46,7 +46,7 @@ run('personal-regressions', ['bun', 'test', *['apps/app/tests/' + n for n in [
     'session-history.test.tsx', 'chat-file-links.test.ts']], 'apps/server/test/personal-runtime-boundary.test.ts'])
 run('signing-regressions', ['node', '--test', 'apps/desktop/scripts/electron-after-sign.test.cjs'])
 # Fresh CI checkouts lack the built ESM imported by computer-control tests.
-run('computer-use-build', ['pnpm', '--filter', '@openwork/computer-use', 'build'])
+run('computer-use-build', ['pnpm', '--filter', '@get3w/computer-use', 'build'])
 run('resource-and-runtime-regressions', ['node', '--test', *['apps/desktop/electron/' + name + '.test.mjs' for name in [
     'get3w-resource-upload', 'source-image-settings', 'generation-policy', 'get3w-native-media',
     'native-i18n', 'computer-control']], 'apps/server/test/runtime-config-recovery.test.mjs', 'scripts/close-local.test.mjs'])
@@ -57,7 +57,7 @@ run('cost-and-composer-regressions', ['bun', 'test',
     'apps/server/test/opencode-v2-mcp-readiness.test.ts', 'apps/server/test/opencode-v2-tool-schemas.test.ts',
     'apps/app/tests/task-cost-control.test.tsx', 'apps/app/tests/pending-message-order.test.ts',
     'apps/app/tests/composer-caret-refocus.test.tsx', 'apps/app/tests/desktop-update-button.test.tsx',
-    'apps/app/tests/openwork-activity.test.tsx', 'apps/app/tests/task-permission-control.test.tsx'])
+    'apps/app/tests/get3w-activity.test.tsx', 'apps/app/tests/task-permission-control.test.tsx'])
 if a.desktop:
     if os.uname().sysname != 'Darwin':
         raise SystemExit('--desktop currently requires macOS; no cross-platform acceptance implied')

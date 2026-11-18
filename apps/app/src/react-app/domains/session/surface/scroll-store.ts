@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const SESSION_SCROLL_STORAGE_KEY = "openwork:session-scroll:v1";
+const SESSION_SCROLL_STORAGE_KEY = "get3w:session-scroll:v1";
 const PERSIST_DELAY_MS = 250;
 
 export type SessionScrollAnchor = { messageId: string; offset: number };

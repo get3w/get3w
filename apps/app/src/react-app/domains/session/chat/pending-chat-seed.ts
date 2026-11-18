@@ -3,7 +3,7 @@
  * consumer stores the draft and navigates; the hero picks it up on mount (or
  * immediately, if it is already showing) and puts the caret after it.
  */
-export const pendingChatSeedEvent = "openwork:pending-chat-seed";
+export const pendingChatSeedEvent = "get3w:pending-chat-seed";
 
 let pendingDraft: string | null = null;
 

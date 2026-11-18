@@ -1,6 +1,6 @@
 import {MarkdownBlock} from '../src/components/markdown/markdown';
 import {OpenTargetProvider} from '../src/lib/target-provider';
-import {createOpenworkServerClient} from '../src/app/lib/openwork-server';
+import {createGet3wServerClient} from '../src/app/lib/get3w-server';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router';
 import {Get3wAccount,type ModelTask} from '../src/react-app/domains/cloud/get3w-account';
@@ -18,6 +18,6 @@ Reflect.set(window,'__GET3W_ACCOUNT__',{
  modelTasks:async()=>({items}),
  outputs:async()=>({mimeType:'image/svg+xml',sizeBytes:100,dataBase64:btoa('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="seagreen"/><circle cx="450" cy="100" r="50" fill="wheat"/><path d="M0 400L200 130L400 400L500 220L640 400" fill="darkseagreen"/></svg>')})
 });
-const client=createOpenworkServerClient({baseUrl:'http://localhost'});
+const client=createGet3wServerClient({baseUrl:'http://localhost'});
 client.downloadWorkspaceFile=async()=>({data:new TextEncoder().encode(atob(imageSource.split(',')[1])),contentType:'image/svg+xml',filename:'landscape.png'});
 createRoot(document.getElementById('root')!).render(<MemoryRouter><Get3wAccount/><main className="mx-auto max-w-3xl space-y-6 p-8 text-sm text-foreground"><ModelTasksProvider workspaceId="ws" sessionId="session" messages={messages}><p className="text-right">生成一张风景图片</p><p className="px-10">图片已生成。</p><OpenTargetProvider client={client} workspaceId="ws" workspaceRoot="/workspace" sessionId="session"><div className="px-10"><MarkdownBlock text="[landscape.png](landscape.png)"/></div></OpenTargetProvider><ModelTaskStatus messageIds={['image-turn']}/><p className="text-right">刚生成的远程结果</p><ModelTaskStatus messageIds={['remote-turn']}/><p className="text-right">接着生成一段视频</p><p className="px-10">正在生成视频。</p><ModelTaskStatus messageIds={['video-turn']}/><p className="text-right">后续对话</p><p className="px-10">之前的图片保留在原来的对话位置。</p></ModelTasksProvider></main></MemoryRouter>);

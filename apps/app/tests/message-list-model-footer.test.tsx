@@ -140,7 +140,7 @@ test("older turns keep their footer hover-only", async () => {
 test("an Auto reply renders the Get3W mark beside the routed name", async () => {
   const message = answer("reply")
   message.metadata = { opencode: { replyModel: {
-    requestedProviderID: "openwork", providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true,
+    requestedProviderID: "get3w", providerID: "openai", modelID: "gpt-6", name: "GPT-6", resolved: true,
   } } }
   const container = await render([message])
   const label = container.querySelector('[data-testid="reply-model"]')
@@ -150,12 +150,12 @@ test("an Auto reply renders the Get3W mark beside the routed name", async () => 
 })
 
 test("a Smart Router reply names the model the gateway chose, with its thinking level", async () => {
-  const smart = "openwork-smart-ar_engineering"
+  const smart = "get3w-smart-ar_engineering"
   const autoAnswer = (id: string, created: number, completed: number): UIMessage => ({ ...answer(id), metadata: { opencode: { created, completed,
-    replyModel: { providerID: "openwork-auto", modelID: smart, requestedProviderID: "openwork-auto", requestedModelID: smart } } } })
+    replyModel: { providerID: "get3w-auto", modelID: smart, requestedProviderID: "get3w-auto", requestedModelID: smart } } } })
   const auto = [
-    { providerID: "openwork-auto", modelID: "openwork-smart-ar_design", title: "Smart: Design", description: "Smart Model Router" },
-    { providerID: "openwork-auto", modelID: smart, title: "Smart: Engineering", description: "Smart Model Router" },
+    { providerID: "get3w-auto", modelID: "get3w-smart-ar_design", title: "Smart: Design", description: "Smart Model Router" },
+    { providerID: "get3w-auto", modelID: smart, title: "Smart: Engineering", description: "Smart Model Router" },
   ]
   const before = await render([autoAnswer("reply", 1000, 8000)], false, auto)
   expect(before.querySelector('[data-testid="reply-model"]')?.textContent).toBe("Replied with Smart: Engineering")
@@ -164,8 +164,8 @@ test("a Smart Router reply names the model the gateway chose, with its thinking 
   ]))
   const label = before.querySelector('[data-testid="reply-model"]')
   expect(label?.textContent).toBe("Replied with Claude Haiku 5.5 · High")
-  expect(before.textContent).not.toContain("openwork-auto")
-  expect(before.textContent).not.toContain("openwork-smart-")
+  expect(before.textContent).not.toContain("get3w-auto")
+  expect(before.textContent).not.toContain("get3w-smart-")
 })
 
 test("a gateway reply uses the picker's human title without requesting an opaque provider logo", async () => {

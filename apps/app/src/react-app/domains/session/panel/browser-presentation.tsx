@@ -1,5 +1,5 @@
-import { t } from "@/i18n";
 /** @jsxImportSource react */
+import { t } from "@/i18n";
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Globe, Minimize2, PanelRight, PictureInPicture2 } from "lucide-react";
@@ -138,7 +138,7 @@ export function BrowserPresentationSurfaces({ sessionId, controller }: BrowserFu
  */
 export function BrowserRailButton({ controller }: { controller: BrowserPresentationController }) {
   const shown = controller.mode === "side";
-  const label = `Browser · ${controller.status}`;
+  const label = t("activity.browser", { status: controller.status });
   return (
     <Tooltip>
       <TooltipTrigger

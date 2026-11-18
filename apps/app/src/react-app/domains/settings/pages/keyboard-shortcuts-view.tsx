@@ -7,7 +7,7 @@ import { t } from "@/i18n";
 import { useMemo, useState } from "react";
 import type * as React from "react";
 import { ChevronDown, Lock, Pencil, Plus, Trash2, Zap } from "lucide-react";
-import { FAST_DEFAULT_VARIANT, FAST_VARIANT_PREFIX } from "@openwork/types/cloud-model-fast";
+import { FAST_DEFAULT_VARIANT, FAST_VARIANT_PREFIX } from "@get3w/types/cloud-model-fast";
 
 import type { Client, ModelOption, ModelRef } from "@/app/types";
 import { isDesktopProviderBlocked } from "@/app/cloud/desktop-app-restrictions";

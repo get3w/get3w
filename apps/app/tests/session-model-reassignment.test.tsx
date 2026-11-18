@@ -3,7 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router";
-import { createOpenworkServerClient } from "../src/app/lib/openwork-server";
+import { createGet3wServerClient } from "../src/app/lib/get3w-server";
 import type { RouteWorkspace } from "../src/react-app/shell/route-workspaces";
 import type { ResolvedWorkspaceEndpoint } from "../src/app/lib/workspace-endpoint";
 
@@ -16,7 +16,7 @@ for (const [key, value] of Object.entries(nativeHttp)) {
   Object.defineProperty(globalThis, key, { configurable: true, value });
   Object.defineProperty(window, key, { configurable: true, value });
 }
-const { OpenworkControlProvider } = await import("../src/react-app/shell/control/control-provider");
+const { Get3wControlProvider } = await import("../src/react-app/shell/control/control-provider");
 const { useSessionControlActions } = await import("../src/react-app/domains/session/control/session-control-actions");
 const { useSessionModelStore } = await import("../src/react-app/domains/session/surface/session-model-store");
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
@@ -53,7 +53,7 @@ async function mount(options: { archived?: boolean; busy?: boolean; v1?: boolean
   } });
   cleanups.push(() => server.stop(true));
   const baseUrl = `http://127.0.0.1:${server.port}`;
-  const client = createOpenworkServerClient({ baseUrl, token: "fixture" });
+  const client = createGet3wServerClient({ baseUrl, token: "fixture" });
   const workspaces: RouteWorkspace[] = ["one", "two"].map(id => ({ id, name: id, displayNameResolved: id, path: `/tmp/${id}`, preset: "starter", workspaceType: "local" }));
   const endpointForWorkspace = (workspace: RouteWorkspace | null | undefined): ResolvedWorkspaceEndpoint | null => workspace ? {
     baseUrl, token: "fixture", workspaceId: workspace.id, isRemote: false, client,
@@ -61,7 +61,7 @@ async function mount(options: { archived?: boolean; busy?: boolean; v1?: boolean
   } : null;
   function Register() {
     useSessionControlActions({ workspaces, selectedWorkspaceId: "one", selectedWorkspaceRoot: "/tmp/one", selectedSessionId: null,
-      sessionsByWorkspaceId: { two: [{ id: "ses_target" }] }, canCreateTask: false, openworkClient: client, opencodeClient: null, endpointForWorkspace,
+      sessionsByWorkspaceId: { two: [{ id: "ses_target" }] }, canCreateTask: false, get3wClient: client, opencodeClient: null, endpointForWorkspace,
       navigateToSession: () => { throw new Error("Must not navigate"); }, navigateToSessionRoot: () => { throw new Error("Must not navigate"); },
       createTaskInWorkspace: () => null, openModelPicker: () => { throw new Error("Must not open picker"); }, refreshRouteState: () => {}, archiveSession: async () => ({ kind: "done" }),
     });
@@ -69,9 +69,9 @@ async function mount(options: { archived?: boolean; busy?: boolean; v1?: boolean
   }
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<MemoryRouter><OpenworkControlProvider><Register /></OpenworkControlProvider></MemoryRouter>));
+  await act(async () => root.render(<MemoryRouter><Get3wControlProvider><Register /></Get3wControlProvider></MemoryRouter>));
   cleanups.push(async () => { await act(async () => root.unmount()); host.remove(); });
-  const api = window.__openworkControl;
+  const api = window.__get3wControl;
   if (!api) throw new Error("Missing isolated control rail");
   return { writes, run: async (extra: Record<string, unknown> = {}) => {
     let response: Awaited<ReturnType<typeof api.command>> | undefined;

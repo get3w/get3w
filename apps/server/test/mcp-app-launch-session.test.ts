@@ -49,7 +49,7 @@ describe("MCP App launch sessions", () => {
   const previous = { ...process.env };
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), "openwork-mcp-app-launch-"));
+    dir = mkdtempSync(join(tmpdir(), "get3w-mcp-app-launch-"));
     workspaceRoot = join(dir, "workspace");
     app = startAppServer();
     process.env.GET3W_RUNTIME_DB = join(dir, "runtime.sqlite");

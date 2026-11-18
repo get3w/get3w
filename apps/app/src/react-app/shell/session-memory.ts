@@ -4,10 +4,10 @@
  * their spot when switching between shells during the port.
  */
 
-const ACTIVE_WORKSPACE_KEY = "openwork.react.activeWorkspace";
-const SESSION_BY_WORKSPACE_KEY = "openwork.react.sessionByWorkspace";
-const WORKSPACE_ORDER_KEY = "openwork.react.workspaceOrder";
-const WORKSPACE_PROJECT_DIMENSION_KEY = "openwork.react.workspaceProjectDimension";
+const ACTIVE_WORKSPACE_KEY = "get3w.react.activeWorkspace";
+const SESSION_BY_WORKSPACE_KEY = "get3w.react.sessionByWorkspace";
+const WORKSPACE_ORDER_KEY = "get3w.react.workspaceOrder";
+const WORKSPACE_PROJECT_DIMENSION_KEY = "get3w.react.workspaceProjectDimension";
 
 function safeGet(key: string): string | null {
   if (typeof window === "undefined") return null;

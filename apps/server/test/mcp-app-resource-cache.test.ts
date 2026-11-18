@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { MCP_APP_MAX_HTML_BYTES } from "@openwork/types/mcp-app";
+import { MCP_APP_MAX_HTML_BYTES } from "@get3w/types/mcp-app";
 import { MCP_APP_RESOURCE_MAX_BYTES } from "../src/mcp-app-limits.js";
 import { createMcpAppResourceCache } from "../src/mcp-app-resource-cache.js";
 

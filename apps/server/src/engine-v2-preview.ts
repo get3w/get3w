@@ -41,7 +41,7 @@ import type { EnvService } from "./env-file.js";
 import { selectPrimaryCredentialEnvName } from "./managed-provider-auth.js";
 import type { ServerConfig } from "./types.js";
 import { approvedProviderEnvironmentNames, machineOwnedProviderIds, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP, resolveProviderConfigTemplates, type ProviderConfigTemplateError } from "./provider-config-templates.js";
-import { readOpenworkWorkspaceConfig } from "./openwork-workspace-config-store.js";
+import { readGet3wWorkspaceConfig } from "./get3w-workspace-config-store.js";
 
 /**
  * A stable id for this Get3W app's engine config. Each desktop app gives
@@ -72,7 +72,7 @@ export type { EngineV2SkippedProvider, EngineV2SkippedProviderReason } from "./o
 
 const OPENCODE_V2_VERSION = constants.opencodeV2Version;
 const PREVIEW_STATE_FILE = "engine-v2-preview.json";
-const UNSET_API_KEY = "openwork-engine-v2-preview-unset";
+const UNSET_API_KEY = "get3w-engine-v2-preview-unset";
 // A cold sidecar can return HTTP 503 while its model catalog initializes for 17–20 seconds.
 const CATALOG_MIRROR_TIMEOUT_MS = 60_000;
 // Upkeep waits are bounded and never fail a request, as in v1: the engine
@@ -636,7 +636,7 @@ export async function waitForEngineV2Catalog(
 
 /** Translate only fields supported by the pinned v2 MCP API. */
 export function mapRuntimeMcpToV2(value: unknown, name?: string): Record<string, unknown> | undefined {
-  if (name && (name === "openwork-cloud" || /^(?:openwork-connect-|openwork-direct-|openwork-app-host-connect-)/.test(name))) return undefined;
+  if (name && (name === "get3w-cloud" || /^(?:get3w-connect-|get3w-direct-|get3w-app-host-connect-)/.test(name))) return undefined;
   if (!isRecord(value)) return undefined;
   if (value.enabled === false || value.disabled === true) return undefined;
   const shared = {
@@ -662,7 +662,7 @@ export function mapRuntimeMcpToV2(value: unknown, name?: string): Record<string,
     headers,
     // Only the managed Connect endpoint needs modern discovery and per-request
     // clientInfo. Keep third-party servers on the engine's legacy default.
-    ...(name === "openwork-cloud" ? { protocol: "auto" } : {}),
+    ...(name === "get3w-cloud" ? { protocol: "auto" } : {}),
     ...(oauth === undefined ? {} : { oauth }), ...shared };
 }
 
@@ -1016,12 +1016,12 @@ export function createEngineV2Preview(options: {
       .filter(([id]) => !ownsGateway() || !/^ipr_/i.test(id)));
     // Persisted cloud ownership is written before managed runtime rows. Do not
     // treat a Den-pushed definition as local merely because it is in that map.
-    const ownership = await readOpenworkWorkspaceConfig(config, "__cloud_provider_ownership__");
+    const ownership = await readGet3wWorkspaceConfig(config, "__cloud_provider_ownership__");
     const managedIds = new Set(Array.isArray(ownership.providerIds) ? ownership.providerIds : []);
-    const localOwnership = await readOpenworkWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP);
+    const localOwnership = await readGet3wWorkspaceConfig(config, MACHINE_PROVIDER_TEMPLATE_OWNERSHIP);
     const localProviderIds = machineOwnedProviderIds(configured, localOwnership);
     for (const id of localProviderIds) {
-      if (managedIds.has(id) || /^(?:lpr_|ipr_|openwork$)/i.test(id)) localProviderIds.delete(id);
+      if (managedIds.has(id) || /^(?:lpr_|ipr_|get3w$)/i.test(id)) localProviderIds.delete(id);
     }
     const templates = await resolveProviderConfigTemplates(providerMap, {
       directory: runtimeStorageDir(config), environment: credentials, localProviderIds,
@@ -1134,8 +1134,8 @@ export function createEngineV2Preview(options: {
       // Keep media work inside the signed-in Get3W account boundary. Third
       // party global skills (for example an Xianchou CLI skill) can ask for
       // provider credentials and must never become a fallback for a Get3W
-      // model task. Built-in OpenWork skills remain available.
-      skills: [globalSkills.openwork],
+      // model task. Built-in Get3W skills remain available.
+      skills: [globalSkills.get3w],
       agentPermissions: async () => {
         const rules = agentPermissionRulesOf((await readGlobalRuntimeOpencodeConfig(config)).managedPolicy);
         if (rules.length === 0) return { rules, organizationMcp: {} };

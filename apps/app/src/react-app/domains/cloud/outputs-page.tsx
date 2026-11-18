@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Download, Ellipsis, ExternalLink, FolderOpen, PanelRight, Plus, RefreshCw, Search } from "lucide-react";
-import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wWorkspaceCatalogEntry } from "@/app/lib/get3w-server";
 import { joinDesktopPath, openDesktopWorkspaceFile } from "@/app/lib/desktop";
 import { t } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,8 @@ import { WorkspaceFileTree } from "../session/artifacts/workspace-file-tree";
 import { WorkspaceFileContent, type FileEditorHandle } from "./workspace-file-content";
 import { fileName, joinFilePath, loadFilePages, parentDirectory } from "./workspace-files-model";
 
-type Props = { workspaceId: string; workspaceRoot?: string; client: OpenworkServerClient | null; localWorkspace?: boolean };
-type Entry = OpenworkWorkspaceCatalogEntry;
+type Props = { workspaceId: string; workspaceRoot?: string; client: Get3wServerClient | null; localWorkspace?: boolean };
+type Entry = Get3wWorkspaceCatalogEntry;
 type Operation = { type: "create" | "mkdir" | "rename" | "move" | "delete"; entry?: Entry; directory?: string };
 
 export function OutputsPage(props: Props) {

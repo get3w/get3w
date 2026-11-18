@@ -4,7 +4,7 @@ import { dirname } from "node:path";
 /**
  * Optional append-only file sink for the server logger.
  *
- * The desktop app runs openwork-server in-process, so its stdout is invisible
+ * The desktop app runs get3w-server in-process, so its stdout is invisible
  * once packaged; without a file sink every engine rollover reason, reload
  * trigger, and MCP re-sync error is emitted and lost. The sink is enabled by
  * GET3W_SERVER_LOG_FILE, always receives structured JSON lines regardless

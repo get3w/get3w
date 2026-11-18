@@ -34,7 +34,7 @@ console.log("server listening on http://127.0.0.1:" + server.port);
 type Captured = { message: string; route?: string };
 
 async function profile(failFirstStart: boolean, run: (config: ServerConfig, captured: Captured[]) => Promise<void>) {
-  const root = await mkdtemp(join(tmpdir(), "openwork-v2-restart-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-v2-restart-"));
   const binary = join(root, "fake-engine");
   const environment = {
     HOME: root,
@@ -49,10 +49,10 @@ async function profile(failFirstStart: boolean, run: (config: ServerConfig, capt
     GET3W_ENGINE_V2_PREVIEW: "chat",
   };
   const previous = new Map(Object.keys(environment).map(key => [key, process.env[key]]));
-  const previousTelemetry = globalThis.__openworkDesktopTelemetry;
+  const previousTelemetry = globalThis.__get3wDesktopTelemetry;
   const captured: Captured[] = [];
   Object.assign(process.env, environment);
-  globalThis.__openworkDesktopTelemetry = {
+  globalThis.__get3wDesktopTelemetry = {
     captureException: (error, context) => {
       captured.push({ message: error instanceof Error ? error.message : String(error), route: context?.route });
       return true;
@@ -68,7 +68,7 @@ async function profile(failFirstStart: boolean, run: (config: ServerConfig, capt
     await writeFile(binary, fakeEngine(failFirstStart ? join(root, "failed-once") : null), { mode: 0o700 });
     await run(config, captured);
   } finally {
-    globalThis.__openworkDesktopTelemetry = previousTelemetry;
+    globalThis.__get3wDesktopTelemetry = previousTelemetry;
     for (const [key, value] of previous) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }

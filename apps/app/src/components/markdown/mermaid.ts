@@ -285,7 +285,7 @@ export async function renderMermaidSource(
         loaded = true;
         runtime.initialize(mermaidConfigForTheme(theme));
         mermaidRenderId += 1;
-        return runtime.render(`openwork-mermaid-${mermaidRenderId}`, source);
+        return runtime.render(`get3w-mermaid-${mermaidRenderId}`, source);
       })(), timeoutMs);
 
       return { status: "rendered", svg: sanitizeMermaidSvg(rendered.svg) };
@@ -322,20 +322,20 @@ function mermaidDiagramKey(element: HTMLElement) {
 }
 
 function setMermaidView(element: HTMLElement, view: "rendered" | "source") {
-  const rendered = element.querySelector("[data-openwork-mermaid-rendered]");
-  const interactive = element.querySelector("[data-openwork-mermaid-interactive]");
-  const source = element.querySelector("[data-openwork-mermaid-source]");
-  const renderedButton = element.querySelector("[data-openwork-mermaid-view='rendered']");
-  const sourceButton = element.querySelector("[data-openwork-mermaid-view='source']");
+  const rendered = element.querySelector("[data-get3w-mermaid-rendered]");
+  const interactive = element.querySelector("[data-get3w-mermaid-interactive]");
+  const source = element.querySelector("[data-get3w-mermaid-source]");
+  const renderedButton = element.querySelector("[data-get3w-mermaid-view='rendered']");
+  const sourceButton = element.querySelector("[data-get3w-mermaid-view='source']");
   if (!(rendered instanceof HTMLElement) || !(source instanceof HTMLElement)) return;
 
   const showRendered = view === "rendered" && mermaidSvgByElement.has(element);
   // Zoomable diagrams live in the React-owned slot; the static pane stays empty.
-  const useInteractive = element.dataset.openworkMermaidZoom === "true" && interactive instanceof HTMLElement;
+  const useInteractive = element.dataset.get3wMermaidZoom === "true" && interactive instanceof HTMLElement;
   rendered.hidden = !showRendered || useInteractive;
   if (interactive instanceof HTMLElement) interactive.hidden = !showRendered || !useInteractive;
   source.hidden = showRendered;
-  element.dataset.openworkMermaidState = showRendered ? "rendered" : "source";
+  element.dataset.get3wMermaidState = showRendered ? "rendered" : "source";
   renderedButton?.setAttribute("aria-pressed", String(showRendered));
   sourceButton?.setAttribute("aria-pressed", String(!showRendered));
   renderedButton?.classList.toggle("bg-muted", showRendered);
@@ -350,12 +350,12 @@ async function enhanceMermaidElement(
   signal: AbortSignal,
   publish: MermaidPublish | null,
 ) {
-  const code = element.querySelector("[data-openwork-mermaid-source] code");
-  const renderedPane = element.querySelector("[data-openwork-mermaid-rendered]");
-  const interactiveSlot = element.querySelector("[data-openwork-mermaid-interactive]");
-  const renderedButton = element.querySelector("[data-openwork-mermaid-view='rendered']");
-  const downloadButton = element.querySelector("[data-openwork-mermaid-download]");
-  const status = element.querySelector("[data-openwork-mermaid-status]");
+  const code = element.querySelector("[data-get3w-mermaid-source] code");
+  const renderedPane = element.querySelector("[data-get3w-mermaid-rendered]");
+  const interactiveSlot = element.querySelector("[data-get3w-mermaid-interactive]");
+  const renderedButton = element.querySelector("[data-get3w-mermaid-view='rendered']");
+  const downloadButton = element.querySelector("[data-get3w-mermaid-download]");
+  const status = element.querySelector("[data-get3w-mermaid-status]");
   if (!(code instanceof HTMLElement) || !(renderedPane instanceof HTMLElement)) return;
   const slot = publish && interactiveSlot instanceof HTMLElement ? interactiveSlot : null;
 
@@ -367,14 +367,14 @@ async function enhanceMermaidElement(
 
   const result = await renderMermaidSource(code.textContent ?? "", theme);
   if (signal.aborted || !element.isConnected) return;
-  const preserveSource = mermaidSvgByElement.has(element) && element.dataset.openworkMermaidState === "source";
+  const preserveSource = mermaidSvgByElement.has(element) && element.dataset.get3wMermaidState === "source";
 
   element.setAttribute("aria-busy", "false");
   if (result.status === "source") {
     mermaidSvgByElement.delete(element);
     renderedPane.replaceChildren();
     if (slot && publish) publish(element, slot, null);
-    element.dataset.openworkMermaidReason = result.reason;
+    element.dataset.get3wMermaidReason = result.reason;
     if (renderedButton instanceof HTMLButtonElement) renderedButton.disabled = true;
     if (downloadButton instanceof HTMLButtonElement) downloadButton.hidden = true;
     if (status instanceof HTMLElement) status.textContent = sourceStatus(result.reason);
@@ -382,17 +382,17 @@ async function enhanceMermaidElement(
     return;
   }
 
-  delete element.dataset.openworkMermaidReason;
+  delete element.dataset.get3wMermaidReason;
   if (slot && publish) {
     renderedPane.replaceChildren();
-    element.dataset.openworkMermaidZoom = "true";
+    element.dataset.get3wMermaidZoom = "true";
     publish(element, slot, result.svg);
   } else {
-    delete element.dataset.openworkMermaidZoom;
+    delete element.dataset.get3wMermaidZoom;
     renderedPane.innerHTML = result.svg;
   }
   mermaidSvgByElement.set(element, result.svg);
-  element.dataset.openworkMermaidTheme = theme;
+  element.dataset.get3wMermaidTheme = theme;
   if (renderedButton instanceof HTMLButtonElement) renderedButton.disabled = false;
   if (downloadButton instanceof HTMLButtonElement) downloadButton.hidden = false;
   if (status instanceof HTMLElement) status.hidden = true;
@@ -422,7 +422,7 @@ export function useMermaidEnhancer(
     if (!root || !enabled) return;
 
     const controller = new AbortController();
-    const diagramElements = Array.from(root.querySelectorAll("[data-openwork-mermaid]"))
+    const diagramElements = Array.from(root.querySelectorAll("[data-get3w-mermaid]"))
       .filter((element): element is HTMLElement => element instanceof HTMLElement);
     const publish: MermaidPublish = (element, slot, svg) => {
       const key = mermaidDiagramKey(element);
@@ -439,17 +439,17 @@ export function useMermaidEnhancer(
     const handleClick = (event: MouseEvent) => {
       if (!(event.target instanceof Element)) return;
       const button = event.target.closest("button");
-      const diagram = button?.closest("[data-openwork-mermaid]");
+      const diagram = button?.closest("[data-get3w-mermaid]");
       if (!(button instanceof HTMLButtonElement) || !(diagram instanceof HTMLElement)) return;
 
-      const view = button.dataset.openworkMermaidView;
+      const view = button.dataset.get3wMermaidView;
       if (view === "source" || view === "rendered") {
         event.preventDefault();
         setMermaidView(diagram, view);
         return;
       }
 
-      if (!button.hasAttribute("data-openwork-mermaid-download")) return;
+      if (!button.hasAttribute("data-get3w-mermaid-download")) return;
       const svg = mermaidSvgByElement.get(diagram);
       if (!svg) return;
 

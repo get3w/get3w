@@ -161,10 +161,10 @@ export function composerPillPromptParts(pill: ComposerPill): [TextPartInput, Tex
     type: "text",
     text: composerPillText(pill),
     metadata: {
-      openworkComposerPill: pill,
+      get3wComposerPill: pill,
       // Prompt history recalls a Connect skill from its durable token.
-      ...(pill.kind === "connect-skill" ? { openworkComposerToken: encodeConnectSkillToken(pill) } : {}),
-      ...(pill.kind === "session" ? { openworkComposerToken: composerPillToken(pill) } : {}),
+      ...(pill.kind === "connect-skill" ? { get3wComposerToken: encodeConnectSkillToken(pill) } : {}),
+      ...(pill.kind === "session" ? { get3wComposerToken: composerPillToken(pill) } : {}),
     },
   }, {
     type: "text",
@@ -172,7 +172,7 @@ export function composerPillPromptParts(pill: ComposerPill): [TextPartInput, Tex
     synthetic: true,
     // Preserve selection identity through every send path. v1 still receives
     // the instruction; the v2 adapter replaces it with a native attachment.
-    ...(pill.kind === "skill" ? { metadata: { openworkSelectedSkill: { name: pill.name } } } : {}),
+    ...(pill.kind === "skill" ? { metadata: { get3wSelectedSkill: { name: pill.name } } } : {}),
   }];
 }
 
@@ -217,7 +217,7 @@ export type ComposerPillTextSegment = string | ComposerPill;
 
 type PillMatcher = { re: RegExp; toPill: (match: RegExpExecArray) => ComposerPill | null };
 
-const TEMPLATE_SLOT = "OPENWORKPILLSLOT";
+const TEMPLATE_SLOT = "GET3WPILLSLOT";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

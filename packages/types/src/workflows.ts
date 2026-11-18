@@ -199,7 +199,7 @@ export type GeneratedArtifactViewBuildDiagnostic = z.infer<typeof generatedArtif
 export const generatedArtifactViewRevisionSchema = z.object({
   id: idSchema,
   artifactViewId: idSchema,
-  resourceUri: z.string().refine((uri) => uri.startsWith("ui://openwork/artifacts/") || parseMcpAppResourceUri(uri) !== null, "Invalid artifact resource URI"),
+  resourceUri: z.string().refine((uri) => uri.startsWith("ui://get3w/artifacts/") || parseMcpAppResourceUri(uri) !== null, "Invalid artifact resource URI"),
   buildStatus: z.enum(["ready", "failed"]),
   sourceDigest: digestSchema,
   resourceDigest: digestSchema.nullable(),

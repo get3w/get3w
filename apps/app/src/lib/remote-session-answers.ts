@@ -3,7 +3,7 @@ import {
   type RemoteSessionAnswerInput,
   type RemoteSessionPending,
   type RemoteSessionPendingSummary,
-} from "@openwork/types/automations"
+} from "@get3w/types/automations"
 
 /**
  * What a task on another computer waits on the person for, and their answer.

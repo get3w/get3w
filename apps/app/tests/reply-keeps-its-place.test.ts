@@ -10,7 +10,7 @@ import {
 } from "../src/react-app/domains/session/sync/session-sync"
 
 const SESSION = "ses_reply_order"
-const sync = { workspaceId: "ws_reply_order", baseUrl: "http://127.0.0.1:9/w/ws_reply_order/opencode2", openworkToken: "token" }
+const sync = { workspaceId: "ws_reply_order", baseUrl: "http://127.0.0.1:9/w/ws_reply_order/opencode2", get3wToken: "token" }
 const location = { directory: "/tmp/reply-order" }
 const originalFetch = globalThis.fetch
 let cleanup: () => void = () => {}

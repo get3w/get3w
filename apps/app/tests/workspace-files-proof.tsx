@@ -1,7 +1,7 @@
 import React from "react";
 import {createRoot} from "react-dom/client";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {createOpenworkServerClient} from "../src/app/lib/openwork-server";
+import {createGet3wServerClient} from "../src/app/lib/get3w-server";
 import {OutputsPage} from "../src/react-app/domains/cloud/outputs-page";
 import {PlatformProvider,createDefaultPlatform} from "../src/react-app/kernel/platform";
 import {setLocale} from "../src/i18n";
@@ -34,5 +34,5 @@ window.fetch = Object.assign(async (input: string | URL | Request, init?: Reques
  }
  return new Response(files.get(path)??"",{headers:{"Content-Type":path.endsWith(".svg")?"image/svg+xml":"text/plain"}});
 }, {preconnect:fetch.preconnect});
-const client=createOpenworkServerClient({baseUrl:"http://fixture.local",token:"test"});
+const client=createGet3wServerClient({baseUrl:"http://fixture.local",token:"test"});
 createRoot(document.getElementById("root")!).render(<PlatformProvider value={createDefaultPlatform()}><QueryClientProvider client={new QueryClient()}><OutputsPage client={client} workspaceId="fixture" workspaceRoot="/workspace/Get3W" /></QueryClientProvider></PlatformProvider>);

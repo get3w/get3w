@@ -9,9 +9,9 @@ function gatewayFailure(code: "provider_authentication_failed" | "provider_permi
     data: {
       statusCode: code === "provider_authentication_failed" ? 401 : 403,
       message,
-      responseHeaders: { "x-openwork-request-id": requestId },
+      responseHeaders: { "x-get3w-request-id": requestId },
       responseBody: JSON.stringify({ error: {
-        source: "openwork_gateway", code, message, provider_id: "ipr_fixture",
+        source: "get3w_gateway", code, message, provider_id: "ipr_fixture",
       } }),
     },
   }

@@ -16,7 +16,7 @@ import { failStartup, markStartupStep } from "../../app/lib/startup-diagnostics"
 export type BootPhaseId =
   | "idle"
   | "bootstrapping-workspaces"
-  | "starting-openwork-server"
+  | "starting-get3w-server"
   | "starting-engine"
   | "activating-workspace"
   | "ready"
@@ -51,7 +51,7 @@ const DEFAULT_STATE: BootStateSnapshot = {
 const PHASE_MESSAGES: Record<BootPhaseId, string> = {
   idle: "",
   get ["bootstrapping-workspaces"]() { return t("boot.loading_workspaces"); },
-  get ["starting-openwork-server"]() { return t("boot.starting_server"); },
+  get ["starting-get3w-server"]() { return t("boot.starting_server"); },
   get ["starting-engine"]() { return t("boot.preparing"); },
   get ["activating-workspace"]() { return t("boot.activating"); },
   get ["ready"]() { return t("boot.ready"); },

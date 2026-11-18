@@ -222,7 +222,7 @@ function jsonLiteral(value) {
 
 export async function readWebMcpToolsFromFrame(frame) {
   return frame.executeJavaScript(`(async () => {
-    /* OPENWORK_WEBMCP_LIST */
+    /* GET3W_WEBMCP_LIST */
     const context = document.modelContext;
     if (!context || typeof context.getTools !== "function") return [];
     const tools = await context.getTools();
@@ -263,13 +263,13 @@ export async function executeWebMcpToolInFrame(frame, {
   const originLiteral = jsonLiteral(expectedOrigin);
   const digestLiteral = jsonLiteral(expectedDigest);
   return frame.executeJavaScript(`(async () => {
-    /* OPENWORK_WEBMCP_EXECUTE */
+    /* GET3W_WEBMCP_EXECUTE */
     const callId = JSON.parse(${callIdLiteral});
     const toolName = JSON.parse(${nameLiteral});
     const input = JSON.parse(${inputLiteral});
     const expectedOrigin = JSON.parse(${originLiteral});
     const expectedDigest = JSON.parse(${digestLiteral});
-    const pendingKey = Symbol.for("openwork.webmcp.pending-executions");
+    const pendingKey = Symbol.for("get3w.webmcp.pending-executions");
     const pending = window[pendingKey] instanceof Map ? window[pendingKey] : new Map();
     if (!(window[pendingKey] instanceof Map)) {
       Object.defineProperty(window, pendingKey, { value: pending, configurable: true });
@@ -327,9 +327,9 @@ export async function executeWebMcpToolInFrame(frame, {
 export async function cancelWebMcpToolInFrame(frame, callId) {
   const callIdLiteral = jsonLiteral(callId);
   return frame.executeJavaScript(`(() => {
-    /* OPENWORK_WEBMCP_CANCEL */
+    /* GET3W_WEBMCP_CANCEL */
     const callId = JSON.parse(${callIdLiteral});
-    const pendingKey = Symbol.for("openwork.webmcp.pending-executions");
+    const pendingKey = Symbol.for("get3w.webmcp.pending-executions");
     const pending = window[pendingKey] instanceof Map ? window[pendingKey] : new Map();
     if (!(window[pendingKey] instanceof Map)) {
       Object.defineProperty(window, pendingKey, { value: pending, configurable: true });

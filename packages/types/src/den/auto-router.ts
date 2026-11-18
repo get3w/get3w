@@ -23,11 +23,11 @@ import { z } from "zod"
  */
 
 /** The runtime provider id desktops register every Smart Router model under. */
-export const AUTO_ROUTER_PROVIDER_ID = "openwork-auto"
+export const AUTO_ROUTER_PROVIDER_ID = "get3w-auto"
 /** What people call the feature. */
 export const AUTO_ROUTER_PRODUCT_NAME = "Smart Model Router"
 /** Model ids desktops send: this prefix plus the router id. */
-export const AUTO_ROUTER_MODEL_ID_PREFIX = "openwork-smart-"
+export const AUTO_ROUTER_MODEL_ID_PREFIX = "get3w-smart-"
 
 export function autoRouterModelId(routerId: string) {
   return `${AUTO_ROUTER_MODEL_ID_PREFIX}${routerId}`
@@ -47,20 +47,20 @@ export function autoRouterModelName(routerName: string) {
 
 /**
  * Response headers the gateway adds to an Auto response, and the same values
- * on the first streamed chunk under `openwork_route`.
+ * on the first streamed chunk under `get3w_route`.
  */
-export const AUTO_ROUTER_RESPONSE_MODEL_HEADER = "x-openwork-auto-model"
-export const AUTO_ROUTER_RESPONSE_PROVIDER_HEADER = "x-openwork-auto-provider"
-export const AUTO_ROUTER_RESPONSE_THINKING_HEADER = "x-openwork-auto-thinking"
-export const AUTO_ROUTER_RESPONSE_REASON_HEADER = "x-openwork-auto-reason"
+export const AUTO_ROUTER_RESPONSE_MODEL_HEADER = "x-get3w-auto-model"
+export const AUTO_ROUTER_RESPONSE_PROVIDER_HEADER = "x-get3w-auto-provider"
+export const AUTO_ROUTER_RESPONSE_THINKING_HEADER = "x-get3w-auto-thinking"
+export const AUTO_ROUTER_RESPONSE_REASON_HEADER = "x-get3w-auto-reason"
 /** The routed model's display name, URI-encoded so any name fits in a header. */
-export const AUTO_ROUTER_RESPONSE_MODEL_NAME_HEADER = "x-openwork-auto-model-name"
+export const AUTO_ROUTER_RESPONSE_MODEL_NAME_HEADER = "x-get3w-auto-model-name"
 
 /**
  * The desktop records each Auto turn's routing decision in the OpenCode
  * session's metadata under this key, so the chat can say which model answered.
  */
-export const AUTO_ROUTER_SESSION_ROUTES_KEY = "openworkAutoRoutes"
+export const AUTO_ROUTER_SESSION_ROUTES_KEY = "get3wAutoRoutes"
 /** Most routing decisions kept per session; older ones are dropped first. */
 export const AUTO_ROUTER_SESSION_ROUTES_MAX = 50
 

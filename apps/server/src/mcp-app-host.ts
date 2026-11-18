@@ -1,12 +1,12 @@
 import { PerformanceObserver } from "node:perf_hooks";
-import { timeMcpApp } from "@openwork/types/mcp-app-timing";
+import { timeMcpApp } from "@get3w/types/mcp-app-timing";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createHash, randomUUID } from "node:crypto";
 import { SSEClientTransport, SseError } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { CallToolResultSchema, ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
-import { connectionActionAppResourceUri, connectionActionIntentSchema, type ConnectionActionIntent } from "@openwork/types/connection-action-app";
+import { connectionActionAppResourceUri, connectionActionIntentSchema, type ConnectionActionIntent } from "@get3w/types/connection-action-app";
 import { trustedAppHostCloudEndpoint } from "./connect-mcp-server-catalog.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import {
@@ -16,11 +16,11 @@ import {
   CONNECT_MCP_APP_HOST_CAPABILITY_HEADER,
   CONNECT_MCP_APP_HOST_NAME_PREFIX,
   connectMcpAppHostName,
-  findOpenWorkConnectMcpAppHostServer,
-  readOpenWorkConnectMcpAppHostAuthorization,
-  readOpenWorkConnectMcpAppHostAuthorizationRevision,
-  readOpenWorkConnectMcpAppHostCatalog,
-  refreshOpenWorkConnectMcpAppHostCatalog,
+  findGet3WConnectMcpAppHostServer,
+  readGet3WConnectMcpAppHostAuthorization,
+  readGet3WConnectMcpAppHostAuthorizationRevision,
+  readGet3WConnectMcpAppHostCatalog,
+  refreshGet3WConnectMcpAppHostCatalog,
   type ConnectMcpCatalogDiagnostic,
 } from "./connect-mcp-server-catalog.js";
 import type { ServerConfig } from "./types.js";
@@ -63,12 +63,12 @@ type McpAppCsp = {
 export type McpAppToolResult = CallToolResult & { hostAction?: ConnectionActionIntent };
 
 /** Result _meta key the host trusts to decide whether a result may be kept. */
-export const MCP_APP_READ_ONLY_RESULT_META = "openwork/readOnly";
+export const MCP_APP_READ_ONLY_RESULT_META = "get3w/readOnly";
 /** Result _meta key naming the verified server and credential revision a result came from, so a kept result never crosses either. */
-export const MCP_APP_PROVIDER_IDENTITY_META = "openwork/providerIdentity";
+export const MCP_APP_PROVIDER_IDENTITY_META = "get3w/providerIdentity";
 
 export async function supportsHostConnectionActions(serverName: string, config: Record<string, unknown>, toolName: string, resourceUri: string): Promise<boolean> {
-  if (serverName !== "openwork-cloud" && serverName !== "openwork") return false;
+  if (serverName !== "get3w-cloud" && serverName !== "get3w") return false;
   if (toolName !== "connection_action" || resourceUri !== connectionActionAppResourceUri) return false;
   const endpoint = remoteUrl(config);
   return endpoint !== null && endpoint.pathname === "/mcp/agent" && await trustedAppHostCloudEndpoint(config);
@@ -139,16 +139,16 @@ function staleLaunch(): McpAppHostError {
 async function launchFingerprint(input: { serverConfig: ServerConfig; workspaceId: string }, serverName: string, config: Record<string, unknown>): Promise<string> {
   const managed = await localManagedMcpAppIdentity(input.serverConfig, input.workspaceId, serverName, config.url);
   const runtimeRevisions = readRuntimeMcpConfigRevisions(input.serverConfig, input.workspaceId,
-    serverName.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX) ? "openwork-cloud" : serverName);
+    serverName.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX) ? "get3w-cloud" : serverName);
   const privateRevision = serverName.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX)
-    ? await readOpenWorkConnectMcpAppHostAuthorizationRevision(input.serverConfig, input.workspaceId) : null;
+    ? await readGet3WConnectMcpAppHostAuthorizationRevision(input.serverConfig, input.workspaceId) : null;
   return createHash("sha256").update(JSON.stringify({ config, managed, runtimeRevisions, privateRevision })).digest("hex");
 }
 
 // The revision URI of an App built in Get3W, as mcpAppResourceUri in
-// @openwork/types/mcp-app writes it. That subpath ships as TypeScript, which the
+// @get3w/types/mcp-app writes it. That subpath ships as TypeScript, which the
 // packaged server cannot load, so the format is matched here.
-const BUILT_APP_REVISION_URI = /^ui:\/\/openwork\/apps\/(cob_[0-7][0-9a-hjkmnp-tv-z]{25})\/revisions\/cov_[0-7][0-9a-hjkmnp-tv-z]{25}\/index\.html$/u;
+const BUILT_APP_REVISION_URI = /^ui:\/\/get3w\/apps\/(cob_[0-7][0-9a-hjkmnp-tv-z]{25})\/revisions\/cov_[0-7][0-9a-hjkmnp-tv-z]{25}\/index\.html$/u;
 
 const resourceCaches = new WeakMap<ServerConfig, ReturnType<typeof createMcpAppResourceCache>>();
 async function readAppResource(input: { serverConfig: ServerConfig; workspaceId: string },
@@ -426,7 +426,7 @@ async function connectRemoteClient(config: Record<string, unknown>): Promise<Cli
   ];
   const failures: string[] = [];
   for (const [index, createTransport] of attempts.entries()) {
-    const client = new Client({ name: "openwork-mcp-app-host", version: "1.0.0" }, clientOptions());
+    const client = new Client({ name: "get3w-mcp-app-host", version: "1.0.0" }, clientOptions());
     try {
       await timeMcpApp("desktop.client-connect", () => client.connect(createTransport()));
       return client;
@@ -655,20 +655,20 @@ async function privateConnectMcpConfigUntimed(input: {
   if (input.connectionId === undefined && !input.serverName?.startsWith(CONNECT_MCP_APP_HOST_NAME_PREFIX)) return null;
   // Drafts are deliberately absent from the active catalog. Resolve their exact
   // URI on subsequent lease calls too, while binding it to the requested host.
-  const draftId = input.resourceUri?.match(/^ui:\/\/openwork\/apps\/(cob_[0-7][0-9a-hjkmnp-tv-z]{25})\/revisions\/cov_[0-7][0-9a-hjkmnp-tv-z]{25}\/index\.html$/)?.[1];
+  const draftId = input.resourceUri?.match(/^ui:\/\/get3w\/apps\/(cob_[0-7][0-9a-hjkmnp-tv-z]{25})\/revisions\/cov_[0-7][0-9a-hjkmnp-tv-z]{25}\/index\.html$/)?.[1];
   const connectionId = input.connectionId ?? (draftId && input.serverName === connectMcpAppHostName(draftId) ? draftId : undefined);
-  let descriptor = await findOpenWorkConnectMcpAppHostServer(
+  let descriptor = await findGet3WConnectMcpAppHostServer(
     input.serverConfig,
     input.workspaceId,
     { connectionId, serverName: input.serverName },
   );
   if (!descriptor) {
-    let refreshed = await refreshOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
+    let refreshed = await refreshGet3WConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
     if (refreshed.diagnostic === "discovery_unavailable") {
       // One immediate discovery-only recovery, with one shared deadline for
       // its handshake and read. Never add backoff or replay a provider tool.
       const deadline = AbortSignal.timeout(CONNECT_CATALOG_RECOVERY_BUDGET_MS);
-      refreshed = await refreshOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId, (url, init) => externalFetch(url, {
+      refreshed = await refreshGet3WConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId, (url, init) => externalFetch(url, {
         ...init,
         signal: init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline,
       }));
@@ -677,7 +677,7 @@ async function privateConnectMcpConfigUntimed(input: {
       throw connectCatalogError(refreshed.diagnostic);
     }
     if (refreshed.status === "synced") {
-      descriptor = await findOpenWorkConnectMcpAppHostServer(
+      descriptor = await findGet3WConnectMcpAppHostServer(
         input.serverConfig,
         input.workspaceId,
         { connectionId, serverName: input.serverName },
@@ -685,7 +685,7 @@ async function privateConnectMcpConfigUntimed(input: {
     }
   }
   if (!descriptor) return null;
-  const appHostAuthorization = await readOpenWorkConnectMcpAppHostAuthorization(
+  const appHostAuthorization = await readGet3WConnectMcpAppHostAuthorization(
     input.serverConfig,
     input.workspaceId,
     descriptor.url,
@@ -836,11 +836,11 @@ export async function listMcpAppCatalog(input: {
   // capability gateway. Their catalog and authorization live in the private
   // app-host store, not the workspace MCP config, and their launches resolve
   // through a connection reference (app audience only).
-  let connectCatalog = await readOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
+  let connectCatalog = await readGet3WConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
   if (connectCatalog.servers.length === 0) {
-    const refreshed = await refreshOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
+    const refreshed = await refreshGet3WConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
     if (refreshed.status === "synced") {
-      connectCatalog = await readOpenWorkConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
+      connectCatalog = await readGet3WConnectMcpAppHostCatalog(input.serverConfig, input.workspaceId);
     }
   }
   // A Connect host can also appear in the workspace MCP config under the same
@@ -881,7 +881,7 @@ export async function listMcpAppCatalog(input: {
       displayName: descriptor.name,
       connectionId: descriptor.connectionId,
     };
-    const authorization = await readOpenWorkConnectMcpAppHostAuthorization(
+    const authorization = await readGet3WConnectMcpAppHostAuthorization(
       input.serverConfig,
       input.workspaceId,
       descriptor.url,
@@ -1308,7 +1308,7 @@ export async function callMcpAppTool(input: {
 // Opt-in numeric profiling only; never emit request payloads or identities.
 if (process.env.GET3W_MCP_APP_TIMINGS === "1") {
   new PerformanceObserver(list => {
-    for (const entry of list.getEntries()) if (entry.name.startsWith("openwork.mcp-app.")) {
+    for (const entry of list.getEntries()) if (entry.name.startsWith("get3w.mcp-app.")) {
       console.log("MCP_APP_TIMING", JSON.stringify({ stage: entry.name, durationMs: entry.duration }))
     }
   }).observe({ entryTypes: ["measure"] })

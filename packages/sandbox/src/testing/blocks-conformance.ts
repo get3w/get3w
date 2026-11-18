@@ -11,7 +11,7 @@ export function sandboxBlockConformanceCases(factory: () => SandboxProvider | Pr
   async function using(fn: (p: SandboxProvider, spec: SandboxSpec) => Promise<void>) {
     const p = await factory()
     const key = `conformance-${randomUUID()}`
-    const spec: SandboxSpec = { workerId: "", idempotencyKey: key, image: p.currentImage(), env: {}, labels: { "openwork.sandbox.scope": key }, storage: [], exposePorts: [] }
+    const spec: SandboxSpec = { workerId: "", idempotencyKey: key, image: p.currentImage(), env: {}, labels: { "get3w.sandbox.scope": key }, storage: [], exposePorts: [] }
     await fn(p, spec)
   }
   return blocks.map(block => ({

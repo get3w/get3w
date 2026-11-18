@@ -277,7 +277,7 @@ console.log(`Get3W ${desktop.version?.version ?? "(version unknown)"} · ${selec
 
 const results = [];
 // One fixed folder, so a rerun reuses the check's own TextEdit window instead of opening another.
-const scratch = join(tmpdir(), "openwork-mac-apps-check");
+const scratch = join(tmpdir(), "get3w-mac-apps-check");
 await mkdir(scratch, { recursive: true });
 try {
   for (const name of selected) {

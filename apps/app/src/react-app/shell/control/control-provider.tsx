@@ -13,61 +13,61 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
-  openworkAffordanceFailureCodeSchema,
-  type OpenworkAffordanceDescriptor,
-  type OpenworkAffordanceEffects,
-  type OpenworkAffordanceFailureCode,
-  type OpenworkAffordanceOrigin,
-  type OpenworkAffordanceRequest,
-  type OpenworkAffordanceResult,
-} from "@openwork/types/openwork-affordance";
-import type { OpenworkContextSnapshot } from "@openwork/types/openwork-context";
+  get3wAffordanceFailureCodeSchema,
+  type Get3wAffordanceDescriptor,
+  type Get3wAffordanceEffects,
+  type Get3wAffordanceFailureCode,
+  type Get3wAffordanceOrigin,
+  type Get3wAffordanceRequest,
+  type Get3wAffordanceResult,
+} from "@get3w/types/get3w-affordance";
+import type { Get3wContextSnapshot } from "@get3w/types/get3w-context";
 import { undeclaredArgsError } from "./undeclared-args";
 import { useUiControlMailbox } from "./use-ui-control-mailbox";
 
-export type OpenworkControlSideEffect = "none" | "navigation" | "mutation" | "external";
+export type Get3wControlSideEffect = "none" | "navigation" | "mutation" | "external";
 
-export type OpenworkControlActionArg = {
+export type Get3wControlActionArg = {
   name: string;
   type?: "string" | "number" | "boolean" | "object" | "array" | "unknown";
   required?: boolean;
   description?: string;
 };
 
-export type OpenworkControlActionMetadata = {
+export type Get3wControlActionMetadata = {
   id: string;
   label: string;
   description?: string;
   kind: "query" | "command";
-  effects: OpenworkAffordanceEffects;
-  sideEffect: OpenworkControlSideEffect;
+  effects: Get3wAffordanceEffects;
+  sideEffect: Get3wControlSideEffect;
   requiresConfirmation: boolean;
   requiresArgs: boolean;
   hasPreviewArgs: boolean;
   previewArgs?: unknown;
-  args?: OpenworkControlActionArg[];
+  args?: Get3wControlActionArg[];
   disabled: boolean;
   busy: boolean;
 };
 
-export type OpenworkControlSnapshot = {
+export type Get3wControlSnapshot = {
   version: number;
   enabled: boolean;
   route: string;
   status: "off" | "ready" | "acting";
   busyActionId: string | null;
   narration: string;
-  actions: OpenworkControlActionMetadata[];
+  actions: Get3wControlActionMetadata[];
 };
 
-export type OpenworkControlResult =
+export type Get3wControlResult =
   | { ok: true; actionId: string; result?: unknown }
-  | { ok: false; actionId: string; error: string; code?: OpenworkAffordanceFailureCode; hint?: string };
+  | { ok: false; actionId: string; error: string; code?: Get3wAffordanceFailureCode; hint?: string };
 
-export type OpenworkControlHelpers = {
+export type Get3wControlHelpers = {
   setNarration: (text: string) => void;
   /** The conversation whose agent issued the request, when it came through the agent bridge. */
-  origin?: OpenworkAffordanceOrigin;
+  origin?: Get3wAffordanceOrigin;
   /**
    * True when an agent issued the command through the server bridge, which
    * answers within seconds and has no person on the other end. A warning for
@@ -77,28 +77,28 @@ export type OpenworkControlHelpers = {
   bridged: boolean;
 };
 
-export type OpenworkControlTargetRef = {
+export type Get3wControlTargetRef = {
   readonly current: HTMLElement | null;
 };
 
-export type OpenworkControlAction = {
+export type Get3wControlAction = {
   id: string;
   label: string;
   description?: string;
   kind?: "query" | "command";
-  effects?: OpenworkAffordanceEffects;
-  sideEffect?: OpenworkControlSideEffect;
+  effects?: Get3wAffordanceEffects;
+  sideEffect?: Get3wControlSideEffect;
   requiresConfirmation?: boolean;
   requiresArgs?: boolean;
-  args?: OpenworkControlActionArg[];
+  args?: Get3wControlActionArg[];
   previewArgs?: unknown;
   disabled?: boolean;
-  targetRef?: OpenworkControlTargetRef;
-  execute: (args: unknown, helpers: OpenworkControlHelpers) => unknown | Promise<unknown>;
+  targetRef?: Get3wControlTargetRef;
+  execute: (args: unknown, helpers: Get3wControlHelpers) => unknown | Promise<unknown>;
 };
 
 type ControlActionRef = {
-  readonly current: OpenworkControlAction | null;
+  readonly current: Get3wControlAction | null;
 };
 
 type RegisteredAction = {
@@ -114,39 +114,39 @@ type SpotlightState = {
   rect: { x: number; y: number; width: number; height: number } | null;
 };
 
-type OpenworkControlContextValue = {
+type Get3wControlContextValue = {
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
   route: string;
   narration: string;
   busyActionId: string | null;
-  actions: OpenworkControlActionMetadata[];
+  actions: Get3wControlActionMetadata[];
   registerAction: (actionId: string, actionRef: ControlActionRef) => () => void;
-  executeAction: (actionId: string, args?: unknown, origin?: OpenworkAffordanceOrigin) => Promise<OpenworkControlResult>;
-  publishContext: (context: OpenworkContextSnapshot) => void;
-  snapshot: () => OpenworkControlSnapshot;
+  executeAction: (actionId: string, args?: unknown, origin?: Get3wAffordanceOrigin) => Promise<Get3wControlResult>;
+  publishContext: (context: Get3wContextSnapshot) => void;
+  snapshot: () => Get3wControlSnapshot;
 };
 
-export type OpenworkControlAPI = {
+export type Get3wControlAPI = {
   version: number;
-  snapshot: () => OpenworkControlSnapshot;
-  listActions: () => OpenworkControlActionMetadata[];
-  execute: (actionId: string, args?: unknown) => Promise<OpenworkControlResult>;
-  context: () => OpenworkContextSnapshot;
-  query: (request: OpenworkAffordanceRequest) => Promise<OpenworkAffordanceResult>;
-  command: (request: OpenworkAffordanceRequest) => Promise<OpenworkAffordanceResult>;
+  snapshot: () => Get3wControlSnapshot;
+  listActions: () => Get3wControlActionMetadata[];
+  execute: (actionId: string, args?: unknown) => Promise<Get3wControlResult>;
+  context: () => Get3wContextSnapshot;
+  query: (request: Get3wAffordanceRequest) => Promise<Get3wAffordanceResult>;
+  command: (request: Get3wAffordanceRequest) => Promise<Get3wAffordanceResult>;
   setEnabled: (enabled: boolean) => void;
-  subscribe: (listener: (snapshot: OpenworkControlSnapshot) => void) => () => void;
+  subscribe: (listener: (snapshot: Get3wControlSnapshot) => void) => () => void;
 };
 
 declare global {
   interface Window {
-    __openworkControl?: OpenworkControlAPI;
+    __get3wControl?: Get3wControlAPI;
   }
 }
 
 const CONTROL_API_VERSION = 2;
-const OpenworkControlContext = createContext<OpenworkControlContextValue | null>(null);
+const Get3wControlContext = createContext<Get3wControlContextValue | null>(null);
 const SPOTLIGHT_TIMING_MS = Object.freeze({
   missingTarget: 80,
   scrollIntoView: 180,
@@ -166,7 +166,7 @@ function returnedActionError(result: unknown) {
   if (!result || typeof result !== "object") return null;
   const payload: { ok?: unknown; error?: unknown; code?: unknown; hint?: unknown } = result;
   if (payload.ok !== false) return null;
-  const code = openworkAffordanceFailureCodeSchema.safeParse(payload.code);
+  const code = get3wAffordanceFailureCodeSchema.safeParse(payload.code);
   return {
     error: typeof payload.error === "string" && payload.error.trim()
       ? payload.error
@@ -180,7 +180,7 @@ function isBrowser() {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
-function effectsForSideEffect(sideEffect: OpenworkControlSideEffect): OpenworkAffordanceEffects {
+function effectsForSideEffect(sideEffect: Get3wControlSideEffect): Get3wAffordanceEffects {
   if (sideEffect === "navigation") {
     return { data: "none", ui: "navigate", external: false };
   }
@@ -193,7 +193,7 @@ function effectsForSideEffect(sideEffect: OpenworkControlSideEffect): OpenworkAf
   return { data: "none", ui: "none", external: false };
 }
 
-function metadataForAction(registered: RegisteredAction, busyActionId: string | null): OpenworkControlActionMetadata {
+function metadataForAction(registered: RegisteredAction, busyActionId: string | null): Get3wControlActionMetadata {
   const action = registered.ref.current;
   const sideEffect = action?.sideEffect ?? "none";
   return {
@@ -213,13 +213,13 @@ function metadataForAction(registered: RegisteredAction, busyActionId: string | 
   };
 }
 
-function affordanceForAction(action: OpenworkControlActionMetadata): OpenworkAffordanceDescriptor {
+function affordanceForAction(action: Get3wControlActionMetadata): Get3wAffordanceDescriptor {
   return {
     id: action.id,
     kind: action.kind,
     title: action.label,
     description: action.description ?? action.label,
-    provider: { id: "openwork-ui", kind: "builtin" },
+    provider: { id: "get3w-ui", kind: "builtin" },
     arguments: (action.args ?? []).map((argument) => ({
       name: argument.name,
       type: argument.type ?? "unknown",
@@ -232,7 +232,7 @@ function affordanceForAction(action: OpenworkControlActionMetadata): OpenworkAff
       enabled: !action.disabled && !action.busy,
       ...(action.disabled ? { reason: "This action is not available in the current app state." } : {}),
     },
-    executor: { kind: "openwork" },
+    executor: { kind: "get3w" },
   };
 }
 
@@ -255,11 +255,11 @@ function ControlModeSpotlight({ spotlight }: { spotlight: SpotlightState }) {
   );
 }
 
-export function OpenworkControlProvider({ children }: { children: ReactNode }) {
+export function Get3wControlProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const actionsRef = useRef(new Map<string, RegisteredAction>());
-  const listenersRef = useRef(new Set<(snapshot: OpenworkControlSnapshot) => void>());
-  const contextRef = useRef<OpenworkContextSnapshot | null>(null);
+  const listenersRef = useRef(new Set<(snapshot: Get3wControlSnapshot) => void>());
+  const contextRef = useRef<Get3wContextSnapshot | null>(null);
   const contextRevisionRef = useRef(0);
   const nextOrderRef = useRef(1);
   const [version, setVersion] = useState(0);
@@ -270,11 +270,11 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   const busyActionIdRef = useRef<string | null>(null);
   const busyActorRef = useRef<string | null>(null);
   const spotlightRunRef = useRef(0);
-  const apiRef = useRef<OpenworkControlAPI | null>(null);
+  const apiRef = useRef<Get3wControlAPI | null>(null);
 
   const route = `${location.pathname}${location.search}${location.hash}`;
   const enabled = enabledState;
-  const status: OpenworkControlSnapshot["status"] = !enabled ? "off" : busyActionId ? "acting" : "ready";
+  const status: Get3wControlSnapshot["status"] = !enabled ? "off" : busyActionId ? "acting" : "ready";
 
   const setEnabled = useCallback((nextEnabled: boolean) => {
     setEnabledState(nextEnabled);
@@ -290,7 +290,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
     return listActionMetadata();
   }, [listActionMetadata]);
 
-  const snapshot = useCallback((): OpenworkControlSnapshot => ({
+  const snapshot = useCallback((): Get3wControlSnapshot => ({
     version: CONTROL_API_VERSION,
     enabled,
     route,
@@ -300,13 +300,13 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
     actions: listActionMetadata(),
   }), [busyActionId, enabled, listActionMetadata, narration, route, status]);
 
-  const publishContext = useCallback((context: OpenworkContextSnapshot) => {
+  const publishContext = useCallback((context: Get3wContextSnapshot) => {
     if (contextRef.current === context) return;
     contextRef.current = context;
     contextRevisionRef.current += 1;
   }, []);
 
-  const contextSnapshot = useCallback((): OpenworkContextSnapshot => {
+  const contextSnapshot = useCallback((): Get3wContextSnapshot => {
     const availableAffordances = listActionMetadata().map(affordanceForAction);
     const published = contextRef.current;
     const revision = contextRevisionRef.current;
@@ -351,7 +351,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
         ref: `screen:${route}`,
         kind: "screen",
         title: "Get3W",
-        provider: { id: "openwork-ui", kind: "builtin" },
+        provider: { id: "get3w-ui", kind: "builtin" },
         state: { kind: "other", route },
       }],
       availableAffordances,
@@ -381,7 +381,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const playTargetChoreography = useCallback(async (action: OpenworkControlAction, runId: number) => {
+  const playTargetChoreography = useCallback(async (action: Get3wControlAction, runId: number) => {
     if (!isBrowser()) return;
     const stillCurrent = () => spotlightRunRef.current === runId;
     const target = action.targetRef?.current;
@@ -416,9 +416,9 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   const executeAction = useCallback(async (
     actionId: string,
     args?: unknown,
-    origin?: OpenworkAffordanceOrigin,
+    origin?: Get3wAffordanceOrigin,
     bridged = false,
-  ): Promise<OpenworkControlResult> => {
+  ): Promise<Get3wControlResult> => {
     if (!requireGet3wSignIn()) return { ok: false, actionId, error: "Sign in to Get3W to continue." };
     const registered = actionsRef.current.get(actionId);
     const action = registered?.ref.current;
@@ -476,8 +476,8 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   }, [playTargetChoreography, setEnabled]);
 
   const queryAffordance = useCallback(async (
-    request: OpenworkAffordanceRequest,
-  ): Promise<OpenworkAffordanceResult> => {
+    request: Get3wAffordanceRequest,
+  ): Promise<Get3wAffordanceResult> => {
     const action = actionsRef.current.get(request.id)?.ref.current;
     const revision = contextRevisionRef.current;
     if (!action || action.kind !== "query") {
@@ -533,8 +533,8 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const executeCommand = useCallback(async (
-    request: OpenworkAffordanceRequest,
-  ): Promise<OpenworkAffordanceResult> => {
+    request: Get3wAffordanceRequest,
+  ): Promise<Get3wAffordanceResult> => {
     const action = actionsRef.current.get(request.id)?.ref.current;
     const revision = contextRevisionRef.current;
     if (!action || action.kind === "query") {
@@ -588,7 +588,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
     };
   }, [executeAction]);
 
-  const value = useMemo<OpenworkControlContextValue>(() => ({
+  const value = useMemo<Get3wControlContextValue>(() => ({
     enabled,
     setEnabled,
     route,
@@ -623,7 +623,7 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isBrowser()) return;
 
-    const api: OpenworkControlAPI = {
+    const api: Get3wControlAPI = {
       version: CONTROL_API_VERSION,
       snapshot,
       listActions: () => snapshot().actions,
@@ -641,11 +641,11 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
       },
     };
 
-    window.__openworkControl = api;
+    window.__get3wControl = api;
     apiRef.current = api;
     return () => {
-      if (window.__openworkControl === api) {
-        delete window.__openworkControl;
+      if (window.__get3wControl === api) {
+        delete window.__get3wControl;
       }
       if (apiRef.current === api) {
         apiRef.current = null;
@@ -665,19 +665,19 @@ export function OpenworkControlProvider({ children }: { children: ReactNode }) {
   }, [snapshot, version]);
 
   return (
-    <OpenworkControlContext.Provider value={value}>
+    <Get3wControlContext.Provider value={value}>
       {children}
       <ControlModeSpotlight spotlight={spotlight} />
-    </OpenworkControlContext.Provider>
+    </Get3wControlContext.Provider>
   );
 }
 
-export function useOpenworkControl() {
-  return use(OpenworkControlContext);
+export function useGet3wControl() {
+  return use(Get3wControlContext);
 }
 
-export function usePublishOpenworkContext(context: OpenworkContextSnapshot) {
-  const control = useOpenworkControl();
+export function usePublishGet3wContext(context: Get3wContextSnapshot) {
+  const control = useGet3wControl();
   const publishContext = control?.publishContext;
 
   useEffect(() => {
@@ -685,10 +685,10 @@ export function usePublishOpenworkContext(context: OpenworkContextSnapshot) {
   }, [context, publishContext]);
 }
 
-export function useControlAction(action: OpenworkControlAction | null | false | undefined) {
-  const control = useOpenworkControl();
+export function useControlAction(action: Get3wControlAction | null | false | undefined) {
+  const control = useGet3wControl();
   const registerAction = control?.registerAction;
-  const latestActionRef = useRef<OpenworkControlAction | null>(action || null);
+  const latestActionRef = useRef<Get3wControlAction | null>(action || null);
   latestActionRef.current = action || null;
   const actionId = action ? action.id : null;
 
@@ -704,12 +704,12 @@ export function useControlAction(action: OpenworkControlAction | null | false | 
  * violating the rules of hooks. Each action is tracked by its stable id; the
  * latest closure for that id is always used, and removed ids are unregistered.
  */
-export function useControlActions(actions: readonly OpenworkControlAction[]) {
-  const control = useOpenworkControl();
+export function useControlActions(actions: readonly Get3wControlAction[]) {
+  const control = useGet3wControl();
   const registerAction = control?.registerAction;
 
   // One ref per action id, so executeAction always sees the freshest closure.
-  const refsById = useRef<Map<string, { current: OpenworkControlAction | null }>>(new Map());
+  const refsById = useRef<Map<string, { current: Get3wControlAction | null }>>(new Map());
   for (const action of actions) {
     const existing = refsById.current.get(action.id);
     if (existing) {
@@ -746,7 +746,7 @@ const SETTINGS_TABS: ReadonlySet<string> = new Set<string>(
   SETTINGS_TAB_VALUES.filter((tab) => tab !== "extensions"),
 );
 
-export function OpenworkRouteControlActions() {
+export function Get3wRouteControlActions() {
   const navigate = useNavigate();
   const location = useLocation();
   // Read through a ref so the action list stays stable across route changes.
@@ -757,7 +757,7 @@ export function OpenworkRouteControlActions() {
     navigate(target.to, { state: target.state });
   }, [navigate]);
 
-  const actions = useMemo<OpenworkControlAction[]>(() => [
+  const actions = useMemo<Get3wControlAction[]>(() => [
     {
       id: "route.session",
       label: t("ui.8bf47766c290"),

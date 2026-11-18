@@ -33,7 +33,7 @@ import {
 import { hasComposerAutoSend } from "../surface/composer-auto-send";
 import { getSessionModelSelection, useSessionModelStore } from "../surface/session-model-store";
 import { draftToParts } from "./draft-parts";
-import { buildOpenworkSessionSystemContext } from "./env-context";
+import { buildGet3wSessionSystemContext } from "./env-context";
 import {
   clearQueuedSendContext,
   getQueuedSendContext,
@@ -66,7 +66,7 @@ function sameContext(left: QueuedSendContext, right: QueuedSendContext) {
   return left.owner === right.owner && left.workspaceId === right.workspaceId
     && left.workspaceRoot === right.workspaceRoot
     && left.opencodeBaseUrl === right.opencodeBaseUrl
-    && left.openworkToken === right.openworkToken
+    && left.get3wToken === right.get3wToken
     && left.client === right.client
     && left.agent === right.agent
     && left.variant === right.variant
@@ -108,7 +108,7 @@ async function performQueuedDraftSend(
   assertQueuedSendCurrent(sessionId, generation);
   const text = draft.text.trim();
   if (!text && draft.attachments.length === 0 && !draft.command) return "cancelled";
-  const session = await getNativeSession({ opencodeBaseUrl: context.opencodeBaseUrl, token: context.openworkToken, ...transport }, sessionId);
+  const session = await getNativeSession({ opencodeBaseUrl: context.opencodeBaseUrl, token: context.get3wToken, ...transport }, sessionId);
   assertQueuedSendCurrent(sessionId, generation);
   if (session.time.archived || sessionWorkHeld(context.opencodeBaseUrl, sessionId)) return "cancelled";
 
@@ -119,7 +119,7 @@ async function performQueuedDraftSend(
   const opencodeClient = createEngineClient(
     context.opencodeBaseUrl,
     context.workspaceRoot || undefined,
-    { token: context.openworkToken, mode: "openwork" },
+    { token: context.get3wToken, mode: "get3w" },
     transport,
   );
 
@@ -148,7 +148,7 @@ async function performQueuedDraftSend(
       workspaceId: context.workspaceId,
     });
     assertQueuedSendCurrent(sessionId, generation);
-    const system = await buildOpenworkSessionSystemContext(context.client, {
+    const system = await buildGet3wSessionSystemContext(context.client, {
       workspaceId: context.workspaceId,
       cacheKey: sessionId,
       runtimeKey: context.environmentRuntimeKey,
@@ -231,7 +231,7 @@ function armObservationProbe(watched: WatchedSession) {
       const phase = getQueuedDrainState(watched.sessionId).phase;
       if (phase.kind === "admission_unknown") {
         const client = createClient(watched.context.opencodeBaseUrl, watched.context.workspaceRoot || undefined, {
-          token: watched.context.openworkToken, mode: "openwork",
+          token: watched.context.get3wToken, mode: "get3w",
         });
         const admission = await readPromptAdmission(client, watched.sessionId, phase.messageID);
         if (watchedSessions.get(watched.sessionId) !== watched) return;
@@ -250,7 +250,7 @@ function armObservationProbe(watched: WatchedSession) {
       const snapshot = await composeNativeSessionSnapshot(
         {
           opencodeBaseUrl: watched.context.opencodeBaseUrl,
-          token: watched.context.openworkToken,
+          token: watched.context.get3wToken,
         },
         watched.sessionId,
         { limit: 140, signal: controller.signal },
@@ -327,7 +327,7 @@ function watchSession(sessionId: string, context: QueuedSendContext) {
   const input = {
     workspaceId: context.workspaceId,
     baseUrl: context.opencodeBaseUrl,
-    openworkToken: context.openworkToken,
+    get3wToken: context.get3wToken,
     onSessionStatus: (update: { sessionId: string; status: SessionStatus }) => {
       if (update.sessionId === sessionId) handleObservedStatus(watched, update.status);
     },
@@ -346,7 +346,7 @@ function watchSession(sessionId: string, context: QueuedSendContext) {
   armObservationProbe(watched);
 
   void composeNativeSessionSnapshot(
-    { opencodeBaseUrl: context.opencodeBaseUrl, token: context.openworkToken },
+    { opencodeBaseUrl: context.opencodeBaseUrl, token: context.get3wToken },
     sessionId,
     { limit: 140, signal: initialStatusController.signal },
   ).then((snapshot) => {
@@ -412,10 +412,10 @@ async function attemptDrain(sessionId: string) {
     const send = () => performQueuedDraftSend(sendContext, sessionId, draft, generation, transport);
     const outcome = await (async () => {
       if (!nextItem.steer) return submitAfterInterruption(context.opencodeBaseUrl, sessionId, send, draft.messageId);
-      const messages = await getNativeSessionMessages({ opencodeBaseUrl: context.opencodeBaseUrl, token: context.openworkToken, ...transport }, sessionId, { limit: 140 });
+      const messages = await getNativeSessionMessages({ opencodeBaseUrl: context.opencodeBaseUrl, token: context.get3wToken, ...transport }, sessionId, { limit: 140 });
       assertQueuedSendCurrent(sessionId, generation);
       const createEngineClient = isOpencodeV2BaseUrl(context.opencodeBaseUrl) ? createClientV2 : createClient;
-      const client = createEngineClient(context.opencodeBaseUrl, context.workspaceRoot || undefined, { token: context.openworkToken, mode: "openwork" }, transport);
+      const client = createEngineClient(context.opencodeBaseUrl, context.workspaceRoot || undefined, { token: context.get3wToken, mode: "get3w" }, transport);
       return submitImmediateSessionTurn(context.opencodeBaseUrl, client, sessionId, messages, send, { directory: context.workspaceRoot || undefined, messageID: draft.messageId });
     })();
     if (outcome === "sent") useComposerStateStore.getState().removeQueuedDraft(sessionId, nextItem.id);

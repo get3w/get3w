@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import { desktopRestrictionNotice } from "../../../../app/cloud/desktop-app-restrictions";
-import { isBuiltInOpenWorkExtension, getMcpServerName, type McpDirectoryInfo } from "../../../../app/constants";
+import { isBuiltInGet3WExtension, getMcpServerName, type McpDirectoryInfo } from "../../../../app/constants";
 import { evaluateEnablement } from "../../../../app/enablement";
 import type { EnablementResult } from "../../../../app/extensions";
 import type { CloudImportedPlugin, CloudImportedPluginFile } from "../../../../app/cloud/import-state";
@@ -71,11 +71,11 @@ import { isConnectDirectMcpServerName } from "../../connections/cloud-mcp-user-s
 import { AddMcpModal } from "../../connections/modals/add-mcp-modal";
 import type { McpConnectResult } from "../../connections/store";
 import {
-  isOpenWorkExtensionEnabled,
-  isOpenWorkExtensionHidden,
-  OPENWORK_EXTENSION_STATE_CHANGED,
-  setOpenWorkExtensionEnabled,
-  setOpenWorkExtensionHidden,
+  isGet3WExtensionEnabled,
+  isGet3WExtensionHidden,
+  GET3W_EXTENSION_STATE_CHANGED,
+  setGet3WExtensionEnabled,
+  setGet3WExtensionHidden,
 } from "../extension-state";
 import {
   initialMcpViewLocalState,
@@ -127,7 +127,7 @@ export type SkillItem = {
   trigger?: string;
   path: string;
   content?: string;
-  origin?: "local" | "openwork-connect";
+  origin?: "local" | "get3w-connect";
   marketplaceName?: string;
   pluginName?: string;
 };
@@ -344,8 +344,8 @@ export function McpView(props: McpViewProps) {
   const [mcpConnectFailure, setMcpConnectFailure] = useState<{ id: string; message: string } | null>(null);
   const [pendingPlugin, setPendingPlugin] = useState<CloudImportedPlugin | null>(null);
   const [detailSkillContent, setDetailSkillContent] = useState<string | null>(null);
-  const [openworkUiMcpCommand, setOpenworkUiMcpCommand] = useState<string[] | null>(null);
-  const [openworkUiMcpEnvironment, setOpenworkUiMcpEnvironment] = useState<Record<string, string> | null>(null);
+  const [get3wUiMcpCommand, setGet3wUiMcpCommand] = useState<string[] | null>(null);
+  const [get3wUiMcpEnvironment, setGet3wUiMcpEnvironment] = useState<Record<string, string> | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ExtensionInventoryFilter>(primaryLibraryFilter(props.initialFilter));
   const [onlyNeedsSignIn, setOnlyNeedsSignIn] = useState(props.initialState === "needs_signin");
@@ -550,7 +550,7 @@ export function McpView(props: McpViewProps) {
     setMcpConnectFailure(null);
     if (target.kind === "skill") {
       setDetailSkillContent(target.skill.content ?? null);
-      if (!target.skill.content && target.skill.origin !== "openwork-connect" && props.readSkill) {
+      if (!target.skill.content && target.skill.origin !== "get3w-connect" && props.readSkill) {
         void props.readSkill(target.skill.name).then((result) => {
           if (result?.content) {
             setDetailSkillContent(result.content);
@@ -593,7 +593,7 @@ export function McpView(props: McpViewProps) {
     setDetailTarget(resolved);
     if (resolved?.kind === "skill") {
       setDetailSkillContent(resolved.skill.content ?? null);
-      if (!resolved.skill.content && resolved.skill.origin !== "openwork-connect" && props.readSkill) {
+      if (!resolved.skill.content && resolved.skill.origin !== "get3w-connect" && props.readSkill) {
         void props.readSkill(resolved.skill.name).then((result) => {
           if (result?.content) {
             setDetailSkillContent(result.content);
@@ -638,10 +638,10 @@ export function McpView(props: McpViewProps) {
 
   useEffect(() => {
     const refresh = () => setExtensionStateVersion((value) => value + 1);
-    window.addEventListener(OPENWORK_EXTENSION_STATE_CHANGED, refresh);
+    window.addEventListener(GET3W_EXTENSION_STATE_CHANGED, refresh);
     window.addEventListener("storage", refresh);
     return () => {
-      window.removeEventListener(OPENWORK_EXTENSION_STATE_CHANGED, refresh);
+      window.removeEventListener(GET3W_EXTENSION_STATE_CHANGED, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
@@ -650,21 +650,21 @@ export function McpView(props: McpViewProps) {
     if (!isDesktopRuntime()) return;
     void (async () => {
       try {
-        const command = await window.__OPENWORK_ELECTRON__?.invokeDesktop?.("getOpenworkUiMcpCommand");
+        const command = await window.__GET3W_ELECTRON__?.invokeDesktop?.("getGet3wUiMcpCommand");
         if (Array.isArray(command) && command.every((part) => typeof part === "string")) {
-          setOpenworkUiMcpCommand(command);
+          setGet3wUiMcpCommand(command);
         }
-        const environment = await window.__OPENWORK_ELECTRON__?.invokeDesktop?.("getOpenworkUiMcpEnvironment");
+        const environment = await window.__GET3W_ELECTRON__?.invokeDesktop?.("getGet3wUiMcpEnvironment");
         if (environment && typeof environment === "object" && !Array.isArray(environment)) {
-          setOpenworkUiMcpEnvironment(Object.fromEntries(
+          setGet3wUiMcpEnvironment(Object.fromEntries(
             Object.entries(environment).filter((entry): entry is [string, string] =>
               typeof entry[0] === "string" && typeof entry[1] === "string"
             ),
           ));
         }
       } catch {
-        setOpenworkUiMcpCommand(null);
-        setOpenworkUiMcpEnvironment(null);
+        setGet3wUiMcpCommand(null);
+        setGet3wUiMcpEnvironment(null);
       }
     })();
   }, []);
@@ -770,11 +770,11 @@ export function McpView(props: McpViewProps) {
   };
 
   const isEntryConfigured = (entry: McpDirectoryInfo) => {
-    if (props.builtInExtensionsDisabled && isBuiltInOpenWorkExtension(entry)) return false;
+    if (props.builtInExtensionsDisabled && isBuiltInGet3WExtension(entry)) return false;
     const result = enablementForEntry(entry);
     if (result) return result.active;
     // Fallback for entries without enablement context.
-    if (isToggleOnlyExtension(entry)) return isOpenWorkExtensionEnabled(entry);
+    if (isToggleOnlyExtension(entry)) return isGet3WExtensionEnabled(entry);
     if (entry.kind === "extension" && !isMcpBackedExtension(entry)) return props.isExtensionConnected?.(entry) ?? false;
     return isQuickConnectConfigured(entry);
   };
@@ -784,16 +784,16 @@ export function McpView(props: McpViewProps) {
   // `allowManageExtensions`. Entries the member already installed stay usable
   // but can no longer be managed.
   const builtInDisabledReasonForEntry = (entry: McpDirectoryInfo) =>
-    props.builtInExtensionsDisabled && isBuiltInOpenWorkExtension(entry)
+    props.builtInExtensionsDisabled && isBuiltInGet3WExtension(entry)
       ? builtInExtensionDisabledReason()
       : null;
   const manageDisabledReasonForEntry = (entry: McpDirectoryInfo) =>
-    !props.allowManageExtensions && !isBuiltInOpenWorkExtension(entry)
+    !props.allowManageExtensions && !isBuiltInGet3WExtension(entry)
       ? manageExtensionsDisabledReason()
       : null;
 
   const launchCommandForEntry = (entry: McpDirectoryInfo) => {
-    if (entry.serverName === "openwork-ui") return openworkUiMcpCommand ?? undefined;
+    if (entry.serverName === "get3w-ui") return get3wUiMcpCommand ?? undefined;
     return entry.command;
   };
 
@@ -888,13 +888,13 @@ export function McpView(props: McpViewProps) {
       {detailEntry ? (() => {
         const extensionConfigSlot = props.configSlotForEntry?.(detailEntry) ?? null;
         const hasConfigSlot = extensionConfigSlot !== null;
-        const hidden = isOpenWorkExtensionHidden(detailEntry);
+        const hidden = isGet3WExtensionHidden(detailEntry);
         const builtInDisabledReason = builtInDisabledReasonForEntry(detailEntry);
         const disabledReason = builtInDisabledReason ?? manageDisabledReasonForEntry(detailEntry);
         const isConnected = builtInDisabledReason
           ? false
           : isToggleOnlyExtension(detailEntry)
-          ? isOpenWorkExtensionEnabled(detailEntry)
+          ? isGet3WExtensionEnabled(detailEntry)
           : detailEntry.kind === "extension" && !isMcpBackedExtension(detailEntry)
           ? props.isExtensionConnected?.(detailEntry) ?? false
           : isQuickConnectConfigured(detailEntry);
@@ -921,13 +921,13 @@ export function McpView(props: McpViewProps) {
             resourceLabels={extensionResourceLabels(detailEntry)}
             contributionLabels={extensionContributionLabels(detailEntry)}
             launchCommand={launchCommandForEntry(detailEntry)}
-            environment={detailEntry.serverName === "openwork-ui" ? openworkUiMcpEnvironment ?? undefined : undefined}
+            environment={detailEntry.serverName === "get3w-ui" ? get3wUiMcpEnvironment ?? undefined : undefined}
             url={typeof detailEntry.url === "string" ? detailEntry.url : undefined}
             oauth={detailEntry.oauth}
             configSlot={disabledReason ? null : extensionConfigSlot}
             showEnablementCard
             onConnect={disabledReason ? undefined : isToggleOnlyExtension(detailEntry) ? () => {
-              setOpenWorkExtensionEnabled(detailEntry, true);
+              setGet3WExtensionEnabled(detailEntry, true);
               closeDetail();
             } : hasConfigSlot ? undefined : async () => {
               setMcpConnectFailure(null);
@@ -942,21 +942,21 @@ export function McpView(props: McpViewProps) {
               });
             }}
             onUninstall={disabledReason ? undefined : isToggleOnlyExtension(detailEntry) && isConnected ? () => {
-              setOpenWorkExtensionEnabled(detailEntry, false);
+              setGet3WExtensionEnabled(detailEntry, false);
             } : isQuickConnectConfigured(detailEntry) ? () => {
               const slug = getMcpIdentityKey(detailEntry);
               props.removeMcp(slug);
               closeDetail();
             } : undefined}
             onChat={chatWith({ connectors: [detailEntry.name] })}
-            onHide={() => setOpenWorkExtensionHidden(detailEntry, true)}
-            onShow={() => setOpenWorkExtensionHidden(detailEntry, false)}
+            onHide={() => setGet3WExtensionHidden(detailEntry, true)}
+            onShow={() => setGet3WExtensionHidden(detailEntry, false)}
           />
         );
       })() : null}
 
       {detailSkill ? (() => {
-        const hidden = isOpenWorkExtensionHidden(getSkillHiddenId(detailSkill));
+        const hidden = isGet3WExtensionHidden(getSkillHiddenId(detailSkill));
         return (
           <ExtensionDetailModal
             open={!!detailSkill}
@@ -968,11 +968,11 @@ export function McpView(props: McpViewProps) {
             description={detailSkill.description ?? t("extensions.row_skill_fallback")}
             taxonomy="skill"
             connected={true}
-            connectedLabel={detailSkill.origin === "openwork-connect" ? t("ui.914be9f888ca") : undefined}
+            connectedLabel={detailSkill.origin === "get3w-connect" ? t("ui.914be9f888ca") : undefined}
             hidden={hidden}
-            path={detailSkill.origin === "openwork-connect" ? undefined : detailSkill.path}
+            path={detailSkill.origin === "get3w-connect" ? undefined : detailSkill.path}
             sourceLabel={
-              detailSkill.origin === "openwork-connect"
+              detailSkill.origin === "get3w-connect"
                 ? [detailSkill.pluginName, detailSkill.marketplaceName].filter(Boolean).join(" · ") || t("extensions.surface_cloud")
                 : detailSkill.path
             }
@@ -980,16 +980,16 @@ export function McpView(props: McpViewProps) {
             triggerHint={t("extensions.detail_triggers_skill_hint")}
             openFileLabel={t("extensions.detail_open_skill")}
             contentPreview={detailSkillContent ?? undefined}
-            onReveal={detailSkill.path && detailSkill.origin !== "openwork-connect" ? () => {
+            onReveal={detailSkill.path && detailSkill.origin !== "get3w-connect" ? () => {
               void revealDesktopItemInDir(detailSkill.path);
             } : undefined}
-            onUninstall={props.uninstallSkill && detailSkill.origin !== "openwork-connect" ? () => {
+            onUninstall={props.uninstallSkill && detailSkill.origin !== "get3w-connect" ? () => {
               props.uninstallSkill?.(detailSkill.name);
               closeDetail();
             } : undefined}
             onChat={chatWith({ skills: [detailSkill.name] })}
-            onHide={() => setOpenWorkExtensionHidden(getSkillHiddenId(detailSkill), true)}
-            onShow={() => setOpenWorkExtensionHidden(getSkillHiddenId(detailSkill), false)}
+            onHide={() => setGet3WExtensionHidden(getSkillHiddenId(detailSkill), true)}
+            onShow={() => setGet3WExtensionHidden(getSkillHiddenId(detailSkill), false)}
           />
         );
       })() : null}
@@ -1125,7 +1125,7 @@ export function McpView(props: McpViewProps) {
       })() : null}
 
       {detailPlugin ? (() => {
-        const hidden = isOpenWorkExtensionHidden(`plugin:${detailPlugin.pluginId}`);
+        const hidden = isGet3WExtensionHidden(`plugin:${detailPlugin.pluginId}`);
         const marketplaceName = detailPlugin.files.find((file) => file.marketplaceName)?.marketplaceName;
         const filesOfKind = (kind: string) => detailPlugin.files
           .filter((file) => libraryPluginFileKind(file.objectType) === kind)
@@ -1172,8 +1172,8 @@ export function McpView(props: McpViewProps) {
               closeDetail();
             } : undefined}
             uninstallLabel={t("extensions.detail_remove_local_copy")}
-            onHide={() => setOpenWorkExtensionHidden(`plugin:${detailPlugin.pluginId}`, true)}
-            onShow={() => setOpenWorkExtensionHidden(`plugin:${detailPlugin.pluginId}`, false)}
+            onHide={() => setGet3WExtensionHidden(`plugin:${detailPlugin.pluginId}`, true)}
+            onShow={() => setGet3WExtensionHidden(`plugin:${detailPlugin.pluginId}`, false)}
           />
         );
       })() : null}
@@ -1227,7 +1227,7 @@ export function McpView(props: McpViewProps) {
   for (const entry of libraryDirectoryEntries) {
     const configured = isEntryConfigured(entry);
     const enablement = props.enablementContext ? enablementForEntry(entry) : null;
-    const hidden = isOpenWorkExtensionHidden(entry);
+    const hidden = isGet3WExtensionHidden(entry);
     const disabledReason = builtInDisabledReasonForEntry(entry) ?? (configured ? null : manageDisabledReasonForEntry(entry));
     const runtimeStatus = quickConnectStatus(entry)?.status;
     const ready = runtimeStatus ? runtimeStatus === "connected" : configured || enablement?.active;
@@ -1289,12 +1289,12 @@ export function McpView(props: McpViewProps) {
   }
 
   for (const skill of installedSkills) {
-    const fromOrg = skill.origin === "openwork-connect";
+    const fromOrg = skill.origin === "get3w-connect";
     if (fromOrg && skill.pluginName && pluginRowNames.has(skill.pluginName.toLowerCase())) continue;
-    const hidden = isOpenWorkExtensionHidden(getSkillHiddenId(skill));
+    const hidden = isGet3WExtensionHidden(getSkillHiddenId(skill));
     rows.push({
       key: `skill:${skill.path}`,
-      section: fromOrg ? "openwork" : "mac",
+      section: fromOrg ? "get3w" : "mac",
       taxonomy: "skill",
       searchText: `${skill.name} ${skill.description ?? ""}`,
       node: (
@@ -1317,7 +1317,7 @@ export function McpView(props: McpViewProps) {
     rows.push({
       needsSignIn: group === "needs_signin",
       key: `connect-mcp:${entry.id ?? entry.name}`,
-      section: "openwork",
+      section: "get3w",
       taxonomy: "connection",
       searchText: `${entry.name} ${entry.pluginName ?? ""} ${entry.marketplaceName ?? ""}`,
       node: (
@@ -1342,12 +1342,12 @@ export function McpView(props: McpViewProps) {
     const taxonomy = libraryCloudItemTaxonomy(plugin.files.map((file) => file.objectType), plugin.files.length);
     const group = taxonomy === "connection" ? connectorGroup(plugin.name) : "ready";
     const attention = libraryRowAttention(group);
-    const hidden = isOpenWorkExtensionHidden(`plugin:${plugin.pluginId}`);
+    const hidden = isGet3WExtensionHidden(`plugin:${plugin.pluginId}`);
     const fileCount = plugin.files.length;
     rows.push({
       needsSignIn: group === "needs_signin",
       key: `plugin:${plugin.pluginId}`,
-      section: "openwork",
+      section: "get3w",
       taxonomy,
       searchText: [plugin.name, plugin.description ?? "", ...plugin.files.map((file) => `${file.title} ${file.objectType} ${file.path}`)].join(" "),
       node: (
@@ -1365,10 +1365,10 @@ export function McpView(props: McpViewProps) {
     });
   }
 
-  const openworkRowCount = rows.filter((row) => row.section === "openwork").length;
+  const get3wRowCount = rows.filter((row) => row.section === "get3w").length;
   const needsSignInCount = rows.filter((row) => row.needsSignIn === true).length;
   const sectionMeta: Partial<Record<LibrarySection, string | null>> = {
-    openwork: openworkRowCount > 0 ? t("extensions.section_openwork_meta", { count: String(openworkRowCount) }) : null,
+    get3w: get3wRowCount > 0 ? t("extensions.section_get3w_meta", { count: String(get3wRowCount) }) : null,
   };
 
   const inventory = (
@@ -1747,7 +1747,7 @@ export type LibraryRow = {
   node: ReactNode;
 };
 
-const librarySectionOrder: LibrarySection[] = ["mac", "mine", "openwork"];
+const librarySectionOrder: LibrarySection[] = ["mac", "mine", "get3w"];
 
 function librarySectionLabel(section: LibrarySection) {
   switch (section) {
@@ -1755,8 +1755,8 @@ function librarySectionLabel(section: LibrarySection) {
       return t("extensions.section_mac");
     case "mine":
       return t("extensions.section_mine");
-    case "openwork":
-      return t("extensions.section_openwork");
+    case "get3w":
+      return t("extensions.section_get3w");
   }
 }
 
@@ -1834,7 +1834,7 @@ export function LibraryInventory(props: {
             ))}
             {showLocked ? (
               <div data-library-section="locked">
-                <LibrarySectionHeader section="openwork" label={t("extensions.section_openwork_locked")} />
+                <LibrarySectionHeader section="get3w" label={t("extensions.section_get3w_locked")} />
                 <div className={containerClassName}>
                   {lockedLibraryPreviews.map((preview) => (
                     <div key={preview.name} className="opacity-60" data-library-locked={preview.name}>

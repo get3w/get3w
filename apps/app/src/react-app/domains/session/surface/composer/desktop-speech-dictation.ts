@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { BrowserSpeechRecognition } from "@openwork/ui/react";
+import type { BrowserSpeechRecognition } from "@get3w/ui/react";
 import { desktopBridge, type SpeechDictationEvent } from "@/app/lib/desktop";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 
@@ -35,7 +35,7 @@ export class DesktopSpeechRecognition implements BrowserSpeechRecognition {
   private unsubscribe: (() => void) | null = null;
 
   start() {
-    const subscribe = window.__OPENWORK_ELECTRON__?.dictation?.onEvent;
+    const subscribe = window.__GET3W_ELECTRON__?.dictation?.onEvent;
     if (!subscribe) throw new Error("Desktop speech dictation is unavailable");
     this.unsubscribe = subscribe(event => this.receive(event));
     void desktopBridge.__startSpeechDictation(this.id, this.lang)

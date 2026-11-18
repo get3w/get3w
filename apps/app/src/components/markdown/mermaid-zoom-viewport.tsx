@@ -188,7 +188,7 @@ export function MermaidZoomViewport(props: {
       aria-roledescription="zoomable diagram"
       aria-label={`Mermaid diagram, zoom ${percent}`}
       tabIndex={0}
-      data-openwork-mermaid-zoom-frame=""
+      data-get3w-mermaid-zoom-frame=""
       data-zoomed={zoomed ? "true" : "false"}
       className={cn(
         "group/diagram relative overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:ring-inset",
@@ -203,7 +203,7 @@ export function MermaidZoomViewport(props: {
       onDoubleClick={handleDoubleClick}
     >
       <div
-        data-openwork-mermaid-zoom-canvas=""
+        data-get3w-mermaid-zoom-canvas=""
         className={cn(
           "origin-top-left",
           variant === "dialog"
@@ -270,7 +270,7 @@ function MermaidZoomDiagramView(props: { svg: string }) {
         <DialogContent
           showCloseButton={false}
           initialFocus={dialogFrameRef}
-          data-openwork-mermaid-dialog=""
+          data-get3w-mermaid-dialog=""
           className="flex h-[92dvh] flex-col gap-0 p-0 lg:h-[min(88vh,960px)] lg:w-[calc(100%-4rem)] lg:max-w-6xl lg:rounded-[24px]"
         >
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border ps-4 pe-2">

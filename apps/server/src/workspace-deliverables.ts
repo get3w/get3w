@@ -1,11 +1,11 @@
 import {createHash,randomUUID} from "node:crypto";
 import {lstat,mkdir,realpath,link,unlink} from "node:fs/promises";
-import {dirname,join,isAbsolute} from "node:path";
+import {dirname,join,isAbsolute,relative,sep} from "node:path";
 import {z} from "zod";
 import {createWorkspaceKvStore} from "./workspace-kv-store.js";
 import {runtimeDbPath} from "./runtime-db.js";
 import type {ServerConfig,WorkspaceInfo} from "./types.js";
-import {openWorkspaceFileForReading,openWorkspaceFileForWriting,proveHandleInPlace} from "./workspace-file-identity.js";
+import {get3wspaceFileForReading,get3wspaceFileForWriting,proveHandleInPlace} from "./workspace-file-identity.js";
 
 const entrySchema=z.object({id:z.string(),key:z.string(),path:z.string(),aliases:z.array(z.string()),sessionId:z.string().optional(),state:z.enum(["planned","saved","deleted"]),identity:z.object({dev:z.number(),ino:z.number()}).optional()});
 type Entry=z.infer<typeof entrySchema>;
@@ -39,14 +39,22 @@ async function serial<T>(config:ServerConfig,workspace:WorkspaceInfo,fn:(entries
 export type DeliverablePlan={fileId:string;path:string;rootPath:string};
 const view=(workspace:WorkspaceInfo,entry:Entry):DeliverablePlan=>({fileId:entry.id,path:entry.path,rootPath:workspace.path});
 export type DeliverableRequest={key:string;sessionId?:string;taskName?:string;filename?:string;directory?:string;sourcePath?:string;extension:string};
+async function deliverableInputPath(workspace:WorkspaceInfo,value:string,allowRoot=false){
+ const root=await realpath(workspace.path);
+ const lexical=isAbsolute(value)?relative(workspace.path,value):value;
+ const path=(isAbsolute(value)&&(lexical===".."||lexical.startsWith(`..${sep}`))?relative(root,value):lexical).split(sep).join("/");
+ if(allowRoot&&(path===""||path==="."))return "";
+ return normalizePath(path);
+}
 export async function planDeliverable(config:ServerConfig,workspace:WorkspaceInfo,input:DeliverableRequest):Promise<DeliverablePlan>{
+ input={...input,extension:input.extension.startsWith(".")?input.extension:`.${input.extension}`};
  if(!input.key||input.key.length>2000||!/^\.[a-z0-9]{1,12}$/i.test(input.extension))throw Error("Invalid deliverable identity or extension");
  return serial(config,workspace,async entries=>{
   const old=entries.find(entry=>entry.key===input.key);if(old){if(old.state==="deleted")throw Error("This result was deleted; it will not be recreated automatically");return view(workspace,old);}
-  let folder=input.directory?normalizePath(await resolveDeliverableAlias(config,workspace,input.directory)):deliverableName(input.taskName??"任务成果");
+  let folder=input.directory?await resolveDeliverableAlias(config,workspace,await deliverableInputPath(workspace,input.directory,true)):deliverableName(input.taskName??"任务成果");
   if(input.sourcePath){
-   const source=normalizePath(await resolveDeliverableAlias(config,workspace,input.sourcePath));await safeDeliverablePath(workspace.path,source);
-   const opened=await openWorkspaceFileForReading(await realpath(workspace.path),join(await realpath(workspace.path),source),source);await opened.handle.close();folder=dirname(source);if(folder===".")folder="";
+   const source=normalizePath(await resolveDeliverableAlias(config,workspace,await deliverableInputPath(workspace,input.sourcePath)));await safeDeliverablePath(workspace.path,source);
+   const opened=await get3wspaceFileForReading(await realpath(workspace.path),join(await realpath(workspace.path),source),source);await opened.handle.close();folder=dirname(source);if(folder===".")folder="";
   }
   const requested=deliverableName(input.filename??input.taskName??"生成结果");
   const stem=deliverableName(requested.toLowerCase().endsWith(input.extension.toLowerCase())?requested.slice(0,-input.extension.length):requested,"生成结果",80);
@@ -68,7 +76,7 @@ export async function resolveDeliverable(config:ServerConfig,workspace:Workspace
 export async function registerDeliverable(config:ServerConfig,workspace:WorkspaceInfo,fileId:string){
  return serial(config,workspace,async entries=>{
   const entry=entries.find(item=>item.id===fileId);if(!entry||entry.state==="deleted")throw Error("Workspace result is no longer available");
-  const {root,target}=await safeDeliverablePath(workspace.path,entry.path);const opened=await openWorkspaceFileForReading(root,target,entry.path);
+  const {root,target}=await safeDeliverablePath(workspace.path,entry.path);const opened=await get3wspaceFileForReading(root,target,entry.path);
   const sizeBytes=opened.info.size;await opened.handle.close();entry.state="saved";await store.set(config,workspace.id,entries);return {...view(workspace,entry),sizeBytes};
  });
 }
@@ -77,16 +85,16 @@ export async function saveDeliverableBytes(config:ServerConfig,workspace:Workspa
   const entry=entries.find(item=>item.id===plan.fileId);if(!entry||entry.state==="deleted")throw Error("Workspace result is no longer available");
   const {root,target}=await safeDeliverablePath(workspace.path,entry.path,true);
   if(entry.state==="saved"){
-   const opened=await openWorkspaceFileForReading(root,target,entry.path);const sizeBytes=opened.info.size;await opened.handle.close();return {...view(workspace,entry),sizeBytes};
+   const opened=await get3wspaceFileForReading(root,target,entry.path);const sizeBytes=opened.info.size;await opened.handle.close();return {...view(workspace,entry),sizeBytes};
   }
   // Crash after publish but before the registry commit: adopt only our persisted inode.
   const existing=await lstat(target).catch(error=>{if(error.code==="ENOENT")return null;throw error;});
   if(existing){
-   const opened=await openWorkspaceFileForReading(root,target,entry.path);
+   const opened=await get3wspaceFileForReading(root,target,entry.path);
    try{if(!entry.identity||opened.info.dev!==entry.identity.dev||opened.info.ino!==entry.identity.ino)throw Error("The reserved result path is occupied; move that file before retrying");entry.state="saved";await store.set(config,workspace.id,entries);return {...view(workspace,entry),sizeBytes:opened.info.size};}finally{await opened.handle.close();}
   }
   const temporary=join(dirname(target),`get3w-${randomUUID()}.part`);
-  const opened=await openWorkspaceFileForWriting(root,temporary,null,entry.path);
+  const opened=await get3wspaceFileForWriting(root,temporary,null,entry.path);
   try{
    await opened.handle.writeFile(bytes);await opened.handle.sync();
    if(!await proveHandleInPlace(await opened.handle.stat(),temporary,root))throw Error("Result location changed");

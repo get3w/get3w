@@ -37,7 +37,7 @@ test("failed, denied, waiting and native error results stay out of the card", ()
   const base: DynamicToolUIPart = { type: "dynamic-tool", toolName: "computer_act", toolCallId: "failed", state: "output-available", input: {}, output: '{"ok":false,"message":"Observe again"}' }
   const parts: UIMessage["parts"] = [base,
     { ...base, toolCallId: "error", state: "output-error", errorText: "Stopped" },
-    { ...base, toolCallId: "native", output: "failure", callProviderMetadata: { openwork: { computerFailure: true } } },
+    { ...base, toolCallId: "native", output: "failure", callProviderMetadata: { get3w: { computerFailure: true } } },
     { type: "dynamic-tool", toolName: "computer_act", toolCallId: "approval", state: "approval-requested", input: {}, approval: { id: "approval" } },
     { type: "dynamic-tool", toolName: "computer_act", toolCallId: "denied", state: "output-denied", input: {}, approval: { id: "denied", approved: false } },
   ]
@@ -53,7 +53,7 @@ test("duplicate observations share a view, while returning to an earlier screen 
 test("native timing and failure metadata survive hydration", () => {
   const part = parseDynamicToolUIPart({ type: "tool", id: "part", sessionID: "session", messageID: "message", callID: "call", tool: "computer_observe",
     state: { status: "completed", input: {}, output: "unavailable", title: "Computer", metadata: { isError: true }, time: { start: 100, end: 150 } } })!
-  expect(part.callProviderMetadata?.openwork).toMatchObject({ toolStartedAt: 100, toolCompletedAt: 150, computerFailure: true })
+  expect(part.callProviderMetadata?.get3w).toMatchObject({ toolStartedAt: 100, toolCompletedAt: 150, computerFailure: true })
 })
 
 async function mount(messages = computerHistoryMessages(images), active = false) {

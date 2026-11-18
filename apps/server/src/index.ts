@@ -2,7 +2,7 @@
  * Library entry point for the Get3W server.
  *
  * ```ts
- * import { startEmbeddedServer } from "openwork-server";
+ * import { startEmbeddedServer } from "get3w-server";
  *
  * const handle = await startEmbeddedServer({
  *   host: "127.0.0.1",

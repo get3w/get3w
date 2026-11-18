@@ -90,7 +90,7 @@ export const useProviderCredentialHealth = create<CredentialHealthState>()(persi
     return { entries: { ...state.entries, [key]: { status, revision, observedAt } } };
   }),
 }), {
-  name: "openwork.provider-credential-health.v1",
+  name: "get3w.provider-credential-health.v1",
   storage: createJSONStorage(() => ({
     getItem: (key) => {
       try { return typeof localStorage === "undefined" ? null : localStorage.getItem(key); } catch { return null; }

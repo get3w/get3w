@@ -1,4 +1,4 @@
-export const COMPOSER_PLUS_MENU_RECENTS_KEY = "openwork.react.composer-plus-menu.recents";
+export const COMPOSER_PLUS_MENU_RECENTS_KEY = "get3w.react.composer-plus-menu.recents";
 
 const MAX_RECENTS = 6;
 

@@ -3,8 +3,8 @@
 // names (validators.ts). The desktop keeps such a server running only while
 // it is the one Get3W registered, at the same address, so any other server
 // under such a name, from a project config or stored earlier, gains nothing.
-const ORGANIZATION_MCP_NAMES = new Set(["openwork-cloud"]);
-const ORGANIZATION_MCP_PREFIXES = ["openwork-connect-", "openwork-direct-", "openwork-app-host-connect-"];
+const ORGANIZATION_MCP_NAMES = new Set(["get3w-cloud"]);
+const ORGANIZATION_MCP_PREFIXES = ["get3w-connect-", "get3w-direct-", "get3w-app-host-connect-"];
 
 /** Name → the addresses Get3W registered under it. */
 export type OrganizationMcpServers = Record<string, string[]>;

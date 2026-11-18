@@ -5,12 +5,12 @@ import { MonitorSmartphone } from "lucide-react";
 import { surfaceCardClass } from "../workspace/modal-styles";
 import { registerExtensionConfig } from "./extension-registry";
 
-const openWorkBrowserConfigFactory = () => <OpenWorkBrowserConfig />;
+const get3wBrowserConfigFactory = () => <Get3WBrowserConfig />;
 
-registerExtensionConfig("openwork.browser.settings", openWorkBrowserConfigFactory);
-registerExtensionConfig("openwork-browser", openWorkBrowserConfigFactory);
+registerExtensionConfig("get3w.browser.settings", get3wBrowserConfigFactory);
+registerExtensionConfig("get3w-browser", get3wBrowserConfigFactory);
 
-function OpenWorkBrowserConfig() {
+function Get3WBrowserConfig() {
   return (
     <div className={`${surfaceCardClass} space-y-3 p-4`}>
       <div className="flex items-start gap-3">

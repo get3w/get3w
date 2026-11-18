@@ -75,11 +75,11 @@ mock.module("@/app/lib/opencode-v2-adapter", () => ({
   },
 }));
 
-const serverModule = await import("../src/app/lib/openwork-server");
-const createServerClient = serverModule.createOpenworkServerClient;
-mock.module("@/app/lib/openwork-server", () => ({
+const serverModule = await import("../src/app/lib/get3w-server");
+const createServerClient = serverModule.createGet3wServerClient;
+mock.module("@/app/lib/get3w-server", () => ({
   ...serverModule,
-  createOpenworkServerClient: (options: Parameters<typeof createServerClient>[0]) => ({
+  createGet3wServerClient: (options: Parameters<typeof createServerClient>[0]) => ({
     ...createServerClient(options),
     listWorkspaces: async () => ({ items: workspaces, activeId: "ws_1" }),
     activateWorkspace: async () => undefined,
@@ -96,8 +96,8 @@ mock.module("@/react-app/shell/route-workspaces", () => ({
     return response.promise;
   },
 }));
-mock.module("@/react-app/shell/openwork-connection", () => ({
-  resolveOpenworkConnection: async () => ({
+mock.module("@/react-app/shell/get3w-connection", () => ({
+  resolveGet3wConnection: async () => ({
     normalizedBaseUrl: connection.baseUrl, resolvedToken: connection.token, resolvedHostToken: "", hostInfo: null,
   }),
 }));
@@ -206,6 +206,37 @@ afterEach(async () => {
 
 afterAll(async () => { if (ownedDom) await GlobalRegistrator.unregister(); });
 
+test("new workspaces appear first and retain their order across refreshes and remounts", async () => {
+  await mount("ws_1");
+  await publishRouting(false);
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_1", "ws_2"]);
+
+  const newest = { ...defaultWorkspaces[0], id: "ws_3", name: "Three", path: "/tmp/ws_3" };
+  workspaces = [...defaultWorkspaces, newest];
+  await act(async () => { await route().refreshRouteState({ supersede: true }); });
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_3", "ws_1", "ws_2"]);
+
+  // Active-first server responses must not move existing entries.
+  workspaces = [defaultWorkspaces[1], newest, defaultWorkspaces[0]];
+  await act(async () => { await route().refreshRouteState({ supersede: true }); });
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_3", "ws_1", "ws_2"]);
+
+  await navigate("/workspace/ws_1/settings/general");
+  await navigate(-1);
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_3", "ws_1", "ws_2"]);
+
+  // A temporary discovery gap keeps the returning workspace in its old position.
+  workspaces = [defaultWorkspaces[1], newest];
+  await act(async () => { await route().refreshRouteState({ supersede: true }); });
+  workspaces = [defaultWorkspaces[1], newest, defaultWorkspaces[0]];
+  await act(async () => { await route().refreshRouteState({ supersede: true }); });
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_3", "ws_1", "ws_2"]);
+
+  workspaces = [...workspaces, { ...newest, id: "ws_4", path: "/tmp/ws_4" }];
+  await act(async () => { await route().refreshRouteState({ supersede: true }); });
+  expect(route().workspaces.map((workspace) => workspace.id)).toEqual(["ws_4", "ws_3", "ws_1", "ws_2"]);
+});
+
 test("workspace initialization preserves an owned pending route and never hydrates its local identity", async () => {
   input.preservePendingConversationRoute = true;
   await mount("ws_1", undefined, "/session?pendingConversation=local-pending");
@@ -297,7 +328,7 @@ for (const v2 of [false, true]) {
   test(`${engine} Settings return still hydrates the selected session after its inventory fails`, async () => {
     const { inventory, hydration } = await returnFromSettings(v2);
     await act(async () => {
-      inventory.response.reject(new serverModule.OpenworkServerError(400, "invalid_response", "Invalid inventory response"));
+      inventory.response.reject(new serverModule.Get3wServerError(400, "invalid_response", "Invalid inventory response"));
     });
     expect(route().sessionsByWorkspaceId.ws_1).toEqual([]);
     expect(route().retryingWorkspaceIds).not.toContain("ws_1");
@@ -320,7 +351,7 @@ for (const v2 of [false, true]) {
       const tokenBefore = route().selectedWorkspaceServerToken;
       await act(async () => {
         if (refresh === "Den") dispatchDenSettingsChanged(unchangedDenSettings);
-        else window.dispatchEvent(new Event("openwork-server-settings-changed"));
+        else window.dispatchEvent(new Event("get3w-server-settings-changed"));
       });
       expect(route().opencodeBaseUrl).toBe(endpointBefore);
       expect(route().selectedWorkspaceServerToken).toBe(tokenBefore);
@@ -429,7 +460,7 @@ for (const staleCompletesFirst of [true, false]) {
     const stale = initial.filter((request) => request.workspaceId === "ws_1");
 
     localStatus = deferred();
-    await act(async () => { window.dispatchEvent(new Event("openwork-server-settings-changed")); });
+    await act(async () => { window.dispatchEvent(new Event("get3w-server-settings-changed")); });
     await publishRouting(true);
     const fresh = requests.filter((request) => request.engine === "v2");
     // The delayed list cannot block v2, and the already-loaded, unselected inventory refreshes too.
@@ -545,7 +576,7 @@ test("a late routing-status response cannot switch inventories back to the old e
   await mount();
   const staleStatus = localStatus;
   localStatus = deferred();
-  await act(async () => { window.dispatchEvent(new Event("openwork-server-settings-changed")); });
+  await act(async () => { window.dispatchEvent(new Event("get3w-server-settings-changed")); });
   await publishRouting(true);
   await act(async () => { staleStatus.resolve({ enabled: false, chatRouting: false }); });
   expect(route().opencodeBaseUrl.endsWith("/opencode2")).toBe(true);

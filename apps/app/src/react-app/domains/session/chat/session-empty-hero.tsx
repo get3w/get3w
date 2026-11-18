@@ -12,12 +12,12 @@ import { resolveOrganizationPromptCardContent } from "@/components/chat/task-sug
 import { useCheckDesktopRestriction, useOrgRestrictions } from "@/react-app/domains/cloud/desktop-config-provider";
 import { useDenAuth } from "@/react-app/domains/cloud/den-auth-provider";
 import {
-  getOpenWorkModelsActionUrl,
-  hideOpenWorkModelsPromo,
-  isOpenWorkModelsPromoHidden,
-  openWorkModelsPromoChangedEvent,
-  useOpenWorkModelsPromoEligibility,
-} from "@/react-app/domains/cloud/openwork-models-promo";
+  getGet3WModelsActionUrl,
+  hideGet3WModelsPromo,
+  isGet3WModelsPromoHidden,
+  get3wModelsPromoChangedEvent,
+  useGet3WModelsPromoEligibility,
+} from "@/react-app/domains/cloud/get3w-models-promo";
 import { usePlatform } from "@/react-app/kernel/platform";
 import { persistableComposerDraftText, useComposerStateStore } from "@/react-app/domains/session/surface/composer-state-store";
 import { useNewTaskDraftState } from "@/react-app/domains/session/sync/draft-store";
@@ -129,13 +129,13 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
   const canAddProviders = !checkDesktopRestriction({ restriction: "allowCustomProviders" });
   const platform = usePlatform();
   const denAuth = useDenAuth();
-  const openWorkModelsPromoEligible = useOpenWorkModelsPromoEligibility();
-  const [modelsPromoHidden, setModelsPromoHidden] = useState(isOpenWorkModelsPromoHidden);
+  const get3wModelsPromoEligible = useGet3WModelsPromoEligibility();
+  const [modelsPromoHidden, setModelsPromoHidden] = useState(isGet3WModelsPromoHidden);
 
   useEffect(() => {
-    const handlePromoChanged = () => setModelsPromoHidden(isOpenWorkModelsPromoHidden());
-    window.addEventListener(openWorkModelsPromoChangedEvent, handlePromoChanged);
-    return () => window.removeEventListener(openWorkModelsPromoChangedEvent, handlePromoChanged);
+    const handlePromoChanged = () => setModelsPromoHidden(isGet3WModelsPromoHidden());
+    window.addEventListener(get3wModelsPromoChangedEvent, handlePromoChanged);
+    return () => window.removeEventListener(get3wModelsPromoChangedEvent, handlePromoChanged);
   }, []);
 
   // A chat deep link (Den's connector "Chat" action) seeds the composer with
@@ -145,7 +145,7 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
       const draft = consumePendingChatSeed();
       if (draft === null) return;
       setPrompt(draft);
-      window.dispatchEvent(new Event("openwork:focusPrompt"));
+      window.dispatchEvent(new Event("get3w:focusPrompt"));
     };
     seed();
     window.addEventListener(pendingChatSeedEvent, seed);
@@ -157,9 +157,9 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
   // (the built-in `opencode` provider) and the hosted offering applies.
   const onFreeStarterModel = props.composer?.selectedModel.providerID === DEFAULT_MODEL.providerID;
   const showModelsHint =
-    openWorkModelsPromoEligible &&
+    get3wModelsPromoEligible &&
     !modelsPromoHidden &&
-    !props.composer?.openWorkModelsEntitled &&
+    !props.composer?.get3wModelsEntitled &&
     onFreeStarterModel;
 
   const organizationPrompts = orgRestrictions.onboardingPrompts;
@@ -201,7 +201,7 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
 
   const fillPrompt = (value: string) => {
     setPrompt(value);
-    window.dispatchEvent(new Event("openwork:focusPrompt"));
+    window.dispatchEvent(new Event("get3w:focusPrompt"));
   };
 
   return (
@@ -225,14 +225,14 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
       {showModelsHint ? (
         <div
           className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground"
-          data-testid="openwork-models-hint"
+          data-testid="get3w-models-hint"
         >
           <span>{t("ui.1843834debda")}</span>
           <button
             type="button"
             className="flex items-center gap-1 font-medium text-blue-10 transition-colors hover:text-blue-11"
             onClick={() => {
-              const url = getOpenWorkModelsActionUrl(denAuth.isSignedIn, "sign-up");
+              const url = getGet3WModelsActionUrl(denAuth.isSignedIn, "sign-up");
               if (denAuth.isSignedIn) platform.openLink(url);
               else if (!openGet3wSignIn()) platform.openLink(url);
             }}
@@ -243,7 +243,7 @@ export function SessionEmptyHero(props: SessionEmptyHeroProps) {
           <button
             type="button"
             className="flex size-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
-            onClick={hideOpenWorkModelsPromo}
+            onClick={hideGet3WModelsPromo}
             aria-label={t("ui.21b7732559aa")}
           >
             <X className="size-3" />

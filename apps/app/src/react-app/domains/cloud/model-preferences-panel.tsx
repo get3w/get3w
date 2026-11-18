@@ -1,6 +1,8 @@
+import {webToolModelRank} from "@/lib/web-tool-model-order";
 import { generationCategory, generationModelId, categoryRank } from "./generation-models";
 import { cachedTaskCatalog, loadTaskCatalog, useTaskCatalog } from "./task-catalog-store";
-import {SlidersHorizontal} from "lucide-react";
+import {Collapsible,CollapsibleTrigger,CollapsibleContent} from "@/components/ui/collapsible";
+import {ChevronRight,SlidersHorizontal} from "lucide-react";
 import {Tooltip,TooltipTrigger,TooltipContent} from "@/components/ui/tooltip";
 import {useEffect,useMemo,useState} from "react";
 import {t,useLocale} from "@/i18n";
@@ -14,6 +16,8 @@ import {readModelPreferences,readOutputPreferences,writeModelPreference,writeOut
 const preferenceMenuClassName="bg-popover before:hidden [&_[data-slot=select-scroll-up-button]]:bg-popover [&_[data-slot=select-scroll-down-button]]:bg-popover";
 
 function preferenceCategoryRank(type:string){
+  if(type==="search")return 100;
+  if(type==="fetch")return 101;
   if(type==="speech")return 2;
   if(type==="speech-to-text")return 3;
   const rank=categoryRank(type);
@@ -56,12 +60,28 @@ export function PreferenceFields({userId}:{userId:string}){
   const fieldLabels:Record<string,string>={channel:t("personal.copy.channel"),quality:t("personal.copy.quality"),aspect_ratio:t("personal.copy.aspect_ratio"),resolution:t("personal.copy.resolution"),num_images:t("personal.copy.image_count"),num_outputs:t("personal.copy.output_count"),quantity:t("personal.copy.quantity"),generate_audio:t("personal.copy.generate_audio"),with_audio:t("personal.copy.include_audio"),language:t("personal.copy.language"),format:t("personal.copy.format"),output_format:t("personal.copy.output_format")};
   const models=readModelPreferences(userId),outputs=readOutputPreferences(userId);
   const groupTitle=(type:string,fallback:string)=>{
-    const known:Record<string,string>={image:"image",video:"video",panorama:"panorama","3d":"3d",speech:"speech",music:"music","digital-human":"digital_human","speech-to-text":"transcription","image-to-layers":"image_layers","image-upscale":"image_upscale","video-edit":"video_edit","video-extend":"video_extend","video-upscale":"video_upscale"};
+    const known:Record<string,string>={search:"search",fetch:"fetch",image:"image",video:"video",panorama:"panorama","3d":"3d",speech:"speech",music:"music","digital-human":"digital_human","speech-to-text":"transcription","image-to-layers":"image_layers","image-upscale":"image_upscale","video-edit":"video_edit","video-extend":"video_extend","video-upscale":"video_upscale"};
     return known[type]?t(`personal.run_type.${known[type]}`):fallback;
   };
-  const indexed=useMemo(()=>{const models=new Map<string,TaskCatalogSnapshot["models"]>();for(const model of catalog?.models??[]){if(/(decision|chat|llm)/i.test(`${model.category} ${model.type}`))continue;const rows=models.get(generationCategory(model.type))??[];rows.push(model);models.set(generationCategory(model.type),rows);}for(const rows of models.values())rows.sort((a,b)=>(a.base_price??Infinity)-(b.base_price??Infinity));return models;},[catalog]);
+  const indexed=useMemo(()=>{const models=new Map<string,TaskCatalogSnapshot["models"]>();for(const model of catalog?.models??[]){if(/(decision|chat|llm)/i.test(`${model.category} ${model.type}`))continue;const rows=models.get(generationCategory(model.type))??[];rows.push(model);models.set(generationCategory(model.type),rows);}for(const rows of models.values())rows.sort((a,b)=>webToolModelRank(a.type,a.model_id)-webToolModelRank(b.type,b.model_id)||(a.base_price??Infinity)-(b.base_price??Infinity));return models;},[catalog]);
   const groups=[...indexed.keys()].filter(type=>!/(decision|chat|llm)/i.test(type)).sort((a,b)=>preferenceCategoryRank(a)-preferenceCategoryRank(b)||a.localeCompare(b)).map(type=>({type,run_type_title:type}));
   const save=(action:()=>void)=>{try{action();setError(null);redraw(value=>value+1);window.dispatchEvent(new Event("get3w-preferences-changed"));}catch{setError("save");}};
+  const visibleGroups=groups.filter(group=>`${groupTitle(group.type,group.run_type_title)} ${group.type} ${(indexed.get(group.type)??[]).map(model=>model.name).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+  const primaryGroups=visibleGroups.filter(group=>preferenceCategoryRank(group.type)<=3);
+  const moreGroups=visibleGroups.filter(group=>preferenceCategoryRank(group.type)>3);
+  const renderGroup=(group:typeof groups[number])=>{
+      const available=[...new Map((indexed.get(group.type)??[]).map(model=>[generationModelId(model),model])).values()];
+      const current=models.find(row=>row.runType===group.type);
+      const valid=current?.slug&&available.some(model=>generationModelId(model)===current.slug);
+      const autoLabel=t("personal.preferences.auto");
+      const fields=catalog&&valid?outputSettingOptions(catalog,group.type,current?.slug,outputs.find(row=>row.runType===group.type)?.fields):[];
+      return <section key={group.type} className={`min-w-0 space-y-2 border-t py-3 ${group.type==="search"?"@min-[32rem]/preferences:col-start-1":""}`}><h3 className="truncate font-medium" title={groupTitle(group.type,group.run_type_title)}>{groupTitle(group.type,group.run_type_title)}</h3>
+        {current?.slug&&!valid?<p className="text-muted-foreground">{t("personal.copy.previous_model_unavailable_using_auto")}</p>:null}
+        <div className="flex min-h-10 items-center justify-between gap-3"><span className="text-muted-foreground">{t("personal.copy.model")}</span><Select onOpenChange={open=>setOpenMenu(open?group.type:null)} value={valid?current?.slug:"__auto"} onValueChange={value=>save(()=>writeModelPreference(userId,{runType:group.type,slug:value==="__auto"?null:value,scope:"global",updatedAt:Date.now(),catalogVersion:catalog?.catalog_version}))}>
+          <SelectTrigger aria-label={`${groupTitle(group.type,group.run_type_title)} ${t("personal.copy.model")}`} className="min-h-9 w-2/3 min-w-0 whitespace-normal data-[size=default]:h-auto [&>[data-slot=select-value]]:line-clamp-none"><SelectValue className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{valid?available.find(model=>generationModelId(model)===current?.slug)?.name:autoLabel}</SelectValue></SelectTrigger><SelectContent align="end" className={`${preferenceMenuClassName} w-64 min-w-0 max-w-(--available-width) [&_[data-slot=select-item]>:first-child]:min-w-0 [&_[data-slot=select-item]>:first-child]:shrink [&_[data-slot=select-item]>:first-child]:whitespace-normal [&_[data-slot=select-item]>:first-child]:[overflow-wrap:anywhere]`}><SelectItem value="__auto">{autoLabel}</SelectItem>{available.filter(model=>openMenu===group.type||generationModelId(model)===current?.slug).map(model=><SelectItem key={model.model_id} value={generationModelId(model)}>{model.name}</SelectItem>)}</SelectContent>
+        </Select></div>
+      {fields.map(field=><div key={field.name} className="flex min-h-10 items-center justify-between gap-3"><span className="min-w-0 text-muted-foreground">{fieldLabels[field.name]??field.name}</span><Select onOpenChange={open=>setOpenMenu(open?`${group.type}:${field.name}`:null)} value={field.values.find(value=>value.toLowerCase()===outputs.find(row=>row.runType===group.type)?.fields[field.name]?.toLowerCase())??(field.name==="channel"?field.defaultValue??field.values[0]:"auto")} onValueChange={value=>save(()=>writeOutputPreference(userId,{runType:group.type,fields:{...(field.name==="channel"?{}:outputs.find(row=>row.runType===group.type)?.fields),[field.name]:value??"auto"},scope:"global",updatedAt:Date.now()}))}><SelectTrigger className="h-9 w-32 min-w-0 shrink-0" aria-label={`${groupTitle(group.type,group.run_type_title)} ${fieldLabels[field.name]??field.name}`}><SelectValue className="truncate">{field.name==="channel"?(channelLabel(field.values.find(value=>value===outputs.find(row=>row.runType===group.type)?.fields.channel)??field.defaultValue??field.values[0]??"")):outputs.find(row=>row.runType===group.type)?.fields[field.name]&&outputs.find(row=>row.runType===group.type)?.fields[field.name]!=="auto"?outputs.find(row=>row.runType===group.type)?.fields[field.name]:t("personal.preferences.auto")}</SelectValue></SelectTrigger><SelectContent className={preferenceMenuClassName}>{field.name!=="channel"?<SelectItem value="auto">{t("personal.preferences.auto")}</SelectItem>:null}{field.values.filter(value=>value!=="auto"&&(openMenu===`${group.type}:${field.name}`||value.toLowerCase()===outputs.find(row=>row.runType===group.type)?.fields[field.name]?.toLowerCase()||(field.name==="channel"&&value===(field.defaultValue??field.values[0])))).map(value=><SelectItem key={value} value={value}>{field.name==="channel"?channelLabel(value):field.labels?.[value]??value}</SelectItem>)}</SelectContent></Select></div>)}</section>;
+  };
   return <div className="@container/preferences flex min-h-0 flex-col gap-3 text-sm">
     <div className="shrink-0">
     <Input aria-label={t("personal.copy.search")} placeholder={t("personal.copy.search")} value={query} onChange={event=>setQuery(event.target.value)}/>
@@ -71,20 +91,12 @@ export function PreferenceFields({userId}:{userId:string}){
     {!catalog&&!error?<div className="h-24 animate-pulse rounded bg-muted" aria-busy="true"/>:null}
     {catalog&&!groups.length?<p className="text-muted-foreground">{t("personal.copy.no_models_available_try_again_later")}</p>:null}
     {catalog&&groups.length>0&&!groups.some(group=>`${groupTitle(group.type,group.run_type_title)} ${group.type} ${(indexed.get(group.type)??[]).map(model=>model.name).join(" ")}`.toLowerCase().includes(query.toLowerCase()))?<p className="text-muted-foreground">{t("personal.preferences.no_matches")}</p>:null}
-    <div className="grid min-h-0 grid-cols-1 items-start gap-x-6 overflow-y-auto overscroll-contain @min-[32rem]/preferences:grid-cols-2">
-    {groups.filter(group=>`${groupTitle(group.type,group.run_type_title)} ${group.type} ${(indexed.get(group.type)??[]).map(model=>model.name).join(" ")}`.toLowerCase().includes(query.toLowerCase())).map(group=>{
-      const available=[...new Map((indexed.get(group.type)??[]).map(model=>[generationModelId(model),model])).values()];
-      const current=models.find(row=>row.runType===group.type);
-      const valid=current?.slug&&available.some(model=>generationModelId(model)===current.slug);
-      const autoLabel=t("personal.preferences.auto");
-      const fields=catalog&&valid?outputSettingOptions(catalog,group.type,current?.slug,outputs.find(row=>row.runType===group.type)?.fields):[];
-      return <section key={group.type} className="min-w-0 space-y-2 border-t py-3"><h3 className="truncate font-medium" title={groupTitle(group.type,group.run_type_title)}>{groupTitle(group.type,group.run_type_title)}</h3>
-        {current?.slug&&!valid?<p className="text-muted-foreground">{t("personal.copy.previous_model_unavailable_using_auto")}</p>:null}
-        <div className="flex min-h-10 items-center justify-between gap-3"><span className="text-muted-foreground">{t("personal.copy.model")}</span><Select onOpenChange={open=>setOpenMenu(open?group.type:null)} value={valid?current?.slug:"__auto"} onValueChange={value=>save(()=>writeModelPreference(userId,{runType:group.type,slug:value==="__auto"?null:value,scope:"global",updatedAt:Date.now(),catalogVersion:catalog?.catalog_version}))}>
-          <SelectTrigger aria-label={`${groupTitle(group.type,group.run_type_title)} ${t("personal.copy.model")}`} className="min-h-9 w-2/3 min-w-0 whitespace-normal data-[size=default]:h-auto [&>[data-slot=select-value]]:line-clamp-none"><SelectValue className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{valid?available.find(model=>generationModelId(model)===current?.slug)?.name:autoLabel}</SelectValue></SelectTrigger><SelectContent align="end" className={`${preferenceMenuClassName} w-64 min-w-0 max-w-(--available-width) [&_[data-slot=select-item]>:first-child]:min-w-0 [&_[data-slot=select-item]>:first-child]:shrink [&_[data-slot=select-item]>:first-child]:whitespace-normal [&_[data-slot=select-item]>:first-child]:[overflow-wrap:anywhere]`}><SelectItem value="__auto">{autoLabel}</SelectItem>{available.filter(model=>openMenu===group.type||generationModelId(model)===current?.slug).map(model=><SelectItem key={model.model_id} value={generationModelId(model)}>{model.name}</SelectItem>)}</SelectContent>
-        </Select></div>
-      {fields.map(field=><div key={field.name} className="flex min-h-10 items-center justify-between gap-3"><span className="min-w-0 text-muted-foreground">{fieldLabels[field.name]??field.name}</span><Select onOpenChange={open=>setOpenMenu(open?`${group.type}:${field.name}`:null)} value={field.values.find(value=>value.toLowerCase()===outputs.find(row=>row.runType===group.type)?.fields[field.name]?.toLowerCase())??(field.name==="channel"?field.defaultValue??field.values[0]:"auto")} onValueChange={value=>save(()=>writeOutputPreference(userId,{runType:group.type,fields:{...(field.name==="channel"?{}:outputs.find(row=>row.runType===group.type)?.fields),[field.name]:value??"auto"},scope:"global",updatedAt:Date.now()}))}><SelectTrigger className="h-9 w-32 min-w-0 shrink-0" aria-label={`${groupTitle(group.type,group.run_type_title)} ${fieldLabels[field.name]??field.name}`}><SelectValue className="truncate">{field.name==="channel"?(channelLabel(field.values.find(value=>value===outputs.find(row=>row.runType===group.type)?.fields.channel)??field.defaultValue??field.values[0]??"")):outputs.find(row=>row.runType===group.type)?.fields[field.name]&&outputs.find(row=>row.runType===group.type)?.fields[field.name]!=="auto"?outputs.find(row=>row.runType===group.type)?.fields[field.name]:t("personal.preferences.auto")}</SelectValue></SelectTrigger><SelectContent className={preferenceMenuClassName}>{field.name!=="channel"?<SelectItem value="auto">{t("personal.preferences.auto")}</SelectItem>:null}{field.values.filter(value=>value!=="auto"&&(openMenu===`${group.type}:${field.name}`||value.toLowerCase()===outputs.find(row=>row.runType===group.type)?.fields[field.name]?.toLowerCase()||(field.name==="channel"&&value===(field.defaultValue??field.values[0])))).map(value=><SelectItem key={value} value={value}>{field.name==="channel"?channelLabel(value):field.labels?.[value]??value}</SelectItem>)}</SelectContent></Select></div>)}</section>;
-    })}
+    <div className="min-h-0 overflow-y-auto overscroll-contain">
+      <div className="grid grid-cols-1 items-start gap-x-6 @min-[32rem]/preferences:grid-cols-2">{primaryGroups.map(renderGroup)}</div>
+      {moreGroups.length>0?<Collapsible>
+        <CollapsibleTrigger className="group flex min-h-10 w-full items-center gap-2 border-t text-muted-foreground hover:text-foreground"><ChevronRight size={16} strokeWidth={1.5} className="group-data-[panel-open]:rotate-90"/>{t("personal.preferences.more")}</CollapsibleTrigger>
+        <CollapsibleContent><div className="grid grid-cols-1 items-start gap-x-6 @min-[32rem]/preferences:grid-cols-2">{moreGroups.map(renderGroup)}</div></CollapsibleContent>
+      </Collapsible>:null}
     </div>
   </div>;
 }

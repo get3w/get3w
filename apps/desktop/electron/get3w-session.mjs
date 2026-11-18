@@ -1,7 +1,6 @@
 import { randomBytes, createHash } from "node:crypto";
 import { readFile, writeFile, rename, mkdir, chmod, unlink } from "node:fs/promises";
 import path from "node:path";
-import { migrateGet3wStateFile } from "./get3w-state-file.mjs";
 
 /**
  * Native Desktop session: encrypted storage, PKCE browser sign-in and token refresh.
@@ -38,7 +37,6 @@ export function createGet3wSession({ userData, safeStorage, openExternal, cloudB
     if (loaded) return;
     loaded = true;
     try {
-      await migrateGet3wStateFile(userData, "get3w-session.enc", "openwork-session.enc");
       const bytes = await readFile(file);
       if (!await encryptionAvailable()) { loaded = false; throw new Error("Secure storage is unavailable. Unlock your keychain and retry."); }
       let decoded;

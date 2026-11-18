@@ -174,9 +174,9 @@ export function isMacPlatform() {
   return /mac/i.test(platform) || /macintosh|mac os x/i.test(ua);
 }
 
-const STARTUP_PREF_KEY = "openwork.startupPref";
-const LEGACY_PREF_KEY = "openwork.modePref";
-const LEGACY_PREF_KEY_ALT = "openwork_mode_pref";
+const STARTUP_PREF_KEY = "get3w.startupPref";
+const LEGACY_PREF_KEY = "get3w.modePref";
+const LEGACY_PREF_KEY_ALT = "get3w_mode_pref";
 
 export function clearStartupPreference() {
   if (typeof window === "undefined") return;

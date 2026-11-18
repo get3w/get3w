@@ -37,7 +37,7 @@ function taskPart(id: string, agent: string, description: string, state: AgentSt
     toolName: "task",
     toolCallId: id,
     input: { description, prompt: description, subagent_type: agent },
-    callProviderMetadata: { openwork: { childSessionId } },
+    callProviderMetadata: { get3w: { childSessionId } },
   }
   if (state === "done") return { ...base, state: "output-available", output: "Finished." }
   if (state === "error") return { ...base, state: "output-error", errorText: "Task failed: 3 tests did not pass." }

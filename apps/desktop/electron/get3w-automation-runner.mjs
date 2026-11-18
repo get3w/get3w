@@ -4,7 +4,7 @@ import { classifyAutomationExecutionError, executeDesktopAutomation } from './au
 /** The native account owns the transport; no renderer token or arbitrary endpoint is accepted. */
 export function createPersonalAutomationRunner({auth,getLocalRuntime,getWorkspaceIds,execute=executeDesktopAutomation,intervalMs=30000,heartbeatMs=10000,heartbeatMissLimit=3,reportRetryMs=1000,receiptJournal,log=(_message)=>{}}) {
   const runnerId='desktop_'+randomUUID();
-  const errorCodes=new Set(['owner_membership_lost','model_access_lost','provider_unavailable','connect_access_unavailable','openwork_web_access_required','execution_runtime_unavailable','execution_failed','execution_timed_out','runner_unavailable','cancelled','lease_lost','internal_error','connection_action_required']);
+  const errorCodes=new Set(['owner_membership_lost','model_access_lost','provider_unavailable','connect_access_unavailable','get3w_web_access_required','execution_runtime_unavailable','execution_failed','execution_timed_out','runner_unavailable','cancelled','lease_lost','internal_error','connection_action_required']);
   const pending=new Map();
   const journal=receiptJournal??{list:async userId=>[...pending.values()].filter(entry=>entry.userId===userId),put:async entry=>{pending.set(entry.runId,entry);},remove:async runId=>{pending.delete(runId);}};
   let timer, controller, stopped=true, busy=false;

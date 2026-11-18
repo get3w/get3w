@@ -29,7 +29,7 @@ describe("OpenCode v2 slash commands", () => {
       [
         { id: "wrapup", name: "Wrap up", description: "skill clash" },
         { id: "demo-skill", name: "Demo", description: "A demo skill" },
-        { id: "openwork-cloud-shared", name: "Shared" },
+        { id: "get3w-cloud-shared", name: "Shared" },
       ],
     )).toEqual([
       { name: "review", description: "review changes", source: "command" },
@@ -84,7 +84,7 @@ describe("OpenCode v2 slash commands", () => {
       sessionID: "ses_1",
       command: "wrapup",
       arguments: "the release",
-      model: "openwork/auto/v1",
+      model: "get3w/auto/v1",
     });
     expect(result.error).toBeUndefined();
     const sent = await Promise.all(requests.map(async (request) => ({
@@ -93,7 +93,7 @@ describe("OpenCode v2 slash commands", () => {
       body: await request.json(),
     })));
     expect(sent).toEqual([
-      { method: "POST", path: "/api/session/ses_1/model", body: { model: { providerID: "openwork", id: "auto/v1" } } },
+      { method: "POST", path: "/api/session/ses_1/model", body: { model: { providerID: "get3w", id: "auto/v1" } } },
       { method: "POST", path: "/api/session/ses_1/command", body: { name: "wrapup", text: "the release" } },
     ]);
   });

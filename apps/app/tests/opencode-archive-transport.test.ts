@@ -12,7 +12,7 @@ function installPermissionTransport() {
   Object.defineProperty(globalThis, "fetch", { configurable: true, value: raw });
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     fetch: raw,
-    __OPENWORK_ELECTRON__: { invokeDesktop: async (command: string, url: string, init?: typeof ipc[number]["init"]) => {
+    __GET3W_ELECTRON__: { invokeDesktop: async (command: string, url: string, init?: typeof ipc[number]["init"]) => {
       ipc.push({ command, url, init });
       return { status: 200, statusText: "OK", headers: [["content-type", "application/json"]], body: "true" };
     } },
@@ -38,13 +38,13 @@ test("archive opts finite loopback GET/PATCH into IPC with credentials and scope
   Object.defineProperty(globalThis, "fetch", { configurable: true, value: raw });
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     fetch: raw,
-    __OPENWORK_ELECTRON__: { invokeDesktop: async (command: string, ...args: unknown[]) => {
+    __GET3W_ELECTRON__: { invokeDesktop: async (command: string, ...args: unknown[]) => {
       ipc.push({ command, args });
       return { status: 200, statusText: "OK", headers: [["content-type", "application/json"]], body: JSON.stringify({ id: "ses_fixture" }) };
     } },
   } });
   const base = "http://127.0.0.1:8788/workspace/ws_fixture/opencode";
-  const auth = { token: "fixture-only", mode: "openwork" } satisfies Parameters<typeof createClient>[2];
+  const auth = { token: "fixture-only", mode: "get3w" } satisfies Parameters<typeof createClient>[2];
   const client = createClient(base, "/fixture/a", auth, { desktopTransport: "main" });
   const signal = new AbortController().signal;
   await client.session.get({ sessionID: "ses_fixture", directory: "/fixture/a" }, { signal });
@@ -74,7 +74,7 @@ test.each(["once", "always", "reject"] satisfies Array<"once" | "always" | "reje
   const { ipc, renderer } = installPermissionTransport();
   for (const mount of ["", "/workspace/ws_fixture/opencode", "/proxy/w/ws_fixture/opencode"]) {
     const base = `http://127.0.0.1:8788${mount}`;
-    const client = createClient(base, "/fixture/é", { mode: "openwork", token: "fixture-only" });
+    const client = createClient(base, "/fixture/é", { mode: "get3w", token: "fixture-only" });
     const result = await client.permission.reply({ requestID: "per_fixture-1", reply });
     expect(result.data).toBe(true);
     expect(ipc.at(-1)).toMatchObject({ command: "__fetch", url: `${base}/permission/per_fixture-1/reply`, init: {
@@ -125,7 +125,7 @@ test.each(["deadline", "caller", "preaborted", "null override"])("permission %s 
   let rejectFetch: ((error: Error) => void) | undefined;
   let dispatched: (() => void) | undefined;
   const entered = new Promise<void>(resolve => { dispatched = resolve; });
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { __OPENWORK_ELECTRON__: {
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { __GET3W_ELECTRON__: {
     invokeDesktop: (command: string, value: string, init?: { transferId?: string; body?: string }) => {
       calls.push(command);
       if (command === "__cancelTransfer") {
@@ -197,7 +197,7 @@ test("stream endpoints and effective SSE Accept headers stay native, unbuffered 
 test("web permission replies retain native fetch even with the explicit desktop-main option", async () => {
   const { ipc, renderer } = installPermissionTransport();
   Object.defineProperty(globalThis, "window", { configurable: true, value: undefined });
-  const client = createClient("http://127.0.0.1:8788", "/fixture/a", { mode: "openwork", token: "fixture-only" }, { desktopTransport: "main" });
+  const client = createClient("http://127.0.0.1:8788", "/fixture/a", { mode: "get3w", token: "fixture-only" }, { desktopTransport: "main" });
   expect((await client.permission.reply({ requestID: "per_1", reply: "once" })).data).toBe(true);
   expect(renderer).toHaveLength(1);
   expect(renderer[0]?.headers.get("authorization")).toBe("Bearer fixture-only");
@@ -209,7 +209,7 @@ test("explicit main-client prompt admission remains unknown at 30 seconds withou
   jest.useFakeTimers();
   const calls: string[] = [];
   let rejectFetch: ((error: Error) => void) | undefined;
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { __OPENWORK_ELECTRON__: {
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { __GET3W_ELECTRON__: {
     invokeDesktop: (command: string, _url: string, init?: { transferId?: string }) => {
       calls.push(command);
       expect(init?.transferId).toBeUndefined();
@@ -230,7 +230,7 @@ test("Stop's transport timeout cancels the native IPC request, without giving pr
   const calls: string[] = [];
   let transferId: string | undefined;
   let rejectFetch: ((error: Error) => void) | undefined;
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { __OPENWORK_ELECTRON__: {
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { __GET3W_ELECTRON__: {
     invokeDesktop: (command: string, value: string, init?: { transferId?: string }) => {
       calls.push(command);
       if (command === "__cancelTransfer") {

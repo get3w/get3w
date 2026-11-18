@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
-const OPENWORK_BUNDLE_PREFIX = "com.get3w.desktop";
+const GET3W_BUNDLE_PREFIX = "com.get3w.desktop";
 
 /** @typedef {{ name: string, bundleId: string | null, ours: boolean }} PermissionEntry */
 /** @typedef {(file: string, args: string[], options: { timeout: number }) => Promise<{ stdout: string }>} Exec */
@@ -62,7 +62,7 @@ async function bundleEntry(bundle, exec) {
   return {
     name: displayName ?? bundleName ?? path.basename(bundle, ".app"),
     bundleId,
-    ours: Boolean(bundleId?.startsWith(OPENWORK_BUNDLE_PREFIX)),
+    ours: Boolean(bundleId?.startsWith(GET3W_BUNDLE_PREFIX)),
   };
 }
 

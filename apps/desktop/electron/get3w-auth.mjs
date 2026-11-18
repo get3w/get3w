@@ -6,9 +6,10 @@ import { createGet3wSession } from "./get3w-session.mjs";
 import { randomUUID, createHash } from "node:crypto";
 import path from "node:path";
 
-/** @param {{userData:string,safeStorage:object,openExternal:Function,cloudBase?:string,webBase?:string,fetchImpl?:typeof fetch,now?:()=>number}} options */
-export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase = GET3W_SERVICES.cloudBase, webBase = GET3W_SERVICES.webBase, fetchImpl = fetch, now = Date.now }) {
+/** @param {{userData:string,safeStorage:object,openExternal:Function,cloudBase?:string,apiBase?:string,webBase?:string,fetchImpl?:typeof fetch,now?:()=>number}} options */
+export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase = GET3W_SERVICES.cloudBase, apiBase = GET3W_SERVICES.denBase, webBase = GET3W_SERVICES.webBase, fetchImpl = fetch, now = Date.now }) {
   cloudBase = validateGet3wOrigin(cloudBase);
+  apiBase = validateGet3wOrigin(apiBase);
   webBase = validateGet3wOrigin(webBase);
   const taskCatalogCache = createTaskCatalogCache({now, directory: path.join(userData, "task-model-catalog"), namespace: `personal-v1:${cloudBase}`});
   const mcpRequests = new Set();
@@ -66,6 +67,40 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
         if(account.user?.id!==userId) throw Error("Task log account changed");
         return response.json();
       } finally {mcpRequests.delete(controller);}
+    },
+    webTools: async ({ userId, operation, body, signal }) => {
+      if (!["search", "fetch"].includes(operation)) throw Error("Unsupported web tool");
+      const controller = new AbortController();
+      const access = await serial(async () => {
+        await load();
+        if (account.status !== "signed_in" || !account.session || account.session.expiresAt <= now() + 30_000) await refreshIdentity();
+        if (!account.session || account.status !== "signed_in" || account.user?.id !== userId) throw Error("Sign in to the current Get3W account and retry.");
+        mcpRequests.add(controller);
+        return account.session.access_token;
+      });
+      try {
+        const response = await fetchImpl(`${apiBase}/v1/tools/${operation}`, {
+          method: "POST", redirect: "error", headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+          body: JSON.stringify(body), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(310_000), ...(signal ? [signal] : [])]),
+        });
+        const limit = operation === "search" ? 256 * 1024 : 2 * 1024 * 1024;
+        const chunks = [];
+        let length = 0;
+        if (!response.body) throw Error("Web tool response is empty");
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            length += value.byteLength;
+            if (length > limit) throw Error("Web tool response is too large");
+            chunks.push(Buffer.from(value));
+          }
+        } finally { await reader.cancel(); reader.releaseLock(); }
+        const text = Buffer.concat(chunks).toString("utf8");
+        if (controller.signal.aborted || account.user?.id !== userId || account.status !== "signed_in") throw Error("Get3W account changed");
+        return { status: response.status, json: JSON.parse(text) };
+      } finally { mcpRequests.delete(controller); }
     },
     outputIdentity: () => ({userId:account.session&&account.status==="signed_in"&&account.user?.id}),
     // The paid and MCP endpoints enforce live permissions. Avoid an extra /me

@@ -8,11 +8,11 @@ import { resolveServerConfig } from "../src/config.js";
 import type { ServerConfig } from "../src/types.js";
 
 const TOKEN = "web-origin-test-client";
-const dir = mkdtempSync(join(tmpdir(), "openwork-web-origin-"));
+const dir = mkdtempSync(join(tmpdir(), "get3w-web-origin-"));
 const overrides: Record<string, string | undefined> = {
   HOME: dir, XDG_CONFIG_HOME: join(dir, "config"), XDG_DATA_HOME: join(dir, "data"),
   XDG_CACHE_HOME: join(dir, "cache"), XDG_STATE_HOME: join(dir, "state"),
-  GET3W_DATA_DIR: join(dir, "openwork"), GET3W_RUNTIME_DB: join(dir, "runtime.sqlite"),
+  GET3W_DATA_DIR: join(dir, "get3w"), GET3W_RUNTIME_DB: join(dir, "runtime.sqlite"),
   OPENCODE_DB: join(dir, "v1.db"), GET3W_ENGINE_AUTO_UPGRADE: "0",
   GET3W_WEB_ROOT: join(dir, "web"), GET3W_WEB_BOOTSTRAP_TOKEN: undefined,
   GET3W_CORS_ORIGINS: undefined, GET3W_ALLOWED_HOSTS: undefined,
@@ -61,8 +61,8 @@ const otherSiteFetch = { origin: "https://other.example", "sec-fetch-site": "cro
 test("web mode answers only loopback, IP and configured host names", async () => {
   assert.deepEqual(config.allowedHosts, []);
   const configured = await resolveServerConfig({ web: true, configPath: join(dir, "server.json"), workspaces: [],
-    allowedHosts: ["openwork.example"] });
-  assert.deepEqual(configured.allowedHosts, ["openwork.example"]);
+    allowedHosts: ["get3w.example"] });
+  assert.deepEqual(configured.allowedHosts, ["get3w.example"]);
   const standalone = await resolveServerConfig({ configPath: join(dir, "server.json"), workspaces: [] });
   assert.equal(standalone.allowedHosts, undefined, "desktop and other hosts keep answering any name");
 });
@@ -71,7 +71,7 @@ test("another site's fetch of the web UI gets no CORS access and no token", asyn
   const page = await get("/", otherSiteFetch);
   assert.equal(page.status, 200);
   assert.equal(page.headers["access-control-allow-origin"], undefined);
-  assert.doesNotMatch(page.body, /__OPENWORK_BOOTSTRAP__/);
+  assert.doesNotMatch(page.body, /__GET3W_BOOTSTRAP__/);
   assert.ok(!page.body.includes(TOKEN));
   const api = await get("/health", otherSiteFetch);
   assert.equal(api.status, 200);
@@ -88,10 +88,10 @@ test("requests addressed to an unknown host name are rejected before the page or
   for (const host of [`localhost:${server.port}`, `127.0.0.1:${server.port}`, `[::1]:${server.port}`, `app.localhost:${server.port}`]) {
     assert.equal((await get("/health", { host })).status, 200, host);
   }
-  config.allowedHosts = ["openwork.example"];
+  config.allowedHosts = ["get3w.example"];
   t.after(() => { config.allowedHosts = []; });
   assert.equal((await get("/health", { host: "Get3W.example" })).status, 200, "a configured proxy name is allowed");
-  assert.equal((await get("/health", { host: "other.openwork.example" })).status, 403);
+  assert.equal((await get("/health", { host: "other.get3w.example" })).status, 403);
 });
 
 test("the UI's own page loads still sign in automatically", async () => {
@@ -103,7 +103,7 @@ test("the UI's own page loads still sign in automatically", async () => {
   ]) {
     const response = await get("/", headers);
     assert.equal(response.status, 200);
-    assert.match(response.body, new RegExp(`window\\.__OPENWORK_BOOTSTRAP__ = \\{"token":"${TOKEN}"\\}`), JSON.stringify(headers));
+    assert.match(response.body, new RegExp(`window\\.__GET3W_BOOTSTRAP__ = \\{"token":"${TOKEN}"\\}`), JSON.stringify(headers));
   }
   const framed = await get("/", { "sec-fetch-site": "cross-site", "sec-fetch-mode": "navigate", "sec-fetch-dest": "iframe" });
   assert.equal(framed.status, 200);
@@ -119,9 +119,9 @@ test("personal server rejects retired organization session and synchronization r
     ["GET", "/experimental/connect/state"], ["PUT", "/experimental/connect/state"],
     ["GET", "/experimental/connect/skills"], ["POST", "/experimental/connect/skills/read"],
     ["GET", "/experimental/connect/automations"],
-    ["GET", "/workspace/fixture/mcp/openwork-cloud/health"],
-    ["POST", "/workspace/fixture/mcp/openwork-cloud/engine-refresh"],
-    ["POST", "/workspace/fixture/mcp/openwork-cloud/reconcile"],
+    ["GET", "/workspace/fixture/mcp/get3w-cloud/health"],
+    ["POST", "/workspace/fixture/mcp/get3w-cloud/engine-refresh"],
+    ["POST", "/workspace/fixture/mcp/get3w-cloud/reconcile"],
     ["GET", "/workspace/fixture/desktop-cloud-sync"], ["POST", "/workspace/fixture/desktop-cloud-sync"],
     ["GET", "/workspace/fixture/cloud-plugins"], ["DELETE", "/workspace/fixture/cloud-plugins/plugin-fixture"],
   ];

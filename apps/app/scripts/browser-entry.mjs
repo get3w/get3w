@@ -83,7 +83,7 @@ function hasFixtureText(text, marker) {
 }
 
 function hasBuiltInBrowserPrompt(promptText) {
-  return ["built-in openwork browser", "openwork browser", "example.com"]
+  return ["built-in get3w browser", "get3w browser", "example.com"]
     .some((marker) => hasFixtureText(promptText, marker));
 }
 
@@ -121,7 +121,7 @@ let sawBuiltInBrowserPrompt = false;
 const mockSockets = new Set();
 
 try {
-  tmpdir = await mkdtemp(path.join(os.tmpdir(), "openwork-browser-entry-"));
+  tmpdir = await mkdtemp(path.join(os.tmpdir(), "get3w-browser-entry-"));
 
   const templateUrl = new URL("../src/app/data/commands/browser-setup.md", import.meta.url);
   const template = await readFile(templateUrl, "utf8");

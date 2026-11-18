@@ -43,10 +43,10 @@ export function prepareBlankSlateProfile({
   }
 
   const paths = pathApi(platform);
-  const rootPath = createTempRoot(paths.join(temporaryDirectory, "openwork-test-profile-"));
+  const rootPath = createTempRoot(paths.join(temporaryDirectory, "get3w-test-profile-"));
   const userDataPath = paths.join(rootPath, "electron", "user-data");
   const homePath = paths.join(rootPath, "home");
-  const openworkConfigPath = paths.join(rootPath, "get3w", "config");
+  const get3wConfigPath = paths.join(rootPath, "get3w", "config");
   const opencodeDataPath = paths.join(rootPath, "opencode", "data");
   const environment = {
     HOME: homePath,
@@ -58,11 +58,11 @@ export function prepareBlankSlateProfile({
     APPDATA: paths.join(rootPath, "windows", "app-data", "roaming"),
     LOCALAPPDATA: paths.join(rootPath, "windows", "app-data", "local"),
     GET3W_ELECTRON_USERDATA: userDataPath,
-    GET3W_DESKTOP_BOOTSTRAP_PATH: paths.join(openworkConfigPath, "desktop-bootstrap.json"),
-    GET3W_SERVER_CONFIG: paths.join(openworkConfigPath, "server.json"),
-    GET3W_ENV_STORE: paths.join(openworkConfigPath, "env.json"),
-    GET3W_TOKEN_STORE: paths.join(openworkConfigPath, "tokens.json"),
-    GET3W_RUNTIME_DB: paths.join(openworkConfigPath, "runtime.sqlite"),
+    GET3W_DESKTOP_BOOTSTRAP_PATH: paths.join(get3wConfigPath, "desktop-bootstrap.json"),
+    GET3W_SERVER_CONFIG: paths.join(get3wConfigPath, "server.json"),
+    GET3W_ENV_STORE: paths.join(get3wConfigPath, "env.json"),
+    GET3W_TOKEN_STORE: paths.join(get3wConfigPath, "tokens.json"),
+    GET3W_RUNTIME_DB: paths.join(get3wConfigPath, "runtime.sqlite"),
     GET3W_DATA_DIR: paths.join(rootPath, "get3w", "data"),
     OPENCODE_CONFIG_DIR: paths.join(rootPath, "opencode", "config"),
     OPENCODE_DB: paths.join(opencodeDataPath, "opencode.db"),
@@ -77,7 +77,7 @@ export function prepareBlankSlateProfile({
     environment.XDG_STATE_HOME,
     environment.APPDATA,
     environment.LOCALAPPDATA,
-    openworkConfigPath,
+    get3wConfigPath,
     environment.GET3W_DATA_DIR,
     environment.OPENCODE_CONFIG_DIR,
     opencodeDataPath,

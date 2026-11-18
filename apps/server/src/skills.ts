@@ -82,7 +82,7 @@ async function parseSkillEntry(
   try {
     content = await readFile(skillPath, "utf8");
   } catch (error) {
-    console.warn("[openwork:skills] Skipping unreadable skill file", {
+    console.warn("[get3w:skills] Skipping unreadable skill file", {
       path: skillPath,
       entryName,
       scope,
@@ -104,7 +104,7 @@ async function parseSkillEntry(
     } catch {
       return null;
     }
-    console.warn("[openwork:skills] Found invalid skill frontmatter", {
+    console.warn("[get3w:skills] Found invalid skill frontmatter", {
       path: skillPath,
       entryName,
       scope,
@@ -189,7 +189,7 @@ async function listSkillsInDir(dir: string, scope: "project" | "global"): Promis
 export function globalSkillDirectories() {
   const home = homedir();
   return {
-    openwork: join(home, ".config", "opencode", "skills"),
+    get3w: join(home, ".config", "opencode", "skills"),
     claude: join(home, ".claude", "skills"),
     agents: join(home, ".agents", "skills"),
     agentLegacy: join(home, ".agent", "skills"),
@@ -208,7 +208,7 @@ export async function listSkills(workspaceRoot: string, includeGlobal: boolean):
 
   if (includeGlobal) {
     const global = globalSkillDirectories();
-    for (const dir of [global.openwork, global.claude, global.agents, global.agentLegacy]) dirs.push({ dir, scope: "global" });
+    for (const dir of [global.get3w, global.claude, global.agents, global.agentLegacy]) dirs.push({ dir, scope: "global" });
   }
 
   const groups = await Promise.all(dirs.map(({ dir, scope }) => listSkillsInDir(dir, scope)));

@@ -287,15 +287,15 @@ async function remainingCopyBytes(original: string, converted: string, target: s
     attachHistory(db, target, "destination");
     let archive = 0;
     for (const table of ["message", "part"]) {
-      const archived = db.prepare("SELECT 1 FROM destination.sqlite_master WHERE type = 'table' AND name = ?").get(`openwork_v1_${table}`);
+      const archived = db.prepare("SELECT 1 FROM destination.sqlite_master WHERE type = 'table' AND name = ?").get(`get3w_v1_${table}`);
       archive += numberField(db.prepare(`SELECT coalesce(sum(length(CAST(s.data AS BLOB))), 0) AS n FROM original.${table} s
-        ${archived ? `WHERE NOT EXISTS (SELECT 1 FROM destination.openwork_v1_${table} t WHERE t.source_key = ? AND t.id = s.id AND t.data = s.data)` : ""}`)
+        ${archived ? `WHERE NOT EXISTS (SELECT 1 FROM destination.get3w_v1_${table} t WHERE t.source_key = ? AND t.id = s.id AND t.data = s.data)` : ""}`)
         .get(...(archived ? [sourceKey] : [])), "n");
     }
     const projection = numberField(db.prepare(`SELECT coalesce(sum(length(CAST(data AS BLOB))), 0) AS n FROM session_message
       WHERE session_id IN (SELECT DISTINCT s.session_id FROM session_message s
         WHERE NOT EXISTS (SELECT 1 FROM destination.session_message t WHERE t.id = s.id))`).get(), "n");
-    const payload = restoring ? numberField(db.prepare("SELECT coalesce(sum(length(CAST(json_quote(value) AS BLOB))), 0) AS n FROM openwork_payload").get(), "n") : 0;
+    const payload = restoring ? numberField(db.prepare("SELECT coalesce(sum(length(CAST(json_quote(value) AS BLOB))), 0) AS n FROM get3w_payload").get(), "n") : 0;
     // Payloads can grow both the staging projection and its target copy. Count
     // all of them conservatively; neither archived raw rows nor a saved backup
     // need to be allocated again on a copying-stage resume.

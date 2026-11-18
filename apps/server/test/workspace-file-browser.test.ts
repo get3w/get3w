@@ -10,15 +10,15 @@ import { UiControlMailbox } from "../src/ui-control";
 import { ReloadEventStore } from "../src/events";
 import type { ServerConfig } from "../src/types";
 
-async function fixture(run: (root: string, request: (method: string, path: string, body?: Record<string, unknown>) => Promise<Response>) => Promise<void>) {
+async function fixture(run: (root: string, request: (method: string, path: string, body?: Record<string, unknown> | FormData) => Promise<Response>) => Promise<void>) {
  const root = await mkdtemp(join(tmpdir(), "get3w-file-browser-"));
  const config: ServerConfig = { host:"127.0.0.1",port:0,token:"client",hostToken:"host",configPath:join(root,"config.json"),approval:{mode:"auto",timeoutMs:2000},corsOrigins:[],workspaces:[],authorizedRoots:[],readOnly:false,startedAt:0,tokenSource:"generated",hostTokenSource:"generated",logFormat:"json",logRequests:false };
  const routes: Route[] = [];
  registerFileRoutes({ routes, config, jsonResponse:(value,status=200)=>Response.json(value,{status}), readJsonBody:request=>request.json(), ensureWritable:()=>{if(config.readOnly)throw Error("read-only");}, requireApproval:async()=>{}, requireClientScope:()=>{}, resolveWorkspace:async()=>({id:"ws",name:"Test",path:root,workspaceType:"local"}), resolveInboxEnabled:()=>true,resolveOutboxEnabled:()=>true,resolveInboxMaxBytes:()=>1000,scopeRank:()=>1 });
- async function request(method: string, path: string, body?: Record<string, unknown>) {
+ async function request(method: string, path: string, body?: Record<string, unknown> | FormData) {
   const url = new URL("http://localhost" + path);
   const route = matchRoute(routes, method, url.pathname); if (!route) throw Error("Missing route");
-  return route.handler({request:new Request(url,{method,...(body?{body:JSON.stringify(body)}:{})}),url,params:route.params,config,approvals:new ApprovalService(config.approval),tokens:new TokenService(config),uiControl:new UiControlMailbox(),reloadEvents:new ReloadEventStore(),actor:{type:"host"}});
+  return route.handler({request:new Request(url,{method,...(body?{body:body instanceof FormData ? body : JSON.stringify(body)}:{})}),url,params:route.params,config,approvals:new ApprovalService(config.approval),tokens:new TokenService(config),uiControl:new UiControlMailbox(),reloadEvents:new ReloadEventStore(),actor:{type:"host"}});
  }
  try { await run(root, request); } finally { await rm(root,{recursive:true,force:true}); }
 }
@@ -88,4 +88,38 @@ test("shared output API allocates readable paths and file-manager moves retain o
  expect(JSON.stringify(targets)).toContain("销售总结/分析报告.txt");
  await request("POST","/workspace/ws/files/browser/ops",{type:"delete",path:"销售总结",recursive:true});
  const removed=await (await request("POST","/workspace/ws/model-outputs",{action:"resolve",files:[{path:plan.path,fileId:plan.fileId}]})).json();expect(removed.files[0].missing).toBe(true);
+}));
+
+
+test("inbox writes, lists and downloads runtime-neutral attachment paths", () => fixture(async(root,request) => {
+ const legacy = join(root,".get3w/inbox/chat-attachments/session");
+ await mkdir(legacy,{recursive:true});
+ await writeFile(join(legacy,"old.txt"),"legacy input");
+ await writeFile(join(legacy,"same.txt"),"legacy collision");
+ const form = new FormData();
+ form.set("file",new File(["current input"],"same.txt"));
+ form.set("path","chat-attachments/session/same.txt");
+ await request("POST","/workspace/ws/inbox",form);
+ expect(await readFile(join(root,".get3w/inbox/chat-attachments/session/same.txt"),"utf8")).toBe("current input");
+ const result = await (await request("GET","/workspace/ws/inbox")).json();
+ expect(result.items).toHaveLength(2);
+ for (const [filename,content] of [["old.txt","legacy input"],["same.txt","current input"]]) {
+  const item = result.items.find((row:{path:string})=>row.path.endsWith(filename));
+  expect(await (await request("GET",`/workspace/ws/inbox/${item.id}`)).text()).toBe(content);
+ }
+ expect(await readFile(join(legacy,"same.txt"),"utf8")).toBe("current input");
+}));
+
+test("outbox lists and downloads runtime-neutral results", () => fixture(async(root,request) => {
+ for(const prefix of [".get3w"]) {
+  await mkdir(join(root,prefix,"outbox"),{recursive:true});
+  await writeFile(join(root,prefix,"outbox/same.txt"),prefix);
+ }
+ await writeFile(join(root,".get3w/outbox/old.txt"),"legacy output");
+ const result=await (await request("GET","/workspace/ws/artifacts")).json();
+ expect(result.items).toHaveLength(2);
+ for(const [filename,content] of [["old.txt","legacy output"],["same.txt",".get3w"]]) {
+  const item=result.items.find((row:{path:string})=>row.path===filename);
+  expect(await (await request("GET",`/workspace/ws/artifacts/${item.id}`)).text()).toBe(content);
+ }
 }));

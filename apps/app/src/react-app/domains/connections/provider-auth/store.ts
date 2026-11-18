@@ -12,7 +12,7 @@ import { type DenUsableGatewayProvider } from "../../../../app/lib/den";
 
 import { unwrap, waitForHealthy } from "../../../../app/lib/opencode";
 import { readOpencodeConfig, writeOpencodeConfig, engineRestart } from "../../../../app/lib/desktop";
-import { OpenworkServerError } from "../../../../app/lib/openwork-server";
+import { Get3wServerError } from "../../../../app/lib/get3w-server";
 import type {
   Client,
   ProviderListItem,
@@ -25,22 +25,22 @@ import {
 } from "../../../../app/utils/providers";
 import { getReactQueryClient } from "../../../infra/query-client";
 import { ensureProviderCatalogQuery, ensureProviderListQuery } from "../../../infra/provider-list-query";
-import type { OpenworkCloudProviderSyncSkippedProvider } from "../../../../app/lib/openwork-server";
-import type { OpenworkServerStoreSnapshot } from "../openwork-server-store";
+import type { Get3wCloudProviderSyncSkippedProvider } from "../../../../app/lib/get3w-server";
+import type { Get3wServerStoreSnapshot } from "../get3w-server-store";
 
 /**
- * The slice of the openwork-server store this store actually consumes.
+ * The slice of the get3w-server store this store actually consumes.
  * The settings route passes the full store; the session route passes a
  * lightweight endpoint-backed adapter (previously forced through `as never`).
  */
-export type ProviderAuthOpenworkServer = {
+export type ProviderAuthGet3wServer = {
   getSnapshot: () => Pick<
-    OpenworkServerStoreSnapshot,
-    "openworkServerStatus" | "openworkServerClient"
+    Get3wServerStoreSnapshot,
+    "get3wServerStatus" | "get3wServerClient"
   > & {
-    openworkServerAuth?: { token?: string; hostToken?: string };
-    openworkServerHostInfo?: { generation: number | null } | null;
-    openworkServerCapabilities: { config?: { read?: boolean; write?: boolean }; providerSync?: boolean } | null;
+    get3wServerAuth?: { token?: string; hostToken?: string };
+    get3wServerHostInfo?: { generation: number | null } | null;
+    get3wServerCapabilities: { config?: { read?: boolean; write?: boolean }; providerSync?: boolean } | null;
   };
 };
 
@@ -131,7 +131,7 @@ export type CloudProviderServerSyncState = {
   lastRun?: { at: string | number; status: "applied" | "noop" | "failed" | "no_session"; message?: string } | null;
   lastVerifiedAt?: string | number | null;
   reloadPending: boolean;
-  skippedProviders: Record<string, OpenworkCloudProviderSyncSkippedProvider>;
+  skippedProviders: Record<string, Get3wCloudProviderSyncSkippedProvider>;
 };
 
 export type ProviderLoadState = {
@@ -171,7 +171,7 @@ type CreateProviderAuthStoreOptions = {
   selectedWorkspaceRoot: () => string;
   runtimeWorkspaceId: () => string | null;
   ensureRuntimeWorkspaceId?: () => Promise<string | null | undefined>;
-  openworkServer: ProviderAuthOpenworkServer;
+  get3wServer: ProviderAuthGet3wServer;
   setProviders: (value: ProviderListItem[]) => void;
   setProviderDefaults: (value: Record<string, string>) => void;
   setProviderConnectedIds: (value: string[]) => void;
@@ -259,24 +259,24 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     return Array.from(merged.values()).toSorted(compareProviders);
   };
 
-  const resolveOpenworkConfigTarget = async (mode: "read" | "write") => {
-    const openworkSnapshot = options.openworkServer.getSnapshot();
-    const openworkClient = openworkSnapshot.openworkServerClient;
-    let openworkWorkspaceId = options.runtimeWorkspaceId()?.trim() || null;
-    if (!openworkWorkspaceId && openworkSnapshot.openworkServerStatus === "connected" && openworkClient) {
-      openworkWorkspaceId = (await options.ensureRuntimeWorkspaceId?.())?.trim() || null;
+  const resolveGet3wConfigTarget = async (mode: "read" | "write") => {
+    const get3wSnapshot = options.get3wServer.getSnapshot();
+    const get3wClient = get3wSnapshot.get3wServerClient;
+    let get3wWorkspaceId = options.runtimeWorkspaceId()?.trim() || null;
+    if (!get3wWorkspaceId && get3wSnapshot.get3wServerStatus === "connected" && get3wClient) {
+      get3wWorkspaceId = (await options.ensureRuntimeWorkspaceId?.())?.trim() || null;
     }
-    const hasOpenworkTarget =
-      openworkSnapshot.openworkServerStatus === "connected" &&
-      Boolean(openworkClient && openworkWorkspaceId);
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.config?.[mode] !== false;
+    const hasGet3wTarget =
+      get3wSnapshot.get3wServerStatus === "connected" &&
+      Boolean(get3wClient && get3wWorkspaceId);
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.config?.[mode] !== false;
     return {
-      openworkClient,
-      openworkWorkspaceId,
-      hasOpenworkTarget,
-      canUseOpenworkServer,
+      get3wClient,
+      get3wWorkspaceId,
+      hasGet3wTarget,
+      canUseGet3wServer,
     };
   };
 
@@ -319,14 +319,14 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace =
       options.selectedWorkspaceDisplay().workspaceType === "local";
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveOpenworkConfigTarget("read");
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveGet3wConfigTarget("read");
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-      return await openworkClient.readOpencodeConfigFile(openworkWorkspaceId, "project");
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+      return await get3wClient.readOpencodeConfigFile(get3wWorkspaceId, "project");
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       throw new Error("Get3W server config API is unavailable for this workspace.");
     }
 
@@ -341,13 +341,13 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace =
       options.selectedWorkspaceDisplay().workspaceType === "local";
-    const { openworkClient, openworkWorkspaceId, hasOpenworkTarget, canUseOpenworkServer } =
-      await resolveOpenworkConfigTarget("write");
+    const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
+      await resolveGet3wConfigTarget("write");
     if (!isCurrent()) return false;
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-      const result = await openworkClient.writeOpencodeConfigFile(
-        openworkWorkspaceId,
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+      const result = await get3wClient.writeOpencodeConfigFile(
+        get3wWorkspaceId,
         "project",
         content,
       ) as { ok: boolean; stderr?: string; stdout?: string };
@@ -357,7 +357,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       return true;
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       throw new Error("Get3W server config API is unavailable for this workspace.");
     }
 
@@ -401,10 +401,10 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     }
 
     const c = options.client();
-    const openworkSnapshot = options.openworkServer.getSnapshot();
+    const get3wSnapshot = options.get3wServer.getSnapshot();
     const workspaceId = options.runtimeWorkspaceId();
     const workspaceType = options.selectedWorkspaceDisplay().workspaceType;
-    const canUseManagedRuntime = Boolean(openworkSnapshot.openworkServerClient && workspaceId?.trim() && workspaceType === "local");
+    const canUseManagedRuntime = Boolean(get3wSnapshot.get3wServerClient && workspaceId?.trim() && workspaceType === "local");
     if (!c && !canUseManagedRuntime) {
       throw new Error(t("providers.not_connected"));
     }
@@ -412,7 +412,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     const next = fallbackUpdate(config);
     await updateManagedDisabledProviders({
       opencodeClient: c,
-      openworkClient: openworkSnapshot.openworkServerClient,
+      get3wClient: get3wSnapshot.get3wServerClient,
       workspaceId,
       workspaceType,
       disabledProviders: next.disabled_providers,
@@ -484,7 +484,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     // the user's opencode.jsonc. Fall back to project config only when the
     // managed runtime endpoint is unavailable.
     const c = options.client();
-    const openworkSnapshot = options.openworkServer.getSnapshot();
+    const get3wSnapshot = options.get3wServer.getSnapshot();
     const workspaceId = options.runtimeWorkspaceId();
     const workspaceType = options.selectedWorkspaceDisplay().workspaceType;
     // Before the first workspace exists the client reaches the engine root,
@@ -494,7 +494,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       return false;
     }
     const canUseManagedRuntime = Boolean(
-      openworkSnapshot.openworkServerClient && workspaceId?.trim() && workspaceType === "local",
+      get3wSnapshot.get3wServerClient && workspaceId?.trim() && workspaceType === "local",
     );
 
     if (canUseManagedRuntime || c) {
@@ -504,7 +504,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       // that provider (ENG-994). Build on the current list.
       const currentDisabled = normalizeDisabledProviders(await readManagedDisabledProviders({
         opencodeClient: c,
-        openworkClient: openworkSnapshot.openworkServerClient,
+        get3wClient: get3wSnapshot.get3wServerClient,
         workspaceId,
         workspaceType,
       }).catch(() => options.disabledProviders()));
@@ -517,7 +517,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       }
       const result = await updateManagedDisabledProviders({
         opencodeClient: c,
-        openworkClient: openworkSnapshot.openworkServerClient,
+        get3wClient: get3wSnapshot.get3wServerClient,
         workspaceId,
         workspaceType,
         disabledProviders: nextDisabled,
@@ -966,7 +966,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     const force = Boolean(optionsArg?.dispose || optionsArg?.force || state.providerLoadState.error);
     setStateField("providerLoadState", { status: "loading", error: state.providerLoadState.error });
 
-    const serverClient = options.openworkServer.getSnapshot().openworkServerClient;
+    const serverClient = options.get3wServer.getSnapshot().get3wServerClient;
     const liveCatalog = optionsArg?.dispose && serverClient
       ? await serverClient.getEngineV2PreviewStatus().then(status => status.enabled && status.chatRouting).catch(() => false)
       : false;
@@ -986,19 +986,19 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
         lastGlobalProviderDisposeRefreshAt = now;
         if (shouldUseServerReload) {
           try {
-            const openworkSnapshot = options.openworkServer.getSnapshot();
-            const openworkClient = openworkSnapshot.openworkServerClient;
-            if (openworkSnapshot.openworkServerStatus === "connected" && openworkClient) {
+            const get3wSnapshot = options.get3wServer.getSnapshot();
+            const get3wClient = get3wSnapshot.get3wServerClient;
+            if (get3wSnapshot.get3wServerStatus === "connected" && get3wClient) {
               const workspaceId =
                 options.runtimeWorkspaceId()?.trim() ||
                 (await options.ensureRuntimeWorkspaceId?.())?.trim() ||
                 "";
               if (workspaceId) {
                 try {
-                  await openworkClient.reloadEngine(workspaceId);
+                  await get3wClient.reloadEngine(workspaceId);
                 } catch (error) {
                   const unreachable =
-                    error instanceof OpenworkServerError && error.code === "opencode_engine_unreachable";
+                    error instanceof Get3wServerError && error.code === "opencode_engine_unreachable";
                   if (!unreachable || !isDesktopRuntime()) {
                     throw error;
                   }
@@ -1033,7 +1033,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     try {
       const disabledProviders = await readManagedDisabledProviders({
         opencodeClient: activeClient,
-        openworkClient: options.openworkServer.getSnapshot().openworkServerClient,
+        get3wClient: options.get3wServer.getSnapshot().get3wServerClient,
         workspaceId: options.runtimeWorkspaceId(),
         workspaceType: options.selectedWorkspaceDisplay().workspaceType,
       });

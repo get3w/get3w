@@ -1,13 +1,13 @@
 import { t } from "@/i18n";
 import type { UIMessage } from "ai";
 import { parseGatewayUsageError, gatewayUsageErrorEvidenceSchema, type GatewayUsageErrorEvidence } from "../../cloud/gateway-usage-state";
-import { openWorkModelsLimitSchema, parseOpenWorkModelsLimitError, type OpenWorkModelsLimit } from "../../cloud/usage-limit-state";
+import { get3wModelsLimitSchema, parseGet3WModelsLimitError, type Get3WModelsLimit } from "../../cloud/usage-limit-state";
 
-import { describeOpencodeConfigError } from "@openwork/types/opencode-config-error";
+import { describeOpencodeConfigError } from "@get3w/types/opencode-config-error";
 import { safeStringify } from "../../../../app/utils";
 import { normalizeErrorText } from "../../../../lib/error-text";
 
-export type OpencodeSessionErrorKind = "openwork-balance" | "openwork-quota" | "openwork-request-failed" | "model-quote-expired" | "model-insufficient-balance" | "model-schema-invalid" | "model-session-mismatch" | "model-upstream-failed" | "aborted" | "provider-timeout" | "provider-incomplete" | "provider-unavailable" | "provider-access-denied" | "provider-credentials" | "rate-limited" | "conversation-too-long" | "output-invalid" | "output-limit" | "attachment-unsupported" | "network-unavailable" | "provider-unreachable" | "provider-connection-dropped" | "model-unavailable" | "workspace-unavailable" | "free-model-limit" | "disk-full" | "database-error" | "gateway-auth-required" | "gateway-provider-authentication-failed" | "gateway-provider-permission-denied" | "gateway-selection-required" | "session-group-assignment" | "config-invalid" | "generic";
+export type OpencodeSessionErrorKind = "get3w-balance" | "get3w-quota" | "get3w-request-failed" | "model-quote-expired" | "model-insufficient-balance" | "model-schema-invalid" | "model-session-mismatch" | "model-upstream-failed" | "aborted" | "provider-timeout" | "provider-incomplete" | "provider-unavailable" | "provider-access-denied" | "provider-credentials" | "rate-limited" | "conversation-too-long" | "output-invalid" | "output-limit" | "attachment-unsupported" | "network-unavailable" | "provider-unreachable" | "provider-connection-dropped" | "model-unavailable" | "workspace-unavailable" | "free-model-limit" | "disk-full" | "database-error" | "gateway-auth-required" | "gateway-provider-authentication-failed" | "gateway-provider-permission-denied" | "gateway-selection-required" | "session-group-assignment" | "config-invalid" | "generic";
 
 export type OpencodeSessionErrorPresentation = {
   kind: OpencodeSessionErrorKind;
@@ -23,12 +23,12 @@ export type OpencodeSessionErrorPresentation = {
   connectUrl?: string | null;
   gatewayUsage?: GatewayUsageErrorEvidence;
   /** The organization used its Get3W Models allowance: a limit until a reset, not a rate limit. Additive. */
-  openworkModelsLimit?: OpenWorkModelsLimit;
+  get3wModelsLimit?: Get3WModelsLimit;
   providerId?: string | null;
 };
 
 /** Error code the Get3W inference gateway returns when the member's own sign-in is missing or revoked. */
-export const GATEWAY_AUTH_REQUIRED_ERROR_CODE = "openwork_auth_required";
+export const GATEWAY_AUTH_REQUIRED_ERROR_CODE = "get3w_auth_required";
 export const GATEWAY_AUTH_REQUIRED_TITLE = "Sign in to keep using this model";
 
 export const interruptedTaskRecoveryPrompt = [
@@ -81,16 +81,16 @@ function sessionErrorKind(
   if (name === "SessionGroupAssignmentError") return "session-group-assignment";
   if (name === "ConfigInvalidError" || name === "ConfigJsonError" || code === "opencode_config_invalid") return "config-invalid";
   const searchable = [name, message, code, responseBody].filter(Boolean).join(" ");
-  if (searchable.includes("balance_exhausted")) return "openwork-balance";
-  if (searchable.includes("quota_exhausted")) return "openwork-quota";
+  if (searchable.includes("balance_exhausted")) return "get3w-balance";
+  if (searchable.includes("quota_exhausted")) return "get3w-quota";
   if (searchable.includes("quote_expired")) return "model-quote-expired";
   if (searchable.includes("insufficient_balance")) return "model-insufficient-balance";
   if (searchable.includes("invalid_inputs") || searchable.includes("schema_mismatch")) return "model-schema-invalid";
   if (searchable.includes("session_mismatch")) return "model-session-mismatch";
   if (searchable.includes("upstream_failed") || searchable.includes("provider_unavailable")) return "model-upstream-failed";
-  if (/Get3W (?:request failed|inference unavailable|stream interrupted)/.test(searchable)) return "openwork-request-failed";
+  if (/Get3W (?:request failed|inference unavailable|stream interrupted)/.test(searchable)) return "get3w-request-failed";
   if (searchable.includes("gateway_selection_required")) return "gateway-selection-required";
-  if (searchable.includes("openwork:desktop") && /\bECONNREFUSED\b/.test(searchable)
+  if (searchable.includes("get3w:desktop") && /\bECONNREFUSED\b/.test(searchable)
     && /127\.0\.0\.1|localhost|\[::1\]/.test(searchable)) return "workspace-unavailable";
   if (name === "APIError" && status === 403) return "provider-access-denied";
   if (/\b(?:ENOSPC|EDQUOT|SQLITE_FULL)\b|no space left on device|database or disk is full|disk quota exceeded/i.test(searchable)) {
@@ -172,9 +172,9 @@ function errorTitle(kind: OpencodeSessionErrorKind, fallback: string) {
   if (kind === "network-unavailable") return "Can’t reach the model service";
   if (kind === "provider-unreachable") return "Couldn’t reach the model provider";
   if (kind === "provider-connection-dropped") return "Connection to the model dropped";
-  if (kind === "openwork-balance") return "Get3W balance is insufficient";
-  if (kind === "openwork-quota") return "Get3W monthly request limit reached";
-  if (kind === "openwork-request-failed") return "Get3W request could not finish";
+  if (kind === "get3w-balance") return "Get3W balance is insufficient";
+  if (kind === "get3w-quota") return "Get3W monthly request limit reached";
+  if (kind === "get3w-request-failed") return "Get3W request could not finish";
   if (kind === "model-quote-expired") return "The model quote expired";
   if (kind === "model-insufficient-balance") return "Get3W balance is insufficient for this task";
   if (kind === "model-schema-invalid") return "The model inputs are no longer valid";
@@ -190,9 +190,9 @@ function errorTitle(kind: OpencodeSessionErrorKind, fallback: string) {
 }
 
 function errorDescription(kind: OpencodeSessionErrorKind, gatewayAuth: GatewayAuthRequired | null) {
-  if (kind === "openwork-balance") return "Add funds to your Get3W account, then retry. This request was not submitted to a model.";
-  if (kind === "openwork-quota") return "Ask your organization administrator to adjust the monthly request limit.";
-  if (kind === "openwork-request-failed") return "Check model usage and any completed work before retrying. This request was not automatically replayed.";
+  if (kind === "get3w-balance") return "Add funds to your Get3W account, then retry. This request was not submitted to a model.";
+  if (kind === "get3w-quota") return "Ask your organization administrator to adjust the monthly request limit.";
+  if (kind === "get3w-request-failed") return "Check model usage and any completed work before retrying. This request was not automatically replayed.";
   if (kind === "model-quote-expired") return "Request a fresh quote, then review the task again. No new task was submitted.";
   if (kind === "model-insufficient-balance") return "Add funds to your Get3W account before submitting this task.";
   if (kind === "model-schema-invalid") return "Refresh the model schema and review the inputs before trying again.";
@@ -238,7 +238,7 @@ function errorDescription(kind: OpencodeSessionErrorKind, gatewayAuth: GatewayAu
 type GatewayAuthRequired = { connectUrl: string | null; message: string | null };
 
 /**
- * Detects the gateway's in-band `401 { error: { code: "openwork_auth_required",
+ * Detects the gateway's in-band `401 { error: { code: "get3w_auth_required",
  * message, auth_url?, provider_id } }`. The body reaches us as a string on
  * whichever field the SDK error exposes (message / responseBody / cause), so
  * match the code and message tolerantly. URLs from upstream errors are never
@@ -282,7 +282,7 @@ function detectGatewayProviderAuthFailure(fields: ReturnType<typeof sessionError
     try {
       const parsed: unknown = JSON.parse(candidate.slice(start));
       const body = recordValue(parsed, "error");
-      if (recordValue(body, "source") !== "openwork_gateway") continue;
+      if (recordValue(body, "source") !== "get3w_gateway") continue;
       const code = recordValue(body, "code");
       if (code !== "provider_authentication_failed" && code !== "provider_permission_denied") continue;
       return {
@@ -331,11 +331,11 @@ function firstGatewayRequestId(records: unknown[]) {
     }
     const headers = recordValue(record, "responseHeaders");
     if (headers instanceof Headers) {
-      const requestId = safeRequestId(headers.get("x-openwork-request-id"));
+      const requestId = safeRequestId(headers.get("x-get3w-request-id"));
       if (requestId) return requestId;
     } else if (headers && typeof headers === "object") {
       for (const [name, value] of Object.entries(headers)) {
-        if (name.toLowerCase() !== "x-openwork-request-id") continue;
+        if (name.toLowerCase() !== "x-get3w-request-id") continue;
         const requestId = safeRequestId(value);
         if (requestId) return requestId;
       }
@@ -422,10 +422,10 @@ export function isProviderCredentialRejection(error: unknown): boolean {
   const presentation = presentOpencodeSessionError(error);
   const credentialSignal = providerCredentialCopy(fields) !== null;
   if (presentation.kind !== "provider-credentials" && presentation.kind !== "generic" && !(presentation.kind === "provider-access-denied" && credentialSignal)) return false;
-  if (presentation.gatewayUsage || presentation.openworkModelsLimit) return false;
+  if (presentation.gatewayUsage || presentation.get3wModelsLimit) return false;
   // Gateway authentication is a client/session problem, not evidence that
   // the organization's upstream provider rejected its credential.
-  if (/\bOpenWork (?:Gateway|Models) (?:API )?key\b/i.test([fields.message, fields.responseBody].filter(Boolean).join(" "))) return false;
+  if (/\bGet3W (?:Gateway|Models) (?:API )?key\b/i.test([fields.message, fields.responseBody].filter(Boolean).join(" "))) return false;
   if (fields.status === 429 || (fields.status !== null && fields.status >= 500)) return false;
   return (fields.name === "APIError" && fields.status === 401)
     || /Provider request failed with HTTP 401\b/i.test(fields.message ?? "")
@@ -458,21 +458,21 @@ export function presentOpencodeSessionError(error: unknown, fallback = "Session 
   const gatewayProviderAuth = detectGatewayProviderAuthFailure(fields);
   const gatewaySelection = safeStringify(error)?.includes("gateway_selection_required") === true;
   const gatewayUsage = parseGatewayUsageError(error);
-  const openworkModelsLimit = gatewayUsage ? null : parseOpenWorkModelsLimitError(error);
-  const kind = gatewayProviderAuth?.kind ?? (gatewayAuth ? "gateway-auth-required" : gatewaySelection ? "gateway-selection-required" : openworkModelsLimit ? "generic" : sessionErrorKind(fields.name, fields.message, fields.code, fields.responseBody, fields.status));
+  const get3wModelsLimit = gatewayUsage ? null : parseGet3WModelsLimitError(error);
+  const kind = gatewayProviderAuth?.kind ?? (gatewayAuth ? "gateway-auth-required" : gatewaySelection ? "gateway-selection-required" : get3wModelsLimit ? "generic" : sessionErrorKind(fields.name, fields.message, fields.code, fields.responseBody, fields.status));
   const fallbackTitle = normalizeSessionError(fields.message ?? defaultErrorMessage(fields.name, fallback));
   const credentialCopy = kind === "provider-credentials" ? providerCredentialCopy(fields) : null;
   return {
     kind,
-    title: openworkModelsLimit ? "Your workspace used its Get3W Models allowance" : credentialCopy?.title ?? errorTitle(kind, fallbackTitle),
+    title: get3wModelsLimit ? "Your workspace used its Get3W Models allowance" : credentialCopy?.title ?? errorTitle(kind, fallbackTitle),
     description: gatewayProviderAuth?.message ?? credentialCopy?.description
       ?? (kind === "config-invalid" ? describeOpencodeConfigError(error) ?? fields.message : null)
       ?? errorDescription(kind, gatewayAuth),
-    technicalDetails: kind === "gateway-selection-required" ? "Error code: gateway_selection_required\nStatus: 409" : gatewayAuth ? "Error code: openwork_auth_required\nStatus: 401" : technicalErrorDetails(error, fallback, fields),
+    technicalDetails: kind === "gateway-selection-required" ? "Error code: gateway_selection_required\nStatus: 409" : gatewayAuth ? "Error code: get3w_auth_required\nStatus: 401" : technicalErrorDetails(error, fallback, fields),
     recoveryPrompt: errorRecoveryPrompt(kind),
     ...(gatewayAuth ? { connectUrl: gatewayAuth.connectUrl } : {}),
     ...(gatewayUsage ? { gatewayUsage, providerId: fields.provider } : {}),
-    ...(openworkModelsLimit ? { openworkModelsLimit } : {}),
+    ...(get3wModelsLimit ? { get3wModelsLimit } : {}),
   };
 }
 
@@ -504,7 +504,7 @@ export function sessionErrorPresentationFromUIMessage(message: UIMessage): Openc
     return null;
   }
   if (candidate.gatewayUsage !== undefined && !gatewayUsageErrorEvidenceSchema.safeParse(candidate.gatewayUsage).success) return null;
-  if (candidate.openworkModelsLimit !== undefined && !openWorkModelsLimitSchema.safeParse(candidate.openworkModelsLimit).success) return null;
+  if (candidate.get3wModelsLimit !== undefined && !get3wModelsLimitSchema.safeParse(candidate.get3wModelsLimit).success) return null;
   if (candidate.providerId !== undefined && candidate.providerId !== null && typeof candidate.providerId !== "string") return null;
   return candidate as OpencodeSessionErrorPresentation;
 }

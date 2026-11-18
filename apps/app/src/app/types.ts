@@ -221,7 +221,7 @@ export type WorkspaceConnectionState = {
   checkedAt?: number | null;
 };
 
-export type ResetOpenworkMode = "onboarding" | "all";
+export type ResetGet3wMode = "onboarding" | "all";
 
 export type WorkspaceBlueprintStarterKind = "prompt" | "session" | "action";
 
@@ -274,7 +274,7 @@ export type WorkspaceBlueprint = {
   } | null;
 };
 
-export type WorkspaceOpenworkConfig = {
+export type WorkspaceGet3wConfig = {
   version: number;
   workspace?: {
     name?: string | null;
@@ -289,7 +289,7 @@ export type WorkspaceOpenworkConfig = {
   } | null;
 };
 
-export type CapabilityOrigin = "local" | "openwork-connect";
+export type CapabilityOrigin = "local" | "get3w-connect";
 
 export type SkillCard = {
   name: string;

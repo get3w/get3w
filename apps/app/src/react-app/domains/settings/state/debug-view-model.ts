@@ -6,20 +6,20 @@ import {
   engineInfo as engineInfoCmd,
   engineStart as engineStartCmd,
   debugDesktopBootstrapConfig,
-  nukeOpenworkAndOpencodeConfigPreview,
-  nukeOpenworkAndOpencodeConfigAndExit,
+  nukeGet3wAndOpencodeConfigPreview,
+  nukeGet3wAndOpencodeConfigAndExit,
   openDesktopUrl,
-  openworkServerInfo as openworkServerInfoCmd,
-  openworkServerRestart as openworkServerRestartCmd,
+  get3wServerInfo as get3wServerInfoCmd,
+  get3wServerRestart as get3wServerRestartCmd,
   pickFile,
   revealDesktopItemInDir,
-  resetOpenworkState,
+  resetGet3wState,
   updaterEnvironment as updaterEnvironmentCmd,
   workspaceBootstrap as workspaceBootstrapCmd,
   type AppBuildInfo,
   type EngineInfo,
   type NukeManifestPreview,
-  type OpenworkServerInfo,
+  type Get3wServerInfo,
 } from "../../../../app/lib/desktop";
 import {
   ELECTRON_ALPHA_RELEASE_PAGE_URL,
@@ -28,9 +28,9 @@ import {
 import { downloadTextAsFile } from "../../../../app/lib/download";
 
 import {
-  writeOpenworkServerSettings,
-  type OpenworkRuntimeConfigStatus,
-} from "../../../../app/lib/openwork-server";
+  writeGet3wServerSettings,
+  type Get3wRuntimeConfigStatus,
+} from "../../../../app/lib/get3w-server";
 import {
   clearStartupPreference,
   isDesktopRuntime,
@@ -41,30 +41,30 @@ import {
 import { t } from "../../../../i18n";
 import type { DebugViewProps } from "../pages/debug-view";
 import type { ReleaseChannel } from "../../../../app/types";
-import type { OpenworkServerStore, OpenworkServerStoreSnapshot } from "../../connections/openwork-server-store";
+import type { Get3wServerStore, Get3wServerStoreSnapshot } from "../../connections/get3w-server-store";
 
 type DebugViewModelProps = Omit<DebugViewProps, "agentContextDiagnostics">;
 
-const STARTUP_PREFERENCE_KEY = "openwork.startupPreference";
-const ENGINE_SOURCE_KEY = "openwork.engineSource";
-const ENGINE_CUSTOM_BIN_KEY = "openwork.engineCustomBinPath";
-const OPENCODE_ENABLE_EXA_KEY = "openwork.opencodeEnableExa";
+const STARTUP_PREFERENCE_KEY = "get3w.startupPreference";
+const ENGINE_SOURCE_KEY = "get3w.engineSource";
+const ENGINE_CUSTOM_BIN_KEY = "get3w.engineCustomBinPath";
+const OPENCODE_ENABLE_EXA_KEY = "get3w.opencodeEnableExa";
 const NUKE_CONFIRMATION_WORD = "NUKE";
 const NUKE_SIGN_OUT_TIMEOUT_MS = 5000;
 
 type ResetModalMode = "onboarding" | "all";
 
 const ONBOARDING_LOCAL_STORAGE_KEYS = [
-  "openwork.acknowledgedProviders",
-  "openwork.orgOnboardingSeen",
-  "openwork.reloadAfterOrgOnboarding",
-  "openwork.seenProviderIds",
+  "get3w.acknowledgedProviders",
+  "get3w.orgOnboardingSeen",
+  "get3w.reloadAfterOrgOnboarding",
+  "get3w.seenProviderIds",
 ];
 
 type UseDebugViewModelOptions = {
   developerMode: boolean;
-  openworkServerStore: OpenworkServerStore;
-  openworkServerSnapshot: OpenworkServerStoreSnapshot;
+  get3wServerStore: Get3wServerStore;
+  get3wServerSnapshot: Get3wServerStoreSnapshot;
   runtimeWorkspaceId: string | null;
   selectedWorkspaceRoot: string;
   setRouteError: (value: string | null) => void;
@@ -97,7 +97,7 @@ function clearStoredString(key: string): void {
   }
 }
 
-function clearOpenworkLocalStorageForReset(mode: ResetModalMode): void {
+function clearGet3wLocalStorageForReset(mode: ResetModalMode): void {
   if (typeof window === "undefined") return;
   try {
     if (mode === "all") {
@@ -107,11 +107,11 @@ function clearOpenworkLocalStorageForReset(mode: ResetModalMode): void {
     for (const key of ONBOARDING_LOCAL_STORAGE_KEYS) {
       window.localStorage.removeItem(key);
     }
-    const raw = window.localStorage.getItem("openwork.preferences");
+    const raw = window.localStorage.getItem("get3w.preferences");
     if (raw) {
       const prefs = JSON.parse(raw);
       prefs.hasCompletedOnboarding = false;
-      window.localStorage.setItem("openwork.preferences", JSON.stringify(prefs));
+      window.localStorage.setItem("get3w.preferences", JSON.stringify(prefs));
     }
   } catch {
     // ignore persistence failures
@@ -192,7 +192,7 @@ function formatOpencodeBinary(info: EngineInfo | null) {
   return formatBinaryWithSource(info?.opencodeBinPath, info?.opencodeBinSource);
 }
 
-function formatManagedOpencodeBinary(info: OpenworkServerInfo | null) {
+function formatManagedOpencodeBinary(info: Get3wServerInfo | null) {
   return formatBinaryWithSource(
     info?.managedOpencodeBinPath,
     info?.managedOpencodeBinSource,
@@ -206,7 +206,7 @@ function formatBinaryWithSource(path: string | null | undefined, source: string 
   return sourceLabel ? `${binary} (${sourceLabel})` : binary;
 }
 
-function describeOpenworkServer(info: OpenworkServerInfo | null) {
+function describeGet3wServer(info: Get3wServerInfo | null) {
   const running = Boolean(info?.running);
   return {
     ...statusPill(running),
@@ -240,8 +240,8 @@ function describeOpencodeConnect(engine: EngineInfo | null) {
 export function useDebugViewModel(options: UseDebugViewModelOptions) {
   const {
     developerMode,
-    openworkServerStore,
-    openworkServerSnapshot,
+    get3wServerStore,
+    get3wServerSnapshot,
     runtimeWorkspaceId,
     selectedWorkspaceRoot,
     setRouteError,
@@ -253,21 +253,21 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
   const [engineInfoState, setEngineInfoState] = useState<EngineInfo | null>(null);
   const [appBuild, setAppBuild] = useState<AppBuildInfo | null>(null);
   const [bootstrapConfigDebug, setBootstrapConfigDebug] = useState<unknown>(null);
-  const [runtimeConfigStatus, setRuntimeConfigStatus] = useState<OpenworkRuntimeConfigStatus | null>(null);
+  const [runtimeConfigStatus, setRuntimeConfigStatus] = useState<Get3wRuntimeConfigStatus | null>(null);
   const [runtimeConfigStatusError, setRuntimeConfigStatusError] = useState<string | null>(null);
   const [runtimeDebugStatus, setRuntimeDebugStatus] = useState<string | null>(null);
   const [opencodeRestarting, setOpencodeRestarting] = useState(false);
-  const [openworkServerRestarting, setOpenworkServerRestarting] = useState(false);
+  const [get3wServerRestarting, setGet3wServerRestarting] = useState(false);
   const [opencodeServiceStatus, setOpencodeServiceStatus] = useState<{
     tone: "success" | "error";
     message: string;
   } | null>(null);
-  const [openworkServiceStatus, setOpenworkServiceStatus] = useState<{
+  const [get3wServiceStatus, setGet3wServiceStatus] = useState<{
     tone: "success" | "error";
     message: string;
   } | null>(null);
   const [opencodeLogStatus, setOpencodeLogStatus] = useState<string | null>(null);
-  const [openworkLogStatus, setOpenworkLogStatus] = useState<string | null>(null);
+  const [get3wLogStatus, setGet3wLogStatus] = useState<string | null>(null);
   const [serviceRestartError, setServiceRestartError] = useState<string | null>(null);
   const [resetModalBusy, setResetModalBusy] = useState(false);
   const [nukeConfigBusy, setNukeConfigBusy] = useState(false);
@@ -329,7 +329,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
 
   useEffect(() => {
     if (!developerMode) return;
-    const client = openworkServerSnapshot.openworkServerClient;
+    const client = get3wServerSnapshot.get3wServerClient;
     const workspaceId = runtimeWorkspaceId?.trim();
     if (!client || !workspaceId) {
       setRuntimeConfigStatus(null);
@@ -353,7 +353,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     return () => {
       cancelled = true;
     };
-  }, [developerMode, openworkServerSnapshot.openworkServerClient, runtimeWorkspaceId]);
+  }, [developerMode, get3wServerSnapshot.get3wServerClient, runtimeWorkspaceId]);
 
   useEffect(() => {
     if (!developerMode || !isDesktopRuntime()) return;
@@ -387,13 +387,13 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       appVersionLabel: appBuild?.version ?? "—",
       appCommitLabel: appBuild?.gitSha ?? "—",
       opencodeVersionLabel: engineInfoState?.baseUrl ? "managed" : "—",
-      openworkServerVersionLabel: openworkServerSnapshot.openworkServerDiagnostics?.version ?? "—",
+      get3wServerVersionLabel: get3wServerSnapshot.get3wServerDiagnostics?.version ?? "—",
     }),
     [
       appBuild?.gitSha,
       appBuild?.version,
       engineInfoState?.baseUrl,
-      openworkServerSnapshot.openworkServerDiagnostics?.version,
+      get3wServerSnapshot.get3wServerDiagnostics?.version,
     ],
   );
 
@@ -402,13 +402,13 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       collectedAt: new Date().toISOString(),
       app: appBuild ?? null,
       engine: engineInfoState,
-      openworkServer: {
-        hostInfo: openworkServerSnapshot.openworkServerHostInfo,
-        diagnostics: openworkServerSnapshot.openworkServerDiagnostics,
-        capabilities: openworkServerSnapshot.openworkServerCapabilities,
-        settings: openworkServerSnapshot.openworkServerSettings,
-        status: openworkServerSnapshot.openworkServerStatus,
-        url: openworkServerSnapshot.openworkServerUrl,
+      get3wServer: {
+        hostInfo: get3wServerSnapshot.get3wServerHostInfo,
+        diagnostics: get3wServerSnapshot.get3wServerDiagnostics,
+        capabilities: get3wServerSnapshot.get3wServerCapabilities,
+        settings: get3wServerSnapshot.get3wServerSettings,
+        status: get3wServerSnapshot.get3wServerStatus,
+        url: get3wServerSnapshot.get3wServerUrl,
       },
       runtimeWorkspaceId,
       selectedWorkspaceRoot,
@@ -416,12 +416,12 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
   }, [
     appBuild,
     engineInfoState,
-    openworkServerSnapshot.openworkServerCapabilities,
-    openworkServerSnapshot.openworkServerDiagnostics,
-    openworkServerSnapshot.openworkServerHostInfo,
-    openworkServerSnapshot.openworkServerSettings,
-    openworkServerSnapshot.openworkServerStatus,
-    openworkServerSnapshot.openworkServerUrl,
+    get3wServerSnapshot.get3wServerCapabilities,
+    get3wServerSnapshot.get3wServerDiagnostics,
+    get3wServerSnapshot.get3wServerHostInfo,
+    get3wServerSnapshot.get3wServerSettings,
+    get3wServerSnapshot.get3wServerStatus,
+    get3wServerSnapshot.get3wServerUrl,
     runtimeWorkspaceId,
     selectedWorkspaceRoot,
   ]);
@@ -436,9 +436,9 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
   );
 
   const engineCard = useMemo(() => describeEngine(engineInfoState), [engineInfoState]);
-  const openworkCard = useMemo(
-    () => describeOpenworkServer(openworkServerSnapshot.openworkServerHostInfo),
-    [openworkServerSnapshot.openworkServerHostInfo],
+  const get3wCard = useMemo(
+    () => describeGet3wServer(get3wServerSnapshot.get3wServerHostInfo),
+    [get3wServerSnapshot.get3wServerHostInfo],
   );
   const opencodeConnectCard = useMemo(
     () => describeOpencodeConnect(engineInfoState),
@@ -457,7 +457,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
   const onExportRuntimeDebugReport = useCallback(async () => {
     try {
       downloadTextAsFile(
-        `openwork-runtime-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
+        `get3w-runtime-${new Date().toISOString().replace(/[:.]/g, "-")}.json`,
         runtimeDebugReportJson,
         "application/json",
       );
@@ -484,7 +484,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
   const onExportDeveloperLog = useCallback(async () => {
     try {
       downloadTextAsFile(
-        `openwork-developer-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
+        `get3w-developer-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
         developerLog.join("\n"),
         "text/plain",
       );
@@ -551,7 +551,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
 
   useEffect(() => {
     if (!developerMode || !isElectronRuntime()) return;
-    const bridge = window.__OPENWORK_ELECTRON__?.updater;
+    const bridge = window.__GET3W_ELECTRON__?.updater;
     if (!bridge?.getChannel) return;
     let cancelled = false;
     void bridge.getChannel()
@@ -574,7 +574,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       setElectronAlphaUpdaterStatus(t("ui.212d4df31abd"));
       return;
     }
-    const bridge = window.__OPENWORK_ELECTRON__?.updater;
+    const bridge = window.__GET3W_ELECTRON__?.updater;
     if (!bridge?.setChannel) {
       setElectronAlphaUpdaterStatus(t("updates.bridge_unavailable"));
       return;
@@ -600,7 +600,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       setElectronAlphaUpdaterStatus(t("ui.14398d3aace3"));
       return;
     }
-    const bridge = window.__OPENWORK_ELECTRON__?.updater;
+    const bridge = window.__GET3W_ELECTRON__?.updater;
     if (!bridge?.check) {
       setElectronAlphaUpdaterStatus(t("updates.bridge_unavailable"));
       return;
@@ -676,7 +676,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       );
     }
 
-    // Collect ALL local workspace paths so openwork-server is started with
+    // Collect ALL local workspace paths so get3w-server is started with
     // --workspace <path> for every registered local workspace. Mirrors the
     // Solid reference (context/workspace.ts::resolveWorkspacePaths) so that
     // `client.listWorkspaces()` later returns the full set, not just the
@@ -702,10 +702,10 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       opencodeEnableExa: readOpencodeEnableExa(),
     });
 
-    // engine_start restarts openwork-server on a NEW port and lets that server
+    // engine_start restarts get3w-server on a NEW port and lets that server
     // manage OpenCode. Re-read host info and persist the fresh URL/token.
     try {
-      const hostInfo = (await openworkServerInfoCmd()) as {
+      const hostInfo = (await get3wServerInfoCmd()) as {
         baseUrl?: string;
         ownerToken?: string;
         clientToken?: string;
@@ -713,24 +713,24 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
         port?: number;
       } | null;
       if (hostInfo?.baseUrl) {
-        writeOpenworkServerSettings({
+        writeGet3wServerSettings({
           urlOverride: hostInfo.baseUrl,
           token: hostInfo.ownerToken?.trim() || hostInfo.clientToken?.trim() || undefined,
           hostToken: hostInfo.hostToken?.trim() || undefined,
           portOverride: hostInfo.port ?? undefined,
         });
         if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+          window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
         }
       }
     } catch {
       // best-effort: if this fails, the host-info poller will catch up in ~10s.
     }
 
-    await openworkServerStore.reconnectOpenworkServer();
+    await get3wServerStore.reconnectGet3wServer();
     await refreshEngineInfo();
     return info;
-  }, [openworkServerStore, refreshEngineInfo]);
+  }, [get3wServerStore, refreshEngineInfo]);
 
   const onRestartOpencode = useCallback(async () => {
     if (!isDesktopRuntime()) return;
@@ -756,30 +756,30 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     }
   }, [bootFullEngineStack, pushDeveloperLog]);
 
-  const onRestartOpenworkServer = useCallback(async () => {
+  const onRestartGet3wServer = useCallback(async () => {
     if (!isDesktopRuntime()) return;
-    setOpenworkServerRestarting(true);
-    setOpenworkServiceStatus(null);
+    setGet3wServerRestarting(true);
+    setGet3wServiceStatus(null);
     setServiceRestartError(null);
     try {
-      await openworkServerRestartCmd();
-      setOpenworkServiceStatus({
+      await get3wServerRestartCmd();
+      setGet3wServiceStatus({
         tone: "success",
         message: t("settings.restart_succeeded_template", { service: "Get3W server" }),
       });
-      pushDeveloperLog("Restarted openwork-server");
-      await openworkServerStore.reconnectOpenworkServer();
+      pushDeveloperLog("Restarted get3w-server");
+      await get3wServerStore.reconnectGet3wServer();
     } catch (error) {
       const message = error instanceof Error ? error.message : safeStringify(error);
-      setOpenworkServiceStatus({
+      setGet3wServiceStatus({
         tone: "error",
         message: `${t("settings.restart_failed_template", { service: "Get3W server" })} ${message}`,
       });
       setServiceRestartError(message);
     } finally {
-      setOpenworkServerRestarting(false);
+      setGet3wServerRestarting(false);
     }
-  }, [openworkServerStore, pushDeveloperLog]);
+  }, [get3wServerStore, pushDeveloperLog]);
 
   const formatServiceLogs = useCallback(
     (stdout: string | null | undefined, stderr: string | null | undefined): string => {
@@ -815,7 +815,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     }
     try {
       downloadTextAsFile(
-        `openwork-opencode-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
+        `get3w-opencode-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
         text,
         "text/plain",
       );
@@ -825,39 +825,39 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     }
   }, [engineInfoState?.lastStderr, engineInfoState?.lastStdout, formatServiceLogs]);
 
-  const onCopyOpenworkLogs = useCallback(async () => {
-    const info = openworkServerSnapshot.openworkServerHostInfo;
+  const onCopyGet3wLogs = useCallback(async () => {
+    const info = get3wServerSnapshot.get3wServerHostInfo;
     const text = formatServiceLogs(info?.lastStdout, info?.lastStderr);
     if (!text) {
-      setOpenworkLogStatus(t("settings.no_logs_captured"));
+      setGet3wLogStatus(t("settings.no_logs_captured"));
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      setOpenworkLogStatus(t("settings.copied_service_logs", { service: "Get3W server" }));
+      setGet3wLogStatus(t("settings.copied_service_logs", { service: "Get3W server" }));
     } catch (error) {
-      setOpenworkLogStatus(error instanceof Error ? error.message : safeStringify(error));
+      setGet3wLogStatus(error instanceof Error ? error.message : safeStringify(error));
     }
-  }, [formatServiceLogs, openworkServerSnapshot.openworkServerHostInfo]);
+  }, [formatServiceLogs, get3wServerSnapshot.get3wServerHostInfo]);
 
-  const onExportOpenworkLogs = useCallback(async () => {
-    const info = openworkServerSnapshot.openworkServerHostInfo;
+  const onExportGet3wLogs = useCallback(async () => {
+    const info = get3wServerSnapshot.get3wServerHostInfo;
     const text = formatServiceLogs(info?.lastStdout, info?.lastStderr);
     if (!text) {
-      setOpenworkLogStatus(t("settings.no_logs_captured"));
+      setGet3wLogStatus(t("settings.no_logs_captured"));
       return;
     }
     try {
       downloadTextAsFile(
-        `openwork-server-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
+        `get3w-server-${new Date().toISOString().replace(/[:.]/g, "-")}.log`,
         text,
         "text/plain",
       );
-      setOpenworkLogStatus(t("settings.exported_developer_log"));
+      setGet3wLogStatus(t("settings.exported_developer_log"));
     } catch (error) {
-      setOpenworkLogStatus(error instanceof Error ? error.message : safeStringify(error));
+      setGet3wLogStatus(error instanceof Error ? error.message : safeStringify(error));
     }
-  }, [formatServiceLogs, openworkServerSnapshot.openworkServerHostInfo]);
+  }, [formatServiceLogs, get3wServerSnapshot.get3wServerHostInfo]);
 
   const [resetStatus, setResetStatus] = useState<string | null>(null);
 
@@ -873,15 +873,15 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       }
       setResetModalBusy(true);
       setResetStatus(null);
-      void resetOpenworkState(mode)
+      void resetGet3wState(mode)
         .then(async () => {
-          clearOpenworkLocalStorageForReset(mode);
+          clearGet3wLocalStorageForReset(mode);
           setResetStatus(
             mode === "all"
               ? t("ui.0b10b8b753f2")
               : t("ui.4c264c566d20"),
           );
-          pushDeveloperLog(`reset_openwork_state mode=${mode}`);
+          pushDeveloperLog(`reset_get3w_state mode=${mode}`);
         })
         .catch((error) => {
           setRouteError(error instanceof Error ? error.message : safeStringify(error));
@@ -898,7 +898,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     setNukePreviewBusy(true);
     setNukeConfigStatus(null);
     try {
-      const preview = await nukeOpenworkAndOpencodeConfigPreview({ preserveBootstrap: true });
+      const preview = await nukeGet3wAndOpencodeConfigPreview({ preserveBootstrap: true });
       setNukeManifestPreview(preview);
       setNukeConfirmationText("");
       setNukeDeleteBootstrap(false);
@@ -916,7 +916,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     setNukePreviewBusy(true);
     setNukeConfigStatus(null);
     try {
-      const preview = await nukeOpenworkAndOpencodeConfigPreview({ preserveBootstrap: !deleteBootstrap });
+      const preview = await nukeGet3wAndOpencodeConfigPreview({ preserveBootstrap: !deleteBootstrap });
       setNukeManifestPreview(preview);
     } catch (error) {
       setNukeDeleteBootstrap(!deleteBootstrap);
@@ -931,13 +931,13 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
     setNukeDialogOpen(false);
   }, [nukeConfigBusy]);
 
-  const onConfirmNukeOpenworkAndOpencodeConfig = useCallback(async () => {
+  const onConfirmNukeGet3wAndOpencodeConfig = useCallback(async () => {
     if (!isDesktopRuntime() || nukeConfirmationText.trim().toUpperCase() !== NUKE_CONFIRMATION_WORD) return;
     setNukeConfigBusy(true);
     setNukeConfigStatus(null);
     try {
       await revokeDenSessionBeforeNuke();
-      await nukeOpenworkAndOpencodeConfigAndExit({ preserveBootstrap: !nukeDeleteBootstrap });
+      await nukeGet3wAndOpencodeConfigAndExit({ preserveBootstrap: !nukeDeleteBootstrap });
     } catch (error) {
       setNukeConfigStatus(error instanceof Error ? error.message : safeStringify(error));
       setNukeConfigBusy(false);
@@ -959,8 +959,8 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       anyActiveRuns: false,
       startupPreference: "server",
       startupLabel:
-        openworkServerSnapshot.openworkServerStatus === "connected"
-          ? t("settings.openwork_server_label")
+        get3wServerSnapshot.get3wServerStatus === "connected"
+          ? t("settings.get3w_server_label")
           : t("status.disconnected_label"),
       runtimeSummary,
       runtimeDebugReportJson,
@@ -1012,34 +1012,34 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       startupStatus,
       workspaceDebugEventsStatus,
       opencodeRestarting,
-      openworkServerRestarting,
+      get3wServerRestarting,
       opencodeServiceStatus,
-      openworkServiceStatus,
+      get3wServiceStatus,
       opencodeLogStatus,
-      openworkLogStatus,
+      get3wLogStatus,
       onCopyOpencodeLogs,
       onExportOpencodeLogs,
-      onCopyOpenworkLogs,
-      onExportOpenworkLogs,
+      onCopyGet3wLogs,
+      onExportGet3wLogs,
       serviceRestartError,
       onRestartOpencode,
-      onRestartOpenworkServer,
+      onRestartGet3wServer,
       engineCard,
       opencodeConnectCard,
-      openworkCard,
-      openworkServerDiagnostics: openworkServerSnapshot.openworkServerDiagnostics,
+      get3wCard,
+      get3wServerDiagnostics: get3wServerSnapshot.get3wServerDiagnostics,
       runtimeWorkspaceId,
-      openworkServerCapabilities: openworkServerSnapshot.openworkServerCapabilities,
+      get3wServerCapabilities: get3wServerSnapshot.get3wServerCapabilities,
       pendingPermissions: {},
       events: [],
       workspaceDebugEvents: [],
       safeStringify,
       onClearWorkspaceDebugEvents,
-      openworkAuditEntries: openworkServerSnapshot.openworkAuditEntries,
-      openworkAuditStatus: auditStatusPill(openworkServerSnapshot.openworkAuditStatus),
-      openworkAuditError: openworkServerSnapshot.openworkAuditError,
+      get3wAuditEntries: get3wServerSnapshot.get3wAuditEntries,
+      get3wAuditStatus: auditStatusPill(get3wServerSnapshot.get3wAuditStatus),
+      get3wAuditError: get3wServerSnapshot.get3wAuditError,
       opencodeConnectStatus: null,
-      opencodeDevModeEnabled: appBuild?.openworkDevMode === true,
+      opencodeDevModeEnabled: appBuild?.get3wDevMode === true,
       nukeConfigBusy,
       nukeConfigStatus,
       nukePreviewBusy,
@@ -1051,10 +1051,10 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       onCloseNukeDialog,
       onSetNukeConfirmationText: setNukeConfirmationText,
       onSetNukeDeleteBootstrap,
-      onConfirmNukeOpenworkAndOpencodeConfig,
+      onConfirmNukeGet3wAndOpencodeConfig,
     }),
     [
-      appBuild?.openworkDevMode,
+      appBuild?.get3wDevMode,
       developerLog,
       developerLogStatus,
       developerMode,
@@ -1089,7 +1089,7 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       onExportRuntimeDebugReport,
       onInstallElectronPreviewFromTauri,
       onCheckElectronAlphaUpdates,
-      onConfirmNukeOpenworkAndOpencodeConfig,
+      onConfirmNukeGet3wAndOpencodeConfig,
       onOpenElectronPreviewRelease,
       onOpenNukeDialog,
       onOpenResetModal,
@@ -1099,33 +1099,33 @@ export function useDebugViewModel(options: UseDebugViewModelOptions) {
       onRevealElectronMigrationBackup,
       onResetStartupPreference,
       onRestartOpencode,
-      onRestartOpenworkServer,
+      onRestartGet3wServer,
       onSetElectronAlphaUpdaterChannel,
       onSetElectronMigrationSha512,
       onSetElectronMigrationUrl,
       onSetEngineSource,
       onStopHost,
       onCopyOpencodeLogs,
-      onCopyOpenworkLogs,
+      onCopyGet3wLogs,
       onExportOpencodeLogs,
-      onExportOpenworkLogs,
+      onExportGet3wLogs,
       opencodeConnectCard,
       opencodeLogStatus,
       opencodeRestarting,
       opencodeServiceStatus,
-      openworkCard,
-      openworkLogStatus,
-      openworkServiceStatus,
-      openworkServerRestarting,
+      get3wCard,
+      get3wLogStatus,
+      get3wServiceStatus,
+      get3wServerRestarting,
       resetStatus,
       startupStatus,
       workspaceDebugEventsStatus,
-      openworkServerSnapshot.openworkAuditEntries,
-      openworkServerSnapshot.openworkAuditError,
-      openworkServerSnapshot.openworkAuditStatus,
-      openworkServerSnapshot.openworkServerCapabilities,
-      openworkServerSnapshot.openworkServerDiagnostics,
-      openworkServerSnapshot.openworkServerStatus,
+      get3wServerSnapshot.get3wAuditEntries,
+      get3wServerSnapshot.get3wAuditError,
+      get3wServerSnapshot.get3wAuditStatus,
+      get3wServerSnapshot.get3wServerCapabilities,
+      get3wServerSnapshot.get3wServerDiagnostics,
+      get3wServerSnapshot.get3wServerStatus,
       resetModalBusy,
       runtimeConfigStatus,
       runtimeConfigStatusError,

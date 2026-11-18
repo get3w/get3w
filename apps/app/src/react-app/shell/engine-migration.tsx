@@ -3,13 +3,13 @@ import { useEffect, useLayoutEffect, useRef, useState, type PropsWithChildren } 
 import { create } from "zustand";
 import { ChevronRight, LoaderCircle, TriangleAlert } from "lucide-react";
 import {
-  createOpenworkServerClient,
-  OpenworkServerError,
+  createGet3wServerClient,
+  Get3wServerError,
   type EngineActivity,
   type EngineV2MigrationStatus,
   type EngineV2PreviewStatus,
-  type OpenworkServerClient,
-} from "@/app/lib/openwork-server";
+  type Get3wServerClient,
+} from "@/app/lib/get3w-server";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -27,7 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/sonner";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { resolveGet3wConnection } from "./get3w-connection";
 
 /**
  * One home for switching chat engines and migrating v1 history (S6). The
@@ -38,7 +38,7 @@ import { resolveOpenworkConnection } from "./openwork-connection";
  */
 
 export type EngineMigrationClient = Pick<
-  OpenworkServerClient,
+  Get3wServerClient,
   "getEngineV2PreviewStatus" | "getEngineActivity" | "switchOpencodeEngine" | "migrateOpencodeHistory"
 >;
 
@@ -107,7 +107,7 @@ function messageOf(cause: unknown, fallback: string): string {
 
 /** Running v1 tasks reported by a refused migration, or null for any other failure. */
 function refusedForRunningTasks(cause: unknown): number | null {
-  if (!(cause instanceof OpenworkServerError) || cause.code !== "engine_migration_active_sessions") return null;
+  if (!(cause instanceof Get3wServerError) || cause.code !== "engine_migration_active_sessions") return null;
   const details = cause.details;
   const count = (key: "busySessions" | "waitingRequests") => {
     if (!details || typeof details !== "object" || !(key in details)) return 0;
@@ -312,12 +312,12 @@ export async function requestEngineSwitch(
       if (!confirmed) return null;
     }
     const next = await client.switchOpencodeEngine(engine);
-    window.dispatchEvent(new CustomEvent("openwork-engine-changed"));
+    window.dispatchEvent(new CustomEvent("get3w-engine-changed"));
     updateProgress({ selected: selectedChatEngine(next) });
     return next;
   } catch (cause) {
     // v1 chats not yet in v2 would stop opening: copy them first, then switch.
-    if (cause instanceof OpenworkServerError && cause.code === "engine_migration_required") {
+    if (cause instanceof Get3wServerError && cause.code === "engine_migration_required") {
       requestEngineMigration(client, "upgrade");
       return null;
     }
@@ -697,10 +697,10 @@ function useRunningMigrationDiscovery(enabled: boolean) {
     let previousEngine: ChatEngine | null = null;
     const attempt = async (remaining: number) => {
       try {
-        const connection = await resolveOpenworkConnection();
+        const connection = await resolveGet3wConnection();
         if (cancelled) return;
         if (connection.normalizedBaseUrl && connection.resolvedToken) {
-          const client = createOpenworkServerClient({
+          const client = createGet3wServerClient({
             baseUrl: connection.normalizedBaseUrl,
             token: connection.resolvedToken,
             hostToken: connection.resolvedHostToken,
@@ -713,7 +713,7 @@ function useRunningMigrationDiscovery(enabled: boolean) {
           const engine = selectedChatEngine(status);
           if ((previousEngine !== null && engine !== previousEngine)
             || (previousEngine === null && status.engineForced)) {
-            window.dispatchEvent(new CustomEvent("openwork-engine-changed"));
+            window.dispatchEvent(new CustomEvent("get3w-engine-changed"));
           }
           previousEngine = engine;
           if (status.forceUpgradePending || status.engineForced) {

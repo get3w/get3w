@@ -3,13 +3,13 @@ import { useCallback } from "react";
 
 import type { McpDirectoryInfo } from "../../../app/constants";
 import { evaluateEnablement, type EnablementContext } from "../../../app/enablement";
-import type { OpenworkServerClient } from "../../../app/lib/openwork-server";
+import type { Get3wServerClient } from "../../../app/lib/get3w-server";
 import { getExtensionConfigSlot, type ExtensionConfigContext } from "./extension-registry";
 import type { LocalProviderInstallInput, LocalProviderSyncInput } from "./openai-image-extension";
 
 type SettingsExtensionControllerInput = {
-  openworkServerClient: OpenworkServerClient | null;
-  hostOpenworkServerClient: OpenworkServerClient | null;
+  get3wServerClient: Get3wServerClient | null;
+  hostGet3wServerClient: Get3wServerClient | null;
   enablementContext: EnablementContext;
   restartLocalServer?: () => Promise<boolean>;
   localProvider: {
@@ -23,8 +23,8 @@ type SettingsExtensionControllerInput = {
 
 export function useSettingsExtensionController(input: SettingsExtensionControllerInput) {
   const configContextForEntry = useCallback((entry: McpDirectoryInfo): ExtensionConfigContext => ({
-    openworkServerClient: input.openworkServerClient,
-    hostOpenworkServerClient: input.hostOpenworkServerClient,
+    get3wServerClient: input.get3wServerClient,
+    hostGet3wServerClient: input.hostGet3wServerClient,
     restartLocalServer: input.restartLocalServer,
     localProvider: input.localProvider,
   }), [input]);

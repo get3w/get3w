@@ -10,7 +10,7 @@ import { openHistoryDatabase, stringField } from "../src/opencode-v2-history-sto
 import type { ServerConfig } from "../src/types.js";
 
 async function profile(run: (directory: string, config: ServerConfig) => Promise<void>) {
-  const directory = await mkdtemp(join(tmpdir(), "openwork-upgrade-safety-"));
+  const directory = await mkdtemp(join(tmpdir(), "get3w-upgrade-safety-"));
   const previous = { GET3W_RUNTIME_DB: process.env.GET3W_RUNTIME_DB, OPENCODE_DB: process.env.OPENCODE_DB,
     GET3W_ENGINE_V2_PREVIEW: process.env.GET3W_ENGINE_V2_PREVIEW };
   process.env.GET3W_RUNTIME_DB = join(directory, "runtime.db");

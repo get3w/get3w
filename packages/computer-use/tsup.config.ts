@@ -10,5 +10,5 @@ export default defineConfig({
   dts: false,
   // Keep the interpreter's matching Effect runtime inside the desktop artifact.
   external: ["typescript"],
-  noExternal: ["@openwork/codemode", "effect", "acorn", "zod"],
+  noExternal: ["@get3w/codemode", "effect", "acorn", "zod"],
 })

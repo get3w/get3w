@@ -62,7 +62,7 @@ export const gcpTargetSchema = z.object({
 export type GcpTarget = z.infer<typeof gcpTargetSchema>
 
 const hostnameSchema = z.string().trim().toLowerCase().max(200)
-  .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, "Enter a hostname such as openwork.example.com.")
+  .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, "Enter a hostname such as get3w.example.com.")
 
 const commonInput = {
   name: z.string().trim().min(1).max(80),

@@ -24,7 +24,7 @@ import {
 import { ensureLocalWorkspaceFiles } from "./workspace-init.js";
 import { findManagedEngineWorkspace, resolveManagedEngineCwd, shouldStartManagedEngine } from "./workspaces.js";
 import { runtimeStorageDir } from "./runtime-db.js";
-import { keepOpenworkRuntimeConfigFileFresh, writeOpenworkRuntimeConfigFile } from "./openwork-runtime-config.js";
+import { keepGet3wRuntimeConfigFileFresh, writeGet3wRuntimeConfigFile } from "./get3w-runtime-config.js";
 import { migrateWorkspaceRuntimeConfigToEngineGlobal } from "./runtime-opencode-config-store.js";
 import { resolveOpencodeModelsUrl } from "./opencode-models-url.js";
 import { startWorkerActivityHeartbeat } from "./worker-activity-heartbeat.js";
@@ -66,7 +66,7 @@ if (args.web) {
   const packageRoot = await resolvePackageRoot({ env: process.env, execPath: process.execPath });
   webRoot = await resolveWebRoot({ env: process.env, packageRoot, sourceDir: import.meta.dirname });
   if (!webRoot) {
-    console.error("The Get3W web UI bundle was not found. Reinstall openwork-server, or set GET3W_WEB_ROOT to a built apps/app/dist.");
+    console.error("The Get3W web UI bundle was not found. Reinstall get3w-server, or set GET3W_WEB_ROOT to a built apps/app/dist.");
     process.exit(1);
   }
   process.env.GET3W_WEB_ROOT = webRoot;
@@ -139,10 +139,10 @@ if (manageEngine) {
   // effort: a failed reap must never block startup.
   await reapOrphanEngineInstances(config, { logger }).catch(() => undefined);
   // Server-managed config file: the engine re-reads it from disk on every
-  // instance rebuild, and keepOpenworkRuntimeConfigFileFresh synchronizes it
+  // instance rebuild, and keepGet3wRuntimeConfigFileFresh synchronizes it
   // on every runtime-DB write — so disposes always pick up current state.
-  const { path: runtimeConfigPath } = await writeOpenworkRuntimeConfigFile(config);
-  stopRuntimeConfigFileRefresh = keepOpenworkRuntimeConfigFileFresh(config);
+  const { path: runtimeConfigPath } = await writeGet3wRuntimeConfigFile(config);
+  stopRuntimeConfigFileRefresh = keepGet3wRuntimeConfigFileFresh(config);
   const managedOpencodeCwd = resolveManagedEngineCwd({
     explicit: process.env.GET3W_MANAGED_OPENCODE_CWD,
     workspace: findManagedEngineWorkspace(config.workspaces),

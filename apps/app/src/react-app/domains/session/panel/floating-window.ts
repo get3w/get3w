@@ -3,7 +3,7 @@ import * as React from "react";
 import { isElectronRuntime } from "@/app/lib/runtime-env";
 
 // Must match FLOATING_VIEW_PREFIX in apps/desktop/electron/floating-view-window.mjs.
-const FLOATING_VIEW_PREFIX = "openwork-floating-";
+const FLOATING_VIEW_PREFIX = "get3w-floating-";
 const EDGE = 16;
 
 // Only the Electron shell turns the named window into a borderless one; a

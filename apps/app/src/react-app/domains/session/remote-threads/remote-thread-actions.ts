@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import type { RemoteSessionAnswerInput } from "@openwork/types/automations"
+import type { RemoteSessionAnswerInput } from "@get3w/types/automations"
 
 import { DenApiError } from "@/app/lib/den"
 import {

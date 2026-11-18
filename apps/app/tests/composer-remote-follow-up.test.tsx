@@ -4,7 +4,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import { act } from "react"
 import type { Root } from "react-dom/client"
 import type { DynamicToolUIPart, UIMessage } from "ai"
-import type { RemoteSessionStatusResult, RemoteSessionThreadStatus } from "@openwork/types/automations"
+import type { RemoteSessionStatusResult, RemoteSessionThreadStatus } from "@get3w/types/automations"
 import type { RemoteThreadEntry } from "../src/react-app/domains/session/remote-threads/remote-thread-store"
 
 /**
@@ -59,13 +59,13 @@ const TITLE = "Draft the release notes"
 const OWNER = { workspaceId: "ws_fixture", sessionId: "ses_fixture_parent" }
 
 function at(metadataMs: number | null) {
-  return metadataMs === null ? {} : { callProviderMetadata: { openwork: { toolStartedAt: metadataMs } } }
+  return metadataMs === null ? {} : { callProviderMetadata: { get3w: { toolStartedAt: metadataMs } } }
 }
 
 /** `remote-session:create` for a registered computer: Den answers with a commandId and no sessionId yet. */
 function createPart(id: string, startedAt: number | null, commandId = COMMAND, title = TITLE): DynamicToolUIPart {
   return {
-    type: "dynamic-tool", toolName: "openwork-cloud_execute_capability", toolCallId: id, state: "output-available",
+    type: "dynamic-tool", toolName: "get3w-cloud_execute_capability", toolCallId: id, state: "output-available",
     input: { name: "remote-session:create", body: { target: "registered", computerId: "cmp_fixture", title, prompt: title } },
     output: { target: "registered", state: "queued", commandId, computerId: "cmp_fixture", workspaceId: "ws_fixture_remote" },
     ...at(startedAt),
@@ -77,9 +77,9 @@ function scriptSend(id: string, sentAt: number | null, output: unknown): Dynamic
   const input = { name: "remote-session:send", body: { sessionId: REMOTE_SESSION, prompt: "Also add a summary at the top." } }
   return {
     type: "dynamic-tool", toolName: "execute", toolCallId: id, state: "output-available", input: { code: "…" }, output: "done",
-    callProviderMetadata: { openwork: { codeMode: {
-      calls: [{ tool: "openwork-cloud.execute_capability", input, status: "completed" }],
-      details: [{ tool: "openwork-cloud.execute_capability", ordinal: 0, invocationId: `${id}:0`, input, output, ...(sentAt === null ? {} : { startedAt: sentAt }) }],
+    callProviderMetadata: { get3w: { codeMode: {
+      calls: [{ tool: "get3w-cloud.execute_capability", input, status: "completed" }],
+      details: [{ tool: "get3w-cloud.execute_capability", ordinal: 0, invocationId: `${id}:0`, input, output, ...(sentAt === null ? {} : { startedAt: sentAt }) }],
     } } },
   }
 }
@@ -235,12 +235,12 @@ test("a pending or failed follow-up does not count as accepted, and never starts
 test("a direct follow-up to a Cloud task matches it by sessionId", () => {
   const now = Date.now()
   const cloudCreate: DynamicToolUIPart = {
-    type: "dynamic-tool", toolName: "openwork_execute_capability", toolCallId: "call_cloud", state: "output-available",
+    type: "dynamic-tool", toolName: "get3w_execute_capability", toolCallId: "call_cloud", state: "output-available",
     input: { name: "remote-session:create", body: { target: "cloud", title: "Summarize the inbox", prompt: "Summarize the inbox" } },
     output: { target: "cloud", sessionId: "ses_fixture_cloud", state: "running" }, ...at(now - 60_000),
   }
   const cloudSend: DynamicToolUIPart = {
-    type: "dynamic-tool", toolName: "openwork_execute_capability", toolCallId: "call_send", state: "output-available",
+    type: "dynamic-tool", toolName: "get3w_execute_capability", toolCallId: "call_send", state: "output-available",
     input: { name: "remote-session:send", body: { sessionId: "ses_fixture_cloud", prompt: "Also the archive." } },
     output: JSON.stringify({ target: "cloud", sessionId: "ses_fixture_cloud", state: "accepted", messageId: "msg_fixture" }), ...at(now),
   }

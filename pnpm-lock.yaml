@@ -161,19 +161,19 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.15
         version: 1.18.18
-      '@openwork/browser-tabs':
+      '@get3w/browser-tabs':
         specifier: workspace:*
         version: link:../../packages/browser-tabs
-      '@openwork/install-config':
+      '@get3w/install-config':
         specifier: workspace:*
         version: link:../../packages/install-config
-      '@openwork/types':
+      '@get3w/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@openwork/ui':
+      '@get3w/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@openwork/workbook':
+      '@get3w/workbook':
         specifier: workspace:*
         version: link:../../packages/workbook
       '@paper-design/shaders-react':
@@ -327,34 +327,34 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.15
         version: 1.18.18
-      '@openwork/browser-tabs':
+      '@get3w/browser-tabs':
         specifier: workspace:*
         version: link:../../packages/browser-tabs
-      '@openwork/computer-use':
+      '@get3w/computer-use':
         specifier: workspace:*
         version: link:../../packages/computer-use
-      '@openwork/enterprise-mcp-client':
+      '@get3w/enterprise-mcp-client':
         specifier: workspace:*
         version: link:../../packages/enterprise-mcp-client
-      '@openwork/headless-threads':
+      '@get3w/headless-threads':
         specifier: workspace:*
         version: link:../../packages/headless-threads
-      '@openwork/paths':
+      '@get3w/paths':
         specifier: workspace:*
         version: link:../../packages/paths
-      '@openwork/remote-sessions':
+      '@get3w/remote-sessions':
         specifier: workspace:*
         version: link:../../packages/remote-sessions
-      '@openwork/sandbox':
+      '@get3w/sandbox':
         specifier: workspace:*
         version: link:../../packages/sandbox
-      '@openwork/sandbox-daytona':
+      '@get3w/sandbox-daytona':
         specifier: workspace:*
         version: link:../../packages/sandbox-daytona
-      '@openwork/sandbox-freestyle':
+      '@get3w/sandbox-freestyle':
         specifier: workspace:*
         version: link:../../packages/sandbox-freestyle
-      '@openwork/types':
+      '@get3w/types':
         specifier: workspace:*
         version: link:../../packages/types
       '@sentry/electron':
@@ -424,13 +424,13 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.15
         version: 1.18.18
-      '@openwork/computer-use':
+      '@get3w/computer-use':
         specifier: workspace:*
         version: link:../../packages/computer-use
-      '@openwork/enterprise-mcp-client':
+      '@get3w/enterprise-mcp-client':
         specifier: workspace:*
         version: link:../../packages/enterprise-mcp-client
-      '@openwork/types':
+      '@get3w/types':
         specifier: workspace:*
         version: link:../../packages/types
       '@sveltejs/acorn-typescript':
@@ -467,10 +467,10 @@ importers:
       '@hyzyla/pdfium':
         specifier: 2.1.13
         version: 2.1.13
-      '@openwork/paths':
+      '@get3w/paths':
         specifier: workspace:*
         version: link:../../packages/paths
-      '@openwork/workbook':
+      '@get3w/workbook':
         specifier: workspace:*
         version: link:../../packages/workbook
       '@types/better-sqlite3':
@@ -525,14 +525,14 @@ importers:
 
   packages/computer-use:
     dependencies:
-      '@openwork/types':
+      '@get3w/types':
         specifier: workspace:*
         version: link:../types
       typescript:
         specifier: 5.9.3
         version: 5.9.3
     devDependencies:
-      '@openwork/codemode':
+      '@get3w/codemode':
         specifier: workspace:*
         version: link:../codemode
       effect:
@@ -642,7 +642,7 @@ importers:
       '@daytonaio/sdk':
         specifier: ^0.201.0
         version: 0.201.0
-      '@openwork/sandbox':
+      '@get3w/sandbox':
         specifier: workspace:*
         version: link:../sandbox
     devDependencies:
@@ -661,7 +661,7 @@ importers:
 
   packages/sandbox-freestyle:
     dependencies:
-      '@openwork/sandbox':
+      '@get3w/sandbox':
         specifier: workspace:*
         version: link:../sandbox
       freestyle:
@@ -683,7 +683,7 @@ importers:
 
   packages/types:
     dependencies:
-      '@openwork/managed-deployments':
+      '@get3w/managed-deployments':
         specifier: workspace:*
         version: link:../managed-deployments
       zod:

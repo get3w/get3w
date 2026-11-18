@@ -27,13 +27,13 @@ import {
   workspaceBootstrap,
   workspaceSetRuntimeActive,
   workspaceSetSelected,
-  type OpenworkServerInfo,
+  type Get3wServerInfo,
   type WorkspaceList,
 } from "@/app/lib/desktop";
 import { createClient, unwrap } from "@/app/lib/opencode";
 import { createClientV2 } from "@/app/lib/opencode-v2-adapter";
 import { getNativeSession } from "@/app/lib/opencode-session-native";
-import { createOpenworkServerClient, OpenworkServerError, type OpenworkServerClient } from "@/app/lib/openwork-server";
+import { createGet3wServerClient, Get3wServerError, type Get3wServerClient } from "@/app/lib/get3w-server";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import type { ResolvedWorkspaceEndpoint } from "@/app/lib/workspace-endpoint";
 import type { WorkspaceConnectionState } from "@/app/types";
@@ -46,10 +46,10 @@ import { useLocal } from "@/react-app/kernel/local-provider";
 import { useDenAuth } from "@/react-app/domains/cloud/den-auth-provider";
 import { useBootState } from "./boot-state";
 import {
-  ensureDesktopLocalOpenworkConnection,
+  ensureDesktopLocalGet3wConnection,
   shouldAttemptDesktopLocalReconnect,
-} from "./desktop-local-openwork";
-import { resolveOpenworkConnection } from "./openwork-connection";
+} from "./desktop-local-get3w";
+import { resolveGet3wConnection } from "./get3w-connection";
 import { createEngineRoutingPoller } from "./engine-routing-poller";
 import {
   commitRouteWorkspaceSelection,
@@ -97,10 +97,10 @@ export type UseWorkspaceRouteStateInput = {
   preservePendingConversationRoute?: boolean;
   developerMode: boolean;
   workspaceRoute?: "session" | "automations" | "dashboard" | "apps" | "activity" | "outputs";
-  /** Invoked when the openwork-server settings-changed event fires (the route bumps its settings version). */
+  /** Invoked when the get3w-server settings-changed event fires (the route bumps its settings version). */
   onServerSettingsChanged: () => void;
-  /** Receives the local openwork-server host info discovered during refresh. */
-  onHostInfo: (info: OpenworkServerInfo | null) => void;
+  /** Receives the local get3w-server host info discovered during refresh. */
+  onHostInfo: (info: Get3wServerInfo | null) => void;
 };
 
 type SessionReferenceLoad = {
@@ -227,7 +227,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
     routeReady: bootRouteReady,
   } = useBootState();
   const [loading, setLoading] = useState(true);
-  const [client, setClient] = useState<OpenworkServerClient | null>(null);
+  const [client, setClient] = useState<Get3wServerClient | null>(null);
   const [baseUrl, setBaseUrl] = useState("");
   const [token, setToken] = useState("");
   const [engineRoutingByServer, setEngineRoutingByServer] = useState<Record<string, boolean>>({});
@@ -616,7 +616,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
       if (!attempt.isCurrent()) return;
 
       const { normalizedBaseUrl, resolvedToken, resolvedHostToken, hostInfo } = await withRouteRefreshTimeout(
-        resolveOpenworkConnection(),
+        resolveGet3wConnection(),
         "Get3W server connection",
       );
       if (!attempt.isCurrent()) return;
@@ -672,13 +672,13 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
       // is awaited. Old inventory reads must immediately become stale.
       updateLocalServer({ baseUrl: normalizedBaseUrl, token: resolvedToken });
 
-      const openworkClient = createOpenworkServerClient({
+      const get3wClient = createGet3wServerClient({
         baseUrl: normalizedBaseUrl,
         token: resolvedToken,
         hostToken: resolvedHostToken || undefined,
       });
       const workspaceListState = await refreshRouteWorkspaceListState({
-        load: () => withRouteRefreshTimeout(openworkClient.listWorkspaces(), "Workspace list"),
+        load: () => withRouteRefreshTimeout(get3wClient.listWorkspaces(), "Workspace list"),
         desktopWorkspaces,
         previousWorkspaces: workspacesRef.current,
         orderIds: workspaceOrderIdsRef.current,
@@ -745,7 +745,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
       updateLocalServer({ baseUrl: normalizedBaseUrl, token: resolvedToken });
 
       setConnectionPending(false);
-      setClient(openworkClient);
+      setClient(get3wClient);
       setBaseUrl(normalizedBaseUrl);
       setToken(resolvedToken);
       // Publish host credentials/generation with their endpoint, never before
@@ -882,11 +882,11 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
     };
   }, [loadWorkspaceSessionsInBackground, routeWorkspaceId, routeWorkspaceKnown]);
   const createWorkspaceSessionMetadataCallbacks = useCallback((runtime: SessionMetadataRuntime): SessionMetadataCallbacks => {
-    const { workspaceId, runtimeWorkspaceId, opencodeBaseUrl, openworkToken } = runtime;
+    const { workspaceId, runtimeWorkspaceId, opencodeBaseUrl, get3wToken } = runtime;
     const workspace = sessionReferenceAccessRef.current.workspaces.get(workspaceId);
     const scope = workspace ? sessionLoadScopeForWorkspace(workspace) : null;
     const generation = sessionMetadataGenerationsRef.current.get(workspaceId) ?? 0;
-    const key = JSON.stringify([scope, generation, runtimeWorkspaceId, opencodeBaseUrl, openworkToken]);
+    const key = JSON.stringify([scope, generation, runtimeWorkspaceId, opencodeBaseUrl, get3wToken]);
     const cached = sessionMetadataCallbacksRef.current.get(workspaceId);
     if (cached?.key === key) return cached.callbacks;
     const isCurrent = (mode: "publish" | "journal" = "publish") => {
@@ -901,7 +901,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
         || generation !== (sessionMetadataGenerationsRef.current.get(workspaceId) ?? 0)
         || scope === null || sessionLoadScopeForWorkspace(currentWorkspace) !== scope) return false;
       const endpoint = endpointForWorkspace(currentWorkspace);
-      if (!endpoint || endpoint.workspaceId !== runtimeWorkspaceId || endpoint.token !== openworkToken) return false;
+      if (!endpoint || endpoint.workspaceId !== runtimeWorkspaceId || endpoint.token !== get3wToken) return false;
       const v2 = engineRoutingByServerRef.current[JSON.stringify([endpoint.baseUrl, endpoint.token])] === true;
       return opencodeBaseUrl === (v2 ? `${endpoint.mountedBaseUrl}/opencode2` : endpoint.opencodeBaseUrl);
     };
@@ -1015,7 +1015,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
       // so its stale resolution cannot overwrite the new connection state.
       void refreshRouteState({ supersede: true });
     };
-    window.addEventListener("openwork-server-settings-changed", handleSettingsChange);
+    window.addEventListener("get3w-server-settings-changed", handleSettingsChange);
 
     // Also retry on visibility flip independently — even when nobody else
     // dispatches the settings event.
@@ -1037,7 +1037,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
         window.clearTimeout(startupRetryTimerRef.current);
         startupRetryTimerRef.current = null;
       }
-      window.removeEventListener("openwork-server-settings-changed", handleSettingsChange);
+      window.removeEventListener("get3w-server-settings-changed", handleSettingsChange);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibility);
       }
@@ -1046,7 +1046,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
 
   // Inspector wiring: publish the route's current state so an external
   // operator (or an AI driver using browser tools) can call
-  // `window.__openwork.snapshot()` or `window.__openwork.slice("route")` and
+  // `window.__get3w.snapshot()` or `window.__get3w.slice("route")` and
   // see workspaces / sessions / connection info without walking the DOM.
   useEffect(() => {
     const dispose = publishInspectorSlice("route", () => ({
@@ -1169,7 +1169,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
     if (!workspaceId || reconnectAttemptedWorkspaceIdRef.current === workspaceId) return;
     reconnectAttemptedWorkspaceIdRef.current = workspaceId;
 
-    void ensureDesktopLocalOpenworkConnection({
+    void ensureDesktopLocalGet3wConnection({
       route: "session",
       workspace: selectedWorkspace,
       allWorkspaces: workspaces,
@@ -1196,12 +1196,12 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
   const engineRoutingReady = Boolean(routingServerUrl) && selectedEngineRouting !== undefined;
   const engineV2ChatRouting = selectedEngineRouting === true;
   useEffect(() => {
-    window.addEventListener("openwork-server-settings-changed", engineRoutingPoller.refresh);
-    window.addEventListener("openwork-engine-changed", engineRoutingPoller.refresh);
+    window.addEventListener("get3w-server-settings-changed", engineRoutingPoller.refresh);
+    window.addEventListener("get3w-engine-changed", engineRoutingPoller.refresh);
     return () => {
       engineRoutingPoller.dispose();
-      window.removeEventListener("openwork-server-settings-changed", engineRoutingPoller.refresh);
-      window.removeEventListener("openwork-engine-changed", engineRoutingPoller.refresh);
+      window.removeEventListener("get3w-server-settings-changed", engineRoutingPoller.refresh);
+      window.removeEventListener("get3w-engine-changed", engineRoutingPoller.refresh);
     };
   }, [engineRoutingPoller]);
   useEffect(() => {
@@ -1211,14 +1211,14 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
       const key = JSON.stringify([server.baseUrl, server.token]);
       if (!server.baseUrl || serverKeys.has(key)) continue;
       serverKeys.add(key);
-      const openworkClient = createOpenworkServerClient(server);
+      const get3wClient = createGet3wServerClient(server);
       sources.push({ key, read: async () => {
         try {
-          const status = await withRouteRefreshTimeout(openworkClient.getEngineV2PreviewStatus(), "Engine routing status");
+          const status = await withRouteRefreshTimeout(get3wClient.getEngineV2PreviewStatus(), "Engine routing status");
           return status.enabled && status.chatRouting;
         } catch (error) {
           // Only a legacy server's 404 establishes v1; transient failures stay unknown.
-          if (error instanceof OpenworkServerError && error.status === 404) return false;
+          if (error instanceof Get3wServerError && error.status === 404) return false;
           throw error;
         }
       } });
@@ -1416,7 +1416,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
             })
           : createClient(opencodeBaseUrl, selectedWorkspaceRoot || undefined, {
               token: selectedWorkspaceServerToken,
-              mode: "openwork",
+              mode: "get3w",
             })
         : null,
     [engineRoutingReady, engineV2ChatRouting, opencodeBaseUrl, selectedWorkspaceError, selectedWorkspaceRoot, selectedWorkspaceServerToken],
@@ -1429,7 +1429,7 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
     workspaceId: selectedWorkspaceId,
     runtimeWorkspaceId: selectedWorkspaceEndpoint?.workspaceId ?? "",
     opencodeBaseUrl,
-    openworkToken: selectedWorkspaceServerToken,
+    get3wToken: selectedWorkspaceServerToken,
   }), [createWorkspaceSessionMetadataCallbacks, selectedWorkspaceId, selectedWorkspaceEndpoint?.workspaceId, opencodeBaseUrl, selectedWorkspaceServerToken, sessionReferenceRevision]);
 
   return {

@@ -1,10 +1,10 @@
-import { buildManagedProviderConfig, readProviderEnvNames, selectPrimaryCredentialEnvName } from "@openwork/types/managed-provider-config";
+import { buildManagedProviderConfig, readProviderEnvNames, selectPrimaryCredentialEnvName } from "@get3w/types/managed-provider-config";
 import { applyEdits, modify } from "jsonc-parser";
 import type { ProviderConfig } from "@opencode-ai/sdk/v2/client";
-import type { GatewayUsableModel } from "@openwork/types/den/gateway";
-import { AUTO_ROUTER_PROVIDER_ID } from "@openwork/types/den/auto-router";
+import type { GatewayUsableModel } from "@get3w/types/den/gateway";
+import { AUTO_ROUTER_PROVIDER_ID } from "@get3w/types/den/auto-router";
 import type { ModelOption, ModelRef } from "@/app/types";
-import { catalogModelVariants, CLOUD_MODEL_CONFIG_VERSION } from "@openwork/types/cloud-model-fast";
+import { catalogModelVariants, CLOUD_MODEL_CONFIG_VERSION } from "@get3w/types/cloud-model-fast";
 
 import type {
   DenOrgLlmProvider,
@@ -79,23 +79,23 @@ export const resolveCloudProviderCredentials = (
 
 export const getCloudManagedProviderId = (
   provider: Pick<DenOrgLlmProvider, "id" | "providerId" | "source">,
-) => (provider.source === "openwork" ? "openwork" : provider.id.trim());
+) => (provider.source === "get3w" ? "get3w" : provider.id.trim());
 
 /**
  * A provider key in `opencode.jsonc` that is owned by the cloud-import system:
  * `lpr_*` keys (org-managed providers), `ipr_*` keys (providers routed through
- * the Get3W inference gateway), the `openwork` hosted provider and the
- * organization's Smart Routers (`openwork-auto`).
+ * the Get3W inference gateway), the `get3w` hosted provider and the
+ * organization's Smart Routers (`get3w-auto`).
  * These keys are never hand-authored, so re-importing over an existing block
  * with one of these ids is a safe reconcile (recovers a lost import baseline)
  * rather than a clobber of a user's manual provider (#2346).
  */
 export const isCloudManagedProviderKey = (providerId: string) =>
-  /^(lpr|ipr)_/i.test(providerId) || providerId.trim() === "openwork" || providerId.trim() === AUTO_ROUTER_PROVIDER_ID;
+  /^(lpr|ipr)_/i.test(providerId) || providerId.trim() === "get3w" || providerId.trim() === AUTO_ROUTER_PROVIDER_ID;
 
-export const OPENWORK_GATEWAY_PROVIDER_SOURCE = "openwork_gateway";
+export const GET3W_GATEWAY_PROVIDER_SOURCE = "get3w_gateway";
 /** Badge copy for providers routed through the Get3W inference gateway. */
-export const OPENWORK_GATEWAY_BADGE_LABEL = "via Get3W Gateway";
+export const GET3W_GATEWAY_BADGE_LABEL = "via Get3W Gateway";
 
 /**
  * Runtime provider ids whose sync status reports the Get3W inference
@@ -189,7 +189,7 @@ export const resolveLiveGatewayImportedProviders = (providers: readonly LiveGate
     providerId: provider.id,
     sourceProviderId: provider.providerId,
     name: provider.name,
-    source: OPENWORK_GATEWAY_PROVIDER_SOURCE,
+    source: GET3W_GATEWAY_PROVIDER_SOURCE,
     updatedAt: provider.updatedAt || null,
     modelIds: provider.models.map((model) => model.id).sort(),
     importedAt: null,
@@ -285,7 +285,7 @@ export const resolveGatewayProviderIds = (
 ): Set<string> =>
   new Set(
     Object.values(importedCloudProviders ?? {})
-      .filter((provider) => provider.source === OPENWORK_GATEWAY_PROVIDER_SOURCE)
+      .filter((provider) => provider.source === GET3W_GATEWAY_PROVIDER_SOURCE)
       .map((provider) => provider.providerId),
   );
 
@@ -296,7 +296,7 @@ export const resolveGatewayCloudProviderIds = (
 ): Map<string, string> =>
   new Map(
     Object.values(importedCloudProviders ?? {})
-      .filter((provider) => provider.source === OPENWORK_GATEWAY_PROVIDER_SOURCE)
+      .filter((provider) => provider.source === GET3W_GATEWAY_PROVIDER_SOURCE)
       .map((provider) => [provider.providerId, provider.cloudProviderId]),
   );
 

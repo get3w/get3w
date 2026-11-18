@@ -1,7 +1,7 @@
-import { parseMcpAppResourceUri } from "@openwork/types/mcp-app";
+import { parseMcpAppResourceUri } from "@get3w/types/mcp-app";
 import { readDenSettings } from "./den";
 import { scheduleMcpAppDiscovery } from "./mcp-app-discovery-scheduler";
-import type { OpenworkMcpAppLaunchReference, OpenworkMcpAppResource } from "./openwork-server";
+import type { Get3wMcpAppLaunchReference, Get3wMcpAppResource } from "./get3w-server";
 import type { McpAppOrigin } from "../../components/chat/mcp-app-origin";
 import { createPresentationCacheStore } from "../../react-app/domains/dashboard/dashboard-tile-cache";
 import { DASHBOARD_TILE_CACHE_STORAGE_PREFIX } from "./dashboard-cache-storage";
@@ -10,7 +10,7 @@ async function digest(value: string) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("");
 }
-const resourceDigest = (app: OpenworkMcpAppResource) => digest(JSON.stringify([app.html, app.csp, app.prefersBorder]));
+const resourceDigest = (app: Get3wMcpAppResource) => digest(JSON.stringify([app.html, app.csp, app.prefersBorder]));
 type Scope = { key: string; current: () => boolean };
 
 // Every account and workspace shares one storage key with a smaller budget than
@@ -36,7 +36,7 @@ export async function mcpAppPresentationScope(origin: McpAppOrigin): Promise<Sco
 /** Reuse the bounded, 24-hour presentation store format and its authority-stripping parser. */
 export function createMcpAppPresentationCache(scope: Scope, workspaceId: string) {
   return {
-    async read(launch: OpenworkMcpAppLaunchReference): Promise<OpenworkMcpAppResource | null> {
+    async read(launch: Get3wMcpAppLaunchReference): Promise<Get3wMcpAppResource | null> {
       const revision = parseMcpAppResourceUri(launch.resourceUri);
       if (!scope.current() || !revision || !("connectionId" in launch) || revision.appId !== launch.connectionId) return null;
       const stored = chatPresentationStore.read(CHAT_PRESENTATION_STORAGE_KEY, entryId(scope, launch.resourceUri));
@@ -45,11 +45,11 @@ export function createMcpAppPresentationCache(scope: Scope, workspaceId: string)
         || !scope.current()) return null;
       return stored.app;
     },
-    async write(launch: OpenworkMcpAppLaunchReference, app: OpenworkMcpAppResource) {
+    async write(launch: Get3wMcpAppLaunchReference, app: Get3wMcpAppResource) {
       const revision = parseMcpAppResourceUri(app.resourceUri);
       if (!revision || app.resourceUri !== launch.resourceUri || app.toolName !== launch.toolName
         || !("connectionId" in launch) || revision.appId !== launch.connectionId
-        || !app.serverName.startsWith("openwork-app-host-connect-")) {
+        || !app.serverName.startsWith("get3w-app-host-connect-")) {
         chatPresentationStore.remove(CHAT_PRESENTATION_STORAGE_KEY, entryId(scope, launch.resourceUri));
         return;
       }
@@ -58,15 +58,15 @@ export function createMcpAppPresentationCache(scope: Scope, workspaceId: string)
         workspaceId, app, argumentsSignature: checksum, cachedAt: Date.now(), result: { content: [] },
       });
     },
-    remove(launch: OpenworkMcpAppLaunchReference) { chatPresentationStore.remove(CHAT_PRESENTATION_STORAGE_KEY, entryId(scope, launch.resourceUri)); },
+    remove(launch: Get3wMcpAppLaunchReference) { chatPresentationStore.remove(CHAT_PRESENTATION_STORAGE_KEY, entryId(scope, launch.resourceUri)); },
   };
 }
 
 /** Preview content immediately; discovery still owns a new live lease for every subscriber. */
 export function scheduleCachedMcpAppDiscovery(
-  origin: McpAppOrigin, toolName: string, launch: OpenworkMcpAppLaunchReference | null, manual: boolean,
-  receive: (app: OpenworkMcpAppResource | null) => void, fail: (cause: unknown) => void,
-  preview: (app: OpenworkMcpAppResource) => void,
+  origin: McpAppOrigin, toolName: string, launch: Get3wMcpAppLaunchReference | null, manual: boolean,
+  receive: (app: Get3wMcpAppResource | null) => void, fail: (cause: unknown) => void,
+  preview: (app: Get3wMcpAppResource) => void,
   credentialRevision = 0,
   scope = mcpAppPresentationScope(origin),
 ) {

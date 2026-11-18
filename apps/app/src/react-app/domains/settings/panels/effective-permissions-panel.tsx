@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { t } from "@/i18n";
 import type {
-  OpenworkEffectivePermissionKey,
-  OpenworkEffectivePermissionRow,
-  OpenworkEffectivePermissionsResponse,
-  OpenworkPermissionAction,
-  OpenworkPermissionSource,
-  OpenworkServerCapabilities,
-  OpenworkServerClient,
-  OpenworkServerStatus,
-} from "../../../../app/lib/openwork-server";
+  Get3wEffectivePermissionKey,
+  Get3wEffectivePermissionRow,
+  Get3wEffectivePermissionsResponse,
+  Get3wPermissionAction,
+  Get3wPermissionSource,
+  Get3wServerCapabilities,
+  Get3wServerClient,
+  Get3wServerStatus,
+} from "../../../../app/lib/get3w-server";
 import { safeStringify } from "../../../../app/utils";
 import { SettingsNotice } from "../settings-section";
 import {
@@ -30,37 +30,37 @@ const ROW_LABEL_KEYS = {
   outside_folders: "context_panel.effective_permission_outside_folders",
   env_files: "context_panel.effective_permission_env_files",
   doom_loop: "context_panel.effective_permission_doom_loop",
-} as const satisfies Record<OpenworkEffectivePermissionKey, string>;
+} as const satisfies Record<Get3wEffectivePermissionKey, string>;
 
 const ACTION_LABEL_KEYS = {
   allow: "context_panel.permission_action_allow",
   ask: "context_panel.permission_action_ask",
   deny: "context_panel.permission_action_deny",
-} as const satisfies Record<OpenworkPermissionAction, string>;
+} as const satisfies Record<Get3wPermissionAction, string>;
 
 const SOURCE_LABEL_KEYS = {
   engine: "context_panel.permission_source_engine",
   global: "context_panel.permission_source_global",
-  openwork: "context_panel.permission_source_openwork",
+  get3w: "context_panel.permission_source_get3w",
   workspace: "context_panel.permission_source_workspace",
-} as const satisfies Record<OpenworkPermissionSource, string>;
+} as const satisfies Record<Get3wPermissionSource, string>;
 
-function actionBadgeVariant(action: OpenworkPermissionAction): "secondary" | "outline" | "destructive" {
+function actionBadgeVariant(action: Get3wPermissionAction): "secondary" | "outline" | "destructive" {
   if (action === "deny") return "destructive";
   if (action === "ask") return "outline";
   return "secondary";
 }
 
 export type EffectivePermissionsPanelProps = {
-  openworkServerClient: OpenworkServerClient | null;
-  openworkServerStatus: OpenworkServerStatus;
-  openworkServerCapabilities: OpenworkServerCapabilities | null;
+  get3wServerClient: Get3wServerClient | null;
+  get3wServerStatus: Get3wServerStatus;
+  get3wServerCapabilities: Get3wServerCapabilities | null;
   runtimeWorkspaceId: string | null;
   /** Bump to re-read after a permission-affecting change elsewhere in Settings. */
   refreshToken?: number;
 };
 
-function EffectivePermissionRowItem({ row }: { row: OpenworkEffectivePermissionRow }) {
+function EffectivePermissionRowItem({ row }: { row: Get3wEffectivePermissionRow }) {
   return (
     <li
       className="flex flex-row items-center justify-between gap-3 rounded-2xl border border-dls-border px-4 py-3"
@@ -83,17 +83,17 @@ function EffectivePermissionRowItem({ row }: { row: OpenworkEffectivePermissionR
 }
 
 export function EffectivePermissionsPanel(props: EffectivePermissionsPanelProps) {
-  const [response, setResponse] = useState<OpenworkEffectivePermissionsResponse | null>(null);
+  const [response, setResponse] = useState<Get3wEffectivePermissionsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const ready =
-    props.openworkServerStatus === "connected"
+    props.get3wServerStatus === "connected"
     && Boolean(props.runtimeWorkspaceId)
-    && (props.openworkServerCapabilities?.config?.read ?? false);
+    && (props.get3wServerCapabilities?.config?.read ?? false);
 
   useEffect(() => {
-    const client = props.openworkServerClient;
+    const client = props.get3wServerClient;
     const workspaceId = props.runtimeWorkspaceId;
     if (!client || !workspaceId || !ready) {
       setResponse(null);
@@ -116,7 +116,7 @@ export function EffectivePermissionsPanel(props: EffectivePermissionsPanelProps)
     return () => {
       cancelled = true;
     };
-  }, [props.openworkServerClient, props.runtimeWorkspaceId, props.refreshToken, ready]);
+  }, [props.get3wServerClient, props.runtimeWorkspaceId, props.refreshToken, ready]);
 
   return (
     <LayoutSectionItem className="gap-6">

@@ -1,9 +1,9 @@
-import type { OpenworkMcpAppResource, OpenworkServerClient } from "@/app/lib/openwork-server";
-import { startMcpAppTiming } from "@openwork/types/mcp-app-timing";
+import type { Get3wMcpAppResource, Get3wServerClient } from "@/app/lib/get3w-server";
+import { startMcpAppTiming } from "@get3w/types/mcp-app-timing";
 
 /** The host surface owns this value. Never derive it from the selected workspace or App HTML. */
 export type McpAppOrigin = {
-  client: OpenworkServerClient;
+  client: Get3wServerClient;
   workspaceId: string;
   sessionId: string | null;
   engine?: "v1" | "v2";
@@ -25,7 +25,7 @@ export function snapshotMcpAppArguments(args?: Record<string, unknown>) {
 
 export function createMcpAppActions(
   origin: McpAppOrigin,
-  app: OpenworkMcpAppResource,
+  app: Get3wMcpAppResource,
 ) {
   let active = true;
   const assertActive = () => {
@@ -50,8 +50,8 @@ export function createMcpAppActions(
         checkOnly: true,
       });
       assertActive();
-      const identity = result._meta?.["openwork/providerIdentity"];
-      return result._meta?.["openwork/readOnly"] === true && result.isError !== true && typeof identity === "string" ? identity : null;
+      const identity = result._meta?.["get3w/providerIdentity"];
+      return result._meta?.["get3w/readOnly"] === true && result.isError !== true && typeof identity === "string" ? identity : null;
     },
     callTool: async (name: string, args?: Record<string, unknown>, userInteraction = false) => {
       assertActive();

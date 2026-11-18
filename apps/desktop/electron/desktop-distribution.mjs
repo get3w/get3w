@@ -2,7 +2,7 @@ export const PUBLIC_DESKTOP_DISTRIBUTION = Object.freeze({
   flavor: "public",
   appName: "Get3W",
   appIdentifier: "com.get3w.desktop",
-  protocolScheme: "openwork",
+  protocolScheme: "get3w",
   requireSignin: false,
   requireActivation: false,
 });
@@ -11,7 +11,7 @@ export const CLOUD_DESKTOP_DISTRIBUTION = Object.freeze({
   flavor: "cloud",
   appName: "Get3W Cloud",
   appIdentifier: "com.get3w.desktop",
-  protocolScheme: "openwork",
+  protocolScheme: "get3w",
   requireSignin: true,
   requireActivation: false,
 });

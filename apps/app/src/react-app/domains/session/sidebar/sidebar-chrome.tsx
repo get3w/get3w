@@ -64,7 +64,7 @@ export function HeaderBrand() {
   const logo = useBrandLogoUrl();
   const name = useBrandAppName();
   return <div data-header-brand className="flex min-w-0 shrink-0 items-center gap-1.5 max-sm:max-w-24">
-    <img src={logo || resolveExtensionIconSrc("/openwork-sidebar-mark.svg")} alt={logo ? name : ""}
+    <img src={logo || resolveExtensionIconSrc("/get3w-sidebar-mark.svg")} alt={logo ? name : ""}
       className={logo ? "max-h-7 max-w-28 object-contain max-sm:max-w-24" : "size-5 shrink-0 object-contain dark:invert"} />
     {!logo ? <span className="truncate text-[15px] font-medium tracking-[-0.4px]" title={name}>{name}</span> : null}
   </div>;

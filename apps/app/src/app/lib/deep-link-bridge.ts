@@ -1,5 +1,5 @@
-export const deepLinkBridgeEvent = "openwork:deep-link";
-export const nativeDeepLinkEvent = "openwork:deep-link-native";
+export const deepLinkBridgeEvent = "get3w:deep-link";
+export const nativeDeepLinkEvent = "get3w:deep-link-native";
 
 export type DeepLinkBridgeDetail = {
   urls: string[];
@@ -7,7 +7,7 @@ export type DeepLinkBridgeDetail = {
 
 declare global {
   interface Window {
-    __OPENWORK__?: {
+    __GET3W__?: {
       deepLinks?: string[];
     };
   }
@@ -26,9 +26,9 @@ export function pushPendingDeepLinks(target: Window, urls: readonly string[]): s
     return [];
   }
 
-  target.__OPENWORK__ ??= {};
-  const pending = target.__OPENWORK__.deepLinks ?? [];
-  target.__OPENWORK__.deepLinks = [...pending, ...normalized];
+  target.__GET3W__ ??= {};
+  const pending = target.__GET3W__.deepLinks ?? [];
+  target.__GET3W__.deepLinks = [...pending, ...normalized];
   target.dispatchEvent(
     new CustomEvent<DeepLinkBridgeDetail>(deepLinkBridgeEvent, {
       detail: { urls: normalized },
@@ -42,10 +42,10 @@ export function pushPendingDeepLinks(target: Window, urls: readonly string[]): s
  * queued for the consumers that parse them.
  */
 export function takePendingDeepLinks(target: Window, owns: (url: string) => boolean): string[] {
-  const pending = target.__OPENWORK__?.deepLinks ?? [];
+  const pending = target.__GET3W__?.deepLinks ?? [];
   const taken = pending.filter(owns);
-  if (target.__OPENWORK__ && taken.length > 0) {
-    target.__OPENWORK__.deepLinks = pending.filter((url) => !owns(url));
+  if (target.__GET3W__ && taken.length > 0) {
+    target.__GET3W__.deepLinks = pending.filter((url) => !owns(url));
   }
   return taken;
 }

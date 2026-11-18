@@ -1,7 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { initializeDenBootstrapConfig, setDenBootstrapConfig, writeDenSettings } from "../src/app/lib/den";
-import { createOpenworkServerClient } from "../src/app/lib/openwork-server";
+import { createGet3wServerClient } from "../src/app/lib/get3w-server";
 import { createClientV2 } from "../src/app/lib/opencode-v2-adapter";
 import { createProviderAuthStore } from "../src/react-app/domains/connections/provider-auth/store";
 import { getReactQueryClient } from "../src/react-app/infra/query-client";
@@ -22,7 +22,7 @@ afterEach(async () => {
 
 test("retired Den model sync never delivers saved tokens or mutates workspace config", async () => {
   const requests: string[] = [];
-  const savedDenSettings = () => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.startsWith("openwork.den.")));
+  const savedDenSettings = () => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.startsWith("get3w.den.")));
   const before = savedDenSettings();
   const fetch = spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     requests.push(String(input));
@@ -39,8 +39,8 @@ test("retired Den model sync never delivers saved tokens or mutates workspace co
     await expect(store.connectCloudProvider("lpr_fixture")).rejects.toThrow();
     await expect(store.removeCloudProvider("lpr_fixture")).rejects.toThrow();
     await expect(store.startGatewayProviderOAuth("ipr_fixture")).rejects.toThrow();
-    window.dispatchEvent(new CustomEvent("openwork-den-session-updated", { detail: { status: "success" } }));
-    window.dispatchEvent(new Event("openwork-den-settings-changed"));
+    window.dispatchEvent(new CustomEvent("get3w-den-session-updated", { detail: { status: "success" } }));
+    window.dispatchEvent(new Event("get3w-den-settings-changed"));
     await Promise.resolve();
     expect(requests).toEqual([]);
     expect(savedDenSettings()).toEqual(before);
@@ -107,7 +107,7 @@ test("ENG-994: disabling OpenCode Zen on mount keeps a provider another route di
 });
 
 function createLiveProviderStore(view: { generation?: number; baseUrl?: string; token?: string } = {}) {
-  const server = createOpenworkServerClient({ baseUrl: view.baseUrl ?? "http://localhost:8787", token: view.token, hostToken: "fixture-host" });
+  const server = createGet3wServerClient({ baseUrl: view.baseUrl ?? "http://localhost:8787", token: view.token, hostToken: "fixture-host" });
   const client = createClientV2("http://localhost:8787/opencode2", "/workspace", {});
   return createProviderAuthStore({
     client: () => client,
@@ -116,10 +116,10 @@ function createLiveProviderStore(view: { generation?: number; baseUrl?: string; 
     selectedWorkspaceDisplay: () => ({ id: "workspace", name: "Workspace", path: "/workspace", preset: "default", workspaceType: "local" }),
     providerBaseUrl: () => "http://localhost:8787/opencode2", selectedWorkspaceRoot: () => "/workspace",
     runtimeWorkspaceId: () => "workspace",
-    openworkServer: { getSnapshot: () => ({
-      openworkServerStatus: "connected", openworkServerClient: server,
-      openworkServerCapabilities: { providerSync: true }, openworkServerAuth: { token: view.token, hostToken: "fixture-host" },
-      ...(view.generation === undefined ? {} : { openworkServerHostInfo: { generation: view.generation } }),
+    get3wServer: { getSnapshot: () => ({
+      get3wServerStatus: "connected", get3wServerClient: server,
+      get3wServerCapabilities: { providerSync: true }, get3wServerAuth: { token: view.token, hostToken: "fixture-host" },
+      ...(view.generation === undefined ? {} : { get3wServerHostInfo: { generation: view.generation } }),
     }) },
     setProviders: () => {}, setProviderDefaults: () => {}, setProviderConnectedIds: () => {}, setDisabledProviders: () => {},
     markOpencodeConfigReloadRequired: () => {},

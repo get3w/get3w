@@ -1,5 +1,5 @@
 import { dirname, resolve } from "node:path";
-import { openworkServerConfigPath } from "@openwork/paths";
+import { get3wServerConfigPath } from "@get3w/paths";
 import type { ApprovalMode, ApprovalConfig, ServerConfig, WorkspaceConfig, LogFormat } from "./types.js";
 import { buildWorkspaceInfos, hasExternalOpencode } from "./workspaces.js";
 import { parseList, readJsonFile, shortId } from "./utils.js";
@@ -25,7 +25,7 @@ export interface CliArgs {
   logRequests?: boolean;
   version?: boolean;
   help?: boolean;
-  /** `openwork-server web`: serve the bundled UI + API on one origin with a managed engine. */
+  /** `get3w-server web`: serve the bundled UI + API on one origin with a managed engine. */
   web?: boolean;
   /** `web --open`: launch the default browser once the server is listening. */
   open?: boolean;
@@ -200,7 +200,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 export function printHelp(): void {
   const message = [
-    "openwork-server [web] [options]",
+    "get3w-server [web] [options]",
     "",
     "Commands:",
     "  web                      Serve the Get3W web UI + API on one origin with a",
@@ -241,7 +241,7 @@ async function loadFileConfig(configPath: string): Promise<FileConfig> {
 }
 
 export async function resolveServerConfig(cli: CliArgs): Promise<ServerConfig> {
-  const configPath = cli.configPath ?? openworkServerConfigPath();
+  const configPath = cli.configPath ?? get3wServerConfigPath();
   const fileConfig = await loadFileConfig(configPath);
   const configDir = dirname(configPath);
 

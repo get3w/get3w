@@ -15,7 +15,7 @@ test("legacy saved identity is not restored or exchanged by the personal Desktop
   let auth: DenAuthStore | undefined;
   function Probe() {auth = useDenAuth(); return null;}
   try {
-    localStorage.setItem("openwork.den.authToken","retired-fixture");
+    localStorage.setItem("get3w.den.authToken","retired-fixture");
     await act(async () => root.render(<DenAuthProvider><Probe /></DenAuthProvider>));
     if (!auth) throw new Error("missing context");
     expect(auth.status).toBe("signed_out");
@@ -25,7 +25,7 @@ test("legacy saved identity is not restored or exchanged by the personal Desktop
     window.dispatchEvent(new Event("online"));
     window.dispatchEvent(new Event("focus"));
     expect(requests).toBe(0);
-    expect(localStorage.getItem("openwork.den.authToken")).toBe("retired-fixture");
+    expect(localStorage.getItem("get3w.den.authToken")).toBe("retired-fixture");
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = originalFetch;

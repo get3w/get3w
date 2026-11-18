@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { desktopPolicyDefinitions } from "@openwork/types/den/desktop-policies";
+import { desktopPolicyDefinitions } from "@get3w/types/den/desktop-policies";
 
 import { checkDesktopAppRestriction, isDesktopProviderBlocked, showsRetiredOpencodeZen } from "../src/app/cloud/desktop-app-restrictions";
 

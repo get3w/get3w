@@ -95,7 +95,7 @@ async function renderBusyRun(silentForMs: number, options: RunOptions = {}) {
         toolCallId: "call_task",
         state: "input-available",
         input: { description: "Sort the photos", prompt: "Sort the photos", subagent_type: "general", background: options.helper.background },
-        callProviderMetadata: { openwork: { childSessionId: helperSessionId } },
+        callProviderMetadata: { get3w: { childSessionId: helperSessionId } },
       }],
       metadata: { opencode: { created: startedAt + 100 } },
     })

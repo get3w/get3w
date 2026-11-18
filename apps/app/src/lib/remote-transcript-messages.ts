@@ -32,7 +32,7 @@ function toolUIPart(part: ToolPart, live: boolean): DynamicToolUIPart {
     toolCallId: part.id,
     callProviderMetadata: {
       opencode: { partId: part.id },
-      ...(part.startedAt === null ? {} : { openwork: { toolStartedAt: part.startedAt } }),
+      ...(part.startedAt === null ? {} : { get3w: { toolStartedAt: part.startedAt } }),
     },
   }
   const status = part.status?.toLowerCase() ?? null
@@ -62,7 +62,7 @@ function assistantParts(message: RemoteTranscriptMessage, live: boolean): UIMess
         state: "done",
         providerMetadata: {
           opencode: { partId: `${message.id}:${index}` },
-          ...(part.durationMs === null ? {} : { openwork: { durationMs: part.durationMs } }),
+          ...(part.durationMs === null ? {} : { get3w: { durationMs: part.durationMs } }),
         },
       }
     }

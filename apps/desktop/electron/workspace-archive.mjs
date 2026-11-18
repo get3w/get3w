@@ -1,3 +1,4 @@
+import { ensureGet3wProjectConfig, get3wProjectConfig, get3wProjectConfigPath } from "@get3w/paths";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import zlib from "node:zlib";
@@ -62,15 +63,19 @@ async function collectWorkspaceEntries(workspaceRoot) {
   const entries = [];
   const excluded = [];
 
-  const configPath = path.join(workspaceRoot, "opencode.json");
+  const configPath = path.join(workspaceRoot, "get3w.json");
   if (await pathExists(configPath)) {
     if (isSecretName(path.basename(configPath))) {
-      excluded.push("opencode.json");
+      excluded.push("get3w.json");
     } else {
-      entries.push({ absolute: configPath, rel: "opencode.json" });
+      entries.push({ absolute: configPath, rel: "get3w.json" });
     }
   }
 
+  for (const name of ['opencode.json', 'opencode.jsonc']) {
+    const absolute = path.join(workspaceRoot, name);
+    if (await pathExists(absolute)) entries.push({ absolute, rel: name });
+  }
   const opencodeDir = path.join(workspaceRoot, ".opencode");
   if (await pathExists(opencodeDir)) {
     for (const file of await collectFiles(workspaceRoot, opencodeDir)) {
@@ -240,19 +245,6 @@ function isSafeArchivePath(name) {
   return !normalized.split("/").some((part) => part === ".." || part === "");
 }
 
-function defaultOpenworkConfig(targetDir, preset = "starter") {
-  return {
-    version: 1,
-    workspace: {
-      name: path.basename(targetDir) || "Workspace",
-      createdAt: nowMs(),
-      preset,
-    },
-    authorizedRoots: [targetDir],
-    reload: null,
-  };
-}
-
 export async function exportWorkspaceConfig({ workspace, outputPath }) {
   if (!workspace?.path) {
     throw new Error("Workspace export requires a local workspace path");
@@ -262,13 +254,16 @@ export async function exportWorkspaceConfig({ workspace, outputPath }) {
     throw new Error(`Workspace path not found: ${workspaceRoot}`);
   }
 
+  await ensureGet3wProjectConfig(workspaceRoot);
   const { entries, excluded } = await collectWorkspaceEntries(workspaceRoot);
   if (entries.length === 0) throw new Error("No workspace config files found to export");
 
   const files = [];
   const included = [];
   for (const entry of entries) {
-    files.push({ name: entry.rel, data: await readFile(entry.absolute) });
+    files.push({ name: entry.rel, data: entry.rel === 'get3w.json'
+      ? JSON.stringify(get3wProjectConfig(JSON.parse(await readFile(entry.absolute, 'utf8'))), null, 2) + '\n'
+      : await readFile(entry.absolute) });
     included.push(entry.rel);
   }
   files.push({
@@ -297,40 +292,19 @@ export async function importWorkspaceConfig({ archivePath, targetDir, name }) {
   for (const entry of listZipEntries(buffer)) {
     if (entry.name === "manifest.json" || entry.name.endsWith("/")) continue;
     if (!isSafeArchivePath(entry.name)) throw new Error("Archive contains an unsafe path");
-    if (!(entry.name === "opencode.json" || entry.name.startsWith(".opencode/"))) continue;
+    if (!(['get3w.json', 'opencode.json', 'opencode.jsonc'].includes(entry.name) || entry.name.startsWith(".opencode/"))) continue;
     if (isSecretName(path.basename(entry.name))) continue;
     const outPath = path.join(targetDir, ...entry.name.split("/"));
     await mkdir(path.dirname(outPath), { recursive: true });
-    await writeFile(outPath, readZipEntryData(buffer, entry));
+    const data = readZipEntryData(buffer, entry);
+    await writeFile(outPath, data);
   }
 
-  const opencodeDir = path.join(targetDir, ".opencode");
-  if (!(await pathExists(opencodeDir))) throw new Error("Archive is missing .opencode config");
-
-  const openworkPath = path.join(opencodeDir, "openwork.json");
-  let preset = "starter";
-  let workspaceName = typeof name === "string" && name.trim() ? name.trim() : null;
-
-  if (await pathExists(openworkPath)) {
-    const raw = await readFile(openworkPath, "utf8");
-    try {
-      const config = JSON.parse(raw);
-      config.authorizedRoots = [targetDir];
-      if (!workspaceName && typeof config.workspace?.name === "string" && config.workspace.name.trim()) {
-        workspaceName = config.workspace.name.trim();
-      }
-      if (typeof config.workspace?.preset === "string" && config.workspace.preset.trim()) {
-        preset = config.workspace.preset.trim();
-      }
-      await writeFile(openworkPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
-    } catch {
-      const config = defaultOpenworkConfig(targetDir, preset);
-      await writeFile(openworkPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
-    }
-  } else {
-    const config = defaultOpenworkConfig(targetDir, preset);
-    await writeFile(openworkPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
-  }
+  // Imported grants and reload state never become local authorization.
+  const project = await ensureGet3wProjectConfig(targetDir);
+  await writeFile(get3wProjectConfigPath(targetDir), JSON.stringify(get3wProjectConfig(project), null, 2) + '\n', 'utf8');
+  const preset = 'starter';
+  const workspaceName = typeof name === 'string' && name.trim() ? name.trim() : project.workspace.name;
 
   return {
     workspaceName: workspaceName || path.basename(targetDir) || "Workspace",

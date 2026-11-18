@@ -4,7 +4,7 @@ import type {ServerConfig,WorkspaceInfo} from "./types.js";
 import {createHash,randomUUID} from "node:crypto";
 import {realpath,readdir,lstat,link,unlink} from "node:fs/promises";
 import {join,extname,relative} from "node:path";
-import {openWorkspaceFileForReading,openWorkspaceFileForWriting,proveHandleInPlace} from "./workspace-file-identity.js";
+import {get3wspaceFileForReading,get3wspaceFileForWriting,proveHandleInPlace} from "./workspace-file-identity.js";
 
 type OutputFetch=(input:URL|string,init?:RequestInit)=>Promise<Response>;
 
@@ -36,12 +36,12 @@ export async function saveModelOutput(root:string,key:string,urlValue:string,fet
  const filename=`output-${key.slice(0,16)}-${createHash("sha256").update(url.pathname).digest("hex").slice(0,16)}${extension}`;
  const target=join(realRoot,filename);
  try{
-  const existing=await openWorkspaceFileForReading(realRoot,target,filename);
+  const existing=await get3wspaceFileForReading(realRoot,target,filename);
   try{return {path:filename,mimeType:outputMime(filename),sizeBytes:existing.info.size};}finally{await existing.handle.close();}
  }catch(error){if(!(error instanceof Error)||!("code" in error)||error.code!=="missing")throw error;}
  const bytes=await downloadModelOutput(url,fetchImpl);
  const temporary=join(realRoot,`output-${randomUUID()}.part`);
- const opened=await openWorkspaceFileForWriting(realRoot,temporary,null,filename);
+ const opened=await get3wspaceFileForWriting(realRoot,temporary,null,filename);
  try{
   await opened.handle.writeFile(bytes);
   await opened.handle.sync();
@@ -66,7 +66,7 @@ export async function readOutputFile(root:string,file:string){
  const realRoot=await realpath(root),target=join(realRoot,file);
  const rel=relative(realRoot,target);
  if(!rel||rel.startsWith(".."))throw Error("Invalid output path");
- const opened=await openWorkspaceFileForReading(realRoot,target,file);
+ const opened=await get3wspaceFileForReading(realRoot,target,file);
  try{if(opened.info.size>OUTPUT_MAX_BYTES)throw Error("File exceeds preview limit");return {dataBase64:(await opened.handle.readFile()).toString("base64"),mimeType:outputMime(file),sizeBytes:opened.info.size};}finally{await opened.handle.close();}
 }
 export async function indexOutputFiles(root:string){

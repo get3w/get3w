@@ -1,4 +1,4 @@
-import { startMcpAppTiming } from "@openwork/types/mcp-app-timing";
+import { startMcpAppTiming } from "@get3w/types/mcp-app-timing";
 type DashboardLaunchOptions = {
   signal: AbortSignal;
   priority?: () => number;

@@ -32,14 +32,14 @@ import { currentLocale, t } from "@/i18n";
 import { usePlatform } from "../../../kernel/platform";
 import { useDenAuth } from "../../cloud/den-auth-provider";
 import { useDesktopRestriction } from "../../cloud/desktop-config-provider";
-import { useControlAction, type OpenworkControlAction } from "../../../shell/control/control-provider";
+import { useControlAction, type Get3wControlAction } from "../../../shell/control/control-provider";
 import { useShellConfig } from "../../../shell/shell-config";
-import type { OpenworkServerStatus } from "../../../../app/lib/openwork-server";
+import type { Get3wServerStatus } from "../../../../app/lib/get3w-server";
 import {
-  openWorkConnectAttentionTitle,
-  resolveOpenWorkConnectStatus,
-  type OpenWorkConnectStatus,
-} from "../../connections/openwork-connect-status";
+  get3wConnectAttentionTitle,
+  resolveGet3WConnectStatus,
+  type Get3WConnectStatus,
+} from "../../connections/get3w-connect-status";
 import type { SessionCloudMcpMaintenanceState } from "../../connections/use-session-mcp-maintenance";
 
 const DOCS_URL = "https://get3w.com/docs/desktop-app/";
@@ -75,7 +75,7 @@ type RuntimeStatus = {
 
 type RuntimeStatusInput = {
   clientConnected: boolean;
-  openworkServerStatus: OpenworkServerStatus;
+  get3wServerStatus: Get3wServerStatus;
   initializing: boolean;
   reloadBusy?: boolean;
   reloadError?: string | null;
@@ -105,7 +105,7 @@ export function resolveRuntimeStatus(input: RuntimeStatusInput): RuntimeStatus {
   if (input.clientConnected) {
     return { variant: "connected", label: t("status.workspace_connected"), detail: null };
   }
-  if (input.openworkServerStatus === "limited") {
+  if (input.get3wServerStatus === "limited") {
     return { variant: "partial", label: t("status.limited_mode"), detail: t("status.limited_hint") };
   }
   return {
@@ -115,7 +115,7 @@ export function resolveRuntimeStatus(input: RuntimeStatusInput): RuntimeStatus {
   };
 }
 
-function connectDotVariant(status: OpenWorkConnectStatus): StatusDotVariant {
+function connectDotVariant(status: Get3WConnectStatus): StatusDotVariant {
   if (status.state === "ready") return "connected";
   if (status.state === "checking") return "loading";
   return "disconnected";
@@ -128,7 +128,7 @@ function connectDotVariant(status: OpenWorkConnectStatus): StatusDotVariant {
  */
 export function resolveCollapsedStatus(
   runtime: RuntimeStatus | null,
-  connect: OpenWorkConnectStatus | null,
+  connect: Get3WConnectStatus | null,
 ): RuntimeStatus | null {
   if (runtime && runtime.variant !== "connected") return runtime;
   if (connect && connect.state === "needs_attention") {
@@ -159,7 +159,7 @@ function accountInitials(name: string | null, email: string) {
 
 export type AccountStatusMenuProps = {
   clientConnected: boolean;
-  openworkServerStatus: OpenworkServerStatus;
+  get3wServerStatus: Get3wServerStatus;
   developerMode: boolean;
   /** Hidden until a workspace is selected, matching the old status bar. */
   showConnectionStatus: boolean;
@@ -168,7 +168,7 @@ export type AccountStatusMenuProps = {
   initializing?: boolean;
   reloadBusy?: boolean;
   reloadError?: string | null;
-  openWorkConnectState?: SessionCloudMcpMaintenanceState;
+  get3wConnectState?: SessionCloudMcpMaintenanceState;
   showSettingsButton?: boolean;
   onOpenAccountSettings?: () => void;
   onSendFeedback?: () => void;
@@ -184,7 +184,7 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
   const { config } = useShellConfig();
   const user = account.user;
   const status = props.showConnectionStatus ? resolveRuntimeStatus({
-    clientConnected: props.clientConnected, openworkServerStatus: props.openworkServerStatus,
+    clientConnected: props.clientConnected, get3wServerStatus: props.get3wServerStatus,
     initializing: props.initializing ?? false, reloadBusy: props.reloadBusy, reloadError: props.reloadError,
   }) : null;
   return <div className="flex min-w-0 flex-1 items-center gap-1">

@@ -5,7 +5,7 @@ export function getElectronBrowser() {
     return null;
   }
 
-  return window.__OPENWORK_ELECTRON__?.browser ?? null;
+  return window.__GET3W_ELECTRON__?.browser ?? null;
 }
 
 // Bounds and menu points use CSS pixels. Preload stamps the browser bounds with

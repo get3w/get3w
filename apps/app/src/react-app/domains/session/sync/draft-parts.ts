@@ -25,7 +25,7 @@ import { decodeComposerMentionValue } from "../surface/composer/mention-encoding
 
 /** Pasted text reaches the model as the user's words and stays collapsed in the transcript. */
 function pastedTextPart(text: string): TextPartInput {
-  return { type: "text", text, metadata: { openworkPastedText: true } };
+  return { type: "text", text, metadata: { get3wPastedText: true } };
 }
 
 // All workspace-scoped server URLs/clients/tokens come from
@@ -128,7 +128,7 @@ export async function draftToParts(
           if (!absolute) continue;
           // The engine may expand a file part into hidden Read results. Keep
           // the user's explicit reference in the persisted visible message.
-          parts.push({ type: "text", text: `@${mentionPart.path}`, metadata: { openworkFileReference: absolute } });
+          parts.push({ type: "text", text: `@${mentionPart.path}`, metadata: { get3wFileReference: absolute } });
           if (!isReadInlineablePath(absolute)) {
             parts.push({ type: "text", text: absolute });
             continue;
@@ -168,7 +168,7 @@ export async function draftToParts(
       if (part.type === "file") {
         const absolute = toAbsolutePath(part.path);
         if (!absolute) continue;
-        parts.push({ type: "text", text: `@${part.path}`, metadata: { openworkFileReference: absolute } });
+        parts.push({ type: "text", text: `@${part.path}`, metadata: { get3wFileReference: absolute } });
         if (!isReadInlineablePath(absolute)) {
           parts.push({ type: "text", text: absolute });
           continue;

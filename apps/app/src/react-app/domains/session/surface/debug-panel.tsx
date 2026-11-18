@@ -14,7 +14,7 @@ import { createClient, unwrap } from "@/app/lib/opencode";
 import { createClientV2, isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import { toast } from "@/components/ui/sonner";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 import { useWorkspaceSyncStreamStore, workspaceSyncStreamKey } from "../sync/session-sync";
 import type { SessionRenderModel } from "../sync/transition-controller";
 import { DebugResources, useDebugResources, type DebugActivity } from "./debug-resources";
@@ -65,18 +65,18 @@ export type SessionDebugWorkspace = {
 };
 
 export function SessionDebugPanel(props: {
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string;
   workspaceRoot: string;
   opencodeBaseUrl: string;
-  openworkToken: string;
+  get3wToken: string;
   thread: SessionDebugThread | null;
   workspace?: SessionDebugWorkspace;
 }) {
   const [dismissed, setDismissed] = useState(true);
   const [tab, setTab] = useState("overview");
   const thread = props.thread;
-  const hasRuntime = Boolean(props.client && props.opencodeBaseUrl && props.openworkToken);
+  const hasRuntime = Boolean(props.client && props.opencodeBaseUrl && props.get3wToken);
   const slot = useDebugRailSlot();
   const panelRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
@@ -96,8 +96,8 @@ export function SessionDebugPanel(props: {
     queryFn: async ({ signal }) => {
       if (!props.client) throw new Error(t("ui.fa3743afc7ff"));
       const engine = isOpencodeV2BaseUrl(props.opencodeBaseUrl)
-        ? createClientV2(props.opencodeBaseUrl, undefined, { token: props.openworkToken })
-        : createClient(props.opencodeBaseUrl, undefined, { mode: "openwork", token: props.openworkToken });
+        ? createClientV2(props.opencodeBaseUrl, undefined, { token: props.get3wToken })
+        : createClient(props.opencodeBaseUrl, undefined, { mode: "get3w", token: props.get3wToken });
       const started = performance.now();
       const [server, opencode] = await Promise.allSettled([
         props.client.health(),
@@ -273,10 +273,10 @@ export function SessionDebugPanel(props: {
           {tab !== "providers" ? null : !hasRuntime ? <div className="py-2">{t("ui.a3099f1dc278")}</div>
             : thread ? <DebugProviders key={`${props.workspaceId}:${thread.model.intendedSessionId}`}
               workspaceId={props.workspaceId} workspaceRoot={props.workspaceRoot} sessionId={thread.model.intendedSessionId}
-              threadTitle={thread.threadTitle} baseUrl={props.opencodeBaseUrl} token={props.openworkToken}
+              threadTitle={thread.threadTitle} baseUrl={props.opencodeBaseUrl} token={props.get3wToken}
               selectedModel={thread.selectedModel} variant={thread.variant} status={thread.status} messageCount={thread.messageCount}
               historyComplete={thread.historyComplete} resolveAvailability={thread.resolveAvailability} onCopyThread={thread.onCopyThread} />
-            : <DebugWorkspaceProviders workspaceRoot={props.workspaceRoot} baseUrl={props.opencodeBaseUrl} token={props.openworkToken} />}
+            : <DebugWorkspaceProviders workspaceRoot={props.workspaceRoot} baseUrl={props.opencodeBaseUrl} token={props.get3wToken} />}
         </TabsContent>
       </Tabs>
       <footer className="flex shrink-0 items-center gap-2 border-t border-dls-border px-1 py-1 text-[11px]">

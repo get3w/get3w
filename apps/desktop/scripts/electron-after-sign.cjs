@@ -126,7 +126,7 @@ async function afterSign(context, { runCommand = run, runRetry = runWithRetry, s
   const appPath = path.join(context.appOutDir, appName);
   verifyComputerUseHelper(appPath, process.env.MACOS_NOTARIZE === "true", { runCommand, spawn: spawnNotary });
 
-  const notaryTempDir = mkdtempSync(path.join(tmpdir(), "openwork-electron-notary-"));
+  const notaryTempDir = mkdtempSync(path.join(tmpdir(), "get3w-electron-notary-"));
   const notaryZipPath = path.join(notaryTempDir, `${context.packager.appInfo.productFilename}-notary.zip`);
   const keyPath = requireEnv("APPLE_API_KEY_PATH");
   const keyId = requireEnv("APPLE_API_KEY");

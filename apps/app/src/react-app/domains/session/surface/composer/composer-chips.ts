@@ -104,16 +104,16 @@ export function composerPillBadge(pill: ComposerPill): ComposerBadge {
 }
 
 /** The Get3W mark, the same one task links in the transcript use. */
-function openworkMarkSlot(): ComposerBadge["slot"] {
-  return { logoUrls: [resolveExtensionIconSrc("/openwork-sidebar-mark.svg")], fallback: "message-square", invertInDark: true };
+function get3wMarkSlot(): ComposerBadge["slot"] {
+  return { logoUrls: [resolveExtensionIconSrc("/get3w-sidebar-mark.svg")], fallback: "message-square", invertInDark: true };
 }
 
 /** A referenced task. `title` is its current title when known, else the one saved with the reference. */
 export function sessionReferenceBadge(title: string, options?: { unavailable?: boolean }): ComposerBadge {
   const label = title.trim() || "Untitled task";
   return options?.unavailable
-    ? { kind: "session", label, get meta() { return t("ui.ca1844969742"); }, title: `Task unavailable: ${label}`, tone: "gray", slot: openworkMarkSlot() }
-    : { kind: "session", label, title: `Task: ${label}`, tone: "gray", slot: openworkMarkSlot() };
+    ? { kind: "session", label, get meta() { return t("ui.ca1844969742"); }, title: `Task unavailable: ${label}`, tone: "gray", slot: get3wMarkSlot() }
+    : { kind: "session", label, title: `Task: ${label}`, tone: "gray", slot: get3wMarkSlot() };
 }
 
 export function agentBadge(name: string): ComposerBadge {

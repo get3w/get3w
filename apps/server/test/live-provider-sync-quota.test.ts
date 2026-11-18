@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import plugin from "../src/opencode-plugins/openwork-gateway-quota-v2.js";
-import { GATEWAY_USAGE_LIMIT_ERROR_CODE } from "@openwork/types/den/gateway-usage-limits";
+import plugin from "../src/opencode-plugins/get3w-gateway-quota-v2.js";
+import { GATEWAY_USAGE_LIMIT_ERROR_CODE } from "@get3w/types/den/gateway-usage-limits";
 
 type Event = { model: { providerID: string }; request: Request; response: Response };
 const id = "ipr_fixture";
 const base = `https://gateway.example.invalid/api/v1/providers/${id}`;
 function quota() {
-  return Response.json({ error: { code: GATEWAY_USAGE_LIMIT_ERROR_CODE, source: "openwork_gateway", type: "usage_limit_error",
+  return Response.json({ error: { code: GATEWAY_USAGE_LIMIT_ERROR_CODE, source: "get3w_gateway", type: "usage_limit_error",
     message: "You have reached your AI Gateway usage limit." } }, { status: 429, headers: { "X-Get3W-Error-Code": GATEWAY_USAGE_LIMIT_ERROR_CODE, "X-Get3W-Usage-State": "blocked", "Retry-After": "60" } });
 }
 

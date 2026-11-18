@@ -1,4 +1,4 @@
-import { CodeMode, Tool, toolError } from "@openwork/codemode"
+import { CodeMode, Tool, toolError } from "@get3w/codemode"
 import { Effect } from "effect"
 import { z } from "zod"
 

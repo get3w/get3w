@@ -3,7 +3,7 @@
  * Notion, …) a prompt is about. The composer renders it as a chip ahead of
  * the text; the send path expands it into a short steering sentence so the
  * model reaches for that connector's tools. Den's connector catalog seeds it
- * through the `openwork://chat` deep link.
+ * through the `get3w://chat` deep link.
  */
 function sanitizeConnectorName(name: string) {
   return name.replace(/[\[\]\n\r]/g, "").trim();

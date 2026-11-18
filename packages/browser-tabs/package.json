@@ -1,5 +1,5 @@
 {
-  "name": "@openwork/browser-tabs",
+  "name": "@get3w/browser-tabs",
   "private": true,
   "type": "module",
   "description": "Ownership, surfacing, and background-rendering policy for Get3W's built-in browser tabs.",

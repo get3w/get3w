@@ -1,19 +1,19 @@
 import { dirname, join } from "node:path";
 import { appendFile, readFile } from "node:fs/promises";
-import { openworkServerDataDir } from "@openwork/paths";
+import { get3wServerDataDir } from "@get3w/paths";
 import type { AuditEntry } from "./types.js";
 import { ensureDir, exists } from "./utils.js";
 
-function resolveOpenworkDataDir(): string {
-  return openworkServerDataDir();
+function resolveGet3wDataDir(): string {
+  return get3wServerDataDir();
 }
 
 export function auditLogPath(workspaceId: string): string {
-  return join(resolveOpenworkDataDir(), "audit", `${workspaceId}.jsonl`);
+  return join(resolveGet3wDataDir(), "audit", `${workspaceId}.jsonl`);
 }
 
 export function legacyAuditLogPath(workspaceRoot: string): string {
-  return join(workspaceRoot, ".opencode", "openwork", "audit.jsonl");
+  return join(workspaceRoot, ".get3w", "audit.jsonl");
 }
 
 async function resolveReadableAuditPath(workspaceRoot: string, workspaceId: string): Promise<string | null> {

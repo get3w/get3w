@@ -133,7 +133,7 @@ function directSlug(name: string): string {
 }
 
 /**
- * Directly exposed org connections run as `openwork-direct-<slug>-<digest>`
+ * Directly exposed org connections run as `get3w-direct-<slug>-<digest>`
  * tools. Attribute them to the org connection with that name (its own icon
  * and display name); when the name is ambiguous or unknown, fall back to the
  * catalog entry for the service so the logo still shows.

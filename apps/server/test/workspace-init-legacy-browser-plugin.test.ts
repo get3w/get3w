@@ -6,7 +6,7 @@ import { ensureWorkspaceFiles } from "../src/workspace-init";
 
 const roots: string[] = [];
 async function workspaceWith(content: string) {
-  const root = await mkdtemp(join(tmpdir(), "openwork-legacy-browser-"));
+  const root = await mkdtemp(join(tmpdir(), "get3w-legacy-browser-"));
   roots.push(root);
   await writeFile(join(root, "opencode.jsonc"), content);
   return root;
@@ -19,7 +19,7 @@ describe("legacy browser plugin cleanup", () => {
   test("removes the entry older Get3W versions added and keeps the rest of the file", async () => {
     const root = await workspaceWith(`{
   // my settings
-  "default_agent": "openwork",
+  "default_agent": "get3w",
   "plugin": ["opencode-chrome-devtools", "user-plugin"]
 }
 `);
@@ -32,9 +32,9 @@ describe("legacy browser plugin cleanup", () => {
   });
 
   test("drops the plugin key when the legacy entry was the only plugin", async () => {
-    const root = await workspaceWith(`{ "default_agent": "openwork", "plugin": ["opencode-chrome-devtools"] }\n`);
+    const root = await workspaceWith(`{ "default_agent": "get3w", "plugin": ["opencode-chrome-devtools"] }\n`);
     await ensureWorkspaceFiles(root, "starter");
-    expect(JSON.parse(await readFile(join(root, "opencode.jsonc"), "utf8"))).toEqual({ default_agent: "openwork" });
+    expect(JSON.parse(await readFile(join(root, "opencode.jsonc"), "utf8"))).toEqual({ default_agent: "get3w" });
   });
 
   test("leaves a version-pinned entry someone added on purpose", async () => {

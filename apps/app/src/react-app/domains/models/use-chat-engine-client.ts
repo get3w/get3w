@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClientV2 } from "@/app/lib/opencode-v2-adapter";
-import { OpenworkServerError } from "@/app/lib/openwork-server";
+import { Get3wServerError } from "@/app/lib/get3w-server";
 import type { ResolvedWorkspaceEndpoint } from "@/app/lib/workspace-endpoint";
 import type { Client } from "@/app/types";
 
@@ -11,7 +11,7 @@ export async function readChatRoutesToV2(endpoint: Pick<ResolvedWorkspaceEndpoin
     const status = await endpoint.client.getEngineV2PreviewStatus();
     return status.enabled && status.chatRouting;
   } catch (error) {
-    if (error instanceof OpenworkServerError && error.status === 404) return false;
+    if (error instanceof Get3wServerError && error.status === 404) return false;
     throw error;
   }
 }

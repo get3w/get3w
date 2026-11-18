@@ -1,4 +1,4 @@
-import type { AutomationExecutionTarget, AutomationExecutionTargetList } from "@openwork/types/automations"
+import type { AutomationExecutionTarget, AutomationExecutionTargetList } from "@get3w/types/automations"
 
 /**
  * Where this member's Automations can run, from `GET /v1/automation-runners`.

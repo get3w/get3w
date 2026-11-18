@@ -2,7 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react"
 import { Eye, EyeOff } from "lucide-react"
-import { SECRET_INPUT_ATTRIBUTES, SECRET_REGION_ATTRIBUTES, useMultilineSecretSupported, useSecretReveal } from "@openwork/ui/secret-input"
+import { SECRET_INPUT_ATTRIBUTES, SECRET_REGION_ATTRIBUTES, useMultilineSecretSupported, useSecretReveal } from "@get3w/ui/secret-input"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupTextarea } from "@/components/ui/input-group"
 import { cn } from "@/lib/utils"

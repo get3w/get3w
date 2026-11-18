@@ -2,18 +2,18 @@ import type { ModelRef, SuggestedPlugin } from "./types";
 import { t } from "../i18n";
 import { canonicalMcpServerName } from "./mcp";
 import {
-  BUILT_IN_OPENWORK_EXTENSION_MANIFESTS,
+  BUILT_IN_GET3W_EXTENSION_MANIFESTS,
   extensionContribution,
   extensionResource,
   isTrustedBuiltInExtension,
-  type OpenWorkExtensionManifest,
-  type OpenWorkExtensionPlatform,
+  type Get3WExtensionManifest,
+  type Get3WExtensionPlatform,
 } from "./extensions";
 
-export const MODEL_PREF_KEY = "openwork.defaultModel";
-export const SESSION_MODEL_PREF_KEY = "openwork.sessionModels";
-export const THINKING_PREF_KEY = "openwork.showThinking";
-export const VARIANT_PREF_KEY = "openwork.modelVariant";
+export const MODEL_PREF_KEY = "get3w.defaultModel";
+export const SESSION_MODEL_PREF_KEY = "get3w.sessionModels";
+export const THINKING_PREF_KEY = "get3w.showThinking";
+export const VARIANT_PREF_KEY = "get3w.modelVariant";
 export { LANGUAGE_PREF_KEY } from "../i18n";
 
 export const DEFAULT_MODEL: ModelRef = {
@@ -39,7 +39,7 @@ export type McpDirectoryInfo = {
   /** Route OAuth through the local Get3W gateway instead of delegating it to OpenCode. */
   managedOAuth?: boolean;
   /** Identifies MCP entries owned by Get3W Connect instead of workspace configuration. */
-  managedBy?: "openwork-connect";
+  managedBy?: "get3w-connect";
   oauthConfig?: {
     clientId?: string;
     clientSecret?: string;
@@ -60,10 +60,10 @@ export type McpDirectoryInfo = {
   /** Whether this extension is still in preview. */
   preview?: boolean;
   /** Normalized extension manifest backing this catalog entry. */
-  extensionManifest?: OpenWorkExtensionManifest;
+  extensionManifest?: Get3WExtensionManifest;
 };
 
-function extensionManifestToDirectoryInfo(manifest: OpenWorkExtensionManifest): McpDirectoryInfo {
+function extensionManifestToDirectoryInfo(manifest: Get3WExtensionManifest): McpDirectoryInfo {
   const mcpResource = extensionResource(manifest, "mcp");
   return {
     id: manifest.id,
@@ -84,7 +84,7 @@ function extensionManifestToDirectoryInfo(manifest: OpenWorkExtensionManifest): 
   };
 }
 
-export function isBuiltInOpenWorkExtension(entry: Pick<McpDirectoryInfo, "kind" | "extensionManifest">): boolean {
+export function isBuiltInGet3WExtension(entry: Pick<McpDirectoryInfo, "kind" | "extensionManifest">): boolean {
   return entry.kind === "extension" && isTrustedBuiltInExtension(entry.extensionManifest);
 }
 
@@ -151,37 +151,37 @@ export const MCP_QUICK_CONNECT: McpDirectoryInfo[] = [
     iconSrc: "/ext-context7.svg",
   },
   {
-    get name() { return t("mcp.quick_connect_openwork_ui_title"); },
-    serverName: "openwork-ui",
-    get description() { return t("mcp.quick_connect_openwork_ui_desc"); },
+    get name() { return t("mcp.quick_connect_get3w_ui_title"); },
+    serverName: "get3w-ui",
+    get description() { return t("mcp.quick_connect_get3w_ui_desc"); },
     type: "local",
     // Dev builds replace this with the local checkout path before writing config.
-    command: ["npx", "-y", "openwork-ui-mcp"],
+    command: ["npx", "-y", "get3w-ui-mcp"],
     oauth: false,
     kind: "ui-control",
-    iconSrc: "/openwork-mark.svg",
+    iconSrc: "/get3w-mark.svg",
     // Internal UI-control surface for agents driving the desktop app. Hidden
     // from the default catalog; "Show hidden" reveals it.
     defaultHidden: true,
   },
-  ...BUILT_IN_OPENWORK_EXTENSION_MANIFESTS.map(extensionManifestToDirectoryInfo),
+  ...BUILT_IN_GET3W_EXTENSION_MANIFESTS.map(extensionManifestToDirectoryInfo),
 ];
 
-export const OPENWORK_EXTENSION_CATALOG = MCP_QUICK_CONNECT.filter((entry) => entry.kind === "extension");
+export const GET3W_EXTENSION_CATALOG = MCP_QUICK_CONNECT.filter((entry) => entry.kind === "extension");
 
-export function resolveOpenWorkExtensionCatalogPlatform(
+export function resolveGet3WExtensionCatalogPlatform(
   platform: "web" | "desktop",
   os?: "macos" | "windows" | "linux",
-): OpenWorkExtensionPlatform {
+): Get3WExtensionPlatform {
   if (platform === "web") return "web";
   if (os === "macos") return "darwin";
   if (os === "windows") return "windows";
   return "linux";
 }
 
-export function filterOpenWorkExtensionCatalogForPlatform<TEntry extends Pick<McpDirectoryInfo, "extensionManifest">>(
+export function filterGet3WExtensionCatalogForPlatform<TEntry extends Pick<McpDirectoryInfo, "extensionManifest">>(
   entries: TEntry[],
-  platform: OpenWorkExtensionPlatform,
+  platform: Get3WExtensionPlatform,
 ): TEntry[] {
   return entries.filter((entry) => {
     const platforms = entry.extensionManifest?.platform;

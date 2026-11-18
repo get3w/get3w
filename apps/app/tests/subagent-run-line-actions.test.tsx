@@ -39,7 +39,7 @@ const part: TaskToolPart = {
   toolCallId: "t1",
   state: "input-available",
   input: { description: "Map the billing service", prompt: "Map the billing service", subagent_type: "explore" },
-  callProviderMetadata: { openwork: { childSessionId: CHILD } },
+  callProviderMetadata: { get3w: { childSessionId: CHILD } },
 }
 
 async function render(composerSubagentToolCallIds?: ReadonlySet<string>) {

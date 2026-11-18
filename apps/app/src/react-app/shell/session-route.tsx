@@ -35,17 +35,17 @@ import { useSessionManagementStore as sessionManagementStore } from "@/react-app
 import { settleWorkspaceIds, useSessionSettleState } from "@/react-app/domains/session/sidebar/session-settle";
 import { getDisplaySessionTitle } from "@/app/lib/session-title";
 import { getSessionDescendantIds } from "@/react-app/domains/session/sidebar/utils";
-import { buildOpenworkWorkspaceBaseUrl } from "@/app/lib/openwork-server";
+import { buildGet3wWorkspaceBaseUrl } from "@/app/lib/get3w-server";
 import {
   resolveEngineRootEndpoint,
   resolveWorkspaceEndpoint,
   type ResolvedWorkspaceEndpoint,
 } from "@/app/lib/workspace-endpoint";
-import { buildOpenworkEnvRuntimeKey } from "@/app/lib/openwork-env-runtime";
+import { buildGet3wEnvRuntimeKey } from "@/app/lib/get3w-env-runtime";
 import {
   getDesktopHomeDir,
   joinDesktopPath,
-  openworkServerInfo,
+  get3wServerInfo,
   revealDesktopItemInDir,
   pickDirectory,
   resolveWorkspaceListSelectedId,
@@ -53,7 +53,7 @@ import {
   workspaceForget,
   workspaceSetRuntimeActive,
   workspaceSetSelected,
-  type OpenworkServerInfo,
+  type Get3wServerInfo,
   type WorkspaceInfo,
   type WorkspaceList,
 } from "@/app/lib/desktop";
@@ -135,7 +135,7 @@ import { useRestrictionNotice } from "@/react-app/domains/cloud/restriction-noti
 import { ReactSessionRuntime } from "@/react-app/domains/session/sync/runtime-sync";
 import { createSessionChildIdsSelector, useSessionActivityStore } from "@/react-app/domains/session/status/session-activity-store";
 import { createWorkspaceSessionAttentionSelector, sessionAttentionLabel, sessionAttentionSidebarStatus } from "@/react-app/domains/session/status/session-attention";
-import { buildOpenworkSessionSystemContext } from "@/react-app/domains/session/sync/env-context";
+import { buildGet3wSessionSystemContext } from "@/react-app/domains/session/sync/env-context";
 import {
   applySessionRevert,
   applySessionUnrevert,
@@ -210,9 +210,9 @@ import {
 import { RenameWorkspaceModal } from "@/react-app/domains/workspace/rename-workspace-modal";
 import { useDenAuth } from "@/react-app/domains/cloud/den-auth-provider";
 import {
-  hasOpenWorkModelsAvailable,
-  shouldShowOpenWorkModelsSyncing,
-} from "@/react-app/domains/cloud/openwork-models-promo";
+  hasGet3WModelsAvailable,
+  shouldShowGet3WModelsSyncing,
+} from "@/react-app/domains/cloud/get3w-models-promo";
 import { ModelPickerModal, MODEL_PICKER_UNAVAILABLE_SUBTITLE } from "@/react-app/domains/session/modals/model-picker-modal";
 import { CommandPalette, type PaletteItem, type SessionGroupOption } from "./command-palette";
 import { buildCommandPaletteSessions } from "./command-palette-sessions";
@@ -245,15 +245,15 @@ import {
   persistableComposerDraftText,
   useComposerStateStore,
 } from "@/react-app/domains/session/surface/composer-state-store";
-import { useControlAction, type OpenworkControlAction } from "./control/control-provider";
+import { useControlAction, type Get3wControlAction } from "./control/control-provider";
 import { useReactRenderWatchdog } from "./react-render-watchdog";
 
 import { readDenSettings } from "@/app/lib/den";
 import { denSessionUpdatedEvent, denSettingsChangedEvent } from "@/app/lib/den-session-events";
 
 import { filterProviderList } from "@/app/utils/providers";
-import { ensureDesktopLocalOpenworkConnection } from "./desktop-local-openwork";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { ensureDesktopLocalGet3wConnection } from "./desktop-local-get3w";
+import { resolveGet3wConnection } from "./get3w-connection";
 import { useReloadCoordinator } from "./reload-coordinator";
 import { useShellConfig } from "./shell-config";
 import { useShellShortcuts } from "./use-shell-shortcuts";
@@ -365,7 +365,7 @@ function taskCreateUnavailableToastId(workspaceId: string) {
 
 function focusPromptSoon() {
   if (typeof window === "undefined") return;
-  const focus = () => window.dispatchEvent(new Event("openwork:focusPrompt"));
+  const focus = () => window.dispatchEvent(new Event("get3w:focusPrompt"));
   [0, 80, 240, 600].forEach((delay) => window.setTimeout(focus, delay));
 }
 
@@ -457,11 +457,11 @@ export function SessionRoute() {
   const reloadCoordinator = useReloadCoordinator();
   const checkDesktopRestriction = useCheckDesktopRestriction();
   const restrictionNotice = useRestrictionNotice();
-  const [openworkServerHostInfoState, setOpenworkServerHostInfoState] = useState<OpenworkServerInfo | null>(null);
+  const [get3wServerHostInfoState, setGet3wServerHostInfoState] = useState<Get3wServerInfo | null>(null);
 
   const [developerMode, setDeveloperMode] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("openwork.developerMode") === "1";
+    return window.localStorage.getItem("get3w.developerMode") === "1";
   });
   const {
     navigateToWorkspaceSession,
@@ -519,7 +519,7 @@ export function SessionRoute() {
     developerMode,
     workspaceRoute: activityRouteActive ? "activity" : outputsRouteActive ? "outputs" : appsRouteActive ? "apps" : automationsRouteActive ? "automations" : dashboardWorkspaceRoute ? "dashboard" : "session",
     onServerSettingsChanged: () => undefined,
-    onHostInfo: setOpenworkServerHostInfoState,
+    onHostInfo: setGet3wServerHostInfoState,
   });
   const modelProfileId = useWorkspaceModelProfile();
   const workspaceDefaultScope = workspaceModelScope({ profileId: modelProfileId,
@@ -735,8 +735,8 @@ export function SessionRoute() {
       if (checking || document.visibilityState !== "visible") return;
       checking = true;
       try {
-        const info = await openworkServerInfo();
-        if (cancelled || !info.running || info.generation === openworkServerHostInfoState?.generation) return;
+        const info = await get3wServerInfo();
+        if (cancelled || !info.running || info.generation === get3wServerHostInfoState?.generation) return;
         await refreshRouteState({ supersede: true });
       } catch {
         // The next probe can recover a temporarily unavailable desktop bridge.
@@ -748,7 +748,7 @@ export function SessionRoute() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [openworkServerHostInfoState?.generation, refreshRouteState, selectedWorkspace?.workspaceType]);
+  }, [get3wServerHostInfoState?.generation, refreshRouteState, selectedWorkspace?.workspaceType]);
 
   const { engineReloadVersion, reloadWorkspaceEngineFromUi } = useEngineReload({
     client,
@@ -762,12 +762,12 @@ export function SessionRoute() {
   });
 
   const environmentRuntimeKey = useMemo(
-    () => buildOpenworkEnvRuntimeKey({
+    () => buildGet3wEnvRuntimeKey({
       baseUrl: client?.baseUrl ?? null,
-      pid: openworkServerHostInfoState?.pid ?? null,
-      port: openworkServerHostInfoState?.port ?? null,
+      pid: get3wServerHostInfoState?.pid ?? null,
+      port: get3wServerHostInfoState?.port ?? null,
     }),
-    [client?.baseUrl, openworkServerHostInfoState?.pid, openworkServerHostInfoState?.port],
+    [client?.baseUrl, get3wServerHostInfoState?.pid, get3wServerHostInfoState?.port],
   );
 
   const handleApplyEnvironmentChanges = useCallback(async () => {
@@ -939,7 +939,7 @@ export function SessionRoute() {
   );
   const providerAuthClient = useMemo(() => {
     if (opencodeClient || !engineRootEndpoint) return opencodeClient;
-    return createClient(engineRootEndpoint.opencodeBaseUrl, undefined, { token: engineRootEndpoint.token, mode: "openwork" });
+    return createClient(engineRootEndpoint.opencodeBaseUrl, undefined, { token: engineRootEndpoint.token, mode: "get3w" });
   }, [engineRootEndpoint, opencodeClient]);
   const engineRootServer = useMemo(
     () => (engineRootEndpoint && client ? { baseUrl, token, client } : null),
@@ -964,8 +964,8 @@ export function SessionRoute() {
     selectedWorkspaceRoot,
     selectedWorkspaceId,
     engineRootServer,
-    localServerHostToken: openworkServerHostInfoState?.hostToken?.trim() ?? "",
-    localServerGeneration: openworkServerHostInfoState?.generation ?? null,
+    localServerHostToken: get3wServerHostInfoState?.hostToken?.trim() ?? "",
+    localServerGeneration: get3wServerHostInfoState?.generation ?? null,
     setProviders,
     setProviderDefaults,
     setProviderConnectedIds,
@@ -981,12 +981,12 @@ export function SessionRoute() {
   const handleModelPickerOpen = useCallback(() => {
     void refreshCloudProviderSync("model_picker_open");
   }, [refreshCloudProviderSync]);
-  const openWorkModelsEntitled = useMemo(() => {
+  const get3wModelsEntitled = useMemo(() => {
     if (!denAuth.isSignedIn) return false;
     return Object.values(sessionProviderAuthSnapshot.importedCloudProviders ?? {}).some(
       (provider) =>
         [provider.providerId, provider.source, provider.sourceProviderId].some(
-          (value) => value?.trim().toLowerCase() === "openwork",
+          (value) => value?.trim().toLowerCase() === "get3w",
         ),
     );
   }, [
@@ -1108,13 +1108,13 @@ export function SessionRoute() {
     const replacement = starterModel(usable) ?? usable[0];
     if (replacement) local.setPrefs((previous) => ({ ...previous, defaultModel: { providerID: replacement.providerID, modelID: replacement.modelID }, modelVariant: null }));
   }, [opencodeZenBlocked, entitledModelOptions, local]);
-  const openWorkModelsAvailable = hasOpenWorkModelsAvailable({
+  const get3wModelsAvailable = hasGet3WModelsAvailable({
     providerConnectedIds,
     providers,
   });
-  const openWorkModelsSyncing = shouldShowOpenWorkModelsSyncing({
-    entitled: openWorkModelsEntitled,
-    available: openWorkModelsAvailable,
+  const get3wModelsSyncing = shouldShowGet3WModelsSyncing({
+    entitled: get3wModelsEntitled,
+    available: get3wModelsAvailable,
     workspaceReady: Boolean(selectedWorkspaceId && opencodeClient),
     reloadPending: sessionProviderAuthSnapshot.cloudProviderServerSync?.reloadPending === true,
   });
@@ -1223,7 +1223,7 @@ export function SessionRoute() {
       loading: loading || providerListQuery.isPlaceholderData || providerListQuery.isError,
       signedIn: denAuth.isSignedIn,
       cloudProviderSyncReady,
-      openWorkModelsSyncing,
+      get3wModelsSyncing,
       restrictToCloud: restrictToCloudProviders,
       checkRestriction: checkDesktopRestriction,
       cloudProviderList,
@@ -1239,7 +1239,7 @@ export function SessionRoute() {
     loading,
     modelAvailabilityGate,
     opencodeClient,
-    openWorkModelsSyncing,
+    get3wModelsSyncing,
     liveProviderSync,
     providerListQuery.isPlaceholderData,
     providerListQuery.isError,
@@ -1266,7 +1266,7 @@ export function SessionRoute() {
       if (refreshed.isError || !refreshed.data || !activeComposerModel) return false;
       return computeModelAvailability(activeComposerModel, {
         workspaceReady: true, loading: false, signedIn: denAuth.isSignedIn,
-        cloudProviderSyncReady, openWorkModelsSyncing: false,
+        cloudProviderSyncReady, get3wModelsSyncing: false,
         restrictToCloud: restrictToCloudProviders, checkRestriction: checkDesktopRestriction,
         cloudProviderList: refreshed.data, providerList: refreshed.data,
       }).status === "unavailable";
@@ -1410,7 +1410,7 @@ export function SessionRoute() {
     const applyProviderState = (value: ProviderListResponse) => {
       if (cancelled) return;
       // When not signed in, filter out every cloud-managed provider key so
-      // stale org imports and the hosted `openwork` catalog do not reappear.
+      // stale org imports and the hosted `get3w` catalog do not reappear.
       const hasCloudAuth = false;
       const all = hasCloudAuth
         ? ((value.all ?? []) as ProviderListItem[])
@@ -1431,7 +1431,7 @@ export function SessionRoute() {
       try {
         disabledProviders = await readManagedDisabledProviders({
           opencodeClient,
-          openworkClient: disabledProvidersEndpointClient,
+          get3wClient: disabledProvidersEndpointClient,
           workspaceId: disabledProvidersWorkspaceId,
           workspaceType: disabledProvidersWorkspaceType,
           directory: selectedWorkspaceRoot || undefined,
@@ -1553,7 +1553,7 @@ export function SessionRoute() {
     }
 
     // Note: do NOT include `client`, `workspaceId`, `sessionId`,
-    // `opencodeBaseUrl`, or `openworkToken` here. SessionPage forwards those
+    // `opencodeBaseUrl`, or `get3wToken` here. SessionPage forwards those
     // explicitly to SessionSurface from the per-workspace endpoint resolved
     // by `resolveWorkspaceEndpoint`. If we leak them in here, the spread of
     // `surfaceProps` in SessionPage overrides those correct values with the
@@ -1582,8 +1582,8 @@ export function SessionRoute() {
       resolveModelAvailability,
       organizationModelsEmpty,
       selectedModel: local.prefs.defaultModel ?? { providerID: "", modelID: "" },
-      openWorkModelsEntitled,
-      openWorkModelsSyncing,
+      get3wModelsEntitled,
+      get3wModelsSyncing,
       onRefreshOrganizationModels: refreshOrganizationModelAccess,
       onModelPickerOpenChange: (open: boolean) => {
         if (open && !requireGet3wSignIn()) return;
@@ -1642,7 +1642,7 @@ export function SessionRoute() {
               const promptClient = draft.mode === "shell" || draft.command || isOpencodeV2BaseUrl(opencodeBaseUrl)
                 ? opencodeClient
                 : createClient(opencodeBaseUrl, selectedWorkspaceRoot || undefined,
-                  { token: selectedWorkspaceServerToken, mode: "openwork" }, { desktopTransport: "main" });
+                  { token: selectedWorkspaceServerToken, mode: "get3w" }, { desktopTransport: "main" });
               if (unwrap(await promptClient.session.get({ sessionID: targetSessionId })).time.archived) {
                 throw new Error(t("ui.53bd154cf3e7"));
               }
@@ -1719,7 +1719,7 @@ export function SessionRoute() {
 
                   const parts = await draftToParts(draft, selectedWorkspaceRoot, targetSessionId, selectedWorkspaceEndpoint);
                   assertCurrent();
-                  const system = await buildOpenworkSessionSystemContext(client, {
+                  const system = await buildGet3wSessionSystemContext(client, {
                     workspaceId: selectedWorkspaceId,
                     cacheKey: targetSessionId,
                     runtimeKey: environmentRuntimeKey,
@@ -1889,8 +1889,8 @@ export function SessionRoute() {
     gatewayProviderIds,
     gatewayCloudProviderIds,
     sessionProviderAuthSnapshot.gatewayUsageProviderScope,
-    openWorkModelsEntitled,
-    openWorkModelsSyncing,
+    get3wModelsEntitled,
+    get3wModelsSyncing,
     refreshCloudProviderSync,
     refreshOrganizationModelAccess,
     resolveModelAvailability,
@@ -1937,7 +1937,7 @@ export function SessionRoute() {
         workspaceType: paneEndpoint.workspaceType,
         runtimeWorkspaceId: endpoint.workspaceId,
         opencodeBaseUrl: endpoint.opencodeBaseUrl,
-        openworkToken: endpoint.token,
+        get3wToken: endpoint.token,
         client: endpoint.client,
         environmentClient: client,
         surface: surfaceProps,
@@ -1958,7 +1958,7 @@ export function SessionRoute() {
     const workspaceOpencodeClient = createEngineClient(
       endpoint.opencodeBaseUrl,
       workspaceRoot || undefined,
-      { token: endpoint.token, mode: "openwork" },
+      { token: endpoint.token, mode: "get3w" },
     );
     const scopedSurface = {
       ...surfaceProps,
@@ -2017,7 +2017,7 @@ export function SessionRoute() {
               const promptClient = draft.mode === "shell" || draft.command || isOpencodeV2BaseUrl(endpoint.opencodeBaseUrl)
                 ? workspaceOpencodeClient
                 : createClient(endpoint.opencodeBaseUrl, workspaceRoot || undefined,
-                  { token: endpoint.token, mode: "openwork" }, { desktopTransport: "main" });
+                  { token: endpoint.token, mode: "get3w" }, { desktopTransport: "main" });
               if (unwrap(await promptClient.session.get({ sessionID: targetSessionId })).time.archived) {
                 throw new Error(t("ui.53bd154cf3e7"));
               }
@@ -2079,7 +2079,7 @@ export function SessionRoute() {
                   }
                   const parts = await draftToParts(draft, workspaceRoot, targetSessionId, endpoint);
                   assertCurrent();
-                  const system = await buildOpenworkSessionSystemContext(endpoint.client, {
+                  const system = await buildGet3wSessionSystemContext(endpoint.client, {
                     workspaceId: workspace.id,
                     cacheKey: targetSessionId,
                     runtimeKey: environmentRuntimeKey,
@@ -2187,7 +2187,7 @@ export function SessionRoute() {
       sandboxBackend: paneEndpoint.workspace.sandboxBackend,
       runtimeWorkspaceId: endpoint.workspaceId,
       opencodeBaseUrl: endpoint.opencodeBaseUrl,
-      openworkToken: endpoint.token,
+      get3wToken: endpoint.token,
       client: endpoint.client,
       environmentClient: client,
       surface: scopedSurface,
@@ -2299,8 +2299,8 @@ export function SessionRoute() {
           : newTaskModel?.providerID === model.providerID && newTaskModel.modelID === model.modelID ? newTaskVariant : null);
         modelPicker.setCompactOpen(false);
       },
-      openWorkModelsEntitled,
-      openWorkModelsSyncing,
+      get3wModelsEntitled,
+      get3wModelsSyncing,
       modelVariantLabel: newTaskBehavior.label,
       modelVariant: newTaskBehavior.value,
       modelBehaviorOptions: newTaskBehavior.options,
@@ -2343,8 +2343,8 @@ export function SessionRoute() {
     resolveModelAvailability,
     modelPicker,
     opencodeClient,
-    openWorkModelsEntitled,
-    openWorkModelsSyncing,
+    get3wModelsEntitled,
+    get3wModelsSyncing,
     pickerFallbackOptions,
     organizationModelsEmpty,
     refreshCloudProviderSync,
@@ -2672,7 +2672,7 @@ export function SessionRoute() {
     return options.find((option) => option.value === next)?.label ?? next;
   }, [changeNewTaskModel, newTaskModel, newTaskBehavior.options, newTaskVariant, providerCatalog, selectedSessionId]);
 
-  const cycleThinkingModeControlAction = useMemo<OpenworkControlAction>(() => ({
+  const cycleThinkingModeControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.model_variant.cycle",
     label: t("ui.2364207a6c4e"),
     description: t("ui.c17b7ab2d4fe"),
@@ -2685,7 +2685,7 @@ export function SessionRoute() {
   useControlAction(cycleThinkingModeControlAction);
 
   const gatewayWorkbenchScope = useWorkbenchStore((state) => JSON.stringify([state.focusedPane, state.secondary?.workspaceId, state.secondary?.sessionId]));
-  const gatewayProviderScopeKey = JSON.stringify([selectedWorkspaceId, selectedWorkspaceRoot, opencodeBaseUrl, selectedWorkspaceEndpoint?.baseUrl, selectedWorkspaceEndpoint?.workspaceId, openworkServerHostInfoState?.generation, denSessionVersion]);
+  const gatewayProviderScopeKey = JSON.stringify([selectedWorkspaceId, selectedWorkspaceRoot, opencodeBaseUrl, selectedWorkspaceEndpoint?.baseUrl, selectedWorkspaceEndpoint?.workspaceId, get3wServerHostInfoState?.generation, denSessionVersion]);
   const favoriteModelScope = useRef({ workspaceId: selectedWorkspaceId, sessionId: selectedSessionId, providerScopeKey: gatewayProviderScopeKey });
   favoriteModelScope.current = { workspaceId: selectedWorkspaceId, sessionId: selectedSessionId, providerScopeKey: gatewayProviderScopeKey };
   // Shortcut model switching: the next pinned model, or the first model from the next source.
@@ -2717,7 +2717,7 @@ export function SessionRoute() {
     return needsSignIn ? null : label;
   }, [local.prefs.defaultModel, newTaskModel, newTaskVariant, changeNewTaskModel, modelVariantValue, modelPicker.actionOptions]);
 
-  const cycleFavoriteModelControlAction = useMemo<OpenworkControlAction>(() => ({
+  const cycleFavoriteModelControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.favorite_model.cycle",
     label: t("ui.e872383f5772"),
     description: t("ui.f246f7939e46"),
@@ -2802,7 +2802,7 @@ export function SessionRoute() {
     return decision.fastOn ? t("ui.7547e336ea20") : t("ui.c6a2c0bf9f96");
   }, [local, modelBehaviorOptions, modelVariantValue, providerCatalog, newTaskModel, newTaskVariant, newTaskBehavior.options, changeNewTaskModel]);
 
-  const toggleFastModeControlAction = useMemo<OpenworkControlAction>(() => ({
+  const toggleFastModeControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.fast_mode.toggle",
     label: t("ui.c41a12756b9c"),
     description: t("ui.adf2c69aa4ee"),
@@ -2890,7 +2890,7 @@ export function SessionRoute() {
     selectedWorkspaceRoot,
     selectedSessionId,
     canCreateTask,
-    openworkClient: client,
+    get3wClient: client,
     opencodeClient,
     endpointForWorkspace,
     navigateToSession: navigateToSessionForControl,
@@ -2904,7 +2904,7 @@ export function SessionRoute() {
     archiveSession,
   });
 
-  const seedUnavailableModelControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedUnavailableModelControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.model_not_available.seed",
@@ -2973,7 +2973,7 @@ export function SessionRoute() {
   }, [checkDesktopRestriction, disabledProviderIds, local, modelPicker.setQuery, modelPicker.setRecentProviderIds, opencodeBaseUrl, opencodeClient, selectedSessionId, selectedWorkspaceId, selectedWorkspaceRoot]);
   useControlAction(seedUnavailableModelControlAction);
 
-  const seedActiveSessionSidebarControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedActiveSessionSidebarControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.session_sidebar.seed_active",
@@ -2992,7 +2992,7 @@ export function SessionRoute() {
   }, [selectedSessionId, selectedWorkspaceId]);
   useControlAction(seedActiveSessionSidebarControlAction);
 
-  const seedChildPermissionControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedChildPermissionControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
     return {
       id: "eval.child_permission.seed",
@@ -3060,7 +3060,7 @@ export function SessionRoute() {
   }, [rememberPendingCreatedSession, selectedSessionId, selectedWorkspaceEndpoint?.workspaceId, selectedWorkspaceId, sessionsByWorkspaceId, setSessionsByWorkspaceId]);
   useControlAction(seedChildPermissionControlAction);
 
-  const commandPaletteControlAction = useMemo<OpenworkControlAction>(() => ({
+  const commandPaletteControlAction = useMemo<Get3wControlAction>(() => ({
     id: "command_palette.open",
     label: t("ui.2fee1e28c0d6"),
     description: t("ui.3f648d971849"),
@@ -3070,7 +3070,7 @@ export function SessionRoute() {
   }), []);
   useControlAction(commandPaletteControlAction);
 
-  const addProviderControlAction = useMemo<OpenworkControlAction>(() => ({
+  const addProviderControlAction = useMemo<Get3wControlAction>(() => ({
     id: "settings.provider.add",
     label: t("ui.b9400ea90bfd"),
     description: t("ui.a7ea960bc774"),
@@ -3312,7 +3312,7 @@ export function SessionRoute() {
       setCommandPaletteOpen(false);
       setDeveloperMode((current) => {
         const next = !current;
-        try { window.localStorage.setItem("openwork.developerMode", next ? "1" : "0"); } catch {}
+        try { window.localStorage.setItem("get3w.developerMode", next ? "1" : "0"); } catch {}
         return next;
       });
     },
@@ -3323,9 +3323,9 @@ export function SessionRoute() {
     canReloadWorkspace: reloadCoordinator.canReloadWorkspaceEngine,
     clientConnected: canCreateTask,
     developerMode,
-    hostInfo: openworkServerHostInfoState,
-    openworkServerStatus: client ? "connected" : "disconnected",
-    openworkServerUrl: baseUrl,
+    hostInfo: get3wServerHostInfoState,
+    get3wServerStatus: client ? "connected" : "disconnected",
+    get3wServerUrl: baseUrl,
     runtimeWorkspaceId: selectedWorkspaceEndpoint?.workspaceId ?? null,
   }), [
     activeReloadBlockingSessions.length,
@@ -3333,7 +3333,7 @@ export function SessionRoute() {
     canCreateTask,
     client,
     developerMode,
-    openworkServerHostInfoState,
+    get3wServerHostInfoState,
     reloadCoordinator.canReloadWorkspaceEngine,
     selectedWorkspaceEndpoint?.workspaceId,
   ]);
@@ -3365,7 +3365,7 @@ export function SessionRoute() {
       try {
         const json = await buildCommandDiagnosticsBundle();
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        downloadTextAsFile(`openwork-diagnostics-${timestamp}.json`, json, "application/json");
+        downloadTextAsFile(`get3w-diagnostics-${timestamp}.json`, json, "application/json");
         toast.success(t("session.diagnostics_exported"));
       } catch (error) {
         toast.error(t("session.diagnostics_failed"), { description: describeRouteError(error) });
@@ -3475,14 +3475,14 @@ export function SessionRoute() {
       let sessionBaseUrl = baseUrl;
       let sessionToken = token;
       if (targetWorkspace && isDesktopRuntime()) {
-        await ensureDesktopLocalOpenworkConnection({
+        await ensureDesktopLocalGet3wConnection({
           route: "session",
           workspace: targetWorkspace,
           allWorkspaces: list.workspaces,
         }).catch(() => undefined);
         // The engine boot can restart the server with fresh tokens; re-resolve
         // so the first-session creation below doesn't use stale credentials.
-        const fresh = await resolveOpenworkConnection().catch(() => null);
+        const fresh = await resolveGet3wConnection().catch(() => null);
         if (fresh?.normalizedBaseUrl && fresh.resolvedToken) {
           sessionBaseUrl = fresh.normalizedBaseUrl;
           sessionToken = fresh.resolvedToken;
@@ -3508,9 +3508,9 @@ export function SessionRoute() {
         // its supplied prompt; ordinary creation lands on the New task state.
         const session = createdOnServer && sessionBaseUrl && sessionToken && (firstTaskPrompt || firstTaskAttachments.length > 0)
           ? await createClient(
-              `${(buildOpenworkWorkspaceBaseUrl(sessionBaseUrl, targetWorkspaceId) ?? sessionBaseUrl).replace(/\/+$/, "")}/opencode`,
+              `${(buildGet3wWorkspaceBaseUrl(sessionBaseUrl, targetWorkspaceId) ?? sessionBaseUrl).replace(/\/+$/, "")}/opencode`,
               workspacePath || undefined,
-              { token: sessionToken, mode: "openwork" },
+              { token: sessionToken, mode: "get3w" },
             ).session.create({ directory: workspacePath || undefined })
               .then((result) => unwrap(result))
           : null;
@@ -3615,7 +3615,7 @@ export function SessionRoute() {
     });
   }, [endpointForWorkspace, handleCreateWorkspace, handleOpenCreateWorkspace, navigate, newTaskAgent, newTaskModel, publishCreatedConversation, sessionDraftScope, sessionProviderAuthStore, workspacesRef]);
 
-  const createWorkspaceControlAction = useMemo<OpenworkControlAction>(() => ({
+  const createWorkspaceControlAction = useMemo<Get3wControlAction>(() => ({
     id: "workspace.create",
     label: t("ui.bf800aee8eff"),
     description: t("ui.253e6b018dac"),
@@ -3640,7 +3640,7 @@ export function SessionRoute() {
   // Sessions created outside this window (server-side session.create, other
   // clients) never reach a non-selected workspace's cached list, so callers
   // that create them ask the sidebar to refetch that one workspace.
-  const reloadWorkspaceSessionsControlAction = useMemo<OpenworkControlAction>(() => ({
+  const reloadWorkspaceSessionsControlAction = useMemo<Get3wControlAction>(() => ({
     id: "workspace.reload_sessions",
     label: t("ui.743fbf11897e"),
     description: t("ui.22f42f5a6038"),
@@ -3673,7 +3673,7 @@ export function SessionRoute() {
     <WorkspaceProvider
       client={opencodeClient}
       opencodeBaseUrl={opencodeBaseUrl}
-      openworkServerClient={selectedWorkspaceEndpoint?.client ?? null}
+      get3wServerClient={selectedWorkspaceEndpoint?.client ?? null}
       workspaceId={selectedWorkspaceEndpoint?.workspaceId ?? ""}
       selectedWorkspaceRoot={selectedWorkspaceRoot}
     >
@@ -3693,7 +3693,7 @@ export function SessionRoute() {
         sessionId={selectedSessionId}
         activeSessionIds={activeSelectedWorkspaceSessionIds}
         opencodeBaseUrl={opencodeBaseUrl}
-        openworkToken={selectedWorkspaceServerToken}
+        get3wToken={selectedWorkspaceServerToken}
         onSessionCreated={handleRuntimeSessionCreated}
         onSessionUpdated={handleRuntimeSessionUpdated}
         onSessionDeleted={handleRuntimeSessionDeleted}
@@ -3720,10 +3720,10 @@ export function SessionRoute() {
       opencodeBaseUrl={opencodeBaseUrl}
       workspaces={workspaces}
       clientConnected={canCreateTask}
-      openworkServerStatus={client ? "connected" : "disconnected"}
-      openworkServerClient={selectedWorkspaceEndpoint?.client ?? client}
+      get3wServerStatus={client ? "connected" : "disconnected"}
+      get3wServerClient={selectedWorkspaceEndpoint?.client ?? client}
       environmentClient={client}
-      openworkServerToken={selectedWorkspaceServerToken}
+      get3wServerToken={selectedWorkspaceServerToken}
       developerMode={developerMode}
       headerStatus={
         canCreateTask || (activeComposerTargetsSession && !selectedWorkspaceError && activeComposerAvailability.status === "available")
@@ -3784,7 +3784,7 @@ export function SessionRoute() {
           workspaceId={selectedWorkspaceId}
           onClose={() => {
             try {
-              window.dispatchEvent(new CustomEvent("openwork-close-right-pane"));
+              window.dispatchEvent(new CustomEvent("get3w-close-right-pane"));
             } catch {
               // ignore
             }
@@ -3804,7 +3804,7 @@ export function SessionRoute() {
         content: <WorkspaceProvider
           client={opencodeClient}
           opencodeBaseUrl={opencodeBaseUrl}
-          openworkServerClient={dashboardEndpoint?.client ?? null}
+          get3wServerClient={dashboardEndpoint?.client ?? null}
           workspaceId={dashboardEndpoint?.workspaceId ?? ""}
           selectedWorkspaceRoot={selectedWorkspaceRoot}
         >
@@ -3823,7 +3823,7 @@ export function SessionRoute() {
         <WorkspaceProvider
           client={opencodeClient}
           opencodeBaseUrl={opencodeBaseUrl}
-          openworkServerClient={dashboardEndpoint?.client ?? null}
+          get3wServerClient={dashboardEndpoint?.client ?? null}
           workspaceId={dashboardEndpoint?.workspaceId ?? ""}
           selectedWorkspaceRoot={selectedWorkspaceRoot}
         >
@@ -3840,7 +3840,7 @@ export function SessionRoute() {
         <WorkspaceProvider
           client={opencodeClient}
           opencodeBaseUrl={opencodeBaseUrl}
-          openworkServerClient={dashboardEndpoint?.client ?? null}
+          get3wServerClient={dashboardEndpoint?.client ?? null}
           workspaceId={dashboardEndpoint?.workspaceId ?? ""}
           selectedWorkspaceRoot={selectedWorkspaceRoot}
         >
@@ -4019,7 +4019,7 @@ export function SessionRoute() {
         initializing: loading || connectionPending,
         reloadBusy: reloadCoordinator.reloadBusy,
         reloadError: reloadCoordinator.reloadError,
-        openWorkConnectState: sessionMcpMaintenance,
+        get3wConnectState: sessionMcpMaintenance,
       }}
       notFoundMessage={activityRouteActive ? null : routeNotFoundMessage}
       mainContentTakeover={
@@ -4111,14 +4111,14 @@ export function SessionRoute() {
       accessibleTargets={paletteAccessibleTargets}
       onOpenAccessibleTarget={(target) => {
         try {
-          window.dispatchEvent(new CustomEvent("openwork-open-accessible-target", { detail: target }));
+          window.dispatchEvent(new CustomEvent("get3w-open-accessible-target", { detail: target }));
         } catch {
           // ignore event dispatch failures
         }
       }}
       onHideAccessibleTarget={(target) => {
         try {
-          window.dispatchEvent(new CustomEvent("openwork-hide-accessible-target", { detail: target }));
+          window.dispatchEvent(new CustomEvent("get3w-hide-accessible-target", { detail: target }));
         } catch {
           // ignore event dispatch failures
         }
@@ -4189,7 +4189,7 @@ export function SessionRoute() {
         try {
           const current = await readManagedDisabledProviders({
             opencodeClient,
-            openworkClient: disabledProvidersEndpointClient,
+            get3wClient: disabledProvidersEndpointClient,
             workspaceId: disabledProvidersWorkspaceId,
             workspaceType: disabledProvidersWorkspaceType,
           });
@@ -4198,7 +4198,7 @@ export function SessionRoute() {
             : [...current, providerId];
           const result = await updateManagedDisabledProviders({
             opencodeClient,
-            openworkClient: disabledProvidersEndpointClient,
+            get3wClient: disabledProvidersEndpointClient,
             workspaceId: disabledProvidersWorkspaceId,
             workspaceType: disabledProvidersWorkspaceType,
             disabledProviders: next,
@@ -4218,8 +4218,8 @@ export function SessionRoute() {
         handleOpenSettings("/settings/general");
       }}
       onClose={() => { modelPicker.setOpen(false); modelPicker.setRecentProviderIds(new Set()); setModelPickerSessionId(null); }}
-      openWorkModelsEntitled={openWorkModelsEntitled}
-      openWorkModelsSyncing={openWorkModelsSyncing}
+      get3wModelsEntitled={get3wModelsEntitled}
+      get3wModelsSyncing={get3wModelsSyncing}
       onRefreshOrganizationModels={refreshOrganizationModelAccess}
       catalogState={modelPicker.catalogState}
       restrictToCloud={restrictToCloudProviders}

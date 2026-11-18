@@ -1,5 +1,5 @@
 import { createTaskPermissionBridge } from "./task-permissions.mjs";
-import { migrateGet3wStorage, migrateStoragePath } from "./get3w-storage-migration.mjs";
+import { migrateStoragePath } from "./get3w-storage-migration.mjs";
 import { createTaskLogs } from "./task-logs.mjs";
 import { loadStartupUrl } from "./startup-navigation.mjs";
 import { createAutomationReceiptJournal } from "./get3w-automation-receipts.mjs";
@@ -31,7 +31,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { globalOpencodeConfigDir, workspaceOpencodeConfigCandidates } from "@openwork/paths";
+import { globalOpencodeConfigDir, workspaceOpencodeConfigCandidates } from "@get3w/paths";
 
 import { configureFakeMediaForTests, installMediaPermissionHandlers } from "./media-permissions.mjs";
 import { registerMigrationIpc } from "./migration.mjs";
@@ -43,7 +43,7 @@ import { createNativeContextMenus } from "./context-menu.mjs";
 import { createNativeDictation, createSpeechDictation } from "./native-dictation.mjs";
 import { applyBrandAppName } from "./brand-app-name.mjs";
 import { createBrowserPanel } from "./browser-panel.mjs";
-import { createComputerControl } from "@openwork/computer-use/computer-control";
+import { createComputerControl } from "@get3w/computer-use/computer-control";
 import { createLocalComputerAdapter } from "./computer-local.mjs";
 import { createComputerScripting } from "./computer-scripting.mjs";
 import { remoteComputerAdapters } from "./computer-targets.mjs";
@@ -83,9 +83,9 @@ import { createWindowsShortcutScheduler, readWindowsShortcutMarker } from "./win
 import { resetMacDockIcon } from "./brand-icon-darwin.mjs";
 import { createDesktopVaultKeyProvider } from "./secure-vault-key.mjs";
 import {
-  clearOpenworkSentrySession,
-  initOpenworkSentry,
-  setOpenworkSentrySession,
+  clearGet3wSentrySession,
+  initGet3wSentry,
+  setGet3wSentrySession,
 } from "./sentry.mjs";
 import { installStdioErrorHandlers } from "./stdio-errors.mjs";
 import {
@@ -110,7 +110,7 @@ function resolveProcessStartedAt() {
     ? Math.round(creationTime)
     : MAIN_MODULE_STARTED_AT;
 }
-/** @type {import("@openwork/types/desktop-ipc").DesktopStartupTimings} */
+/** @type {import("@get3w/types/desktop-ipc").DesktopStartupTimings} */
 const startupTimings = {
   processStartedAt: resolveProcessStartedAt(),
   windowShownAt: null,
@@ -148,22 +148,22 @@ const startNativeDictation = createNativeDictation({
 const speechDictation = createSpeechDictation({
   platform: process.platform,
   helperPath: path.join(app.isPackaged ? path.join(process.resourcesPath, "helpers") : path.resolve(__dirname, "..", "resources", "helpers"),
-    process.platform === "win32" ? "openwork-dictation.exe" : "openwork-dictation"),
+    process.platform === "win32" ? "get3w-dictation.exe" : "get3w-dictation"),
   infoPlist: path.resolve(path.dirname(process.execPath), "..", "Info.plist"),
   exists: existsSync,
   readText: (file) => readFileSync(file, "utf8"),
 });
 const pty = require(["node", "pty"].join("-"));
-const NATIVE_DEEP_LINK_EVENT = "openwork:deep-link-native";
+const NATIVE_DEEP_LINK_EVENT = "get3w:deep-link-native";
 const isDevMode = process.env.GET3W_DEV_MODE === "1";
-const localValidationPackage = app.isPackaged && Reflect.get(desktopPackageMetadata,"openworkLocalValidation") === true;
+const localValidationPackage = app.isPackaged && Reflect.get(desktopPackageMetadata,"get3wLocalValidation") === true;
 const baseDesktopDistribution = resolveDesktopDistribution({
   isPackaged: app.isPackaged,
-  packageFlavor: Reflect.get(desktopPackageMetadata, "openworkDistribution"),
+  packageFlavor: Reflect.get(desktopPackageMetadata, "get3wDistribution"),
   environmentFlavor: process.env.GET3W_DESKTOP_DISTRIBUTION,
 });
 const DESKTOP_DISTRIBUTION = localValidationPackage
-  ? { ...baseDesktopDistribution, appName: "Get3W Local", appIdentifier: "com.get3w.desktop.local", protocolScheme: "openwork-local" }
+  ? { ...baseDesktopDistribution, appName: "Get3W Local", appIdentifier: "com.get3w.desktop.local", protocolScheme: "get3w-local" }
   : baseDesktopDistribution;
 const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
@@ -179,7 +179,7 @@ const APP_NAME = BLANK_SLATE_LAUNCH.appName;
 let currentDisplayAppName = APP_NAME;
 installStdioErrorHandlers();
 installSocketTypeOfServiceGuard();
-await initOpenworkSentry({
+await initGet3wSentry({
   app,
   distribution: DESKTOP_DISTRIBUTION,
   packageMetadata: desktopPackageMetadata,
@@ -210,14 +210,14 @@ const applicationMenu = createApplicationMenu({
   closeBrowserTab: (host) => browserPanel?.closeFocusedBrowserTab(host) ?? false,
 });
 
-ipcMain.handle("openwork:set-language", (event, language) => {
+ipcMain.handle("get3w:set-language", (event, language) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Main window required");
   applicationMenu.setLanguage(language);
 });
 
 let browserPanel = null;
 // Must match COMPUTER_POPOUT_PREFIX in the app's computer-popout.ts.
-const COMPUTER_POPOUT_NAME = /^openwork-computer-view-\d+$/;
+const COMPUTER_POPOUT_NAME = /^get3w-computer-view-\d+$/;
 
 // Keep each chat's chosen computer in app data outside the workspace.
 const computerTargetsPath = () => path.join(app.getPath("userData"), "computer-use-targets.json");
@@ -233,11 +233,11 @@ const computerControl = createComputerControl({
   // Blender reads the bridge from disk, so packaged builds unpack it beside app.asar.
   ...(process.platform !== "win32" ? { runScript: createComputerScripting({
     stateDir: path.join(app.getPath("userData"), "computer-scripting"),
-    bridgeScript: path.join(__dirname, "computer-scripting", "openwork_blender.py").replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`),
+    bridgeScript: path.join(__dirname, "computer-scripting", "get3w_blender.py").replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`),
   }) } : {}),
   // Where computer steps spend their time: on this computer, or waiting for the model.
   onTiming: (_sessionId, step) => console.info(`[computer] ${step.name} computer ${Math.round(step.computerMs)} ms${step.modelMs === undefined ? "" : ` · model ${Math.round(step.modelMs)} ms`}`),
-  runProgram: async (request, host, signal) => (await import("@openwork/computer-use/runtime")).runComputerProgram(request, host, signal),
+  runProgram: async (request, host, signal) => (await import("@get3w/computer-use/runtime")).runComputerProgram(request, host, signal),
   browserTask: (request, options) => browserPanel?.browserTask(request, options) ?? Promise.resolve({ ok: false, code: "browser_unavailable" }),
   // This computer first, then any configured VM (see computer-targets.mjs).
   adapters: [process.platform === "win32" ? createWindowsComputerAdapter({
@@ -278,7 +278,7 @@ const computerControl = createComputerControl({
   },
   // The chat asks the person when the agent needs computer use it does not have yet.
   onRequest: (sessionId, request) => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("openwork:computer:request", { sessionId, request });
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("get3w:computer:request", { sessionId, request });
   },
 });
 /** Computer use changes app consent; only the main Get3W window may ask. */
@@ -367,10 +367,9 @@ const userDataPath = BLANK_SLATE_LAUNCH.userDataPath ?? resolveUserDataPath({
   userDataOverride: process.env.GET3W_ELECTRON_USERDATA,
 });
 if (localValidationPackage && !process.env.GET3W_ELECTRON_USERDATA && !BLANK_SLATE_LAUNCH.enabled) {
-  migrateStoragePath(path.join(app.getPath("appData"), "com.openwork.desktop.local"), userDataPath);
+  migrateStoragePath(path.join(app.getPath("appData"), "com.get3w.desktop.local"), userDataPath);
 }
 app.setPath("userData", userDataPath);
-migrateGet3wStorage({ userDataDir: userDataPath });
 // The local package also isolates sidecar config, credentials and history.
 // Electron userData alone does not isolate OpenCode's XDG/global stores.
 if (localValidationPackage) {
@@ -781,7 +780,7 @@ async function focusMainWindowFromNotification() {
 
 /**
  * @param {unknown} input
- * @returns {import("@openwork/types/desktop-ipc").DesktopNotificationResult}
+ * @returns {import("@get3w/types/desktop-ipc").DesktopNotificationResult}
  */
 function showDesktopNotification(input) {
   if (!ElectronNotification.isSupported()) {
@@ -1100,7 +1099,7 @@ if (remoteDebugPort > 0) {
 process.env.GET3W_ELECTRON_REMOTE_DEBUG_PORT = String(remoteDebugPort);
 if (isDevMode && !app.isPackaged) {
   const cdpAddress = remoteDebugPort > 0 ? `http://127.0.0.1:${remoteDebugPort}` : "disabled";
-  console.log(`[openwork] dev profile=${app.getPath("userData")} cdp=${cdpAddress}`);
+  console.log(`[get3w] dev profile=${app.getPath("userData")} cdp=${cdpAddress}`);
 }
 
 // Apply extra Chromium flags from ELECTRON_EXTRA_LAUNCH_ARGS.
@@ -1147,7 +1146,7 @@ const IDLE_ENGINE_INFO = Object.freeze({
   lastStderr: null,
 });
 
-const IDLE_OPENWORK_SERVER_INFO = Object.freeze({
+const IDLE_GET3W_SERVER_INFO = Object.freeze({
   running: false,
   host: null,
   port: null,
@@ -1225,7 +1224,7 @@ function forwardedDeepLinks(argv) {
     .filter(
       (entry) =>
         entry.startsWith(`${DESKTOP_PROTOCOL_SCHEME}://`) ||
-        (!app.isPackaged && entry.startsWith("openwork-dev://")) ||
+        (!app.isPackaged && entry.startsWith("get3w-dev://")) ||
         entry.startsWith("https://") ||
         entry.startsWith("http://"),
     );
@@ -1339,8 +1338,8 @@ async function disposeRuntimeBeforeQuit() {
   if (runtimeDisposedForQuit || runtimeDisposeInProgress) return;
   runtimeDisposeInProgress = true;
   try {
-    await openworkManagedMcp.close().catch(() => undefined);
-    await openworkManagedProvider.close().catch(() => undefined);
+    await get3wManagedMcp.close().catch(() => undefined);
+    await get3wManagedProvider.close().catch(() => undefined);
     await runtimeManager.dispose().catch(() => undefined);
     runtimeDisposedForQuit = true;
   } finally {
@@ -1370,7 +1369,7 @@ const quitSequencer = createQuitSequencer({
 });
 const quitInProgress = () => quitSequencer.phase() !== "idle";
 
-function assertOpenworkServerReady(info) {
+function assertGet3wServerReady(info) {
   if (!info?.running) {
     throw new Error("Get3W server did not stay running after startup.");
   }
@@ -1440,8 +1439,8 @@ async function bootRuntimeForSelectedWorkspace() {
       watchedId: String(fallback.id ?? ""),
     }).catch(() => undefined);
   }
-  const openworkServer = assertOpenworkServerReady(await runtimeManager.openworkServerInfo());
-  return { ok: true, skipped: false, engine, openworkServer, workspaceId: bootWorkspace.id ?? null };
+  const get3wServer = assertGet3wServerReady(await runtimeManager.get3wServerInfo());
+  return { ok: true, skipped: false, engine, get3wServer, workspaceId: bootWorkspace.id ?? null };
 }
 
 function startRuntimeBootstrap() {
@@ -1705,9 +1704,9 @@ function applyNativeTheme(mode) {
 // entry here; handlers receive the ipcMain event followed by the renderer
 // arguments. The @type below asserts this registry against the shared
 // DesktopCommandMap contract (packages/types/src/desktop-ipc.ts): a missing,
-// extra, or renamed command fails `pnpm --filter @openwork/desktop
+// extra, or renamed command fails `pnpm --filter @get3w/desktop
 // typecheck:electron`.
-/** @type {import("@openwork/types/desktop-ipc").DesktopCommandHandlers<import("electron").IpcMainInvokeEvent>} */
+/** @type {import("@get3w/types/desktop-ipc").DesktopCommandHandlers<import("electron").IpcMainInvokeEvent>} */
 const desktopCommandHandlers = {
   "__startNativeDictation": async (event, requestId) => startNativeDictation.start(event, mainWindow, requestId),
   "__cancelNativeDictationStart": async (event, requestId) => startNativeDictation.cancel(event, requestId),
@@ -1730,13 +1729,13 @@ const desktopCommandHandlers = {
   "workspaceForget": async (event, ...args) => {
       return workspaceStore.forgetWorkspace(String(args[0] ?? "").trim());
   },
-  "workspaceOpenworkRead": async (event, ...args) => {
-      return workspaceStore.readWorkspaceOpenworkConfig(String(args[0]?.workspacePath ?? "").trim());
+  "workspaceGet3wRead": async (event, ...args) => {
+      return workspaceStore.readWorkspaceGet3wConfig(String(args[0]?.workspacePath ?? "").trim());
   },
-  "workspaceOpenworkWrite": async (event, ...args) => {
-      return workspaceStore.writeWorkspaceOpenworkConfig(
+  "workspaceGet3wWrite": async (event, ...args) => {
+      return workspaceStore.writeWorkspaceGet3wConfig(
         String(args[0]?.workspacePath ?? "").trim(),
-        args[0]?.config ?? workspaceStore.defaultWorkspaceOpenworkConfig(""),
+        args[0]?.config ?? workspaceStore.defaultWorkspaceGet3wConfig(""),
       );
   },
   "engineStart": async (event, ...args) => {
@@ -1764,7 +1763,7 @@ const desktopCommandHandlers = {
         version: app.getVersion(),
         gitSha: process.env.GET3W_GIT_SHA ?? null,
         buildEpoch: process.env.GET3W_BUILD_EPOCH ?? null,
-        openworkDevMode: process.env.GET3W_DEV_MODE === "1",
+        get3wDevMode: process.env.GET3W_DEV_MODE === "1",
       };
   },
   "startupTimings": async (event, ...args) => {
@@ -1776,13 +1775,13 @@ const desktopCommandHandlers = {
   "desktopSentrySetSession": async (event, ...args) => {
       const input = args[0] ?? {};
       return {
-        enabled: setOpenworkSentrySession({
+        enabled: setGet3wSentrySession({
           userId: input.userId,
         }),
       };
   },
   "desktopSentryClearSession": async (event, ...args) => {
-      return { enabled: clearOpenworkSentrySession() };
+      return { enabled: clearGet3wSentrySession() };
   },
   "desktopSetKeepAwake": async (event, ...args) => {
       const sender = event.sender;
@@ -1814,13 +1813,13 @@ const desktopCommandHandlers = {
         return null;
       }
   },
-  "getOpenworkUiMcpCommand": async (event, ...args) => {
+  "getGet3wUiMcpCommand": async (event, ...args) => {
       if (process.env.GET3W_DEV_MODE === "1") {
-        return ["node", path.resolve(__dirname, "../../..", "packages/openwork-ui-mcp/index.mjs")];
+        return ["node", path.resolve(__dirname, "../../..", "packages/get3w-ui-mcp/index.mjs")];
       }
-      return ["npx", "-y", "openwork-ui-mcp"];
+      return ["npx", "-y", "get3w-ui-mcp"];
   },
-  "getOpenworkUiMcpEnvironment": async (event, ...args) => {
+  "getGet3wUiMcpEnvironment": async (event, ...args) => {
       return {
         GET3W_UI_CONTROL_DISCOVERY: path.join(app.getPath("userData"), "get3w-ui-control.json"),
       };
@@ -1903,7 +1902,7 @@ const desktopCommandHandlers = {
   "setDesktopBootstrapConfig": async (event, ...args) => {
       return workspaceStore.setDesktopBootstrapConfig(args[0] ?? {});
   },
-  "nukeOpenworkAndOpencodeConfigPreview": async (event, ...args) => {
+  "nukeGet3wAndOpencodeConfigPreview": async (event, ...args) => {
       return buildNukeManifest({
         env: process.env,
         homedir: os.homedir(),
@@ -1913,7 +1912,7 @@ const desktopCommandHandlers = {
         workspacePaths: await workspaceStore.listLocalWorkspacePaths(),
       });
   },
-  "nukeOpenworkAndOpencodeConfigAndExit": async (event, ...args) => {
+  "nukeGet3wAndOpencodeConfigAndExit": async (event, ...args) => {
       return executeNukeFreshStart({
         app,
         session,
@@ -1931,14 +1930,14 @@ const desktopCommandHandlers = {
         },
       });
   },
-  "openworkServerInfo": async (event, ...args) => {
-      return runtimeManager.openworkServerInfo();
+  "get3wServerInfo": async (event, ...args) => {
+      return runtimeManager.get3wServerInfo();
   },
   "automationRunnerConfigure": async (event, ...args) => {
       return { connected: false };
   },
-  "openworkServerRestart": async (event, ...args) => {
-      return runtimeManager.openworkServerRestart(args[0] ?? {});
+  "get3wServerRestart": async (event, ...args) => {
+      return runtimeManager.get3wServerRestart(args[0] ?? {});
   },
   "pickDirectory": async (event, ...args) => {
       const options = args[0] ?? {};
@@ -2056,8 +2055,8 @@ const desktopCommandHandlers = {
         String(args[2] ?? ""),
       );
   },
-  "resetOpenworkState": async (event, ...args) => {
-      return workspaceStore.resetOpenworkState();
+  "resetGet3wState": async (event, ...args) => {
+      return workspaceStore.resetGet3wState();
   },
   "opencodeMcpAuth": async (event, ...args) => {
       return runtimeManager.opencodeMcpAuth(String(args[0] ?? "").trim(), String(args[1] ?? "").trim());
@@ -2067,7 +2066,7 @@ const desktopCommandHandlers = {
       if (!target) return "Path is required.";
       return shell.openPath(target);
   },
-  "__openWorkspaceFile": async (event, ...args) => {
+  "__get3wspaceFile": async (event, ...args) => {
       // Chat links are renderer-derived text. Resolve them on disk here so only a real
       // file inside the real workspace launches; anything else is revealed, never run.
       const workspaceRoot = String(args[0] ?? "").trim();
@@ -2265,7 +2264,7 @@ const desktopCommandHandlers = {
         return false;
       }
       window.webContents.setZoomFactor(factor);
-      window.webContents.send("openwork:browser:bounds-invalidated");
+      window.webContents.send("get3w:browser:bounds-invalidated");
       return true;
   },
   "__setNativeTheme": async (event, ...args) => {
@@ -2447,7 +2446,7 @@ async function createMainWindowInner() {
   // also reads the initial value, so reloading in fullscreen keeps its layout.
   const publishFullscreen = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.webContents.send("openwork:window-fullscreen", mainWindow.isFullScreen());
+    mainWindow.webContents.send("get3w:window-fullscreen", mainWindow.isFullScreen());
   };
   mainWindow.on("enter-full-screen", publishFullscreen);
   mainWindow.on("leave-full-screen", publishFullscreen);
@@ -2614,16 +2613,17 @@ async function createMainWindowInner() {
   return mainWindow;
 }
 
-ipcMain.on("openwork:desktop-bootstrap-sync", (event) => {
+ipcMain.on("get3w:desktop-bootstrap-sync", (event) => {
   event.returnValue = workspaceStore.readDesktopBootstrapConfigSync();
 });
-ipcMain.on("openwork:desktop-distribution-sync", (event) => {
+ipcMain.on("get3w:desktop-distribution-sync", (event) => {
   event.returnValue = DESKTOP_DISTRIBUTION;
 });
-ipcMain.on("openwork:window-fullscreen-sync", (event) => {
+ipcMain.on("get3w:window-fullscreen-sync", (event) => {
   event.returnValue = BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false;
 });
-const openworkAuth = createGet3wAuth({
+const get3wAuth = createGet3wAuth({
+  ...(!app.isPackaged ? {apiBase: process.env.GET3W_API_ORIGIN?.trim() || "http://127.0.0.1:6600"} : {}),
   userData: app.getPath("userData"),
   safeStorage: require("electron").safeStorage,
   openExternal: (url) => shell.openExternal(url),
@@ -2634,18 +2634,18 @@ const openworkAuth = createGet3wAuth({
     localValidation: localValidationPackage,
   }),
 });
-const taskLogs = createTaskLogs({directory:app.getPath("userData"),clientVersion:app.getVersion(),auth:openworkAuth,getServerInfo:()=>runtimeManager.openworkServerInfo()});
+const taskLogs = createTaskLogs({directory:app.getPath("userData"),clientVersion:app.getVersion(),auth:get3wAuth,getServerInfo:()=>runtimeManager.get3wServerInfo()});
 globalThis.__get3wTaskLogs = taskLogs;
 taskLogs.start();
 app.on("before-quit",()=>taskLogs.stop());
-const openworkManagedProvider = createGet3wManagedProvider({
-  auth: openworkAuth, userData: app.getPath("userData"), getServerInfo: () => runtimeManager.openworkServerInfo(),
+const get3wManagedProvider = createGet3wManagedProvider({
+  auth: get3wAuth, userData: app.getPath("userData"), getServerInfo: () => runtimeManager.get3wServerInfo(),
 });
-const openworkManagedMcp = createGet3wManagedMcp({
-  auth:openworkAuth,userData:app.getPath("userData"),getServerInfo:()=>runtimeManager.openworkServerInfo(),
+const get3wManagedMcp = createGet3wManagedMcp({
+  auth:get3wAuth,userData:app.getPath("userData"),getServerInfo:()=>runtimeManager.get3wServerInfo(),
 });
-const personalAutomationRunner = createPersonalAutomationRunner({auth:openworkAuth,log:message=>console.warn("[get3w-automations]",message),receiptJournal:createAutomationReceiptJournal({userData:app.getPath("userData"),safeStorage:require("electron").safeStorage}),getWorkspaceIds:async()=>{
-  const server=await runtimeManager.openworkServerInfo();
+const personalAutomationRunner = createPersonalAutomationRunner({auth:get3wAuth,log:message=>console.warn("[get3w-automations]",message),receiptJournal:createAutomationReceiptJournal({userData:app.getPath("userData"),safeStorage:require("electron").safeStorage}),getWorkspaceIds:async()=>{
+  const server=await runtimeManager.get3wServerInfo();
   if(!server.baseUrl)throw Error("The local workspace service is starting. Retry shortly.");
   // loopback-fetch: local engine baseUrl is always 127.0.0.1.
   const response=await fetch(`${server.baseUrl}/workspaces`,{headers:{Authorization:`Bearer ${server.clientToken??server.ownerToken}`},signal:AbortSignal.timeout(10000)});
@@ -2653,27 +2653,27 @@ const personalAutomationRunner = createPersonalAutomationRunner({auth:openworkAu
   const listed=await response.json();
   return listed.items.map(item=>item.id);
 },getLocalRuntime:async()=>{
-  const server=await runtimeManager.openworkServerInfo();
+  const server=await runtimeManager.get3wServerInfo();
   return {baseUrl:server.baseUrl,token:server.clientToken??server.ownerToken};
 }});
 personalAutomationRunner.start();
 app.on("before-quit",()=>personalAutomationRunner.stop());
 powerMonitor.on("resume",()=>personalAutomationRunner.wake());
-const taskPermissions = createTaskPermissionBridge({ getServerInfo: () => runtimeManager.openworkServerInfo() });
-const openworkModelApprovals = createModelApprovalBridge({ getServerInfo: () => runtimeManager.openworkServerInfo() });
+const taskPermissions = createTaskPermissionBridge({ getServerInfo: () => runtimeManager.get3wServerInfo() });
+const get3wModelApprovals = createModelApprovalBridge({ getServerInfo: () => runtimeManager.get3wServerInfo() });
 ipcMain.handle("get3w:auth", async (event, operation, input) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Untrusted sign-in caller");
   if (operation === "taskPermissions") return taskPermissions(input);
-  if (operation === "modelTasks") return openworkManagedMcp.tasks(input);
-  if (operation === "outputs") return openworkManagedMcp.outputs(input);
-  if (operation === "modelApprovals") return openworkModelApprovals(input);
-  if (operation === "managedMcp") return openworkManagedMcp.run(input);
-  if (operation === "managedModels") return openworkManagedProvider.run(input);
+  if (operation === "modelTasks") return get3wManagedMcp.tasks(input);
+  if (operation === "outputs") return get3wManagedMcp.outputs(input);
+  if (operation === "modelApprovals") return get3wModelApprovals(input);
+  if (operation === "managedMcp") return get3wManagedMcp.run(input);
+  if (operation === "managedModels") return get3wManagedProvider.run(input);
   if (!["status", "begin", "poll", "cancel", "logout", "settings", "balance", "models", "connectors", "modelUsage", "taskCatalog", "artifacts", "automations"].includes(operation)) throw new Error("Unknown sign-in operation");
-  const result = await openworkAuth[operation](input);
+  const result = await get3wAuth[operation](input);
   if (["status", "poll", "logout"].includes(operation)) {
     const modelSnapshot = result;
-    try { result.managedModels = await openworkManagedProvider.reconcile(modelSnapshot); }
+    try { result.managedModels = await get3wManagedProvider.reconcile(modelSnapshot); }
     catch (error) {
       // Record the recovery failure without logging provider definitions/tokens.
       console.error("[get3w-managed-provider] reconnect failed", error instanceof Error ? error.message : "Unknown reconnect error");
@@ -2682,25 +2682,25 @@ ipcMain.handle("get3w:auth", async (event, operation, input) => {
   }
   if (["status","poll","logout"].includes(operation)) {
     const snapshot = result;
-    await openworkManagedMcp.reconcile(snapshot).catch(() => undefined);
+    await get3wManagedMcp.reconcile(snapshot).catch(() => undefined);
   }
   return result;
 });
-ipcMain.handle("openwork:desktop", handleDesktopInvoke);
-ipcMain.handle("openwork:shell:openExternal", async (_event, url) => {
+ipcMain.handle("get3w:desktop", handleDesktopInvoke);
+ipcMain.handle("get3w:shell:openExternal", async (_event, url) => {
   if (typeof url !== "string" || url.trim().length === 0) {
     return { ok: false, error: "empty url" };
   }
   return openExternalUrl(url.trim());
 });
-ipcMain.handle("openwork:shell:relaunch", async () => {
+ipcMain.handle("get3w:shell:relaunch", async () => {
   app.relaunch();
   app.quit();
 });
-ipcMain.handle("openwork:system:architecture", async () => resolveArchitectureInfo());
+ipcMain.handle("get3w:system:architecture", async () => resolveArchitectureInfo());
 
 // ── Terminal IPC ────────────────────────────────────────────────────────
-ipcMain.handle("openwork:terminal:create", async (event, options = {}) => {
+ipcMain.handle("get3w:terminal:create", async (event, options = {}) => {
   const cwd = await resolveTerminalCwd(options?.cwd);
   const cols = Number.isFinite(options?.cols) ? Math.max(20, Math.floor(options.cols)) : 80;
   const rows = Number.isFinite(options?.rows) ? Math.max(5, Math.floor(options.rows)) : 24;
@@ -2723,27 +2723,27 @@ ipcMain.handle("openwork:terminal:create", async (event, options = {}) => {
   event.sender.once("destroyed", () => killTerminalsForWebContents(event.sender.id));
   child.onData((data) => {
     if (event.sender.isDestroyed()) return;
-    event.sender.send("openwork:terminal:data", { terminalId, data });
+    event.sender.send("get3w:terminal:data", { terminalId, data });
   });
   child.onExit(({ exitCode, signal }) => {
     terminalProcesses.delete(terminalId);
     if (event.sender.isDestroyed()) return;
-    event.sender.send("openwork:terminal:exit", { terminalId, exitCode, signal });
+    event.sender.send("get3w:terminal:exit", { terminalId, exitCode, signal });
   });
 
   return { terminalId };
 });
-ipcMain.handle("openwork:terminal:write", (event, terminalId, data) => {
+ipcMain.handle("get3w:terminal:write", (event, terminalId, data) => {
   const terminal = terminalForSender(event, terminalId);
   if (!terminal || typeof data !== "string") return;
   terminal.process.write(data);
 });
-ipcMain.handle("openwork:terminal:resize", (event, terminalId, cols, rows) => {
+ipcMain.handle("get3w:terminal:resize", (event, terminalId, cols, rows) => {
   const terminal = terminalForSender(event, terminalId);
   if (!terminal || !Number.isFinite(cols) || !Number.isFinite(rows)) return;
   terminal.process.resize(Math.max(20, Math.floor(cols)), Math.max(5, Math.floor(rows)));
 });
-ipcMain.handle("openwork:terminal:kill", (event, terminalId) => {
+ipcMain.handle("get3w:terminal:kill", (event, terminalId) => {
   const terminal = terminalForSender(event, terminalId);
   if (!terminal) return;
   killTerminal(String(terminalId));
@@ -2754,9 +2754,9 @@ browserPanel.registerIpc(ipcMain);
 // app's main frame read the open/last menu as plain data and choose an item.
 if (isDevMode && !app.isPackaged) {
   const fromMainFrame = (event) => Boolean(mainWindow) && event.sender === mainWindow.webContents && event.senderFrame === mainWindow.webContents.mainFrame;
-  ipcMain.handle("openwork:context-menu:inspect", (event) => (fromMainFrame(event) ? nativeContextMenus.inspect() : null));
-  ipcMain.handle("openwork:context-menu:choose", (event, id) => fromMainFrame(event) && nativeContextMenus.choose(id));
-  ipcMain.handle("openwork:context-menu:dismiss", (event) => {
+  ipcMain.handle("get3w:context-menu:inspect", (event) => (fromMainFrame(event) ? nativeContextMenus.inspect() : null));
+  ipcMain.handle("get3w:context-menu:choose", (event, id) => fromMainFrame(event) && nativeContextMenus.choose(id));
+  ipcMain.handle("get3w:context-menu:dismiss", (event) => {
     if (!fromMainFrame(event)) return false;
     const { open } = nativeContextMenus.inspect();
     nativeContextMenus.close();
@@ -2784,7 +2784,7 @@ const { ensureAutoUpdater, holdInstallForSessionEnd } = registerUpdaterIpc({
 
 if (!app.requestSingleInstanceLock()) {
   if (isDevMode && !app.isPackaged) {
-    console.error(`[openwork] Another Get3W dev instance already holds this profile directory:
+    console.error(`[get3w] Another Get3W dev instance already holds this profile directory:
   ${app.getPath("userData")}
 The second process is exiting so its CDP port is released.
 Run this worktree with an isolated profile: GET3W_DEV_PROFILE=auto pnpm dev

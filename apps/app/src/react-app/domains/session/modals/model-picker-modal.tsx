@@ -39,8 +39,8 @@ export type ModelPickerModalProps = {
   onToggleProvider?: (providerId: string, enabled: boolean) => void;
   onOpenSettings: () => void;
   onClose: (options?: { restorePromptFocus?: boolean }) => void;
-  openWorkModelsEntitled?: boolean;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsEntitled?: boolean;
+  get3wModelsSyncing?: boolean;
   onRefreshOrganizationModels?: () => void | Promise<void>;
   restrictToCloud?: boolean;
   gatewayProviderIds?: ReadonlySet<string>;
@@ -99,7 +99,7 @@ export function ModelPickerModal(props: ModelPickerModalProps) {
         onConnectProvider={!restrictToCloud ? props.onOpenSettings : undefined}
         onOpenProviderSettings={!checkRestriction({ restriction: "allowControlSettings" }) ? openSettings : undefined}
         onSetWorkspaceDefault={props.onSetWorkspaceDefault ?? setWorkspaceDefault}
-        openWorkModelsSyncing={props.openWorkModelsSyncing} onReloadWorkspace={props.onReloadWorkspace}
+        get3wModelsSyncing={props.get3wModelsSyncing} onReloadWorkspace={props.onReloadWorkspace}
         footerExtra={pendingProviders.length ? <div className="border-t border-border p-1.5">{pendingProviders.map((provider) => <div key={gatewayConnectProviderKey(provider)} className="flex h-9 items-center gap-2.5 px-2 text-sm">
           <Cloud className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} /><span className="min-w-0 flex-1 truncate">{gatewayConnectCopy(provider.name)}</span>
           <Button size="sm" variant="ghost" disabled={!props.onConnectGatewayProvider || props.disabledProviders?.includes(provider.providerId)} onClick={() => void props.onConnectGatewayProvider?.(provider)}>{t("ui.9d6322c1f4d9")}</Button>

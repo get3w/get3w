@@ -6,12 +6,12 @@ if (ownsDom) GlobalRegistrator.register({ url: "http://localhost/" });
 const {act} = await import("react");
 const {createRoot} = await import("react-dom/client");
 Reflect.set(globalThis,"IS_REACT_ACT_ENVIRONMENT",true);
-import type {OpenworkServerClient,OpenworkWorkspaceCatalogEntry} from "../src/app/lib/openwork-server";
-const files:OpenworkWorkspaceCatalogEntry[]=[{path:"report.txt",kind:"file",size:10,mtimeMs:1,revision:"1"},{path:"other.txt",kind:"file",size:5,mtimeMs:1,revision:"1"}];
-mock.module("../src/react-app/domains/session/artifacts/workspace-file-tree",()=>({WorkspaceFileTree:({entries,onOpenFile}:{entries:OpenworkWorkspaceCatalogEntry[];onOpenFile:(entry:OpenworkWorkspaceCatalogEntry)=>void})=><div>{entries.map(entry=><button key={entry.path} onClick={()=>onOpenFile(entry)}>{entry.path}</button>)}</div>}));
+import type {Get3wServerClient,Get3wWorkspaceCatalogEntry} from "../src/app/lib/get3w-server";
+const files:Get3wWorkspaceCatalogEntry[]=[{path:"report.txt",kind:"file",size:10,mtimeMs:1,revision:"1"},{path:"other.txt",kind:"file",size:5,mtimeMs:1,revision:"1"}];
+mock.module("../src/react-app/domains/session/artifacts/workspace-file-tree",()=>({WorkspaceFileTree:({entries,onOpenFile}:{entries:Get3wWorkspaceCatalogEntry[];onOpenFile:(entry:Get3wWorkspaceCatalogEntry)=>void})=><div>{entries.map(entry=><button key={entry.path} onClick={()=>onOpenFile(entry)}>{entry.path}</button>)}</div>}));
 mock.module("../src/react-app/domains/session/artifacts/artifact-text-editor",()=>({ArtifactTextEditor:({value,onChange}:{value:string;onChange:(value:string)=>void})=><textarea value={value} onChange={event=>onChange(event.target.value)}/>}));
 mock.module("../src/react-app/domains/session/artifacts/artifact-code-view",()=>({ArtifactCodeView:({content}:{content:string})=><pre>{content}</pre>}));
-const {createOpenworkServerClient}=await import("../src/app/lib/openwork-server");
+const {createGet3wServerClient}=await import("../src/app/lib/get3w-server");
 const {setLocale}=await import("../src/i18n"); setLocale("en");
 const {OutputsPage}=await import("../src/react-app/domains/cloud/outputs-page");
 let root:ReturnType<typeof createRoot>|null=null;
@@ -24,7 +24,7 @@ const originalFetch=globalThis.fetch;
 let testScope=0;
 async function mount(workspace=`test-${++testScope}`, localWorkspace=false){
  if(!root){host=document.createElement("div");document.body.append(host);root=createRoot(host);}
- const client:OpenworkServerClient=createOpenworkServerClient({baseUrl:"http://localhost:8989",token:"test"});
+ const client:Get3wServerClient=createGet3wServerClient({baseUrl:"http://localhost:8989",token:"test"});
  globalThis.fetch=Object.assign(async(input:string|URL|Request,init?:RequestInit)=>{
   const url=new URL(String(input));
   if(url.pathname.endsWith("/browser"))return Response.json({items:files,truncated:false});
@@ -88,17 +88,17 @@ test("a delayed old workspace read cannot replace the new workspace preview",asy
 
 test("external open joins workspace-relative paths before invoking the native boundary",async()=>{
  const calls:Array<{command:string;args:unknown[]}>=[];
- Reflect.set(window,"__OPENWORK_ELECTRON__",{invokeDesktop:async(command:string,...args:unknown[])=>{
+ Reflect.set(window,"__GET3W_ELECTRON__",{invokeDesktop:async(command:string,...args:unknown[])=>{
   calls.push({command,args});
   if(command==="__joinPath")return args.join("/");
-  if(command==="__openWorkspaceFile")return {ok:true,action:"opened"};
+  if(command==="__get3wspaceFile")return {ok:true,action:"opened"};
   throw Error(`Unexpected ${command}`);
  }});
  try{
   await mount("native-open",true);await click("report.txt");await click("Open");
-  expect(calls).toEqual([{command:"__joinPath",args:["/workspace/native-open","report.txt"]},{command:"__openWorkspaceFile",args:["/workspace/native-open","/workspace/native-open/report.txt",{reveal:false}]}]);
+  expect(calls).toEqual([{command:"__joinPath",args:["/workspace/native-open","report.txt"]},{command:"__get3wspaceFile",args:["/workspace/native-open","/workspace/native-open/report.txt",{reveal:false}]}]);
   expect(host.textContent).not.toContain("Error:");
- }finally{Reflect.deleteProperty(window,"__OPENWORK_ELECTRON__");}
+ }finally{Reflect.deleteProperty(window,"__GET3W_ELECTRON__");}
 });
 
 

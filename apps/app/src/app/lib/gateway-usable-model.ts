@@ -1,4 +1,4 @@
-import type { GatewayUsableModel } from "@openwork/types/den/gateway";
+import type { GatewayUsableModel } from "@get3w/types/den/gateway";
 
 const GATEWAY_MODEL_ID = /^gwm_[0-7][0-9a-hjkmnp-tv-z]{25}_[0-7][0-9a-hjkmnp-tv-z]{25}_[0-7][0-9a-hjkmnp-tv-z]{25}$/;
 

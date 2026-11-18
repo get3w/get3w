@@ -38,7 +38,7 @@ import { presentOpencodeSessionError, sessionErrorPresentationFromUIMessage } fr
 import { TaskRecovery } from "./task-recovery"
 import { BackgroundTaskNotice, BackgroundTasksLabel, BackgroundTasksMessage, SubagentNoticeRow, backgroundShellNoticeFromMessage, subagentNoticeFromMessage } from "./background-tasks"
 import { sessionBackgroundShells, useBackgroundShellStore, type BackgroundShell } from "@/react-app/domains/session/status/background-shell-store"
-import type { OpenWorkModelsLimit } from "@/react-app/domains/cloud/usage-limit-state"
+import type { Get3WModelsLimit } from "@/react-app/domains/cloud/usage-limit-state"
 import { replyModelLabel, replyModelProvider } from "@/react-app/domains/session/sync/reply-model"
 import { ProviderIcon } from "@/react-app/design-system/provider-icon"
 import { openAlternativeModelPicker } from "@/app/lib/model-picker-events"
@@ -51,8 +51,8 @@ import { GrepTool } from "@/components/tools/grep"
 import { LspTool } from "@/components/tools/lsp"
 import {
   isAutomationProposalToolPart,
-  OpenWorkAutomationProposalTool,
-} from "@/components/tools/openwork-automation-proposal"
+  Get3WAutomationProposalTool,
+} from "@/components/tools/get3w-automation-proposal"
 import { QuestionTool } from "@/components/tools/question"
 import { SkillTool } from "@/components/tools/skill"
 import { TodoWriteTool } from "@/components/tools/todowrite"
@@ -101,7 +101,7 @@ import { CodeModeTool, isSilentCodeModePart } from "@/components/chat/code-mode-
 import { CreatedSkillCard, CreatedSkillsContext, useCreatedSkills, type CreatedSkillsContextValue } from "@/components/chat/created-skill-card"
 import { readCreatedSkillAccess } from "@/components/chat/created-skill-access"
 import { collectCreatedSkills, type ConfirmedSkillAccess, type CreatedSkillsModel } from "@/lib/created-skill"
-import { openWorkNativeFailure } from "@/lib/openwork-native-activity"
+import { get3wNativeFailure } from "@/lib/get3w-native-activity"
 import { TextSentenceLine, TrailingChevron } from "@/components/chat/activity-rail"
 import { ConnectionCard } from "@/components/chat/connection-card"
 import { CredentialPromptCard } from "@/components/chat/credential-prompt-card"
@@ -384,7 +384,7 @@ const ToolMessageInner = ({ part }: ToolMessageProps) => {
   }
 
   if (part.type === "dynamic-tool" && isAutomationProposalToolPart(part)) {
-    return <OpenWorkAutomationProposalTool part={part} />
+    return <Get3WAutomationProposalTool part={part} />
   }
 
   // Get3W's own connection reports render as the native card: the host is
@@ -431,7 +431,7 @@ const isEmptyMessage = (message: UIMessage): boolean => message.parts.length ===
  */
 function isSilentAppLookup(part: DynamicToolUIPart): boolean {
   if (part.state !== "output-available") return false
-  if (part.toolName === "openwork_context") return true
+  if (part.toolName === "get3w_context") return true
   const catalogSearch = part.toolName === "search" || part.toolName.endsWith("search_capabilities")
   return catalogSearch && connectionFromChatToolPart(part, { allowDiscovery: true }) === null
 }
@@ -447,8 +447,8 @@ function stepsNeedAttention(items: UIMessageWithIndex[], connectionCards: Readon
     if (part.state === "output-error") return true
     if (part.type === "dynamic-tool") {
       if (connectionCards.has(part.toolCallId) || credentialPromptCall(part)) return true
-      if (openWorkNativeFailure(part)) return true
-      if ((codeModeToolCalls(part) ?? []).some((call) => call.state === "output-error" || openWorkNativeFailure(call))) return true
+      if (get3wNativeFailure(part)) return true
+      if ((codeModeToolCalls(part) ?? []).some((call) => call.state === "output-error" || get3wNativeFailure(call))) return true
     }
     return isQuestionToolPart(part) && isToolPartInFlight(part)
   }))
@@ -533,7 +533,7 @@ function FileMessage({ part, tone }: FileMessageProps) {
             type="button"
             variant="ghost"
             size="icon-xs"
-            aria-label={`More actions for ${title}`}
+            aria-label={t("activity.more", { name: title })}
           >
             <MoreHorizontal />
           </Button>
@@ -562,7 +562,7 @@ function FileMessage({ part, tone }: FileMessageProps) {
 
   if (tone === "user" && revealPath && !isChatAttachmentUrl(part.url)) {
     return (
-      <button type="button" className="inline rounded-lg align-middle" onClick={() => openArtifactPath(revealPath)} title={`Open ${title} in Artifacts`}>
+      <button type="button" className="inline rounded-lg align-middle" onClick={() => openArtifactPath(revealPath)} title={t("activity.open.artifacts", { name: title })}>
         <ComposerBadgeChip badge={fileMentionBadge(revealPath)} className="mx-0" />
       </button>
     )
@@ -601,7 +601,7 @@ function FileMessage({ part, tone }: FileMessageProps) {
           type="button"
           className="flex min-w-0 items-center gap-2 pe-2 text-left transition-opacity hover:opacity-80"
           onClick={() => openArtifactPath(revealPath)}
-          title={`Open ${title} in Artifacts`}
+          title={t("activity.open.artifacts", { name: title })}
         >
           {fileContent}
         </button>
@@ -1136,7 +1136,7 @@ const MessageComponent = React.memo(
           changeModel={presentation !== null && ["provider-access-denied", "provider-unavailable", "provider-unreachable", "model-unavailable", "rate-limited", "conversation-too-long", "attachment-unsupported"].includes(presentation.kind)}
         />
       )
-      if (presentation?.openworkModelsLimit) return <TranscriptOpenWorkModelsLimit limit={presentation.openworkModelsLimit} />
+      if (presentation?.get3wModelsLimit) return <TranscriptGet3WModelsLimit limit={presentation.get3wModelsLimit} />
       return errorMessage
     }
 
@@ -1171,7 +1171,7 @@ const MessageComponent = React.memo(
 )
 
 /** The organization used its Get3W Models allowance: one usage-limit card. */
-function TranscriptOpenWorkModelsLimit({ limit }: { limit: OpenWorkModelsLimit }) {
+function TranscriptGet3WModelsLimit({ limit }: { limit: Get3WModelsLimit }) {
   const { sessionId } = useMessageList()
   return <div className="mx-auto w-full max-w-3xl px-2 py-2 md:px-10"><p role="status">{t("extensions.cloud_unavailable")}</p></div>
 }
@@ -1576,7 +1576,7 @@ function MessageGroup({
       { type: "item", id: "copy", get label() { return t("ui.e21f935f11d7"); }, icon: <Copy className="size-4" />, onSelect: () => navigator.clipboard.writeText(replyText) },
     )
     if (lastRealItem && onForkAtMessage) replyMenuActions.push(
-      { type: "item", id: "branch", label: forkingMessageId === lastRealItem.message.id ? "Branching..." : t("ui.e22caaeb4858"), icon: <Split className="size-4 rotate-90" />, disabled: Boolean(forkingMessageId), onSelect: () => onForkAtMessage(lastRealItem.message.id) },
+      { type: "item", id: "branch", label: forkingMessageId === lastRealItem.message.id ? t("activity.branching") : t("ui.e22caaeb4858"), icon: <Split className="size-4 rotate-90" />, disabled: Boolean(forkingMessageId), onSelect: () => onForkAtMessage(lastRealItem.message.id) },
     )
   }
   // Native turns can end with a metadata-free completion marker. Keep the
@@ -1649,10 +1649,10 @@ function MessageGroup({
     ) + proseReasoning.length
   const stepRunLabel =
     stepsStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > stepsStartedAt
-      ? `Worked for ${formatToolCallDuration(stepsEndedAt - stepsStartedAt)}`
+      ? t("activity.worked", { duration: formatToolCallDuration(stepsEndedAt - stepsStartedAt) })
       : stepRowCount === 1
         ? t("ui.3ce6013c3da8")
-        : `${stepRowCount} steps`
+        : t("activity.steps", { count: stepRowCount })
   // A short finished run reads fine as a list, so only long ones fold away.
   const collapseSteps =
     !hasModelTasks && !isLiveGroup && stepItems.length > 0 && stepRowCount >= COLLAPSED_STEP_RUN_MIN_ROWS
@@ -1662,9 +1662,9 @@ function MessageGroup({
   const pinnedRemoteThreads = collapseSteps ? remoteThreadStarts : []
   const pinnedRemoteIds = pinnedRemoteThreads.length > 0 ? new Set(pinnedRemoteThreads.map(({ part }) => part.toolCallId)) : NO_PINNED_REMOTE_THREADS
   const replyStartedAt = stepsStartedAt ?? (lastRealItem ? getMessageCreated(lastRealItem.message) : null)
-  const stepCountLabel = stepRowCount ? `${stepRowCount} ${stepRowCount === 1 ? "step" : "steps"}` : null
+  const stepCountLabel = stepRowCount ? t(stepRowCount === 1 ? "activity.step" : "activity.steps", { count: stepRowCount }) : null
   const replyWorkedLabel = replyStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > replyStartedAt
-    ? `Worked for ${formatToolCallDuration(stepsEndedAt - replyStartedAt)}`
+    ? t("activity.worked", { duration: formatToolCallDuration(stepsEndedAt - replyStartedAt) })
     : null
   const replySummaryLabel = replyWorkedLabel
     ? `${replyWorkedLabel}${stepCountLabel ? ` · ${stepCountLabel}` : ""}`
@@ -1766,7 +1766,7 @@ function MessageGroup({
         collapseSteps ? (
           <CompletedStepRun
             label={(resolvedReplyModel ? replyWorkedLabel : null) ?? stepRunLabel}
-            count={((resolvedReplyModel ? replyWorkedLabel : null) ?? stepRunLabel).startsWith("Worked for") ? stepCountLabel : null}
+            count={(resolvedReplyModel ? replyWorkedLabel !== null : stepsStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > stepsStartedAt) ? stepCountLabel : null}
           >
             <div className="flex flex-col gap-2">
               {renderItems(stepItems, 0)}
@@ -1804,11 +1804,11 @@ function MessageGroup({
             <CopyMessageButton messages={renderableItems.map((item) => item.message)} />
             {lastRealItem && onForkAtMessage ? (
               <>
-                <MessageAction tooltip={forkingMessageId === lastRealItem.message.id ? "Branching..." : t("ui.e22caaeb4858")}>
+                <MessageAction tooltip={forkingMessageId === lastRealItem.message.id ? t("activity.branching") : t("ui.e22caaeb4858")}>
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={forkingMessageId === lastRealItem.message.id ? "Branching..." : t("ui.e22caaeb4858")}
+                    aria-label={forkingMessageId === lastRealItem.message.id ? t("activity.branching") : t("ui.e22caaeb4858")}
                     aria-busy={forkingMessageId === lastRealItem.message.id || undefined}
                     disabled={Boolean(forkingMessageId)}
                     onClick={() => onForkAtMessage(lastRealItem.message.id)}

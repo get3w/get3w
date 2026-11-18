@@ -31,7 +31,7 @@ export type UseModelPickerInput = {
 
 function readSeenProviderIds(): Set<string> {
   try {
-    const raw = window.localStorage.getItem("openwork.seenProviderIds");
+    const raw = window.localStorage.getItem("get3w.seenProviderIds");
     return new Set(raw ? JSON.parse(raw) : []);
   } catch {
     return new Set();

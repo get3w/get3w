@@ -135,8 +135,8 @@ function MarkdownBlockInner({
     const root = rootRef.current;
     if (!root) return;
 
-    for (const [index, codeBlock] of root.querySelectorAll("[data-openwork-code-block]").entries()) {
-      const button = codeBlock.querySelector("[data-openwork-code-wrap]");
+    for (const [index, codeBlock] of root.querySelectorAll("[data-get3w-code-block]").entries()) {
+      const button = codeBlock.querySelector("[data-get3w-code-wrap]");
       if (button instanceof HTMLButtonElement) {
         setCodeWrapButtonState(button, codeWrapStates.current.get(index) ?? false);
       }
@@ -203,7 +203,7 @@ function MarkdownBlockInner({
     if (!root) { setFileActionHosts([]); return; }
     const sync = () => {
       const hosts = Array.from(root.querySelectorAll<HTMLElement>("[data-get3w-file-actions]"))
-        .filter(host => !host.closest("[data-openwork-video-fallback]"));
+        .filter(host => !host.closest("[data-get3w-video-fallback]"));
       setFileActionHosts(previous => previous.length === hosts.length && previous.every((host, index) => host === hosts[index]) ? previous : hosts);
     };
     sync();
@@ -243,9 +243,9 @@ function MarkdownBlockInner({
     for (const [image, cleanup] of imageCleanups.current) {
       if (!root.contains(image)) { cleanup(); imageCleanups.current.delete(image); }
     }
-    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-openwork-image-path]")) {
+    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-get3w-image-path]")) {
       if (imageCleanups.current.has(image)) continue;
-      const href = image.dataset.openworkImagePath ?? "";
+      const href = image.dataset.get3wImagePath ?? "";
       const target = openTargetForHref(href, openTargets, workspaceRoot);
       const reference = parseLocalPathReference(href, { decode: true });
       const path = target?.exists === true ? target.value : reference && reference.anchor !== "home"
@@ -286,17 +286,17 @@ function MarkdownBlockInner({
         videoCleanups.current.delete(video);
       }
     }
-    for (const video of root.querySelectorAll("video[data-openwork-video-path]")) {
+    for (const video of root.querySelectorAll("video[data-get3w-video-path]")) {
       if (!(video instanceof HTMLVideoElement)) continue;
       if (videoCleanups.current.has(video)) continue;
       let cancelled = false;
       let objectUrl: string | null = null;
-      const href = video.dataset.openworkVideoPath ?? "";
+      const href = video.dataset.get3wVideoPath ?? "";
       // A video that cannot load reads as its plain inline reference instead
       // of an empty player in the middle of the sentence.
       const showError = () => {
-        const box = video.closest("[data-openwork-video]");
-        const fallback = box?.querySelector(":scope > [data-openwork-video-fallback]");
+        const box = video.closest("[data-get3w-video]");
+        const fallback = box?.querySelector(":scope > [data-get3w-video-fallback]");
         if (!box || !(fallback instanceof HTMLElement)) return;
         box.replaceWith(...Array.from(fallback.childNodes));
       };
@@ -346,14 +346,14 @@ function MarkdownBlockInner({
 
     const handleSessionReference = (event: MouseEvent) => {
       if (!sessionReferences || !(event.target instanceof Element)) return false;
-      const link = event.target.closest("a[data-openwork-session-reference]");
+      const link = event.target.closest("a[data-get3w-session-reference]");
       if (!(link instanceof HTMLAnchorElement) || !root.contains(link)) return false;
       // Even a stale/selected reference must never reach a browser or a file
       // target. Resolve and authorize again at activation, using its stable pair.
       event.preventDefault();
       event.stopPropagation();
       if (event.type !== "mousedown" && (event.button === 0 || event.button === 1)) {
-        const destination = link.dataset.openworkSessionReference ?? "";
+        const destination = link.dataset.get3wSessionReference ?? "";
         const reference = resolveReference?.(destination);
         if (reference && link.getAttribute("href") === destination) references?.openReference(reference);
       }
@@ -364,40 +364,40 @@ function MarkdownBlockInner({
     const handleClick = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || handleSessionReference(event)) return;
 
-      const copyButton = event.target.closest("[data-openwork-code-copy]");
+      const copyButton = event.target.closest("[data-get3w-code-copy]");
       if (copyButton instanceof HTMLButtonElement) {
         event.preventDefault();
         event.stopPropagation();
 
-        const codeBlock = copyButton.closest("[data-openwork-code-block]");
+        const codeBlock = copyButton.closest("[data-get3w-code-block]");
         const code = codeBlock?.querySelector("code");
         void handleCopy(copyButton, code?.textContent ?? "");
         return;
       }
 
-      const quoteCopyButton = event.target.closest("[data-openwork-quote-copy]");
+      const quoteCopyButton = event.target.closest("[data-get3w-quote-copy]");
       if (quoteCopyButton instanceof HTMLButtonElement) {
         event.preventDefault();
         event.stopPropagation();
-        void handleCopy(quoteCopyButton, quoteCopyButton.dataset.openworkQuoteCopy ?? "");
+        void handleCopy(quoteCopyButton, quoteCopyButton.dataset.get3wQuoteCopy ?? "");
         return;
       }
 
-      const inlineCodePath = event.target.closest("[data-openwork-inline-code-path]");
+      const inlineCodePath = event.target.closest("[data-get3w-inline-code-path]");
       if (inlineCodePath instanceof HTMLElement) {
         event.preventDefault();
         event.stopPropagation();
-        openArtifactPath(inlineCodePath.dataset.openworkInlineCodePath ?? "");
+        openArtifactPath(inlineCodePath.dataset.get3wInlineCodePath ?? "");
         return;
       }
 
-      const wrapButton = event.target.closest("[data-openwork-code-wrap]");
+      const wrapButton = event.target.closest("[data-get3w-code-wrap]");
       if (wrapButton instanceof HTMLButtonElement) {
         event.preventDefault();
         event.stopPropagation();
 
-        const codeBlock = wrapButton.closest("[data-openwork-code-block]");
-        const codeBlocks = Array.from(root.querySelectorAll("[data-openwork-code-block]"));
+        const codeBlock = wrapButton.closest("[data-get3w-code-block]");
+        const codeBlocks = Array.from(root.querySelectorAll("[data-get3w-code-block]"));
         const index = codeBlock ? codeBlocks.indexOf(codeBlock) : -1;
         if (index >= 0) {
           const wrapped = !(codeWrapStates.current.get(index) ?? false);
@@ -407,11 +407,11 @@ function MarkdownBlockInner({
         return;
       }
 
-      const chevron = event.target.closest("[data-openwork-link-chevron]");
+      const chevron = event.target.closest("[data-get3w-link-chevron]");
       if (chevron instanceof HTMLElement) {
         event.preventDefault();
         event.stopPropagation();
-        const href = chevron.dataset.openworkLinkChevron ?? "";
+        const href = chevron.dataset.get3wLinkChevron ?? "";
         const target = openTargetForHref(href, openTargets, workspaceRoot);
         if (target) {
           setLinkMenu({ target, anchor: chevron });
@@ -419,9 +419,9 @@ function MarkdownBlockInner({
         return;
       }
 
-      const link = event.target.closest("a[data-openwork-link-href]");
+      const link = event.target.closest("a[data-get3w-link-href]");
       if (link instanceof HTMLAnchorElement) {
-        const href = link.dataset.openworkLinkHref ?? link.getAttribute("href") ?? "";
+        const href = link.dataset.get3wLinkHref ?? link.getAttribute("href") ?? "";
         const target = openTargetForHref(href, openTargets, workspaceRoot);
 
         if (target && onOpenTarget) {
@@ -431,7 +431,7 @@ function MarkdownBlockInner({
         }
       }
 
-      const videoButton=event.target.closest("[data-openwork-video-preview]");
+      const videoButton=event.target.closest("[data-get3w-video-preview]");
       if(videoButton instanceof HTMLButtonElement){
         event.preventDefault();event.stopPropagation();
         const video=videoButton.querySelector("video");
@@ -439,7 +439,7 @@ function MarkdownBlockInner({
         return;
       }
 
-      const preview = event.target.closest("[data-openwork-image-preview]");
+      const preview = event.target.closest("[data-get3w-image-preview]");
       if (!(preview instanceof HTMLElement)) return;
 
       event.preventDefault();
@@ -451,9 +451,9 @@ function MarkdownBlockInner({
 
     const handleContextMenu = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || !onOpenTarget) return;
-      const link = event.target.closest("[data-openwork-link-href], [data-openwork-link-chevron]");
+      const link = event.target.closest("[data-get3w-link-href], [data-get3w-link-chevron]");
       if (!(link instanceof HTMLElement)) return;
-      const href = link.dataset.openworkLinkHref ?? link.dataset.openworkLinkChevron ?? "";
+      const href = link.dataset.get3wLinkHref ?? link.dataset.get3wLinkChevron ?? "";
       const target = openTargetForHref(href, openTargets, workspaceRoot);
       if (target?.kind !== "file") return;
       event.preventDefault();
@@ -463,11 +463,11 @@ function MarkdownBlockInner({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (!(event.target instanceof HTMLElement) || !event.target.matches("[data-openwork-inline-code-path]")) return;
+      if (!(event.target instanceof HTMLElement) || !event.target.matches("[data-get3w-inline-code-path]")) return;
 
       event.preventDefault();
       event.stopPropagation();
-      openArtifactPath(event.target.dataset.openworkInlineCodePath ?? "");
+      openArtifactPath(event.target.dataset.get3wInlineCodePath ?? "");
     };
 
     root.addEventListener("load", handleLoad, true);

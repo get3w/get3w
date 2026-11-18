@@ -11,14 +11,14 @@ function installWebMcpRuntime() {
   if ("modelContext" in Document.prototype && document.modelContext) {
     if (typeof document.modelContext.addEventListener === "function") {
       document.modelContext.addEventListener("toolchange", () => {
-        window.dispatchEvent(new Event("openwork:webmcp-tools-changed"));
+        window.dispatchEvent(new Event("get3w:webmcp-tools-changed"));
       });
     }
     return false;
   }
 
   const INTERNAL = Symbol.for("webmcp.model-context.internal");
-  const POLICY_BRIDGE = "__openworkWebMcpPolicyV1";
+  const POLICY_BRIDGE = "__get3wWebMcpPolicyV1";
   const contexts = new WeakMap();
   const TOOL_NAME = /^[A-Za-z0-9_.-]{1,128}$/;
 
@@ -110,7 +110,7 @@ function installWebMcpRuntime() {
         ownerDocument.modelContext?.dispatchEvent(new Event("toolchange"));
         // A DOM event is the preload's only signal to refresh native discovery.
         // It contains no data and grants the page no Electron capability.
-        ownerWindow.dispatchEvent(new Event("openwork:webmcp-tools-changed"));
+        ownerWindow.dispatchEvent(new Event("get3w:webmcp-tools-changed"));
         resolve();
       }, 0);
     });
@@ -300,7 +300,7 @@ function installWebMcpRuntime() {
 }
 
 function dismissMenuOverlay() {
-  ipcRenderer?.send("openwork:menu-overlay:dismiss");
+  ipcRenderer?.send("get3w:menu-overlay:dismiss");
 }
 
 function installDismissListeners() {
@@ -312,18 +312,18 @@ function installDismissListeners() {
   // browser control or Resume; the host checks the exact foreground page.
   window.addEventListener("keydown", (event) => {
     if (event.isTrusted && event.key === "Escape" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-      ipcRenderer?.send("openwork:browser:escape");
+      ipcRenderer?.send("get3w:browser:escape");
     }
   }, { capture: true });
 }
 
 function installToolChangeRelay() {
   let timer = null;
-  window.addEventListener("openwork:webmcp-tools-changed", () => {
+  window.addEventListener("get3w:webmcp-tools-changed", () => {
     if (timer) return;
     timer = setTimeout(() => {
       timer = null;
-      ipcRenderer?.send("openwork:webmcp:tools-changed");
+      ipcRenderer?.send("get3w:webmcp:tools-changed");
     }, 250);
   });
 }
@@ -332,7 +332,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   // This listener and its DOM wrappers live only in Electron's isolated world.
   // Main-world overrides cannot alter these reads or send IPC replies. The only
   // page-facing method below requests a check; it never forwards caller data.
-  ipcRenderer?.on("openwork:webmcp:read-policy", (_event, replyChannel, childIndex) => {
+  ipcRenderer?.on("get3w:webmcp:read-policy", (_event, replyChannel, childIndex) => {
     let policy = null;
     try {
       let embedding = null;
@@ -359,8 +359,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   });
   try {
     if (typeof contextBridge?.exposeInMainWorld === "function" && ipcRenderer?.invoke) {
-      contextBridge.exposeInMainWorld("__openworkWebMcpPolicyV1", {
-        check: () => ipcRenderer.invoke("openwork:webmcp:frame-policy"),
+      contextBridge.exposeInMainWorld("__get3wWebMcpPolicyV1", {
+        check: () => ipcRenderer.invoke("get3w:webmcp:frame-policy"),
       });
     }
     if (typeof contextBridge?.executeInMainWorld === "function") {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { runComputerProgram } from "@openwork/computer-use/runtime";
-import { createComputerControl, COMPUTER_PROTOCOL } from "@openwork/computer-use/computer-control";
+import { runComputerProgram } from "@get3w/computer-use/runtime";
+import { createComputerControl, COMPUTER_PROTOCOL } from "@get3w/computer-use/computer-control";
 import { resolvePermissionEntry } from "./computer-permission-entry.mjs";
 import { createComputerScripting } from "./computer-scripting.mjs";
 import { EventEmitter } from "node:events";
@@ -25,7 +25,7 @@ function fixture(options = {}) {
   /** @type {(value: unknown) => void} */
   let emit = (_value) => {};
   let disconnect = () => {};
-  /** @type {import("@openwork/computer-use/computer-control").ComputerAdapter} */
+  /** @type {import("@get3w/computer-use/computer-control").ComputerAdapter} */
   const adapter = {
     id: "local", label: "This computer", placement: "local",
     protocol: COMPUTER_PROTOCOL,
@@ -61,7 +61,7 @@ function fixture(options = {}) {
       };
     },
   };
-  /** @type {import("@openwork/computer-use/computer-control").ComputerAdapter} */
+  /** @type {import("@get3w/computer-use/computer-control").ComputerAdapter} */
   const remote = { ...adapter, id: "vm", label: "VM", placement: "remote" };
   const control = createComputerControl({ permissionEntry: options.permissionEntry, adapters: options.remote ? [adapter, remote] : [adapter], readRemoteFeatureEnabled: options.authority, runProgram: options.runProgram, runScript: options.runScript, onTiming: options.onTiming, browserTask: options.browserTask, onRequest: (_sessionId, value) => { requests.push(value); }, idleMs: options.idleMs ?? 90_000, platform: options.platform });
   return { control, calls, requests, selected, emit: value => emit(value), disconnect: () => disconnect() };
@@ -309,7 +309,7 @@ test("native takeover cancels browser programs and neither chat can bypass it wi
   t.after(() => f.control.reset(true));
   await f.control.setFeatureEnabled(true);
   await f.control.execute({ sessionId: "chat", name: "computer_open", args: { app_id: "editor", mode: "control", purpose: "Edit the draft" } });
-  /** @type {import("@openwork/computer-use/runtime").ProgramRequest & { sessionId: string }} */
+  /** @type {import("@get3w/computer-use/runtime").ProgramRequest & { sessionId: string }} */
   const input = { sessionId: "chat", surface: "browser", code: 'return await tools.ui.open({url:"https://example.com"});' };
   const program = f.control.program(input); await started.promise;
   await f.control.interact({ sessionId: "chat", id: "view", action: "takeover" });
@@ -454,7 +454,7 @@ test("after an act the model gets only changed elements, while programs and open
 });
 
 test("change listing falls back to the full list on another window, filter or a mostly new list", async () => {
-  const { listChanges } = await import("@openwork/computer-use/computer-control");
+  const { listChanges } = await import("@get3w/computer-use/computer-control");
   const part = (value) => [{ type: "text", text: JSON.stringify({ observation_id: "o", refs: "stable", window_id: 1, elements_filter: "all", ...value }) }];
   const first = listChanges(null, part({ elements: [{ ref: "e1", label: "A" }, { ref: "e2", label: "B" }, { ref: "e3", label: "C" }] }));
   const shown = (result) => JSON.parse(result.content[0].text);
@@ -625,7 +625,7 @@ function parallelFixture(options = {}) {
   /** The connect options each helper started with. */
   const started = [];
   const windows = { blender: 11, photoshop: 12, notes: 13 };
-  /** @type {import("@openwork/computer-use/computer-control").ComputerAdapter} */
+  /** @type {import("@get3w/computer-use/computer-control").ComputerAdapter} */
   const adapter = {
     id: "local", label: "This Mac", placement: "local", parallel: true, protocol: COMPUTER_PROTOCOL,
     setup: async () => ({ setupId: "setup" }),

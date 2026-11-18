@@ -115,7 +115,7 @@ function AutoSettleSection() {
 
 export function PreferencesView(props: PreferencesViewProps) {
   const linkDestinationItems = [
-    { value: "openwork", label: "Get3W" },
+    { value: "get3w", label: "Get3W" },
     { value: "external", label: t("settings.links.external") },
   ];
   const desktopNotificationItems = DESKTOP_NOTIFICATION_PREFERENCE_VALUES.map((value) => ({

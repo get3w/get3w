@@ -36,11 +36,11 @@ import {
   type OpencodeConfigFile,
 } from "../../../../app/lib/desktop";
 import type {
-  OpenworkServerCapabilities,
-  OpenworkServerClient,
-  OpenworkServerStatus,
-} from "../../../../app/lib/openwork-server";
-import type { OpenworkServerStore } from "../../connections/openwork-server-store";
+  Get3wServerCapabilities,
+  Get3wServerClient,
+  Get3wServerStatus,
+} from "../../../../app/lib/get3w-server";
+import type { Get3wServerStore } from "../../connections/get3w-server-store";
 import {
   type CreateLibraryItemInput,
   type LibraryAuthorableKind,
@@ -142,11 +142,11 @@ export function createExtensionsStore(options: {
   selectedWorkspaceId: () => string;
   selectedWorkspaceRoot: () => string;
   workspaceType: () => "local";
-  openworkServer: OpenworkServerStore;
-  openworkServerConnection?: () => {
-    openworkServerClient: OpenworkServerClient | null;
-    openworkServerStatus: OpenworkServerStatus;
-    openworkServerCapabilities: OpenworkServerCapabilities | null;
+  get3wServer: Get3wServerStore;
+  get3wServerConnection?: () => {
+    get3wServerClient: Get3wServerClient | null;
+    get3wServerStatus: Get3wServerStatus;
+    get3wServerCapabilities: Get3wServerCapabilities | null;
   };
   runtimeWorkspaceId: () => string | null;
   ensureRuntimeWorkspaceId?: () => Promise<string | null | undefined>;
@@ -160,7 +160,7 @@ export function createExtensionsStore(options: {
 
   let disposed = false;
   let started = false;
-  let stopOpenworkSubscription: (() => void) | null = null;
+  let stopGet3wSubscription: (() => void) | null = null;
   let lastWorkspaceContextKey = "";
   let snapshot: ExtensionsStoreSnapshot;
 
@@ -201,33 +201,33 @@ export function createExtensionsStore(options: {
     return `${workspaceType}:${workspaceId}:${root}:${runtimeWorkspaceId}`;
   };
 
-  const getOpenworkServerSnapshot = () => {
-    const snapshot = options.openworkServer.getSnapshot();
-    const connection = options.openworkServerConnection?.();
-    if (!connection?.openworkServerClient) return snapshot;
+  const getGet3wServerSnapshot = () => {
+    const snapshot = options.get3wServer.getSnapshot();
+    const connection = options.get3wServerConnection?.();
+    if (!connection?.get3wServerClient) return snapshot;
     return {
       ...snapshot,
-      openworkServerClient: connection.openworkServerClient,
-      openworkServerStatus: connection.openworkServerStatus,
-      openworkServerCapabilities: connection.openworkServerCapabilities,
+      get3wServerClient: connection.get3wServerClient,
+      get3wServerStatus: connection.get3wServerStatus,
+      get3wServerCapabilities: connection.get3wServerCapabilities,
     };
   };
 
   const resolveWorkspaceServerTarget = async () => {
-    const openworkSnapshot = getOpenworkServerSnapshot();
-    const openworkClient = openworkSnapshot.openworkServerClient;
-    let openworkWorkspaceId = options.runtimeWorkspaceId()?.trim() || null;
-    if (!openworkWorkspaceId && openworkSnapshot.openworkServerStatus === "connected" && openworkClient) {
-      openworkWorkspaceId = (await options.ensureRuntimeWorkspaceId?.())?.trim() || null;
+    const get3wSnapshot = getGet3wServerSnapshot();
+    const get3wClient = get3wSnapshot.get3wServerClient;
+    let get3wWorkspaceId = options.runtimeWorkspaceId()?.trim() || null;
+    if (!get3wWorkspaceId && get3wSnapshot.get3wServerStatus === "connected" && get3wClient) {
+      get3wWorkspaceId = (await options.ensureRuntimeWorkspaceId?.())?.trim() || null;
     }
-    const hasOpenworkTarget =
-      openworkSnapshot.openworkServerStatus === "connected" &&
-      Boolean(openworkClient && openworkWorkspaceId);
+    const hasGet3wTarget =
+      get3wSnapshot.get3wServerStatus === "connected" &&
+      Boolean(get3wClient && get3wWorkspaceId);
     return {
-      openworkSnapshot,
-      openworkClient,
-      openworkWorkspaceId,
-      hasOpenworkTarget,
+      get3wSnapshot,
+      get3wClient,
+      get3wWorkspaceId,
+      hasGet3wTarget,
     };
   };
 
@@ -273,18 +273,18 @@ export function createExtensionsStore(options: {
   const deleteWorkspaceSkill = async (name: string) => {
     const isLocalWorkspace = options.workspaceType() === "local";
     const root = options.selectedWorkspaceRoot().trim();
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.skills?.write !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.skills?.write !== false;
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-      await openworkClient.deleteSkill(openworkWorkspaceId, name);
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+      await get3wClient.deleteSkill(get3wWorkspaceId, name);
       return;
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       throw new Error(t("ui.ab4abb79fda1"));
     }
 
@@ -348,13 +348,13 @@ export function createExtensionsStore(options: {
   async function refreshSkills(optionsOverride?: { force?: boolean }) {
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.skills?.read !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.skills?.read !== false;
 
-    if (!root && !hasOpenworkTarget) {
+    if (!root && !hasGet3wTarget) {
       mutateState((current) => ({
         ...current,
         skills: [],
@@ -363,8 +363,8 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
-      const skillCacheKey = root || openworkWorkspaceId;
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
+      const skillCacheKey = root || get3wWorkspaceId;
       if (skillCacheKey !== skillsRoot) skillsLoaded = false;
       if (!optionsOverride?.force && skillsLoaded) return;
       if (refreshSkillsInFlight) return;
@@ -373,7 +373,7 @@ export function createExtensionsStore(options: {
       refreshSkillsAborted = false;
       try {
         setStateField("skillsStatus", null);
-        const response = await openworkClient.listSkills(openworkWorkspaceId, { includeGlobal: isLocalWorkspace });
+        const response = await get3wClient.listSkills(get3wWorkspaceId, { includeGlobal: isLocalWorkspace });
         if (refreshSkillsAborted) return;
         const next: SkillCard[] = Array.isArray(response.items)
           ? response.items.map((entry) => ({
@@ -404,7 +404,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       mutateState((current) => ({
         ...current,
         skills: [],
@@ -512,11 +512,11 @@ export function createExtensionsStore(options: {
 
   async function refreshPlugins(scopeOverride?: PluginScope) {
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.plugins?.read !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.plugins?.read !== false;
 
     if (refreshPluginsInFlight) return;
     refreshPluginsInFlight = true;
@@ -537,17 +537,17 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (scope === "project" && canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (scope === "project" && canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       mutateState((current) => ({
         ...current,
         pluginConfig: null,
-        pluginConfigPath: "opencode.json (openwork server)",
+        pluginConfigPath: "opencode.json (get3w server)",
       }));
 
       try {
         mutateState((current) => ({ ...current, pluginStatus: null, sidebarPluginStatus: null }));
         if (refreshPluginsAborted) return;
-        const result = await openworkClient.listPlugins(openworkWorkspaceId, { includeGlobal: false });
+        const result = await get3wClient.listPlugins(get3wWorkspaceId, { includeGlobal: false });
         if (refreshPluginsAborted) return;
         const projectItems = result.items.filter((item) => item.scope === "project");
         const list = toProjectPluginListEntries(projectItems);
@@ -574,7 +574,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (scope === "project" && hasOpenworkTarget) {
+    if (scope === "project" && hasGet3wTarget) {
       mutateState((current) => ({
         ...current,
         pluginStatus: t("ui.8ad59268cb84"),
@@ -598,7 +598,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (!isLocalWorkspace && !canUseOpenworkServer) {
+    if (!isLocalWorkspace && !canUseGet3wServer) {
       mutateState((current) => ({
         ...current,
         pluginStatus: t("ui.9596eab741ed"),
@@ -692,11 +692,11 @@ export function createExtensionsStore(options: {
     const triggerName = stripPluginVersion(pluginName);
 
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.plugins?.write !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.plugins?.write !== false;
 
     if (!pluginName) {
       if (isManualInput) setStateField("pluginStatus", t("skills.enter_plugin_name"));
@@ -708,10 +708,10 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (snapshot.pluginScope === "project" && canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (snapshot.pluginScope === "project" && canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       try {
         setStateField("pluginStatus", null);
-        await openworkClient.addPlugin(openworkWorkspaceId, pluginName);
+        await get3wClient.addPlugin(get3wWorkspaceId, pluginName);
         options.markReloadRequired?.("plugins", { type: "plugin", name: triggerName, action: "added" });
         if (isManualInput) setStateField("pluginInput", "");
         await refreshPlugins("project");
@@ -721,7 +721,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (snapshot.pluginScope === "project" && hasOpenworkTarget) {
+    if (snapshot.pluginScope === "project" && hasGet3wTarget) {
       setStateField("pluginStatus", "Get3W server cannot write plugins for this workspace.");
       return;
     }
@@ -789,21 +789,21 @@ export function createExtensionsStore(options: {
     }
 
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.plugins?.write !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.plugins?.write !== false;
 
     if (snapshot.pluginScope !== "project" && !isLocalWorkspace) {
       setStateField("pluginStatus", "Global plugins are only available for local workers.");
       return;
     }
 
-    if (snapshot.pluginScope === "project" && canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (snapshot.pluginScope === "project" && canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       try {
         setStateField("pluginStatus", null);
-        await openworkClient.removePlugin(openworkWorkspaceId, name);
+        await get3wClient.removePlugin(get3wWorkspaceId, name);
         options.markReloadRequired?.("plugins", { type: "plugin", name: triggerName, action: "removed" });
         await refreshPlugins("project");
       } catch (error) {
@@ -812,7 +812,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (snapshot.pluginScope === "project" && hasOpenworkTarget) {
+    if (snapshot.pluginScope === "project" && hasGet3wTarget) {
       setStateField("pluginStatus", "Get3W server cannot write plugins for this workspace.");
       return;
     }
@@ -905,18 +905,18 @@ export function createExtensionsStore(options: {
   async function installSkillCreator(): Promise<{ ok: boolean; message: string }> {
     if (extensionMutationDenied()) return { ok: false, message: desktopRestrictionNotice("allowManageExtensions") };
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.skills?.write !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.skills?.write !== false;
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       options.setBusy(true);
       options.setError(null);
       setStateField("skillsStatus", t("skills.installing_skill_creator"));
       try {
-        await openworkClient.upsertSkill(openworkWorkspaceId, { name: "skill-creator", content: skillCreatorTemplate });
+        await get3wClient.upsertSkill(get3wWorkspaceId, { name: "skill-creator", content: skillCreatorTemplate });
         const message = t("skills.skill_creator_installed");
         setStateField("skillsStatus", message);
         options.markReloadRequired?.("skills", { type: "skill", name: "skill-creator", action: "added" });
@@ -933,7 +933,7 @@ export function createExtensionsStore(options: {
       }
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       const message = "Get3W server cannot write skills for this workspace.";
       setStateField("skillsStatus", message);
       return { ok: false, message };
@@ -1052,16 +1052,16 @@ export function createExtensionsStore(options: {
     if (!trimmed) return null;
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.skills?.read !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.skills?.read !== false;
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       try {
         setStateField("skillsStatus", null);
-        const result = await openworkClient.getSkill(openworkWorkspaceId, trimmed, { includeGlobal: isLocalWorkspace });
+        const result = await get3wClient.getSkill(get3wWorkspaceId, trimmed, { includeGlobal: isLocalWorkspace });
         return { name: result.item.name, path: result.item.path, content: result.content };
       } catch (error) {
         setStateField("skillsStatus", error instanceof Error ? error.message : t("skills.failed_to_load"));
@@ -1069,7 +1069,7 @@ export function createExtensionsStore(options: {
       }
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       setStateField("skillsStatus", "Get3W server cannot read skills for this workspace.");
       return null;
     }
@@ -1104,18 +1104,18 @@ export function createExtensionsStore(options: {
     if (!trimmed) return;
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace = options.workspaceType() === "local";
-    const { openworkSnapshot, openworkClient, openworkWorkspaceId, hasOpenworkTarget } =
+    const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
-    const canUseOpenworkServer =
-      hasOpenworkTarget &&
-      openworkSnapshot.openworkServerCapabilities?.skills?.write !== false;
+    const canUseGet3wServer =
+      hasGet3wTarget &&
+      get3wSnapshot.get3wServerCapabilities?.skills?.write !== false;
 
-    if (canUseOpenworkServer && openworkClient && openworkWorkspaceId) {
+    if (canUseGet3wServer && get3wClient && get3wWorkspaceId) {
       options.setBusy(true);
       options.setError(null);
       setStateField("skillsStatus", null);
       try {
-        await openworkClient.upsertSkill(openworkWorkspaceId, {
+        await get3wClient.upsertSkill(get3wWorkspaceId, {
           name: trimmed,
           content: input.content,
           description: input.description,
@@ -1132,7 +1132,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    if (hasOpenworkTarget) {
+    if (hasGet3wTarget) {
       setStateField("skillsStatus", "Get3W server cannot write skills for this workspace.");
       return;
     }
@@ -1199,7 +1199,7 @@ export function createExtensionsStore(options: {
     disposed = false;
     started = true;
 
-    stopOpenworkSubscription = options.openworkServer.subscribe(() => {
+    stopGet3wSubscription = options.get3wServer.subscribe(() => {
       syncFromOptions();
     });
 
@@ -1211,8 +1211,8 @@ export function createExtensionsStore(options: {
     disposed = true;
     started = false;
     abortRefreshes();
-    stopOpenworkSubscription?.();
-    stopOpenworkSubscription = null;
+    stopGet3wSubscription?.();
+    stopGet3wSubscription = null;
     listeners.clear();
   };
 

@@ -207,7 +207,7 @@ final class SessionRuntime {
         let apps = (running + AppIdentity.installedApps().filter { !runningIDs.contains($0["app_id"] as? String ?? "") })
             .sorted { String(describing: $0["name"]) < String(describing: $1["name"]) }
         var limits = ["lease_seconds": 900, "observation_seconds": Int(policy.observationSeconds), "actions_per_lease": 200]
-        var result: [String: Any] = ["ok": true, "protocol": "openwork.computer-use/1", "platform": "macos",
+        var result: [String: Any] = ["ok": true, "protocol": "get3w.computer-use/1", "platform": "macos",
             "permissions": Self.permissions(), "apps": apps,
             "modes": AccessMode.allCases.map { ["id": $0.rawValue, "description": $0.explanation] },
             "keys": policy.keys, "guidance": policy.instructions]
@@ -296,7 +296,7 @@ final class SessionRuntime {
     static func permissions() -> [String: Any] {
         let ax = AXIsProcessTrusted(); let capture = CGPreflightScreenCaptureAccess()
         return ["ok": ax && capture, "accessibility": ax, "screenRecording": capture,
-            "supported": true, "protocolVersion": "openwork.computer-use/1"]
+            "supported": true, "protocolVersion": "get3w.computer-use/1"]
     }
     private func current(_ id: String, allowPaused: Bool = false) throws -> Session {
         expire()

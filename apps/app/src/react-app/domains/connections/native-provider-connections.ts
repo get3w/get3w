@@ -1,10 +1,10 @@
-import type { ConnectionRepairFacts, MemberConnectionAuthorization } from "@openwork/types/den/connection-state";
+import type { ConnectionRepairFacts, MemberConnectionAuthorization } from "@get3w/types/den/connection-state";
 export {
   connectionNeedsReconnect,
   connectionNeedsAdminRepair,
   canMemberAuthorizeConnection,
   canDisconnectMemberConnection,
-} from "@openwork/types/den/connection-state";
+} from "@get3w/types/den/connection-state";
 
 export type NativeProviderDisconnectableConnection = {
   id: string;

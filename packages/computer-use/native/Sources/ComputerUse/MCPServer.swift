@@ -18,7 +18,7 @@ final class MCPServer {
               request["jsonrpc"] as? String == "2.0", let method = request["method"] as? String else {
             send(["jsonrpc": "2.0", "id": NSNull(), "error": ["code": -32600, "message": "Invalid JSON-RPC request"]]); return
         }
-        if method == "openwork/ui", SessionControls.embedded {
+        if method == "get3w/ui", SessionControls.embedded {
             SessionControls.active?.hostAction(request["params"] as? [String: Any] ?? [:]); return
         }
         let id = request["id"]
@@ -45,7 +45,7 @@ final class MCPServer {
             initialized = true
             result(id, ["protocolVersion": supported.contains(requested) ? requested : "2025-11-25",
                 "capabilities": ["tools": ["listChanged": false]],
-                "serverInfo": ["name": "openwork-computer-use", "version": "1.0.0"],
+                "serverInfo": ["name": "get3w-computer-use", "version": "1.0.0"],
                 "instructions": policy.instructions])
         case "ping": result(id, [:])
         case "tools/list":

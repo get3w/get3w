@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@openwork/codemode",
+  "name": "@get3w/codemode",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   "exports": {
     ".": {
       "types": {
-        "openwork-build": "./dist/types/src/index.d.ts",
+        "get3w-build": "./dist/types/src/index.d.ts",
         "default": "./src/index.ts"
       },
       "development": "./src/index.ts",

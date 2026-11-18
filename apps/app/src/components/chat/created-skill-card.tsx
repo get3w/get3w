@@ -81,7 +81,7 @@ export function CreatedSkillCard({ card }: { card: CreatedSkillCardModel }) {
             variant="outline"
             size="sm"
             className={OPEN_CLASS}
-            aria-label={`Open ${card.name} in Library`}
+            aria-label={t("activity.open.library", { name: card.name })}
             onClick={() => onOpenSkill(createdSkillLibraryDetailId(card))}
           >
             {t("ui.ed077f3d8125")}

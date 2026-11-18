@@ -19,7 +19,7 @@ export function LinkOpenDialog() {
   const responding = useRef(false);
 
   useEffect(() => {
-    const browser = window.__OPENWORK_ELECTRON__?.browser;
+    const browser = window.__GET3W_ELECTRON__?.browser;
     const unsubscribe = browser?.onLinkOpenRequest?.((next) => {
       requestRef.current = next;
       setRequest(next);
@@ -36,7 +36,7 @@ export function LinkOpenDialog() {
     if (!current || responding.current) return;
     responding.current = true;
     try {
-      const accepted = await window.__OPENWORK_ELECTRON__?.browser?.chooseLinkDestination?.(current.id, destination);
+      const accepted = await window.__GET3W_ELECTRON__?.browser?.chooseLinkDestination?.(current.id, destination);
       if (accepted && destination) {
         setPrefs((previous) => ({
           ...previous,
@@ -68,8 +68,8 @@ export function LinkOpenDialog() {
           <Button variant={prefs.linkOpenDestination === "external" ? "default" : "outline"} onClick={() => void choose("external")}>
             {t("links.open_external")}
           </Button>
-          <Button variant={prefs.linkOpenDestination === "openwork" ? "default" : "outline"} onClick={() => void choose("openwork")}>
-            {t("links.open_openwork")}
+          <Button variant={prefs.linkOpenDestination === "get3w" ? "default" : "outline"} onClick={() => void choose("get3w")}>
+            {t("links.open_get3w")}
           </Button>
         </DialogFooter>
       </DialogContent>

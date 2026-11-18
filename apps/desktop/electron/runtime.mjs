@@ -15,11 +15,11 @@ import {
   envKey,
   mergeEnv,
   normalizeWorkspaceRootPath,
-  openworkEnvStorePath,
-  openworkServerConfigPath,
+  get3wEnvStorePath,
+  get3wServerConfigPath,
   resolveWorkspaceOpencodeConfigPath,
   setEnv,
-} from "@openwork/paths";
+} from "@get3w/paths";
 import {
   dedupeCertificates,
   resolveSystemCaBundle,
@@ -40,8 +40,8 @@ export function applyEmbeddedServerEnv(target, serverEnv, platform = process.pla
 }
 
 const DIRECT_RUNTIME = "direct";
-const OPENWORK_SERVER_PORT_RANGE_START = 48_000;
-const OPENWORK_SERVER_PORT_RANGE_END = 51_000;
+const GET3W_SERVER_PORT_RANGE_START = 48_000;
+const GET3W_SERVER_PORT_RANGE_END = 51_000;
 const MAX_BOOTSTRAP_BYTES = 256 * 1024;
 const MAX_CHAIN_REPAIR_BODY_BYTES = 64 * 1024;
 const MAX_CHAIN_REPAIR_ORIGINS = 3;
@@ -197,7 +197,7 @@ function normalizeServerCredentials(value) {
   };
 }
 
-export function migrateOpenworkServerTokenStore(value) {
+export function migrateGet3wServerTokenStore(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const sourceWorkspaces = source.workspaces && typeof source.workspaces === "object" && !Array.isArray(source.workspaces)
     ? source.workspaces
@@ -270,8 +270,8 @@ export async function prepareRuntimeWorkspaceRoot(projectDir, options = {}) {
   }
 }
 
-export function resolveOpenworkServerConfigPath(env = process.env) {
-  return openworkServerConfigPath({ env });
+export function resolveGet3wServerConfigPath(env = process.env) {
+  return get3wServerConfigPath({ env });
 }
 
 /**
@@ -280,7 +280,7 @@ export function resolveOpenworkServerConfigPath(env = process.env) {
  * @param {{ userDataDir: string, serverConfigPath: string, env?: NodeJS.ProcessEnv }} input
  * @returns {string[]}
  */
-export function openworkInstallMarkerPaths({ userDataDir, serverConfigPath, env = process.env }) {
+export function get3wInstallMarkerPaths({ userDataDir, serverConfigPath, env = process.env }) {
   const serverDir = path.dirname(serverConfigPath);
   const runtimeDb = env.GET3W_RUNTIME_DB?.trim() ? path.resolve(env.GET3W_RUNTIME_DB.trim()) : path.join(serverDir, "runtime.sqlite");
   return [
@@ -319,7 +319,7 @@ export function seedWorkspacePathsForEmbeddedServer(workspacePaths, serverConfig
   return serverConfigExists ? [] : workspacePaths;
 }
 
-export function selectStickyOpenworkPortWorkspace(requestedWorkspacePaths = [], serverWorkspacePaths = []) {
+export function selectStickyGet3wPortWorkspace(requestedWorkspacePaths = [], serverWorkspacePaths = []) {
   for (const value of [...requestedWorkspacePaths, ...serverWorkspacePaths]) {
     const workspacePath = String(value ?? "").trim();
     if (workspacePath) return workspacePath;
@@ -460,23 +460,23 @@ export function snapshotEngineState(state) {
 }
 
 /**
- * Where the in-process openwork-server persists its structured log. Packaged
+ * Where the in-process get3w-server persists its structured log. Packaged
  * apps have no visible stdout, so without this file every engine rollover
  * reason and reload trigger is lost. An explicit GET3W_SERVER_LOG_FILE wins.
  */
-export function resolveOpenworkServerLogFile(userDataDir, env = process.env) {
+export function resolveGet3wServerLogFile(userDataDir, env = process.env) {
   const explicit = String(env.GET3W_SERVER_LOG_FILE ?? "").trim();
   if (explicit) return explicit;
   return path.join(userDataDir, "logs", "get3w-server.log");
 }
 
-function createOpenworkServerState() {
+function createGet3wServerState() {
   return {
     child: null,
     childExited: true,
     inProcess: false,
     logFilePath: null,
-    // Monotonic per-start identity assigned by startOpenworkServerInner.
+    // Monotonic per-start identity assigned by startGet3wServerInner.
     // Sticky ports and persisted tokens make the connection details identical
     // across restarts, so clients need this to observe a new server lifetime.
     generation: null,
@@ -494,7 +494,7 @@ function createOpenworkServerState() {
   };
 }
 
-export function snapshotOpenworkServerState(state) {
+export function snapshotGet3wServerState(state) {
   const child = state.childExited ? null : state.child;
   const running = state.inProcess || Boolean(child && child.exitCode === null && !child.killed);
   return {
@@ -525,7 +525,7 @@ export function snapshotOpenworkServerState(state) {
  * including sessions still working in the workspace being left. Only an
  * explicit forceRestart gives up the running server.
  */
-export function resolveOpenworkServerReuse({
+export function resolveGet3wServerReuse({
   forceRestart,
   inProcess,
   lifecycleState,
@@ -542,19 +542,19 @@ export function resolveOpenworkServerReuse({
 
 /**
  * A failed server start must not leave the state objects describing the
- * runtime it already stopped: snapshotOpenworkServerState would report
- * running:true with a dead baseUrl and assertOpenworkServerReady would pass
+ * runtime it already stopped: snapshotGet3wServerState would report
+ * running:true with a dead baseUrl and assertGet3wServerReady would pass
  * against it. Keeps accumulated output for diagnostics and the project dir so
  * a retry via engineRestart still knows its workspace. The engine state only
  * resets when this start owned the engine (manageOpencode) — an external
  * engine keeps running regardless of the server's fate.
  */
-export function resetRuntimeStatesAfterFailedServerStart(openworkServerStateRef, engineStateRef, options = {}) {
-  const serverStdout = openworkServerStateRef.lastStdout;
-  const serverStderr = openworkServerStateRef.lastStderr;
-  Object.assign(openworkServerStateRef, createOpenworkServerState());
-  openworkServerStateRef.lastStdout = serverStdout;
-  openworkServerStateRef.lastStderr = serverStderr;
+export function resetRuntimeStatesAfterFailedServerStart(get3wServerStateRef, engineStateRef, options = {}) {
+  const serverStdout = get3wServerStateRef.lastStdout;
+  const serverStderr = get3wServerStateRef.lastStderr;
+  Object.assign(get3wServerStateRef, createGet3wServerState());
+  get3wServerStateRef.lastStdout = serverStdout;
+  get3wServerStateRef.lastStderr = serverStderr;
   if (options.manageOpencode === true) {
     const engineStdout = engineStateRef.lastStdout;
     const engineStderr = engineStateRef.lastStderr;
@@ -566,7 +566,7 @@ export function resetRuntimeStatesAfterFailedServerStart(openworkServerStateRef,
   }
 }
 
-function assertOpenworkServerReady(snapshot) {
+function assertGet3wServerReady(snapshot) {
   if (!snapshot?.running) {
     throw new Error("Get3W server did not stay running after startup.");
   }
@@ -781,11 +781,11 @@ async function fetchJson(url, options = {}, timeoutMs = 3000) {
 }
 
 export function resolveUserEnvFilePath(env = process.env) {
-  return openworkEnvStorePath({ env });
+  return get3wEnvStorePath({ env });
 }
 
 const USER_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const USER_ENV_RESERVED_PREFIXES = ["GET3W_", "OPENWORK_", "OPENCODE_"];
+const USER_ENV_RESERVED_PREFIXES = ["GET3W_", "GET3W_", "OPENCODE_"];
 
 // Windows reads `opencode_config` as OPENCODE_CONFIG, so reserved prefixes
 // match case-insensitively there.
@@ -795,7 +795,7 @@ export function isReservedUserEnvKey(key, platform = process.platform) {
 }
 
 // Synchronous, best-effort; absent or malformed returns {}. Reserved prefixes
-// are stripped so a tampered file can never shadow OPENWORK_* / OPENCODE_*.
+// are stripped so a tampered file can never shadow GET3W_* / OPENCODE_*.
 function loadUserEnvFile(env = process.env) {
   try {
     const raw = readFileSync(resolveUserEnvFilePath(env), "utf8");
@@ -1427,11 +1427,11 @@ export function createRuntimeManager({
   const inheritedProcessEnv = { ...process.env };
   let injectedUserEnvKeys = new Set();
   const engineState = createEngineState();
-  const openworkServerState = createOpenworkServerState();
+  const get3wServerState = createGet3wServerState();
   // Monotonic across this Electron process. Never reset with the server
   // state: each successful server start must be observable as a new
   // generation even when ports and tokens are reused.
-  let openworkServerGenerationCounter = 0;
+  let get3wServerGenerationCounter = 0;
 
   // Serialize engine lifecycle operations. Without this, concurrent renderer
   // invocations of engineStart/engineStop/engineRestart race: each call's
@@ -1458,7 +1458,7 @@ export function createRuntimeManager({
   // Decided once, before this process writes any Get3W state, so a server
   // restart in the same session does not mistake its own files for an update.
   const freshInstallEngine = resolveFreshInstallEngine({
-    markerPaths: openworkInstallMarkerPaths({ userDataDir, serverConfigPath: resolveOpenworkServerConfigPath(process.env) }),
+    markerPaths: get3wInstallMarkerPaths({ userDataDir, serverConfigPath: resolveGet3wServerConfigPath(process.env) }),
   });
   const sidecarDirs = [
     path.join(desktopRoot, "resources", "sidecars"),
@@ -1476,13 +1476,13 @@ export function createRuntimeManager({
     return systemCaPromise;
   }
 
-  function openworkServerTokenStorePath() {
+  function get3wServerTokenStorePath() {
     const override = process.env.GET3W_SERVER_TOKEN_STORE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(userDataDir, "get3w-server-tokens.json");
   }
 
-  function openworkServerStatePath() {
+  function get3wServerStatePath() {
     const override = process.env.GET3W_SERVER_STATE_PATH?.trim();
     if (override) return path.resolve(override);
     return path.join(userDataDir, "get3w-server-state.json");
@@ -1493,8 +1493,8 @@ export function createRuntimeManager({
   }
 
   async function loadTokenStore() {
-    const stored = await readJsonFile(openworkServerTokenStorePath(), { version: 1, workspaces: {} });
-    const migrated = migrateOpenworkServerTokenStore(stored);
+    const stored = await readJsonFile(get3wServerTokenStorePath(), { version: 1, workspaces: {} });
+    const migrated = migrateGet3wServerTokenStore(stored);
     if (JSON.stringify(stored) !== JSON.stringify(migrated)) {
       await saveTokenStore(migrated);
     }
@@ -1502,13 +1502,13 @@ export function createRuntimeManager({
   }
 
   async function saveTokenStore(store) {
-    const filePath = openworkServerTokenStorePath();
+    const filePath = get3wServerTokenStorePath();
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
   }
 
   async function loadPortState() {
-    return readJsonFile(openworkServerStatePath(), {
+    return readJsonFile(get3wServerStatePath(), {
       version: 4,
       workspacePorts: {},
       preferredPort: null,
@@ -1516,7 +1516,7 @@ export function createRuntimeManager({
   }
 
   async function savePortState(state) {
-    const filePath = openworkServerStatePath();
+    const filePath = get3wServerStatePath();
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   }
@@ -1533,7 +1533,7 @@ export function createRuntimeManager({
     await saveTokenStore(store);
   }
 
-  async function readPreferredOpenworkPort(workspaceKey) {
+  async function readPreferredGet3wPort(workspaceKey) {
     const state = await loadPortState();
     const normalized = normalizeWorkspaceKey(workspaceKey, workspacePlatform);
     if (normalized && state.workspacePorts?.[normalized]) {
@@ -1542,7 +1542,7 @@ export function createRuntimeManager({
     return state.preferredPort ?? null;
   }
 
-  async function persistPreferredOpenworkPort(workspaceKey, port) {
+  async function persistPreferredGet3wPort(workspaceKey, port) {
     const state = await loadPortState();
     const normalized = normalizeWorkspaceKey(workspaceKey, workspacePlatform);
     state.version = 4;
@@ -1565,8 +1565,8 @@ export function createRuntimeManager({
     return portAvailable(host, port);
   }
 
-  async function resolveOpenworkPort(host, workspaceKey, currentPort = null) {
-    const preferredPort = await readPreferredOpenworkPort(workspaceKey);
+  async function resolveGet3wPort(host, workspaceKey, currentPort = null) {
+    const preferredPort = await readPreferredGet3wPort(workspaceKey);
     if (currentPort && (await waitForPortAvailable(host, currentPort))) {
       return { port: currentPort, preferredPort };
     }
@@ -1756,9 +1756,9 @@ export function createRuntimeManager({
     );
   }
 
-  const legacyOpenworkContainerPrefix = `${["openwork", "orchestrator"].join("-")}-`;
+  const legacyGet3wContainerPrefix = `${["get3w", "orchestrator"].join("-")}-`;
 
-  async function listOpenworkManagedContainers() {
+  async function listGet3wManagedContainers() {
     const result = runDockerCommandDetailed(["ps", "-a", "--format", "{{.Names}}"], 8000);
     if (result.status !== 0) {
       const combined = `${result.stdout.trim()}\n${result.stderr.trim()}`.trim();
@@ -1767,7 +1767,7 @@ export function createRuntimeManager({
     return result.stdout
       .split(/\r?\n/)
       .map((line) => line.trim())
-      .filter((name) => name && (name.startsWith(legacyOpenworkContainerPrefix) || name.startsWith("openwork-dev-") || name.startsWith("openwrk-")))
+      .filter((name) => name && (name.startsWith(legacyGet3wContainerPrefix) || name.startsWith("get3w-dev-") || name.startsWith("openwrk-")))
       .sort();
   }
 
@@ -1878,35 +1878,35 @@ export function createRuntimeManager({
   // In-process server handle. Kept alive across restarts so we can stop it.
   let inProcessServer = null;
 
-  async function startOpenworkServer(options) {
+  async function startGet3wServer(options) {
     // The inner start stops any previous runtime before mutating state, so a
     // throw below always happens with nothing left running.
     try {
-      return await withStartupPhase("server.start", () => startOpenworkServerInner(options));
+      return await withStartupPhase("server.start", () => startGet3wServerInner(options));
     } catch (error) {
-      resetRuntimeStatesAfterFailedServerStart(openworkServerState, engineState, options);
+      resetRuntimeStatesAfterFailedServerStart(get3wServerState, engineState, options);
       throw error;
     }
   }
 
-  async function startOpenworkServerInner(options) {
+  async function startGet3wServerInner(options) {
     const evalDelayMs = resolveEvalLocalServerDelayMs();
     if (evalDelayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, evalDelayMs));
     }
-    const currentPort = openworkServerState.port;
+    const currentPort = get3wServerState.port;
     // Stop any previously running in-process server
     if (inProcessServer) {
       try { await inProcessServer.stop(); } catch { /* ignore */ }
       inProcessServer = null;
     }
-    await stopChild(openworkServerState);
+    await stopChild(get3wServerState);
 
     const host = "127.0.0.1";
 
     const managedOpencode = options.manageOpencode ? resolveOpencodeBinary(options.opencodeBinPath) : null;
-    openworkServerState.managedOpencodeBinPath = managedOpencode?.path ?? null;
-    openworkServerState.managedOpencodeBinSource = managedOpencode?.source ?? null;
+    get3wServerState.managedOpencodeBinPath = managedOpencode?.path ?? null;
+    get3wServerState.managedOpencodeBinSource = managedOpencode?.source ?? null;
     if (options.manageOpencode) {
       engineState.opencodeBinPath = managedOpencode?.path ?? null;
       engineState.opencodeBinSource = managedOpencode?.source ?? null;
@@ -1924,7 +1924,7 @@ export function createRuntimeManager({
     // truth. Do not pass Electron's legacy workspace list as CLI workspaces or
     // the server config loader will ignore server.json and lose server-created
     // workspaces after restart.
-    const serverConfigPath = resolveOpenworkServerConfigPath(process.env);
+    const serverConfigPath = resolveGet3wServerConfigPath(process.env);
     const requestedWorkspacePaths = prioritizeWorkspacePaths("", options.workspacePaths, {
       platform: workspacePlatform,
     });
@@ -1932,8 +1932,8 @@ export function createRuntimeManager({
       requestedWorkspacePaths,
       existsSync(serverConfigPath),
     );
-    const activeWorkspace = selectStickyOpenworkPortWorkspace(requestedWorkspacePaths, workspacePaths);
-    const portSelection = await resolveOpenworkPort(host, activeWorkspace, currentPort);
+    const activeWorkspace = selectStickyGet3wPortWorkspace(requestedWorkspacePaths, workspacePaths);
+    const portSelection = await resolveGet3wPort(host, activeWorkspace, currentPort);
     const tokens = await loadServerCredentials();
 
     // One call: resolve config, spawn managed OpenCode, start HTTP server.
@@ -1953,9 +1953,9 @@ export function createRuntimeManager({
     }
     // Must be set before the bundle loads: the server memoizes its file sink
     // from process.env the first time it creates a logger.
-    const logFilePath = resolveOpenworkServerLogFile(userDataDir);
+    const logFilePath = resolveGet3wServerLogFile(userDataDir);
     process.env.GET3W_SERVER_LOG_FILE = logFilePath;
-    openworkServerState.logFilePath = logFilePath;
+    get3wServerState.logFilePath = logFilePath;
     const { startEmbeddedServer } = await import(embeddedServerImportUrl(embeddedPath));
     // startEmbeddedServer falls back to an OS-assigned port if `port` races
     // into EADDRINUSE (see apps/server/src/serve-node.ts), so the bound port
@@ -1980,7 +1980,7 @@ export function createRuntimeManager({
       engineAutoUpgrade: resolveDesktopEngineAutoUpgrade(),
     });
     inProcessServer = handle;
-    openworkServerState.managedOpencodeExecution = handle.managedOpencodeExecution ?? null;
+    get3wServerState.managedOpencodeExecution = handle.managedOpencodeExecution ?? null;
     engineState.managedByServer = Boolean(handle.managedOpencode);
     engineState.managedPid = handle.managedOpencode?.pid ?? null;
     engineState.managedIsAlive = handle.managedOpencode?.isAlive ?? null;
@@ -1988,14 +1988,14 @@ export function createRuntimeManager({
     const boundPort = handle.port;
     const baseUrl = handle.url;
 
-    openworkServerState.inProcess = true;
-    openworkServerGenerationCounter += 1;
-    openworkServerState.generation = openworkServerGenerationCounter;
-    openworkServerState.host = host;
-    openworkServerState.port = boundPort;
-    openworkServerState.baseUrl = baseUrl;
-    openworkServerState.clientToken = tokens.clientToken;
-    openworkServerState.hostToken = tokens.hostToken;
+    get3wServerState.inProcess = true;
+    get3wServerGenerationCounter += 1;
+    get3wServerState.generation = get3wServerGenerationCounter;
+    get3wServerState.host = host;
+    get3wServerState.port = boundPort;
+    get3wServerState.baseUrl = baseUrl;
+    get3wServerState.clientToken = tokens.clientToken;
+    get3wServerState.hostToken = tokens.hostToken;
 
     // No health check needed -- startServer() resolves only after the listener is bound.
     let workspaceList = null;
@@ -2010,7 +2010,7 @@ export function createRuntimeManager({
       }
     }
     ownerToken ||= await issueOwnerToken(baseUrl, tokens.hostToken);
-    openworkServerState.ownerToken = ownerToken;
+    get3wServerState.ownerToken = ownerToken;
     if (ownerToken) {
       await persistServerOwnerToken(ownerToken);
     }
@@ -2034,13 +2034,13 @@ export function createRuntimeManager({
           engineState.childExited = false;
         }
       } catch (error) {
-        appendOutput(openworkServerState, "lastStderr", `Get3W server workspace probe: ${error instanceof Error ? error.message : String(error)}\n`);
+        appendOutput(get3wServerState, "lastStderr", `Get3W server workspace probe: ${error instanceof Error ? error.message : String(error)}\n`);
       }
     }
     if (!portSelection.preferredPort || boundPort === portSelection.preferredPort) {
-      await persistPreferredOpenworkPort(activeWorkspace, boundPort);
+      await persistPreferredGet3wPort(activeWorkspace, boundPort);
     }
-    return snapshotOpenworkServerState(openworkServerState);
+    return snapshotGet3wServerState(get3wServerState);
   }
 
   async function stopAllRuntimeChildren() {
@@ -2049,11 +2049,11 @@ export function createRuntimeManager({
       try { await inProcessServer.stop(); } catch { /* ignore */ }
       inProcessServer = null;
     }
-    await stopChild(openworkServerState);
+    await stopChild(get3wServerState);
     await stopChild(engineState);
 
     Object.assign(engineState, createEngineState());
-    Object.assign(openworkServerState, createOpenworkServerState());
+    Object.assign(get3wServerState, createGet3wServerState());
   }
 
   async function prepareFreshRuntime() {
@@ -2064,19 +2064,19 @@ export function createRuntimeManager({
   }
 
   function settleAfterWorkspacePreparationFailure() {
-    if (snapshotOpenworkServerState(openworkServerState).running) {
+    if (snapshotGet3wServerState(get3wServerState).running) {
       lifecycleState = "healthy";
       return;
     }
     Object.assign(engineState, createEngineState());
-    Object.assign(openworkServerState, createOpenworkServerState());
+    Object.assign(get3wServerState, createGet3wServerState());
     lifecycleState = "idle";
   }
 
-  async function ensureOpenwork(options) {
-    let openworkServer;
+  async function ensureGet3w(options) {
+    let get3wServer;
     try {
-      openworkServer = await startOpenworkServer({
+      get3wServer = await startGet3wServer({
         workspacePaths: options.workspacePaths,
         opencodeBaseUrl: engineState.baseUrl,
         opencodeUsername: engineState.opencodeUsername,
@@ -2089,7 +2089,7 @@ export function createRuntimeManager({
       throw error;
     }
 
-    assertOpenworkServerReady(openworkServer);
+    assertGet3wServerReady(get3wServer);
   }
 
   function adoptManagedEngineConnection() {
@@ -2123,24 +2123,24 @@ export function createRuntimeManager({
 
     // Reuse a healthy server instead of tearing it down. During boot the
     // main process kicks off bootRuntimeForSelectedWorkspace while renderer
-    // routes independently call ensureDesktopLocalOpenworkConnection. Both go
+    // routes independently call ensureDesktopLocalGet3wConnection. Both go
     // through this serialized path; without this guard the second call runs
     // prepareFreshRuntime (killing the freshly bound server) and then rebinds
     // the sticky preferred port, racing the not-yet-released socket into
     // EADDRINUSE and leaving the runtime in error -> boot screen.
-    // resolveOpenworkServerReuse also spans workspace switches: requesting a
+    // resolveGet3wServerReuse also spans workspace switches: requesting a
     // different projectDir retargets the running runtime instead of killing
     // the process and every in-flight run with it.
-    const reuseDecision = resolveOpenworkServerReuse({
+    const reuseDecision = resolveGet3wServerReuse({
       forceRestart: options.forceRestart,
-      inProcess: openworkServerState.inProcess,
+      inProcess: get3wServerState.inProcess,
       lifecycleState,
       currentProjectDir: engineState.projectDir,
       requestedProjectDir: safeProjectDir,
       platform: workspacePlatform,
     });
     if (reuseDecision.reuse) {
-      const existing = snapshotOpenworkServerState(openworkServerState);
+      const existing = snapshotGet3wServerState(get3wServerState);
       if (existing.running && existing.baseUrl && (existing.ownerToken || existing.clientToken)) {
         if (reuseDecision.retarget) {
           try {
@@ -2154,7 +2154,7 @@ export function createRuntimeManager({
             throw error;
           }
           engineState.projectDir = safeProjectDir;
-          await persistPreferredOpenworkPort(safeProjectDir, openworkServerState.port);
+          await persistPreferredGet3wPort(safeProjectDir, get3wServerState.port);
         }
         // A server started before any workspace existed never learned its
         // engine connection from a workspace; adopt it from the server.
@@ -2188,7 +2188,7 @@ export function createRuntimeManager({
       engineState.child = null;
       engineState.childExited = true;
 
-      await ensureOpenwork({
+      await ensureGet3w({
         projectDir: safeProjectDir,
         workspacePaths,
         manageOpencode: true,
@@ -2239,32 +2239,32 @@ export function createRuntimeManager({
       lifecycleState,
       engine: await engineInfo(),
       enginePool: inProcessServer?.managedOpencodePool?.() ?? null,
-      openworkServer: snapshotOpenworkServerState(openworkServerState),
+      get3wServer: snapshotGet3wServerState(get3wServerState),
     };
   }
 
-  async function openworkServerInfo() {
-    return snapshotOpenworkServerState(openworkServerState);
+  async function get3wServerInfo() {
+    return snapshotGet3wServerState(get3wServerState);
   }
 
-  async function openworkServerRestart(options = {}) {
-    return withStartupPhase("server.restart.requested", () => openworkServerRestartInner(options), options.diagnosticsCause ?? "requested");
+  async function get3wServerRestart(options = {}) {
+    return withStartupPhase("server.restart.requested", () => get3wServerRestartInner(options), options.diagnosticsCause ?? "requested");
   }
 
-  async function openworkServerRestartInner(options = {}) {
+  async function get3wServerRestartInner(options = {}) {
     const workspacePaths = prioritizeWorkspacePaths(engineState.projectDir, await listLocalWorkspacePaths(), {
       platform: workspacePlatform,
     });
     const shouldManageOpencode = Boolean(
-      openworkServerState.managedOpencodeBinPath || engineState.opencodeBinPath || !engineState.baseUrl,
+      get3wServerState.managedOpencodeBinPath || engineState.opencodeBinPath || !engineState.baseUrl,
     );
-    const info = await startOpenworkServer({
+    const info = await startGet3wServer({
       workspacePaths,
       opencodeBaseUrl: shouldManageOpencode ? null : engineState.baseUrl,
       opencodeUsername: shouldManageOpencode ? null : engineState.opencodeUsername,
       opencodePassword: shouldManageOpencode ? null : engineState.opencodePassword,
       manageOpencode: shouldManageOpencode,
-      opencodeBinPath: engineState.opencodeBinPath ?? openworkServerState.managedOpencodeBinPath,
+      opencodeBinPath: engineState.opencodeBinPath ?? get3wServerState.managedOpencodeBinPath,
     });
     // The server now runs its managed engine even before the first
     // workspace exists. Report that runtime as healthy so a later
@@ -2302,8 +2302,8 @@ export function createRuntimeManager({
     };
   }
 
-  async function sandboxCleanupOpenworkContainers() {
-    const candidates = await listOpenworkManagedContainers().catch((error) => {
+  async function sandboxCleanupGet3wContainers() {
+    const candidates = await listGet3wManagedContainers().catch((error) => {
       throw error;
     });
     const removed = [];
@@ -2334,9 +2334,9 @@ export function createRuntimeManager({
     dispose: () => withRuntimeLifecycle(() => stopAllRuntimeChildren()),
     runtimeStatus,
     engineInfo,
-    openworkServerInfo,
-    openworkServerRestart: (options) => withRuntimeLifecycle(() => openworkServerRestart(options)),
+    get3wServerInfo,
+    get3wServerRestart: (options) => withRuntimeLifecycle(() => get3wServerRestart(options)),
     opencodeMcpAuth,
-    sandboxCleanupOpenworkContainers,
+    sandboxCleanupGet3wContainers,
   };
 }

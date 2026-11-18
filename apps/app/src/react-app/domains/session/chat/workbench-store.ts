@@ -1,11 +1,11 @@
-import type { OpenworkSessionRef } from "@openwork/types/openwork-context";
+import type { Get3wSessionRef } from "@get3w/types/get3w-context";
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { NewSessionDestination } from "./new-session-destination";
 
 export type WorkbenchPane = "primary" | "secondary";
-export type WorkbenchSessionTab = OpenworkSessionRef & {
+export type WorkbenchSessionTab = Get3wSessionRef & {
   workspaceTitle?: string;
   draftDestination?: NewSessionDestination;
   pendingConversationId?: string;
@@ -24,7 +24,7 @@ export type SyncWorkbenchInput = {
   workspaceId: string;
   workspaceTitle?: string;
   primarySessionId: string | null;
-  sessions: OpenworkSessionRef[];
+  sessions: Get3wSessionRef[];
   sessionsKnown: boolean;
   /** Explicit archive metadata for this workspace, not sessions missing from its engine index. */
   archivedSessionIds?: string[];
@@ -40,13 +40,13 @@ const initialWorkbenchSnapshot: WorkbenchSnapshot = {
 };
 
 export function isSameWorkbenchSession(
-  left: Pick<OpenworkSessionRef, "workspaceId" | "sessionId"> | null | undefined,
-  right: Pick<OpenworkSessionRef, "workspaceId" | "sessionId"> | null | undefined,
+  left: Pick<Get3wSessionRef, "workspaceId" | "sessionId"> | null | undefined,
+  right: Pick<Get3wSessionRef, "workspaceId" | "sessionId"> | null | undefined,
 ) {
   return Boolean(left && right && left.workspaceId === right.workspaceId && left.sessionId === right.sessionId);
 }
 
-export function workbenchSessionKey(session: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">) {
+export function workbenchSessionKey(session: Pick<Get3wSessionRef, "workspaceId" | "sessionId">) {
   return JSON.stringify([session.workspaceId, session.sessionId]);
 }
 
@@ -87,7 +87,7 @@ function withRevision(current: WorkbenchSnapshot, next: Omit<WorkbenchSnapshot, 
   return { ...next, revision: current.revision + 1 };
 }
 
-function findTab(tabs: WorkbenchSessionTab[], session: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">) {
+function findTab(tabs: WorkbenchSessionTab[], session: Pick<Get3wSessionRef, "workspaceId" | "sessionId">) {
   return tabs.find((tab) => isSameWorkbenchSession(tab, session));
 }
 
@@ -155,7 +155,7 @@ export function useRouteWorkbench(input: SyncWorkbenchInput): WorkbenchSnapshot 
   return snapshot;
 }
 
-export function openWorkbenchTab(
+export function get3wbenchTab(
   current: WorkbenchSnapshot,
   tab: WorkbenchSessionTab,
 ): WorkbenchSnapshot {
@@ -170,7 +170,7 @@ export function openWorkbenchTab(
 
 export function closeWorkbenchTab(
   current: WorkbenchSnapshot,
-  tab: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">,
+  tab: Pick<Get3wSessionRef, "workspaceId" | "sessionId">,
   promoteSecondary = true,
 ): WorkbenchSnapshot {
   const tabs = current.tabs.filter((entry) => !isSameWorkbenchSession(entry, tab));
@@ -190,7 +190,7 @@ export function closeWorkbenchTab(
 
 export function setWorkbenchSplit(
   current: WorkbenchSnapshot,
-  session: Pick<OpenworkSessionRef, "workspaceId" | "sessionId"> | null,
+  session: Pick<Get3wSessionRef, "workspaceId" | "sessionId"> | null,
 ): WorkbenchSnapshot {
   if (!current.primary) return current;
   return setWorkbenchSideChat(current, current.primary, session);
@@ -198,8 +198,8 @@ export function setWorkbenchSplit(
 
 export function setWorkbenchSideChat(
   current: WorkbenchSnapshot,
-  owner: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">,
-  session: Pick<OpenworkSessionRef, "workspaceId" | "sessionId"> | null,
+  owner: Pick<Get3wSessionRef, "workspaceId" | "sessionId">,
+  session: Pick<Get3wSessionRef, "workspaceId" | "sessionId"> | null,
 ): WorkbenchSnapshot {
   if (!findTab(current.tabs, owner)) return current;
   const chat = session && !isSameWorkbenchSession(session, owner)
@@ -241,9 +241,9 @@ export function focusWorkbenchPane(
 type WorkbenchStore = WorkbenchSnapshot & {
   sync: (input: SyncWorkbenchInput) => void;
   openTab: (tab: WorkbenchSessionTab) => void;
-  closeTab: (tab: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">) => void;
-  archiveTab: (tab: Pick<OpenworkSessionRef, "workspaceId" | "sessionId">) => void;
-  setSplit: (session: Pick<OpenworkSessionRef, "workspaceId" | "sessionId"> | null) => void;
+  closeTab: (tab: Pick<Get3wSessionRef, "workspaceId" | "sessionId">) => void;
+  archiveTab: (tab: Pick<Get3wSessionRef, "workspaceId" | "sessionId">) => void;
+  setSplit: (session: Pick<Get3wSessionRef, "workspaceId" | "sessionId"> | null) => void;
   setSideChat: (owner: WorkbenchSessionTab, session: WorkbenchSessionTab) => void;
   focusPane: (pane: WorkbenchPane) => void;
 };
@@ -251,13 +251,13 @@ type WorkbenchStore = WorkbenchSnapshot & {
 export const useWorkbenchStore = create<WorkbenchStore>()(persist((set) => ({
   ...initialWorkbenchSnapshot,
   sync: (input) => set((state) => syncWorkbenchSnapshot(state, input)),
-  openTab: (tab) => set((state) => openWorkbenchTab(state, tab)),
+  openTab: (tab) => set((state) => get3wbenchTab(state, tab)),
   closeTab: (tab) => set((state) => closeWorkbenchTab(state, tab)),
   archiveTab: (tab) => set((state) => closeWorkbenchTab(state, tab, false)),
   setSplit: (session) => set((state) => setWorkbenchSplit(state, session)),
   setSideChat: (owner, session) => set((state) => setWorkbenchSideChat(state, owner, session)),
   focusPane: (pane) => set((state) => focusWorkbenchPane(state, pane)),
 }), {
-  name: "openwork.session-splits.v1",
+  name: "get3w.session-splits.v1",
   partialize: (state) => ({ tabs: state.tabs, sideChats: state.sideChats }),
 }));

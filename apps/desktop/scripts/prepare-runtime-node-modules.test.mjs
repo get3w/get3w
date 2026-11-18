@@ -12,8 +12,8 @@ test('staged automation runtime resolves transitive pnpm dependencies outside th
   const modules=join(directory,'node_modules');
   const staged=stageRuntimeNodeModules(modules);
   assert.ok(staged.includes('cross-spawn'));
-  assert.ok(staged.includes('@openwork/headless-threads'));
-  const runtime=await import(pathToFileURL(join(modules,'@openwork/headless-threads/dist/index.js')).href);
+  assert.ok(staged.includes('@get3w/headless-threads'));
+  const runtime=await import(pathToFileURL(join(modules,'@get3w/headless-threads/dist/index.js')).href);
   assert.ok(Object.keys(runtime).length>0);
  } finally {await rm(directory,{recursive:true,force:true});}
 });

@@ -1,4 +1,4 @@
-import { isBuiltInOpenWorkExtension, type McpDirectoryInfo } from "../../../app/constants";
+import { isBuiltInGet3WExtension, type McpDirectoryInfo } from "../../../app/constants";
 import { t } from "../../../i18n";
 
 /**
@@ -37,7 +37,7 @@ export function primaryLibraryFilter(filter?: ExtensionInventoryFilter): Extensi
 
 /** Built-ins ship with Get3W and run here, so they are apps. Accounts arrive as org connections. */
 export function taxonomyForDirectoryEntry(entry: McpDirectoryInfo): ExtensionTaxonomy {
-  if (isBuiltInOpenWorkExtension(entry) || entry.kind === "ui-control") return "app";
+  if (isBuiltInGet3WExtension(entry) || entry.kind === "ui-control") return "app";
   return "mcp";
 }
 

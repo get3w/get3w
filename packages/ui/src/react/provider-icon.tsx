@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 
 import { providerLogoCandidates } from "./provider-logo-src";
-import { OpenWorkMark } from "./openwork-mark";
+import { Get3WMark } from "./get3w-mark";
 
 export type ProviderIconProps = {
   providerId?: string | null;
@@ -35,8 +35,8 @@ export function ProviderIcon(props: ProviderIconProps) {
   const isAnthropic = hasProviderFamily("anthropic");
   const isOpenAI = hasProviderFamily("openai");
   const isOpenCode = hasProviderFamily("opencode");
-  const isOpenWork = hasProviderFamily("openwork") || hasProviderFamily("get3w") || normalizedId === "get3w-account";
-  const hasInlineMark = isAnthropic || isOpenAI || isOpenCode || isOpenWork;
+  const isGet3W = hasProviderFamily("get3w") || hasProviderFamily("get3w") || normalizedId === "get3w-account";
+  const hasInlineMark = isAnthropic || isOpenAI || isOpenCode || isGet3W;
 
   // Remote logos are walked in order and each failure advances one step, so a
   // provider only falls back to its monogram once every source is exhausted.
@@ -104,8 +104,8 @@ export function ProviderIcon(props: ProviderIconProps) {
           <path d="M2 17l10 5 10-5" />
           <path d="M2 12l10 5 10-5" />
         </svg>
-      ) : isOpenWork ? (
-        <OpenWorkMark size={size} />
+      ) : isGet3W ? (
+        <Get3WMark size={size} />
       ) : logoUrl ? (
         <img
           src={logoUrl}
@@ -133,4 +133,4 @@ export function ProviderIcon(props: ProviderIconProps) {
 }
 
 export { providerLogoCandidates } from "./provider-logo-src";
-export { OpenWorkMark } from "./openwork-mark";
+export { Get3WMark } from "./get3w-mark";

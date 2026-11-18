@@ -3,7 +3,7 @@
 // packages/types/src/desktop-ipc.ts (shared with the Electron main process);
 // this module re-exports them as the app-side import path.
 
-import type { WorkspaceWire } from "@openwork/types/workspace";
+import type { WorkspaceWire } from "@get3w/types/workspace";
 
 export type {
   AppBuildInfo,
@@ -40,20 +40,20 @@ export type {
   OpencodeConfigFile,
   OpencodeExecutionEnvEntry,
   OpencodeExecutionSnapshot,
-  OpenworkDockerCleanupResult,
-  OpenworkServerInfo,
+  Get3wDockerCleanupResult,
+  Get3wServerInfo,
   UpdaterEnvironment,
   WorkspaceCreateInput,
   WorkspaceExportSummary,
   WorkspaceList,
-  WorkspaceOpenworkConfig,
-} from "@openwork/types/desktop-ipc";
+  WorkspaceGet3wConfig,
+} from "@get3w/types/desktop-ipc";
 
-// Canonical wire shape shared with openwork-server and the desktop bridge.
+// Canonical wire shape shared with get3w-server and the desktop bridge.
 // Single source of truth: packages/types/src/workspace.ts.
 export type WorkspaceInfo = WorkspaceWire;
 
 // Browser tab state mirrored across the desktop IPC bridge. The shape is owned
-// by @openwork/browser-tabs (shared with the Electron main process); the
+// by @get3w/browser-tabs (shared with the Electron main process); the
 // session panel store re-exports it from here.
-export type { BrowserPanelTab } from "@openwork/browser-tabs";
+export type { BrowserPanelTab } from "@get3w/browser-tabs";

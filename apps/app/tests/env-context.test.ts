@@ -1,27 +1,27 @@
 import { describe, expect, test } from "bun:test";
 
-import type { OpenworkServerClient } from "../src/app/lib/openwork-server";
+import type { Get3wServerClient } from "../src/app/lib/get3w-server";
 import {
-  buildOpenworkEnvSystemContext,
-  buildOpenworkSessionSystemContext,
-  clearOpenworkEnvSystemContextCache,
+  buildGet3wEnvSystemContext,
+  buildGet3wSessionSystemContext,
+  clearGet3wEnvSystemContextCache,
 } from "../src/react-app/domains/session/sync/env-context";
 
-function client(keys: string[], calls: { count: number }): OpenworkServerClient {
+function client(keys: string[], calls: { count: number }): Get3wServerClient {
   return {
     baseUrl: "http://127.0.0.1:3000",
     listUserEnvKeys: async () => {
       calls.count += 1;
       return { keys };
     },
-  } as OpenworkServerClient;
+  } as Get3wServerClient;
 }
 
-describe("buildOpenworkEnvSystemContext", () => {
+describe("buildGet3wEnvSystemContext", () => {
   test("lists configured key names without inventing secret values", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
-    const context = await buildOpenworkEnvSystemContext(
+    const context = await buildGet3wEnvSystemContext(
       client(["NBA_LIVE_KEY", "bad-key", "ANTHROPIC_API_KEY", "NBA_LIVE_KEY"], calls),
       {
         cacheKey: "session-a",
@@ -37,19 +37,19 @@ describe("buildOpenworkEnvSystemContext", () => {
   });
 
   test("caches key context per session", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
     const server = client(["OPENROUTER_API_KEY"], calls);
 
-    await buildOpenworkEnvSystemContext(server, {
+    await buildGet3wEnvSystemContext(server, {
       cacheKey: "session-a",
       readPendingChanges: () => false,
     });
-    await buildOpenworkEnvSystemContext(server, {
+    await buildGet3wEnvSystemContext(server, {
       cacheKey: "session-a",
       readPendingChanges: () => false,
     });
-    await buildOpenworkEnvSystemContext(server, {
+    await buildGet3wEnvSystemContext(server, {
       cacheKey: "session-b",
       readPendingChanges: () => false,
     });
@@ -58,10 +58,10 @@ describe("buildOpenworkEnvSystemContext", () => {
   });
 
   test("does not truncate long key lists", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
     const keys = Array.from({ length: 90 }, (_, index) => `KEY_${index}`);
-    const context = await buildOpenworkEnvSystemContext(client(keys, calls), {
+    const context = await buildGet3wEnvSystemContext(client(keys, calls), {
       cacheKey: "session-a",
       readPendingChanges: () => false,
     });
@@ -72,9 +72,9 @@ describe("buildOpenworkEnvSystemContext", () => {
   });
 
   test("skips context while environment changes are pending", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
-    const context = await buildOpenworkEnvSystemContext(client(["ANTHROPIC_API_KEY"], calls), {
+    const context = await buildGet3wEnvSystemContext(client(["ANTHROPIC_API_KEY"], calls), {
       cacheKey: "session-a",
       readPendingChanges: () => true,
     });
@@ -84,11 +84,11 @@ describe("buildOpenworkEnvSystemContext", () => {
   });
 });
 
-describe("buildOpenworkSessionSystemContext", () => {
+describe("buildGet3wSessionSystemContext", () => {
   test("always carries the user's time zone context and appends env keys when present", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
-    const context = await buildOpenworkSessionSystemContext(client(["ANTHROPIC_API_KEY"], calls), {
+    const context = await buildGet3wSessionSystemContext(client(["ANTHROPIC_API_KEY"], calls), {
       cacheKey: "session-a",
       readPendingChanges: () => false,
     });
@@ -103,12 +103,12 @@ describe("buildOpenworkSessionSystemContext", () => {
   });
 
   test("still returns the user context when there are no env keys, no client, or pending changes", async () => {
-    clearOpenworkEnvSystemContextCache();
+    clearGet3wEnvSystemContextCache();
     const calls = { count: 0 };
 
-    const noKeys = await buildOpenworkSessionSystemContext(client([], calls), { cacheKey: "s1", readPendingChanges: () => false });
-    const noClient = await buildOpenworkSessionSystemContext(null, { cacheKey: "s2", readPendingChanges: () => false });
-    const pending = await buildOpenworkSessionSystemContext(client(["KEY"], calls), { cacheKey: "s3", readPendingChanges: () => true });
+    const noKeys = await buildGet3wSessionSystemContext(client([], calls), { cacheKey: "s1", readPendingChanges: () => false });
+    const noClient = await buildGet3wSessionSystemContext(null, { cacheKey: "s2", readPendingChanges: () => false });
+    const pending = await buildGet3wSessionSystemContext(client(["KEY"], calls), { cacheKey: "s3", readPendingChanges: () => true });
 
     for (const context of [noKeys, noClient, pending]) {
       expect(context.startsWith("User context:")).toBe(true);

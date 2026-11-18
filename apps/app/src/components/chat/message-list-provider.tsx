@@ -9,12 +9,12 @@ import type {
 } from "@/components/tools/error-attribution"
 import * as React from "react"
 import type { ConnectorToolIdentity } from "@/react-app/domains/connections/connector-tool-identity"
-import type { OpenworkServerClient } from "@/app/lib/openwork-server"
+import type { Get3wServerClient } from "@/app/lib/get3w-server"
 import type { McpAppOrigin } from "./mcp-app-origin"
 import type { RemoteThreadStart } from "@/lib/remote-session-thread"
 import { publicModelTitle } from "@/react-app/domains/models/model-catalog"
 import type { AutoRouteNameResolver, ReplyModelTitleResolver } from "@/react-app/domains/session/sync/reply-model"
-import type { AutoRouterReplyRoute } from "@openwork/types/den/auto-router"
+import type { AutoRouterReplyRoute } from "@get3w/types/den/auto-router"
 import { useSessionAutoRoutes } from "@/react-app/domains/session/sync/auto-route-store"
 import { useModelPickerCatalogStore } from "@/react-app/domains/session/models/model-collections-store"
 import type { ChatConnectionDecisionBinding } from "@/react-app/domains/session/surface/mcp-chat-reconnect"
@@ -77,7 +77,7 @@ const NO_TOOL_CALL_IDS: ReadonlySet<string> = new Set()
 const MessageListContext = React.createContext<MessageListContextValue | null>(null)
 
 interface MessageListProviderProps {
-  client?: OpenworkServerClient
+  client?: Get3wServerClient
   mcpAppEngine?: "v1" | "v2"
   readOnly?: boolean
   children: React.ReactNode

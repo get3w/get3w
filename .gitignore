@@ -51,9 +51,9 @@ vendor/opencode/
 .opencode/bun.lock
 
 # Get3W workspace-local artifacts
-.opencode/openwork/
-.opencode/agents/openwork.md
-.opencode/openwork.json
+.opencode/get3w/
+.opencode/agents/get3w.md
+.opencode/get3w.json
 opencode.jsonc
 .vercel
 .env*.local

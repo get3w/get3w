@@ -1,12 +1,12 @@
 
 import { assertGet3wServiceTarget } from "./get3w-service-target";
-import { normalizeDesktopConfig } from "@openwork/types/den/desktop-policies";
-import type { GatewayProviderSummary } from "@openwork/types/den/gateway";
+import { normalizeDesktopConfig } from "@get3w/types/den/desktop-policies";
+import type { GatewayProviderSummary } from "@get3w/types/den/gateway";
 export type { ModelRemovalInventory } from "../../react-app/domains/session/surface/model-removal-inventory";
 
 export { normalizeDesktopConfig };
 
-import { isDesktopDeployment, isWebDeployment } from "./openwork-deployment";
+import { isDesktopDeployment, isWebDeployment } from "./get3w-deployment";
 import {
   dispatchDenSettingsChanged,
 } from "./den-session-events";
@@ -18,23 +18,23 @@ import {
   setDesktopBootstrapConfig as setDesktopBootstrapConfigInShell,
   type DesktopBootstrapConfig as ShellDesktopBootstrapConfig,
 } from "./desktop";
-import { getOpenworkGatewayOrigin, readOpenworkGatewayDenBaseUrl } from "./gateway-runtime";
+import { getGet3wGatewayOrigin, readGet3wGatewayDenBaseUrl } from "./gateway-runtime";
 import { isDesktopRuntime } from "./runtime-env";
 
-const STORAGE_BASE_URL = "openwork.den.baseUrl";
-const LEGACY_STORAGE_API_BASE_URL = "openwork.den.apiBaseUrl";
-const STORAGE_AUTH_TOKEN = "openwork.den.authToken";
+const STORAGE_BASE_URL = "get3w.den.baseUrl";
+const LEGACY_STORAGE_API_BASE_URL = "get3w.den.apiBaseUrl";
+const STORAGE_AUTH_TOKEN = "get3w.den.authToken";
 /**
  * Origin comparison key (see denOriginComparisonKey) of the Den control plane
  * that issued the retained auth token. Written together with the token so a
  * later boot can prove the retained session belongs to the resolved bootstrap
  * origin before any credential-bearing request is made.
  */
-const STORAGE_SESSION_ORIGIN = "openwork.den.sessionOrigin";
-export const CLOUD_MCP_SYNC_MARKER_STORAGE_KEY = "openwork.den.mcp.sync";
+const STORAGE_SESSION_ORIGIN = "get3w.den.sessionOrigin";
+export const CLOUD_MCP_SYNC_MARKER_STORAGE_KEY = "get3w.den.mcp.sync";
 
 const BUILD_DEN_BASE_URL =
-  readOpenworkGatewayDenBaseUrl() ||
+  readGet3wGatewayDenBaseUrl() ||
   (typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_DEN_BASE_URL === "string"
     ? import.meta.env.VITE_DEN_BASE_URL
     : "").trim() || "https://api.get3w.com";
@@ -59,8 +59,8 @@ function readBuildDenApiBaseUrl(): string {
 }
 
 function readForceEnvDenSettings(): boolean {
-  return (typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_OPENWORK_FORCE_ENV_SETTINGS === "string"
-    ? /^(1|true|yes|on)$/i.test(import.meta.env.VITE_OPENWORK_FORCE_ENV_SETTINGS.trim())
+  return (typeof import.meta !== "undefined" && typeof import.meta.env?.VITE_GET3W_FORCE_ENV_SETTINGS === "string"
+    ? /^(1|true|yes|on)$/i.test(import.meta.env.VITE_GET3W_FORCE_ENV_SETTINGS.trim())
     : false);
 }
 
@@ -134,7 +134,7 @@ type DenOrgLlmProviderAccess = {
 
 export type DenOrgLlmProvider = {
   id: string;
-  source: "models_dev" | "custom" | "openwork";
+  source: "models_dev" | "custom" | "get3w";
   providerId: string;
   name: string;
   providerConfig: Record<string, unknown>;
@@ -274,7 +274,7 @@ function denOriginComparisonKey(input: string | null | undefined): string | null
 
 /**
  * True when the effective Den control plane is not the hosted Get3W Cloud
- * (app.openworklabs.com). Self-hosted deployments point the app at their own
+ * (app.get3w.com). Self-hosted deployments point the app at their own
  * control plane via VITE_DEN_BASE_URL or the desktop bootstrap config, so
  * hosted-only surfaces (e.g. Get3W Models upsells) should stay hidden.
  */
@@ -327,7 +327,7 @@ function ensureDenApiBasePath(input: string | null | undefined): string | null {
   }
 }
 
-const HOSTED_DEN_APEX_HOST = "openworklabs.com";
+const HOSTED_DEN_APEX_HOST = "get3w.com";
 
 function isHostedDenHost(hostname: string): boolean {
   const normalized = hostname.trim().toLowerCase();
@@ -339,7 +339,7 @@ function isHostedDenHost(hostname: string): boolean {
  *
  * Only two shapes are known ahead of time:
  * - An explicit API host (`api.*`) is already the API origin.
- * - Legacy hosted cloud (`*.openworklabs.com`) serves its API at the
+ * - Legacy hosted cloud (`*.get3w.com`) serves its API at the
  *   `api.`-prefixed host.
  *
  * Every other deployment (self-hosted single host, localhost, tunnel or
@@ -376,7 +376,7 @@ export function resolveDenBaseUrls(input: { baseUrl?: string | null; apiBaseUrl?
   const rawBaseUrl = typeof input === "string" ? input : input?.baseUrl;
   const normalizedBaseUrl = normalizeDenBaseUrl(rawBaseUrl);
   const normalizedApiBaseUrl = typeof input === "string" ? null : normalizeDenBaseUrl(input?.apiBaseUrl);
-  const gatewayOrigin = getOpenworkGatewayOrigin();
+  const gatewayOrigin = getGet3wGatewayOrigin();
 
   if (gatewayOrigin) {
     const normalizedGatewayOrigin = normalizeDenBaseUrl(gatewayOrigin) ?? gatewayOrigin;
@@ -603,7 +603,7 @@ function shouldWithholdDenCredentials(bootstrapBaseUrl: string): boolean {
 }
 
 export function readDenBootstrapConfig(): DenBootstrapConfig {
-  const gatewayOrigin = getOpenworkGatewayOrigin();
+  const gatewayOrigin = getGet3wGatewayOrigin();
   if (gatewayOrigin) {
     if (
       gatewayBootstrapConfig &&
@@ -632,7 +632,7 @@ export async function initializeDenBootstrapConfig(): Promise<DenBootstrapConfig
   const generation = ++desktopBootstrapGeneration;
 
   if (!isDesktopRuntime()) {
-    const gatewayOrigin = getOpenworkGatewayOrigin();
+    const gatewayOrigin = getGet3wGatewayOrigin();
     // Forced env settings (headless/dev runs): stale stored base URLs from
     // earlier sessions must not override the launcher-provided control plane.
     if (readForceEnvDenSettings() && typeof window !== "undefined") {
@@ -817,13 +817,13 @@ export function buildDenAuthUrl(baseUrl: string, mode: "sign-in" | "sign-up"): s
     isWebDeployment() && typeof window !== "undefined" ? window.location.origin : null;
   if (
     isDesktopDeployment()
-    || import.meta.env?.VITE_OPENWORK_FORCE_MANUAL_AUTH === "1"
+    || import.meta.env?.VITE_GET3W_FORCE_MANUAL_AUTH === "1"
     || (webReturnOrigin !== null && !canUseCloudWebAuthReturn(webReturnOrigin))
   ) {
     // Desktop app, or local/dev web that cannot receive an approved webAuth
-    // redirect: Den shows the copyable openwork:// / grant handoff instead.
+    // redirect: Den shows the copyable get3w:// / grant handoff instead.
     target.searchParams.set("desktopAuth", "1");
-    target.searchParams.set("desktopScheme", "openwork");
+    target.searchParams.set("desktopScheme", "get3w");
   } else if (webReturnOrigin !== null) {
     target.searchParams.set("webAuth", "1");
     target.searchParams.set("webAuthReturn", webReturnOrigin);
@@ -841,7 +841,7 @@ export function readDenSettings(): DenSettings {
 
   const bootstrapConfig = readDenBootstrapConfig();
   const baseUrls = resolveDenBaseUrls(
-    isDesktopRuntime() || getOpenworkGatewayOrigin()
+    isDesktopRuntime() || getGet3wGatewayOrigin()
       ? bootstrapConfig
       : { baseUrl: window.localStorage.getItem(STORAGE_BASE_URL) ?? bootstrapConfig.baseUrl },
   );

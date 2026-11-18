@@ -48,9 +48,9 @@ export type AiSettingsViewProps = {
   connectingGatewayProviderId?: string | null;
   onConnectGatewayProvider?: (provider: GatewayConnectProvider) => void | Promise<void>;
   onCancelGatewayConnect?: () => void;
-  showOpenWorkModelsConnect?: boolean;
-  showOpenWorkModelsSyncing?: boolean;
-  onDismissOpenWorkModels?: () => void | Promise<void>;
+  showGet3WModelsConnect?: boolean;
+  showGet3WModelsSyncing?: boolean;
+  onDismissGet3WModels?: () => void | Promise<void>;
   /** Providers on this device the engine chat runs on cannot use, from the server's skipped list. */
   localProviderStates?: ReadonlyMap<string, LocalProviderEngineState>;
   onOpenDen?: () => void;
@@ -133,7 +133,7 @@ export function AiSettingsView(props: AiSettingsViewProps) {
         {showAuto ? <ProviderRow
           testId="settings-auto-provider"
           scope="device"
-          tile={<ProviderTile providerId="openwork" />}
+          tile={<ProviderTile providerId="get3w" />}
           name="Get3W Models"
           status={autoAvailable ? <ProviderStatus tone="ready">{t("ui.996f87b386e1")}</ProviderStatus>
             : <ProviderStatus tone="neutral">{t("ui.ca1844969742")}</ProviderStatus>}

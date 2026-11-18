@@ -8,21 +8,21 @@ import { denSessionUpdatedEvent, denSettingsChangedEvent } from "@/app/lib/den-s
 
 import {
   SUGGESTED_PLUGINS,
-  filterOpenWorkExtensionCatalogForPlatform,
-  resolveOpenWorkExtensionCatalogPlatform,
+  filterGet3WExtensionCatalogForPlatform,
+  resolveGet3WExtensionCatalogPlatform,
 } from "@/app/constants";
 import type { EnablementContext } from "@/app/enablement";
 import { createClient, unwrap } from "@/app/lib/opencode";
 import {
-  createOpenworkServerClient,
-  isLoopbackOpenworkServerUrl,
-  readOpenworkServerSettings,
-  type OpenworkCloudMcpHealth,
-  type OpenworkServerCapabilities,
-  type OpenworkServerClient,
-  type OpenworkWorkspaceInfo,
-} from "@/app/lib/openwork-server";
-import { buildOpenworkEnvRuntimeKey } from "@/app/lib/openwork-env-runtime";
+  createGet3wServerClient,
+  isLoopbackGet3wServerUrl,
+  readGet3wServerSettings,
+  type Get3wCloudMcpHealth,
+  type Get3wServerCapabilities,
+  type Get3wServerClient,
+  type Get3wWorkspaceInfo,
+} from "@/app/lib/get3w-server";
+import { buildGet3wEnvRuntimeKey } from "@/app/lib/get3w-env-runtime";
 import {
   collectAgentContextDiagnosticObservations,
 } from "@/app/lib/agent-context-diagnostics";
@@ -63,7 +63,7 @@ import {
   routeWorkspaceSelectionCommitter,
 } from "@/react-app/shell/route-refresh-control";
 import { createConnectionsStore, useConnectionsStoreSnapshot } from "@/react-app/domains/connections/store";
-import { createOpenworkServerStore, useOpenworkServerStoreSnapshot } from "@/react-app/domains/connections/openwork-server-store";
+import { createGet3wServerStore, useGet3wServerStoreSnapshot } from "@/react-app/domains/connections/get3w-server-store";
 import {
   connectGatewayProvider,
   GATEWAY_CONNECT_TIMEOUT_MESSAGE,
@@ -87,7 +87,7 @@ import { OllamaConfig } from "@/react-app/domains/settings/ollama-config";
 import "@/react-app/domains/settings/browser-extension-config";
 import { useSettingsExtensionController } from "@/react-app/domains/settings/settings-extension-controller";
 import { buildExtensionItems } from "@/react-app/domains/settings/extension-items";
-import { isOpenWorkExtensionEnabled, OPENWORK_EXTENSION_STATE_CHANGED } from "@/react-app/domains/settings/extension-state";
+import { isGet3WExtensionEnabled, GET3W_EXTENSION_STATE_CHANGED } from "@/react-app/domains/settings/extension-state";
 import { PreferencesView } from "@/react-app/domains/settings/pages/preferences-view";
 import { GeneralSettingsView } from "@/react-app/domains/settings/pages/general-view";
 import { AuthorizedFoldersPanel } from "@/react-app/domains/settings/panels/authorized-folders-panel";
@@ -108,15 +108,15 @@ import { RecoveryView } from "@/react-app/domains/settings/pages/recovery-view";
 import { UpdatesView } from "@/react-app/domains/settings/pages/updates-view";
 import { useDebugViewModel } from "@/react-app/domains/settings/state/debug-view-model";
 import { useDesktopUpdater } from "@/react-app/domains/settings/state/desktop-updater-provider";
-import { useControlAction, type OpenworkControlAction } from "./control/control-provider";
+import { useControlAction, type Get3wControlAction } from "./control/control-provider";
 import { useBootState } from "./boot-state";
 import { SettingsShell } from "@/react-app/domains/settings/shell/settings-shell";
 import { createExtensionsStore, useExtensionsStoreSnapshot } from "@/react-app/domains/settings/state/extensions-store";
 import { usePlatform } from "@/react-app/kernel/platform";
 import { useLocal } from "@/react-app/kernel/local-provider";
 import {
-  openworkServerInfo,
-  openworkServerRestart,
+  get3wServerInfo,
+  get3wServerRestart,
   engineStart,
   resolveWorkspaceListSelectedId,
   workspaceBootstrap,
@@ -137,9 +137,9 @@ import {
 import { useCheckDesktopRestriction, useDesktopConfig } from "@/react-app/domains/cloud/desktop-config-provider";
 import { useRestrictionNotice } from "@/react-app/domains/cloud/restriction-notice-provider";
 import {
-  hasOpenWorkModelsAvailable,
-  shouldShowOpenWorkModelsSyncing,
-} from "@/react-app/domains/cloud/openwork-models-promo";
+  hasGet3WModelsAvailable,
+  shouldShowGet3WModelsSyncing,
+} from "@/react-app/domains/cloud/get3w-models-promo";
 import {
   isDesktopRuntime,
   isElectronRuntime,
@@ -155,11 +155,11 @@ import type { ModelRef } from "@/app/types";
 import { workspaceSwatchColor } from "@/react-app/domains/session/sidebar/utils";
 import { recordInspectorEvent } from "../../app/lib/app-inspector";
 import {
-  ensureDesktopLocalOpenworkConnection,
+  ensureDesktopLocalGet3wConnection,
   shouldAttemptDesktopLocalReconnect,
-} from "./desktop-local-openwork";
+} from "./desktop-local-get3w";
 import { reloadEngineWithDesktopFallback } from "./engine-reload-escalation";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { resolveGet3wConnection } from "./get3w-connection";
 import { abortSessionSafe, listCommands } from "@/app/lib/opencode-session";
 import { notifyAlert } from "./notifications";
 import { useReloadCoordinator } from "./reload-coordinator";
@@ -199,8 +199,8 @@ import {
   type LibraryCommandItem,
 } from "@/react-app/domains/settings/library";
 
-const ROUTE_OPENWORK_CAPABILITIES: OpenworkServerCapabilities = {
-  skills: { read: true, write: true, source: "openwork" },
+const ROUTE_GET3W_CAPABILITIES: Get3wServerCapabilities = {
+  skills: { read: true, write: true, source: "get3w" },
   plugins: { read: true, write: true },
   mcp: { read: true, write: true },
   commands: { read: true, write: true },
@@ -208,7 +208,7 @@ const ROUTE_OPENWORK_CAPABILITIES: OpenworkServerCapabilities = {
 };
 
 async function reloadEngineOrRestartDesktop(
-  client: Pick<OpenworkServerClient, "reloadEngine">,
+  client: Pick<Get3wServerClient, "reloadEngine">,
   workspaceId: string,
   afterRestart?: () => Promise<void>,
 ): Promise<void> {
@@ -218,13 +218,13 @@ async function reloadEngineOrRestartDesktop(
   }
 }
 
-function isOpenWorkCloudProvider(provider: {
+function isGet3WCloudProvider(provider: {
   providerId?: string | null;
   source?: string | null;
   sourceProviderId?: string | null;
 }) {
   return [provider.providerId, provider.source, provider.sourceProviderId].some(
-    (value) => value?.trim().toLowerCase() === "openwork",
+    (value) => value?.trim().toLowerCase() === "get3w",
   );
 }
 
@@ -257,7 +257,7 @@ function reconcileSelectedWorkspaceId(
   return serverList.activeId?.trim() || desktopSelectedId || workspaces[0]?.id || "";
 }
 
-const SETTINGS_HIDE_TITLEBAR_KEY = "openwork.react.settings.hide-titlebar";
+const SETTINGS_HIDE_TITLEBAR_KEY = "get3w.react.settings.hide-titlebar";
 
 export function parseSettingsPath(pathname: string): {
   tab: SettingsTab;
@@ -500,7 +500,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   }, [location.state, navigate, props.embedded, props.standaloneExtensions, selectedWorkspaceId]);
   const [baseUrl, setBaseUrl] = useState("");
   const [token, setToken] = useState("");
-  const [openworkClient, setOpenworkClient] = useState<OpenworkServerClient | null>(null);
+  const [get3wClient, setGet3wClient] = useState<Get3wServerClient | null>(null);
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
@@ -518,12 +518,12 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   const [disabledProviders, setDisabledProviders] = useState<string[]>([]);
   const [developerMode, setDeveloperMode] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("openwork.developerMode") === "1";
+    return window.localStorage.getItem("get3w.developerMode") === "1";
   });
   const toggleDeveloperMode = useCallback(() => {
     setDeveloperMode((current) => {
       const next = !current;
-      try { window.localStorage.setItem("openwork.developerMode", next ? "1" : "0"); } catch {}
+      try { window.localStorage.setItem("get3w.developerMode", next ? "1" : "0"); } catch {}
       return next;
     });
   }, []);
@@ -547,7 +547,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   const [userEnvKeys, setUserEnvKeys] = useState<string[]>([]);
   const [cloudMcpHealthResult, setCloudMcpHealthResult] = useState<{
     workspaceId: string;
-    health: OpenworkCloudMcpHealth;
+    health: Get3wCloudMcpHealth;
   } | null>(null);
   const emptyWorkspaceDisplay = useMemo<WorkspaceDisplay>(
     () => ({
@@ -568,10 +568,10 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     selectedWorkspaceRoot: "",
     selectedWorkspaceType: "local" as const,
     runtimeWorkspaceId: null as string | null,
-    openworkServerClient: null as OpenworkServerClient | null,
-    selectedWorkspaceOpenworkClient: null as OpenworkServerClient | null,
-    openworkServerStatus: "disconnected" as "connected" | "disconnected",
-    openworkServerCapabilities: null as OpenworkServerCapabilities | null,
+    get3wServerClient: null as Get3wServerClient | null,
+    selectedWorkspaceGet3wClient: null as Get3wServerClient | null,
+    get3wServerStatus: "disconnected" as "connected" | "disconnected",
+    get3wServerCapabilities: null as Get3wServerCapabilities | null,
     selectedWorkspaceDisplay: emptyWorkspaceDisplay as WorkspaceDisplay,
     providerItems: [] as ProviderListItem[],
     providerDefaults: {} as Record<string, string>,
@@ -640,10 +640,10 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     selectedWorkspaceRoot,
     selectedWorkspaceType: selectedWorkspace?.workspaceType ?? "local",
     runtimeWorkspaceId: selectedWorkspace?.id ?? null,
-    openworkServerClient: openworkClient,
-    selectedWorkspaceOpenworkClient: openworkClient,
-    openworkServerStatus: openworkClient ? "connected" : "disconnected",
-    openworkServerCapabilities: openworkClient ? ROUTE_OPENWORK_CAPABILITIES : null,
+    get3wServerClient: get3wClient,
+    selectedWorkspaceGet3wClient: get3wClient,
+    get3wServerStatus: get3wClient ? "connected" : "disconnected",
+    get3wServerCapabilities: get3wClient ? ROUTE_GET3W_CAPABILITIES : null,
     selectedWorkspaceDisplay,
     providerItems: providers,
     providerDefaults,
@@ -670,17 +670,17 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     [sessionsByWorkspaceId],
   );
 
-  const openworkServerStore = useMemo(
+  const get3wServerStore = useMemo(
     () =>
-      createOpenworkServerStore({
+      createGet3wServerStore({
         startupPreference: () => {
           // In desktop mode, loopback URLs are ephemeral local runtime details.
           // Only non-loopback stored URLs indicate an explicit manual server
           // connection preference.
           if (!isDesktopRuntime()) return "server";
-          const stored = readOpenworkServerSettings();
+          const stored = readGet3wServerSettings();
           const storedUrl = stored.urlOverride?.trim() ?? "";
-          return storedUrl && !isLoopbackOpenworkServerUrl(storedUrl) ? "server" : "local";
+          return storedUrl && !isLoopbackGet3wServerUrl(storedUrl) ? "server" : "local";
         },
         documentVisible: () => typeof document === "undefined" || document.visibilityState === "visible",
         developerMode: () => routeStateRef.current.developerMode,
@@ -698,7 +698,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         selectedWorkspaceId: () => routeStateRef.current.selectedWorkspaceId,
         selectedWorkspaceRoot: () => routeStateRef.current.selectedWorkspaceRoot,
         workspaceType: () => routeStateRef.current.selectedWorkspaceType,
-        openworkServer: openworkServerStore,
+        get3wServer: get3wServerStore,
         runtimeWorkspaceId: () => routeStateRef.current.runtimeWorkspaceId,
         ensureRuntimeWorkspaceId: async () =>
           routeStateRef.current.runtimeWorkspaceId?.trim() ||
@@ -707,7 +707,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         developerMode: () => routeStateRef.current.developerMode,
         markReloadRequired: reloadCoordinator.markReloadRequired,
       }),
-    [openworkServerStore, reloadCoordinator.markReloadRequired],
+    [get3wServerStore, reloadCoordinator.markReloadRequired],
   );
   refreshMcpServersRef.current = connectionsStore.refreshMcpServers;
   notifyMcpReloadingRef.current = connectionsStore.notifyMcpReloading;
@@ -736,7 +736,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
           routeStateRef.current.runtimeWorkspaceId?.trim() ||
           routeStateRef.current.selectedWorkspaceId.trim() ||
           null,
-        openworkServer: openworkServerStore,
+        get3wServer: get3wServerStore,
         setProviders,
         setProviderDefaults,
         setProviderConnectedIds,
@@ -750,7 +750,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
           });
         },
       }),
-    [checkDesktopRestriction, openworkServerStore, reloadCoordinator.markReloadRequired],
+    [checkDesktopRestriction, get3wServerStore, reloadCoordinator.markReloadRequired],
   );
   const extensionsStore = useMemo(
     () =>
@@ -761,11 +761,11 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         selectedWorkspaceId: () => routeStateRef.current.selectedWorkspaceId,
         selectedWorkspaceRoot: () => routeStateRef.current.selectedWorkspaceRoot,
         workspaceType: () => routeStateRef.current.selectedWorkspaceType,
-        openworkServer: openworkServerStore,
-        openworkServerConnection: () => ({
-          openworkServerClient: routeStateRef.current.openworkServerClient,
-          openworkServerStatus: routeStateRef.current.openworkServerStatus,
-          openworkServerCapabilities: routeStateRef.current.openworkServerCapabilities,
+        get3wServer: get3wServerStore,
+        get3wServerConnection: () => ({
+          get3wServerClient: routeStateRef.current.get3wServerClient,
+          get3wServerStatus: routeStateRef.current.get3wServerStatus,
+          get3wServerCapabilities: routeStateRef.current.get3wServerCapabilities,
         }),
         runtimeWorkspaceId: () => routeStateRef.current.runtimeWorkspaceId,
         ensureRuntimeWorkspaceId: async () =>
@@ -782,9 +782,9 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         },
         markReloadRequired: reloadCoordinator.markReloadRequired,
       }),
-    [openworkServerStore, reloadCoordinator.markReloadRequired],
+    [get3wServerStore, reloadCoordinator.markReloadRequired],
   );
-  const openworkServerSnapshot = useOpenworkServerStoreSnapshot(openworkServerStore);
+  const get3wServerSnapshot = useGet3wServerStoreSnapshot(get3wServerStore);
   const connectionsSnapshot = useConnectionsStoreSnapshot(connectionsStore);
   const providerAuthSnapshot = useProviderAuthStoreSnapshot(providerAuthStore);
   // Cloud account sessions were an organization feature; this edition is always signed out.
@@ -867,43 +867,43 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   }, [platform, providerAuthStore]);
   const extensionsSnapshot = useExtensionsStoreSnapshot(extensionsStore);
 
-  const openworkServerStatusForMcp = openworkServerSnapshot.openworkServerStatus;
+  const get3wServerStatusForMcp = get3wServerSnapshot.get3wServerStatus;
   useEffect(() => {
-    if (openworkServerStatusForMcp !== "connected") return;
-    // The first MCP read races the openwork-server store's initial health
+    if (get3wServerStatusForMcp !== "connected") return;
+    // The first MCP read races the get3w-server store's initial health
     // check (a fresh store always starts "disconnected"), so it falls back
     // to config files where server-runtime (config.remote) entries — notably
     // the cloud control MCP — don't exist. Without this re-read the built-in
     // cards show "Tap to connect" until the next full remount even though
     // the entries are configured and healthy.
     void connectionsStore.refreshMcpServers();
-  }, [connectionsStore, openworkServerStatusForMcp]);
+  }, [connectionsStore, get3wServerStatusForMcp]);
 
   useEffect(() => {
-    if (openworkServerStatusForMcp !== "connected") return;
+    if (get3wServerStatusForMcp !== "connected") return;
     // Same race for the Cloud Providers rows: the provider-auth store's
     // start() read fires while this store still reports "disconnected", so
     // it takes the legacy (empty) config read and the rows sit on "Syncing"
     // even though the server's /cloud-provider-sync/status already lists the
     // providers as synced. Re-derive from the server once it is reachable.
     void providerAuthStore.refreshImportedCloudProviders();
-  }, [openworkServerStatusForMcp, providerAuthStore]);
+  }, [get3wServerStatusForMcp, providerAuthStore]);
 
-  const hasOpenWorkCloudProvider = useMemo(
+  const hasGet3WCloudProvider = useMemo(
     () =>
-      Object.values(providerAuthSnapshot.importedCloudProviders ?? {}).some(isOpenWorkCloudProvider),
+      Object.values(providerAuthSnapshot.importedCloudProviders ?? {}).some(isGet3WCloudProvider),
     [providerAuthSnapshot.importedCloudProviders],
   );
   // Entitled = Den/import says Get3W Models is included. Available = local
-  // engine actually exposes selectable openwork models.
-  const openWorkModelsEntitled = cloudSignedIn && hasOpenWorkCloudProvider;
-  const openWorkModelsAvailable = hasOpenWorkModelsAvailable({
+  // engine actually exposes selectable get3w models.
+  const get3wModelsEntitled = cloudSignedIn && hasGet3WCloudProvider;
+  const get3wModelsAvailable = hasGet3WModelsAvailable({
     providerConnectedIds,
     providers,
   });
-  const showOpenWorkModelsSyncing = shouldShowOpenWorkModelsSyncing({
-    entitled: openWorkModelsEntitled,
-    available: openWorkModelsAvailable,
+  const showGet3WModelsSyncing = shouldShowGet3WModelsSyncing({
+    entitled: get3wModelsEntitled,
+    available: get3wModelsAvailable,
     workspaceReady: Boolean(selectedWorkspaceId && activeClient),
     reloadPending: providerAuthSnapshot.cloudProviderServerSync?.reloadPending === true,
   });
@@ -933,8 +933,8 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
 
   const debugViewProps = useDebugViewModel({
     developerMode,
-    openworkServerStore,
-    openworkServerSnapshot,
+    get3wServerStore,
+    get3wServerSnapshot,
     runtimeWorkspaceId: selectedWorkspace?.id ?? null,
     selectedWorkspaceRoot,
     setRouteError: (message) => {
@@ -955,14 +955,14 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
 
   const runtimeWorkspaceId = selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspace?.id ?? null;
   routeStateRef.current.runtimeWorkspaceId = runtimeWorkspaceId;
-  routeStateRef.current.selectedWorkspaceOpenworkClient = selectedWorkspaceEndpoint?.client ?? openworkClient;
+  routeStateRef.current.selectedWorkspaceGet3wClient = selectedWorkspaceEndpoint?.client ?? get3wClient;
   const cloudMcpHealth = cloudMcpHealthResult?.workspaceId === runtimeWorkspaceId
     ? cloudMcpHealthResult.health
     : null;
   const opencodeClient = useMemo(() => {
     if (!selectedWorkspaceEndpoint) {
       return engineRootEndpoint
-        ? createClient(engineRootEndpoint.opencodeBaseUrl, undefined, { token: engineRootEndpoint.token, mode: "openwork" })
+        ? createClient(engineRootEndpoint.opencodeBaseUrl, undefined, { token: engineRootEndpoint.token, mode: "get3w" })
         : null;
     }
     if (!selectedWorkspaceEndpoint.token) return null;
@@ -971,7 +971,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       selectedWorkspaceRoot || undefined,
       {
         token: selectedWorkspaceEndpoint.token,
-        mode: "openwork",
+        mode: "get3w",
       },
     );
   }, [engineRootEndpoint, selectedWorkspaceEndpoint, selectedWorkspaceRoot]);
@@ -1060,32 +1060,32 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
 
   useEffect(() => {
     const refresh = () => setExtensionStateVersion((value) => value + 1);
-    window.addEventListener(OPENWORK_EXTENSION_STATE_CHANGED, refresh);
+    window.addEventListener(GET3W_EXTENSION_STATE_CHANGED, refresh);
     window.addEventListener("storage", refresh);
     return () => {
-      window.removeEventListener(OPENWORK_EXTENSION_STATE_CHANGED, refresh);
+      window.removeEventListener(GET3W_EXTENSION_STATE_CHANGED, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
 
   useEffect(() => {
-    if (!openworkClient) {
+    if (!get3wClient) {
       setUserEnvKeys([]);
       return;
     }
     let cancelled = false;
-    void openworkClient.listUserEnvKeys()
+    void get3wClient.listUserEnvKeys()
       .then((response) => { if (!cancelled) setUserEnvKeys(response.keys); })
       .catch(() => { if (!cancelled) setUserEnvKeys([]); });
     return () => { cancelled = true; };
-  }, [openworkClient]);
+  }, [get3wClient]);
 
   /** Writes a local provider patch, reloads the engine, and reports the outcome in the provider's settings. */
   const applyLocalProviderPatch = useCallback(async (
-    patch: Parameters<OpenworkServerClient["patchConfig"]>[1],
+    patch: Parameters<Get3wServerClient["patchConfig"]>[1],
     done: { status: string; defaultModel?: { providerID: string; modelID: string } },
   ) => {
-    const client = selectedWorkspaceEndpoint?.client ?? openworkClient;
+    const client = selectedWorkspaceEndpoint?.client ?? get3wClient;
     const workspaceId = runtimeWorkspaceId?.trim() ?? "";
     if (!client || !workspaceId) {
       setLocalProviderError(t("ui.544918ad4820"));
@@ -1109,7 +1109,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       }
       await refreshProviderListQueries(getReactQueryClient());
       try {
-        window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+        window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
       } catch {
         // ignore browser event dispatch failures
       }
@@ -1119,7 +1119,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     } finally {
       setLocalProviderBusy(false);
     }
-  }, [local, openworkClient, reloadCoordinator, runtimeWorkspaceId, selectedWorkspaceEndpoint]);
+  }, [local, get3wClient, reloadCoordinator, runtimeWorkspaceId, selectedWorkspaceEndpoint]);
 
   const installLocalProvider = useCallback(async (input: LocalProviderInstallInput) => {
     const modelId = input.modelId.trim();
@@ -1186,11 +1186,11 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       }
       if (!attempt.isCurrent()) return;
 
-      const { normalizedBaseUrl, resolvedToken, resolvedHostToken } = await resolveOpenworkConnection();
+      const { normalizedBaseUrl, resolvedToken, resolvedHostToken } = await resolveGet3wConnection();
       if (!attempt.isCurrent()) return;
 
       if (!normalizedBaseUrl || !resolvedToken) {
-        setOpenworkClient(null);
+        setGet3wClient(null);
         setBaseUrl("");
         setToken("");
         setWorkspaces(desktopWorkspaces);
@@ -1204,7 +1204,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         return;
       }
 
-      const client = createOpenworkServerClient({
+      const client = createGet3wServerClient({
         baseUrl: normalizedBaseUrl,
         token: resolvedToken,
         hostToken: resolvedHostToken || undefined,
@@ -1286,7 +1286,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       );
       if (!attempt.isCurrent()) return;
 
-      setOpenworkClient(client);
+      setGet3wClient(client);
       setBaseUrl(normalizedBaseUrl);
       setToken(resolvedToken);
       setWorkspaces(nextWorkspaces);
@@ -1348,16 +1348,16 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
 
   const reloadWorkspaceEngineFromUi = useCallback(async () => {
     const workspaceId = routeStateRef.current.runtimeWorkspaceId?.trim() || selectedWorkspaceId.trim();
-    if (!openworkClient || !workspaceId) {
+    if (!get3wClient || !workspaceId) {
       toast.error(t("app.error_connect_first"));
       return false;
     }
 
-    await reloadEngineOrRestartDesktop(openworkClient, workspaceId, refreshRouteState);
+    await reloadEngineOrRestartDesktop(get3wClient, workspaceId, refreshRouteState);
     await refreshProviderListQueries(getReactQueryClient());
 
     try {
-      window.dispatchEvent(new CustomEvent("openwork-server-settings-changed"));
+      window.dispatchEvent(new CustomEvent("get3w-server-settings-changed"));
     } catch {
       // ignore browser event dispatch failures
     }
@@ -1367,18 +1367,18 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     void pollMcpServersAfterReloadRef.current?.();
 
     return true;
-  }, [openworkClient, refreshRouteState, selectedWorkspaceId]);
+  }, [get3wClient, refreshRouteState, selectedWorkspaceId]);
 
   useEffect(() => {
     return reloadCoordinator.registerWorkspaceReloadControls({
       workspaceId: selectedWorkspace?.id || selectedWorkspaceId || "",
       applyLiveChanges: async () => {
-        const status = await openworkClient?.getEngineV2PreviewStatus();
+        const status = await get3wClient?.getEngineV2PreviewStatus();
         if (!status?.enabled || !status.chatRouting) return false;
         await refreshProviderListQueries(getReactQueryClient()).catch(() => undefined);
         return true;
       },
-      canReloadWorkspaceEngine: () => Boolean(openworkClient && (selectedWorkspace?.id || selectedWorkspaceId)),
+      canReloadWorkspaceEngine: () => Boolean(get3wClient && (selectedWorkspace?.id || selectedWorkspaceId)),
       reloadWorkspaceEngine: reloadWorkspaceEngineFromUi,
       activeSessions: () => activeReloadBlockingSessions,
       stopSession: async (sessionId) => {
@@ -1393,7 +1393,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   }, [
     activeClient,
     activeReloadBlockingSessions,
-    openworkClient,
+    get3wClient,
     reloadCoordinator,
     reloadWorkspaceEngineFromUi,
     selectedWorkspace?.id,
@@ -1433,7 +1433,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   }, [workspaces]);
 
   useEffect(() => {
-    if (openworkClient) {
+    if (get3wClient) {
       reconnectAttemptedWorkspaceIdRef.current = "";
     }
     // Same gate as the session route: reconnect must not probe the local
@@ -1444,7 +1444,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         bootPhase,
         bootRouteReady,
         routeLoading: loading,
-        hasClient: Boolean(openworkClient),
+        hasClient: Boolean(get3wClient),
         connectionPending: false,
         workspaceType: selectedWorkspace?.workspaceType ?? null,
       })
@@ -1456,7 +1456,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     if (!workspaceId || reconnectAttemptedWorkspaceIdRef.current === workspaceId) return;
     reconnectAttemptedWorkspaceIdRef.current = workspaceId;
 
-    void ensureDesktopLocalOpenworkConnection({
+    void ensureDesktopLocalGet3wConnection({
       route: "settings",
       workspace: selectedWorkspace,
       allWorkspaces: workspaces,
@@ -1470,7 +1470,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         dedupeKey: "server-reconnect",
       });
     });
-  }, [bootPhase, bootRouteReady, loading, openworkClient, selectedWorkspace, workspaces]);
+  }, [bootPhase, bootRouteReady, loading, get3wClient, selectedWorkspace, workspaces]);
 
   useEffect(() => {
     // A workspace-route change must invalidate the previous refresh even if
@@ -1480,20 +1480,20 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     const handleSettingsChange = () => {
       void refreshRouteState({ supersede: true });
     };
-    window.addEventListener("openwork-server-settings-changed", handleSettingsChange);
+    window.addEventListener("get3w-server-settings-changed", handleSettingsChange);
     return () => {
-      window.removeEventListener("openwork-server-settings-changed", handleSettingsChange);
+      window.removeEventListener("get3w-server-settings-changed", handleSettingsChange);
     };
   }, [refreshRouteState]);
 
   // Load auto-compaction state from OpenCode config on workspace change.
   useEffect(() => {
-    if (!openworkClient || !selectedWorkspaceId) return;
+    if (!get3wClient || !selectedWorkspaceId) return;
     const workspaceId = routeStateRef.current.runtimeWorkspaceId?.trim() || selectedWorkspaceId;
     let cancelled = false;
     (async () => {
       try {
-        const config = await openworkClient.getConfig(workspaceId);
+        const config = await get3wClient.getConfig(workspaceId);
         if (cancelled) return;
         const compaction = config.opencode?.compaction;
         const auto = compaction && typeof compaction === "object" && "auto" in compaction
@@ -1506,17 +1506,17 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       }
     })();
     return () => { cancelled = true; };
-  }, [openworkClient, selectedWorkspaceId]);
+  }, [get3wClient, selectedWorkspaceId]);
 
   const toggleAutoCompactContext = useCallback(async () => {
     if (autoCompactContextBusy) return;
     const workspaceId = routeStateRef.current.runtimeWorkspaceId?.trim() || selectedWorkspaceId;
-    if (!openworkClient || !workspaceId) return;
+    if (!get3wClient || !workspaceId) return;
     const next = !autoCompactContext;
     setAutoCompactContext(next);
     setAutoCompactContextBusy(true);
     try {
-      await openworkClient.patchConfig(workspaceId, {
+      await get3wClient.patchConfig(workspaceId, {
         opencode: { compaction: { auto: next } },
       });
       reloadCoordinator.markReloadRequired("config", {
@@ -1529,10 +1529,10 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     } finally {
       setAutoCompactContextBusy(false);
     }
-  }, [autoCompactContext, autoCompactContextBusy, openworkClient, reloadCoordinator, selectedWorkspaceId]);
+  }, [autoCompactContext, autoCompactContextBusy, get3wClient, reloadCoordinator, selectedWorkspaceId]);
 
   useEffect(() => {
-    openworkServerStore.start();
+    get3wServerStore.start();
     connectionsStore.start();
     providerAuthStore.start();
     extensionsStore.start();
@@ -1541,9 +1541,9 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       extensionsStore.dispose();
       providerAuthStore.dispose();
       connectionsStore.dispose();
-      openworkServerStore.dispose();
+      get3wServerStore.dispose();
     };
-  }, [connectionsStore, extensionsStore, openworkServerStore, providerAuthStore]);
+  }, [connectionsStore, extensionsStore, get3wServerStore, providerAuthStore]);
 
   // Periodically reconcile workspace-imported cloud providers from Den while
   // signed in (dev #1509 "auto-sync cloud providers"). Mounted here because
@@ -1561,14 +1561,14 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     providerAuthStore.syncFromOptions();
   }, [
     providerAuthStore,
-    openworkServerSnapshot.openworkServerStatus,
-    openworkServerSnapshot.openworkServerCapabilities?.providerSync,
-    openworkServerSnapshot.openworkServerClient,
-    openworkServerSnapshot.openworkServerHostInfo?.generation,
+    get3wServerSnapshot.get3wServerStatus,
+    get3wServerSnapshot.get3wServerCapabilities?.providerSync,
+    get3wServerSnapshot.get3wServerClient,
+    get3wServerSnapshot.get3wServerHostInfo?.generation,
   ]);
 
   useEffect(() => {
-    openworkServerStore.syncFromOptions();
+    get3wServerStore.syncFromOptions();
     connectionsStore.syncFromOptions();
     providerAuthStore.syncFromOptions();
     extensionsStore.syncFromOptions();
@@ -1576,7 +1576,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     activeClient,
     connectionsStore,
     extensionsStore,
-    openworkServerStore,
+    get3wServerStore,
     providerAuthStore,
     selectedWorkspace?.id,
     selectedWorkspace?.workspaceType,
@@ -1629,7 +1629,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   // Read the engine's view again whenever the provider list is read again,
   // including when v1's list did not change.
   const localProviderStates = useLocalProviderEngineStates(
-    selectedWorkspaceEndpoint?.client ?? openworkClient,
+    selectedWorkspaceEndpoint?.client ?? get3wClient,
     `${providerAuthSnapshot.providerLoadState.status}\n${providerConnectedIds.join("\n")}`,
   );
   // While chat runs on v2, v1's list can lag the engine (it caches per folder):
@@ -1656,8 +1656,8 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       ? []
       : [{ id, name: providers.find((provider) => provider.id === id)?.name ?? PROVIDER_LABELS[id.toLowerCase()] ?? id }],
   );
-  const openworkCloudMcpUrl = connectionsSnapshot.mcpServers.find(
-    (server) => server.name === "openwork-cloud",
+  const get3wCloudMcpUrl = connectionsSnapshot.mcpServers.find(
+    (server) => server.name === "get3w-cloud",
   )?.config.url ?? null;
 
   // Build enablement context from all available runtime state.
@@ -1675,7 +1675,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       isToggleEnabled: (ref: string) => {
         const catalog = connectionsStore.quickConnect;
         const match = catalog.find((e: { id?: string; serverName?: string }) => (e.id ?? e.serverName) === ref);
-        return match ? isOpenWorkExtensionEnabled(match) : false;
+        return match ? isGet3WExtensionEnabled(match) : false;
       },
     };
   }, [connectionsSnapshot, extensionStateVersion, providerConnectedIds, userEnvKeys]);
@@ -1684,17 +1684,17 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
   const restartExtensionLocalServer = useCallback(async () => {
     if (!isDesktopRuntime()) return false;
     try {
-      await openworkServerRestart({ diagnosticsCause: "settings" });
-      await openworkServerStore.reconnectOpenworkServer();
+      await get3wServerRestart({ diagnosticsCause: "settings" });
+      await get3wServerStore.reconnectGet3wServer();
       await refreshRouteState();
       return true;
     } catch {
       return false;
     }
-  }, [openworkServerStore, refreshRouteState]);
+  }, [get3wServerStore, refreshRouteState]);
   const extensionController = useSettingsExtensionController({
-    openworkServerClient: selectedWorkspaceEndpoint?.client ?? openworkClient,
-    hostOpenworkServerClient: openworkClient,
+    get3wServerClient: selectedWorkspaceEndpoint?.client ?? get3wClient,
+    hostGet3wServerClient: get3wClient,
     enablementContext,
     restartLocalServer: restartExtensionLocalServer,
     localProvider: {
@@ -1705,9 +1705,9 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       onSync: syncLocalProvider,
     },
   });
-  const extensionCatalogPlatform = resolveOpenWorkExtensionCatalogPlatform(platform.platform, platform.os);
+  const extensionCatalogPlatform = resolveGet3WExtensionCatalogPlatform(platform.platform, platform.os);
   const quickConnectCatalog = useMemo(
-    () => filterOpenWorkExtensionCatalogForPlatform(connectionsStore.quickConnect, extensionCatalogPlatform),
+    () => filterGet3WExtensionCatalogForPlatform(connectionsStore.quickConnect, extensionCatalogPlatform),
     [connectionsStore.quickConnect, extensionCatalogPlatform],
   );
   const extensionItems = useMemo(
@@ -1727,7 +1727,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     (name: string) => extensionsStore.readSkill(name),
     [extensionsStore],
   );
-  const diagnosticsClient = selectedWorkspaceEndpoint?.client ?? openworkClient;
+  const diagnosticsClient = selectedWorkspaceEndpoint?.client ?? get3wClient;
   const diagnosticsAvailable = Boolean(
     diagnosticsClient
     && runtimeWorkspaceId?.trim()
@@ -1749,7 +1749,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     token,
   ]);
   const runAgentContextDiagnostics = useCallback(async () => {
-    const client = selectedWorkspaceEndpoint?.client ?? openworkClient;
+    const client = selectedWorkspaceEndpoint?.client ?? get3wClient;
     const workspaceId = runtimeWorkspaceId?.trim() ?? "";
     if (
       !client
@@ -1761,12 +1761,12 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     const observations = collectAgentContextDiagnosticObservations();
     return client.runAgentContextDiagnostics(workspaceId, observations);
   }, [
-    openworkClient,
+    get3wClient,
     runtimeWorkspaceId,
     selectedWorkspace,
     selectedWorkspaceEndpoint,
   ]);
-  const routeOpenworkStatus = openworkClient ? "connected" : "disconnected";
+  const routeGet3wStatus = get3wClient ? "connected" : "disconnected";
   const notFoundRouteError = !loading && routeWorkspaceId && !selectedWorkspace
     ? t("ui.93d213fd053a")
     : null;
@@ -1779,13 +1779,13 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       });
     }
   }, [notFoundRouteError]);
-  const routeOpenworkCapabilities: OpenworkServerCapabilities | null = openworkClient
-    ? ROUTE_OPENWORK_CAPABILITIES
+  const routeGet3wCapabilities: Get3wServerCapabilities | null = get3wClient
+    ? ROUTE_GET3W_CAPABILITIES
     : null;
-  const environmentRuntimeKey = buildOpenworkEnvRuntimeKey({
-    baseUrl: openworkServerSnapshot.openworkServerBaseUrl || openworkServerSnapshot.openworkServerUrl,
-    pid: openworkServerSnapshot.openworkServerHostInfo?.pid ?? null,
-    port: openworkServerSnapshot.openworkServerHostInfo?.port ?? null,
+  const environmentRuntimeKey = buildGet3wEnvRuntimeKey({
+    baseUrl: get3wServerSnapshot.get3wServerBaseUrl || get3wServerSnapshot.get3wServerUrl,
+    pid: get3wServerSnapshot.get3wServerHostInfo?.pid ?? null,
+    port: get3wServerSnapshot.get3wServerHostInfo?.port ?? null,
   });
 
   const handleApplyEnvironmentChanges = async () => {
@@ -1818,7 +1818,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       // healthy engine must be replaced, not reused, for new values to apply.
       forceRestart: true,
     });
-    const reconnected = await openworkServerStore.reconnectOpenworkServer();
+    const reconnected = await get3wServerStore.reconnectGet3wServer();
     if (!reconnected) {
       await refreshRouteState().catch(() => {});
       return { statusMessage: t("settings.environment.apply_refresh_failed") };
@@ -1856,11 +1856,11 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     if (!trimmed) return;
     setRenameWorkspaceBusy(true);
     try {
-      if (!openworkClient) {
+      if (!get3wClient) {
         toast.error(t("ui.fb4599b9348e"));
         return;
       }
-      await openworkClient.updateWorkspaceDisplayName(renameWorkspaceId, trimmed);
+      await get3wClient.updateWorkspaceDisplayName(renameWorkspaceId, trimmed);
       setRenameWorkspaceId(null);
       setRenameWorkspaceTitle("");
       await refreshRouteState();
@@ -1871,7 +1871,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     } finally {
       setRenameWorkspaceBusy(false);
     }
-  }, [openworkClient, refreshRouteState, renameWorkspaceId, renameWorkspaceTitle]);
+  }, [get3wClient, refreshRouteState, renameWorkspaceId, renameWorkspaceTitle]);
 
   const handleRevealWorkspace = useCallback(async (workspaceId: string) => {
     const workspace = workspaces.find((item) => item.id === workspaceId);
@@ -1885,8 +1885,8 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       const message = t("workspace_list.remove_confirm") || "Remove this workspace from the sidebar?";
       if (!window.confirm(message)) return;
     }
-    if (openworkClient) {
-      await openworkClient.deleteWorkspace(workspaceId).catch(() => undefined);
+    if (get3wClient) {
+      await get3wClient.deleteWorkspace(workspaceId).catch(() => undefined);
     }
     if (isDesktopRuntime()) {
       await workspaceForget(workspaceId).catch(() => undefined);
@@ -1900,7 +1900,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       }
     }
     await refreshRouteState();
-  }, [openworkClient, refreshRouteState, selectedWorkspaceId, workspaces]);
+  }, [get3wClient, refreshRouteState, selectedWorkspaceId, workspaces]);
 
   if (route.redirectPath && !props.embedded) {
     const target = props.standaloneExtensions
@@ -1954,9 +1954,9 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         return (
           <SettingsStack>
             <AuthorizedFoldersPanel
-              openworkServerClient={openworkClient}
-              openworkServerStatus={routeOpenworkStatus}
-              openworkServerCapabilities={routeOpenworkCapabilities}
+              get3wServerClient={get3wClient}
+              get3wServerStatus={routeGet3wStatus}
+              get3wServerCapabilities={routeGet3wCapabilities}
               runtimeWorkspaceId={runtimeWorkspaceId}
               selectedWorkspaceRoot={selectedWorkspaceRoot}
               onConfigUpdated={() => {
@@ -2013,7 +2013,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
             localProviderStates={localProviderStates}
             cloudProviderIds={new Set([
               ...Object.values(settingsImportedCloudProviders).map((p) => p.providerId),
-              ...(openWorkModelsEntitled || openWorkModelsAvailable ? ["openwork"] : []),
+              ...(get3wModelsEntitled || get3wModelsAvailable ? ["get3w"] : []),
             ])}
             gatewayProviderIds={gatewayProviderIds}
             gatewayConnectProviders={gatewayConnectProviders}
@@ -2024,7 +2024,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
               toast.info(t("ui.d807d19d7cfc"));
             }}
             onConnectGatewayProvider={(provider) => { void handleConnectGatewayProvider(provider); }}
-            showOpenWorkModelsSyncing={showOpenWorkModelsSyncing}
+            showGet3WModelsSyncing={showGet3WModelsSyncing}
           />
         );
       case "ollama":
@@ -2121,7 +2121,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
                   void connectionsStore.removeMcp(name);
                 }}
                 setMcpEnabled={
-                  routeOpenworkStatus === "connected" && routeOpenworkCapabilities?.mcp?.write
+                  routeGet3wStatus === "connected" && routeGet3wCapabilities?.mcp?.write
                     ? (name, enabled) => connectionsStore.setMcpEnabled(name, enabled)
                     : undefined
                 }
@@ -2159,7 +2159,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
           <SettingsStack>
             <ClaudeImportView
               key={runtimeWorkspaceId ?? selectedWorkspaceId}
-              client={openworkClient}
+              client={get3wClient}
               workspaceId={runtimeWorkspaceId ?? selectedWorkspaceId}
               onOpenSession={(sessionId) => navigate(workspaceSessionRoute(selectedWorkspaceId, sessionId))}
             />
@@ -2174,27 +2174,27 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
               busy={busy}
               clientConnected={Boolean(opencodeClient)}
               opencodeConnectStatus={null}
-              openworkServerStatus={openworkServerSnapshot.openworkServerStatus}
+              get3wServerStatus={get3wServerSnapshot.get3wServerStatus}
               developerMode={developerMode}
               toggleDeveloperMode={toggleDeveloperMode}
               opencodeDevModeEnabled={false}
               openDebugDeepLink={async () => ({ ok: false, message: t("ui.6a5f5f51869a") })}
-              cloudMcpUrl={openworkCloudMcpUrl}
-              canInspectRuntimeConfig={Boolean(openworkClient && selectedWorkspaceId)}
+              cloudMcpUrl={get3wCloudMcpUrl}
+              canInspectRuntimeConfig={Boolean(get3wClient && selectedWorkspaceId)}
               getRuntimeConfigStatus={async () => {
-                if (!openworkClient || !selectedWorkspaceId) {
+                if (!get3wClient || !selectedWorkspaceId) {
                   throw new Error(t("ui.d98f9a6472e1"));
                 }
-                return openworkClient.getRuntimeConfigStatus(selectedWorkspaceId);
+                return get3wClient.getRuntimeConfigStatus(selectedWorkspaceId);
               }}
               cloudMcpHealth={cloudMcpHealth}
               refreshCloudMcpHealth={refreshCloudMcpHealth}
-              engineClient={openworkClient}
+              engineClient={get3wClient}
             />
             {platform.capabilities.localRuntimeControl ? (
               <RecoveryView
                 anyActiveRuns={false}
-                workspaceConfigPath={selectedWorkspaceRoot ? `${selectedWorkspaceRoot}/.opencode/openwork.json` : ""}
+                workspaceConfigPath={selectedWorkspaceRoot ? `${selectedWorkspaceRoot}/get3w.json` : ""}
                 resetConfigBusy={resetConfigBusy}
                 onResetAppConfigDefaults={() => {}}
                 configActionStatus={configActionStatus}
@@ -2203,13 +2203,13 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
                 onRepairOpencodeCache={() => {}}
                 dockerCleanupBusy={false}
                 dockerCleanupResult={null}
-                onCleanupOpenworkDockerContainers={() => {}}
+                onCleanupGet3wDockerContainers={() => {}}
               />
             ) : null}
             <EffectivePermissionsPanel
-              openworkServerClient={openworkClient}
-              openworkServerStatus={routeOpenworkStatus}
-              openworkServerCapabilities={routeOpenworkCapabilities}
+              get3wServerClient={get3wClient}
+              get3wServerStatus={routeGet3wStatus}
+              get3wServerCapabilities={routeGet3wCapabilities}
               runtimeWorkspaceId={runtimeWorkspaceId}
               refreshToken={permissionsRefreshToken}
             />
@@ -2268,7 +2268,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       case "environment":
         return (
           <EnvironmentView
-            client={openworkServerSnapshot.openworkServerClient}
+            client={get3wServerSnapshot.get3wServerClient}
             onApplyChanges={isDesktopRuntime() ? handleApplyEnvironmentChanges : undefined}
             applyBlocked={activeReloadBlockingSessions.length > 0}
             applyBlockedReason={
@@ -2317,7 +2317,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
           selectedWorkspaceColor={selectedWorkspaceColor}
           workspaces={workspaceOptions}
           onSelectWorkspace={handleSelectSettingsWorkspace}
-          headerStatus={routeOpenworkStatus}
+          headerStatus={routeGet3wStatus}
           busyHint={loading ? t("session.loading_detail") : busyLabel}
           onClose={props.onClose ?? (() => navigate(settingsReturnRoute(
             selectedWorkspaceId,
@@ -2331,7 +2331,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
       )}
 
       <CommandPalette
-        engineClient={openworkClient}
+        engineClient={get3wClient}
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         developerMode={developerMode}

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { devOpenworkProxy } from "./dev-openwork-proxy";
+import { devGet3wProxy } from "./dev-get3w-proxy";
 import { devDenProxy } from "./dev-den-proxy";
 import { MCP_APP_SANDBOX_PROXY_VERSION } from "../server/src/mcp-app-sandbox";
 
@@ -89,8 +89,8 @@ const isElectronPackagedBuild = process.env.GET3W_ELECTRON_BUILD === "1";
 // that runtime implies a provisioned cloud instance, which local dev lacks.
 export default defineConfig(({ command, isPreview }) => {
   const denProxy = devDenProxy(command === "serve" && !isPreview ? process.env : {});
-  const openworkProxy = devOpenworkProxy(command === "serve" && !isPreview ? process.env : {});
-  const headlessBrowserHostSuffix = Object.keys(openworkProxy).length > 0
+  const get3wProxy = devGet3wProxy(command === "serve" && !isPreview ? process.env : {});
+  const headlessBrowserHostSuffix = Object.keys(get3wProxy).length > 0
     ? process.env.GET3W_DEV_BROWSER_HOST_SUFFIX
     : undefined;
   if (headlessBrowserHostSuffix && !/^\.[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(headlessBrowserHostSuffix)) {
@@ -110,9 +110,9 @@ export default defineConfig(({ command, isPreview }) => {
     optimizeDeps: { include: ["react/compiler-runtime"] },
     plugins: [
       {
-        name: "openwork-dev-server-id",
+        name: "get3w-dev-server-id",
         configureServer(server) {
-          server.middlewares.use("/__openwork_dev_server_id", (_req, res) => {
+          server.middlewares.use("/__get3w_dev_server_id", (_req, res) => {
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ appRoot }));
           });
@@ -133,7 +133,7 @@ export default defineConfig(({ command, isPreview }) => {
         : {}),
       proxy: {
         ...denProxy,
-        ...openworkProxy,
+        ...get3wProxy,
       },
     },
     build: {

@@ -1,4 +1,4 @@
-export const OPEN_RENAME_SESSION_EVENT = "openwork:session:rename";
+export const OPEN_RENAME_SESSION_EVENT = "get3w:session:rename";
 
 export function requestRenameSession(sessionId: string): void {
   window.dispatchEvent(new CustomEvent(OPEN_RENAME_SESSION_EVENT, { detail: { sessionId } }));

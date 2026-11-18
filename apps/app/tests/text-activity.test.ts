@@ -75,7 +75,7 @@ test("an edit in a run names its file; several count files", () => {
 })
 
 test("diff sizes come from the engine when reported, otherwise from the change itself", () => {
-  const reported = done("edit", { filePath: "/w/a.md", oldString: "a", newString: "b" }, { openwork: { diffStats: { added: 11, removed: 2 } } })
+  const reported = done("edit", { filePath: "/w/a.md", oldString: "a", newString: "b" }, { get3w: { diffStats: { added: 11, removed: 2 } } })
   expect(textDiffStats(reported)).toEqual({ added: 11, removed: 2 })
   const edit = done("edit", { filePath: "/w/a.md", oldString: "one\ntwo\nthree\n", newString: "one\n2\nthree\nfour\n" })
   expect(textDiffStats(edit)).toEqual({ added: 2, removed: 1 })
@@ -106,13 +106,13 @@ test("capability sentences split into verb and object, keeping a negation with i
 })
 
 test("a command line splits into its program and the rest", () => {
-  expect(commandProgram("gh pr view 5245 --repo different-ai/openwork")).toEqual({ program: "gh", rest: " pr view 5245 --repo different-ai/openwork" })
+  expect(commandProgram("gh pr view 5245 --repo different-ai/get3w")).toEqual({ program: "gh", rest: " pr view 5245 --repo different-ai/get3w" })
   expect(commandProgram("CI=1 pnpm test")).toEqual({ program: "CI=1 pnpm", rest: " test" })
 })
 
 test("GitHub pull request and issue links are recognised; other links are not", () => {
-  expect(parseGitHubReference("https://github.com/different-ai/openwork/pull/5212")).toEqual({ owner: "different-ai", repo: "openwork", kind: "pull", number: 5212 })
-  expect(parseGitHubReference("https://github.com/different-ai/openwork/issues/12#issuecomment-1")).toEqual({ owner: "different-ai", repo: "openwork", kind: "issue", number: 12 })
-  expect(parseGitHubReference("https://github.com/different-ai/openwork")).toBeNull()
+  expect(parseGitHubReference("https://github.com/different-ai/get3w/pull/5212")).toEqual({ owner: "different-ai", repo: "get3w", kind: "pull", number: 5212 })
+  expect(parseGitHubReference("https://github.com/different-ai/get3w/issues/12#issuecomment-1")).toEqual({ owner: "different-ai", repo: "get3w", kind: "issue", number: 12 })
+  expect(parseGitHubReference("https://github.com/different-ai/get3w")).toBeNull()
   expect(parseGitHubReference("https://example.com/a/b/pull/1")).toBeNull()
 })

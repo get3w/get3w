@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { nativeModelVariants } from "@openwork/types/cloud-model-fast";
+import { nativeModelVariants } from "@get3w/types/cloud-model-fast";
 import {
   buildLocalProviderConfig,
   buildLocalProviderInstallPatch,

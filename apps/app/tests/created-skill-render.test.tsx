@@ -21,18 +21,18 @@ const { MessageList } = await import("../src/components/chat/message-list")
 
 const saved = { schemaVersion: "1", name: "Update CRM", pluginId: "plg_crm", skillId: "cob_crm", description: "Add clients and deals.", libraryUrl: null }
 const createCall: DynamicToolUIPart = {
-  type: "dynamic-tool", toolName: "openwork-cloud_create_skill", toolCallId: "call_create", state: "output-available",
+  type: "dynamic-tool", toolName: "get3w-cloud_create_skill", toolCallId: "call_create", state: "output-available",
   input: { pluginName: "Update CRM", skillMarkdown: "---\nname: update-crm\ndescription: x\n---\nSteps" },
   output: "# Skill created: Update CRM",
-  callProviderMetadata: { openwork: { mcpResult: { content: [{ type: "text", text: "# Skill created: Update CRM" }], structuredContent: saved } } },
+  callProviderMetadata: { get3w: { mcpResult: { content: [{ type: "text", text: "# Skill created: Update CRM" }], structuredContent: saved } } },
 }
 const directory: DynamicToolUIPart = {
-  type: "dynamic-tool", toolName: "openwork-cloud_execute_capability", toolCallId: "call_org", state: "output-available",
+  type: "dynamic-tool", toolName: "get3w-cloud_execute_capability", toolCallId: "call_org", state: "output-available",
   input: { name: "getOrg" },
   output: { currentMember: { id: "om_me" }, members: [{ id: "om_sam", user: { name: "Sam Taylor" } }], teams: [] },
 }
 const shareInput = { name: "postPluginsAccess", path: { pluginId: "plg_crm" }, body: { orgMembershipId: "om_sam", role: "viewer" } }
-const shareRunning: DynamicToolUIPart = { type: "dynamic-tool", toolName: "openwork-cloud_execute_capability", toolCallId: "call_share", state: "input-available", input: shareInput }
+const shareRunning: DynamicToolUIPart = { type: "dynamic-tool", toolName: "get3w-cloud_execute_capability", toolCallId: "call_share", state: "input-available", input: shareInput }
 const shareDone: DynamicToolUIPart = {
   ...shareRunning, state: "output-available",
   output: { ok: true, item: { id: "pag_1", orgMembershipId: "om_sam", teamId: null, orgWide: false, role: "viewer", createdByOrgMembershipId: "om_me", createdAt: "2026-10-27T00:00:00Z", removedAt: null } },

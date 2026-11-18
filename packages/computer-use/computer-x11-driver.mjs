@@ -1,5 +1,5 @@
 // A computer use driver for a Linux VM with an X11 display. It needs only two
-// things from the VM, which every `@openwork/sandbox` provider supplies: run a
+// things from the VM, which every `@get3w/sandbox` provider supplies: run a
 // shell command and read a file. Input goes through xdotool and screenshots
 // through ImageMagick, batched so one action costs one round trip.
 import { randomUUID } from "node:crypto";
@@ -17,7 +17,7 @@ const TOOLS = ["xdotool", "import", "python3"];
  */
 export function createX11Driver({ machine, display = ":99", timeoutMs = 20_000 }) {
   const validDisplay = /^:\d{1,3}(\.\d)?$/.test(display);
-  const directory = `/tmp/openwork-computer-${randomUUID()}`;
+  const directory = `/tmp/get3w-computer-${randomUUID()}`;
   const privateDirectory = `python3 -c ${quote(`import os, stat
 path = ${JSON.stringify(directory)}
 try: os.mkdir(path, 0o700)

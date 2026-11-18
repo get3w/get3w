@@ -62,7 +62,7 @@ describe("Settings lists Gateway providers under live provider sync", () => {
       providerId: "ipr_ready",
       sourceProviderId: "anthropic",
       name: "Anthropic",
-      source: "openwork_gateway",
+      source: "get3w_gateway",
       updatedAt: "2026-10-28T00:00:00.000Z",
       modelIds: [model(readySet).id],
       importedAt: null,

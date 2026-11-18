@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import { AGENT_VIEWPORTS, DEFAULT_AGENT_VIEWPORT, type AgentViewportKey } from "@openwork/browser-tabs";
+import { AGENT_VIEWPORTS, DEFAULT_AGENT_VIEWPORT, type AgentViewportKey } from "@get3w/browser-tabs";
 
 import { isActiveWorkSessionStatus } from "../sidebar/utils";
 import { getElectronBrowser } from "./utils";
 
-const STORAGE_KEY = "openwork.browser.agentViewport";
+const STORAGE_KEY = "get3w.browser.agentViewport";
 
 /** The size the person picked for pages the agent works on. */
 export function storedAgentViewport(): AgentViewportKey {

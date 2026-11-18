@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { Get3wServerClient } from "@/app/lib/get3w-server";
 
 import type { OpenTarget } from "@/react-app/domains/session/artifacts/open-target";
 
@@ -13,7 +13,7 @@ export type OpenTargetOptions = {
 type OpenTargetHandler = (target: OpenTarget, options?: OpenTargetOptions) => void;
 
 type OpenTargetContextValue = {
-  client?: OpenworkServerClient;
+  client?: Get3wServerClient;
   workspaceId?: string;
   workspaceRoot?: string;
   /** The conversation being shown; lets file reads follow it into a worktree. */
@@ -25,7 +25,7 @@ type OpenTargetContextValue = {
 
 type OpenTargetProviderProps = {
   children: React.ReactNode;
-  client?: OpenworkServerClient;
+  client?: Get3wServerClient;
   workspaceId?: string;
   workspaceRoot?: string;
   sessionId?: string;

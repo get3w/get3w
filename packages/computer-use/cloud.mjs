@@ -101,7 +101,7 @@ export async function createCloudComputer({ directory, display = ":99", enabled,
         if (path === "/computer/program") {
           if (!["computer", "browser"].includes(body.surface) || typeof body.code !== "string" || body.code.length > 32_000
             || body.timeoutMs !== undefined && (!Number.isInteger(body.timeoutMs) || body.timeoutMs < 1000 || body.timeoutMs > 60_000)) throw failure("invalid_arguments", "Provide a surface, bounded code and a timeout from 1000 to 60000 milliseconds.");
-          const { runComputerProgram } = await import("@openwork/computer-use/runtime");
+          const { runComputerProgram } = await import("@get3w/computer-use/runtime");
           const signal = current.signal;
           return await runComputerProgram(body, {
             computer: async (name, args, signal) => {

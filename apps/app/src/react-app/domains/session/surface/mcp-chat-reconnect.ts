@@ -2,7 +2,7 @@ import type { DenExternalMcpConnection, DenMcpConnectionConnectStart } from "@/a
 import type { UIMessage } from "ai"
 import { z } from "zod"
 import { connectionFromChatToolPart } from "@/components/tools/error-attribution"
-import type { ConnectionActionPayload } from "@openwork/types/connection-action-app"
+import type { ConnectionActionPayload } from "@get3w/types/connection-action-app"
 
 export type ChatConnectionDecisionRequest = {
   requestId: string
@@ -96,7 +96,7 @@ export function nativeChatConnectionDecision(input: {
     if (!questionTool || part.type !== "dynamic-tool" || part.toolName !== "question"
       || (part.state !== "input-available" && part.state !== "input-streaming")
       || (questionTool.messageID && questionTool.messageID !== message.id)) return []
-    const sourcePartId = part.callProviderMetadata?.openwork?.sourcePartId
+    const sourcePartId = part.callProviderMetadata?.get3w?.sourcePartId
     const matches = part.toolCallId === questionTool.callID
       || (Boolean(questionTool.messageID) && typeof sourcePartId === "string" && sourcePartId === questionTool.callID)
     return matches ? [part.toolCallId] : []

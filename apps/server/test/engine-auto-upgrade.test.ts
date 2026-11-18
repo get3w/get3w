@@ -73,7 +73,7 @@ test("shutdown during copy never switches engines", async () => {
 });
 
 test("history revision ignores project probes but detects changed chat content, including the WAL", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "openwork-history-revision-"));
+  const dir = mkdtempSync(join(tmpdir(), "get3w-history-revision-"));
   const file = join(dir, "source.db");
   const db = await openHistoryDatabase(file);
   try {

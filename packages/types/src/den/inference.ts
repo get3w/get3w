@@ -72,25 +72,25 @@ export function isInferenceWindowType(value: unknown): value is InferenceWindowT
  * `x-should-retry: false`. The body never names the organization and holds no digits, because engines retry any
  * error whose text mentions a 5xx/429 status or a rate limit.
  */
-export const OPENWORK_MODELS_ALLOWANCE_ERROR_CODE = "openwork_models_allowance_reached";
-export const OPENWORK_MODELS_ALLOWANCE_SOURCE = "openwork_models";
-export const OPENWORK_MODELS_ALLOWANCE_MESSAGE = "Your workspace used its Get3W Models allowance.";
+export const GET3W_MODELS_ALLOWANCE_ERROR_CODE = "get3w_models_allowance_reached";
+export const GET3W_MODELS_ALLOWANCE_SOURCE = "get3w_models";
+export const GET3W_MODELS_ALLOWANCE_MESSAGE = "Your workspace used its Get3W Models allowance.";
 
-export function openWorkModelsAllowanceErrorBody() {
+export function get3wModelsAllowanceErrorBody() {
   return {
     error: {
-      message: OPENWORK_MODELS_ALLOWANCE_MESSAGE,
+      message: GET3W_MODELS_ALLOWANCE_MESSAGE,
       type: "usage_limit_error",
       param: null,
-      code: OPENWORK_MODELS_ALLOWANCE_ERROR_CODE,
-      source: OPENWORK_MODELS_ALLOWANCE_SOURCE,
+      code: GET3W_MODELS_ALLOWANCE_ERROR_CODE,
+      source: GET3W_MODELS_ALLOWANCE_SOURCE,
     },
   } as const;
 }
 
-export function hasOpenWorkModelsAllowanceHttpMarker(response: Pick<Response, "status" | "headers">): boolean {
+export function hasGet3WModelsAllowanceHttpMarker(response: Pick<Response, "status" | "headers">): boolean {
   return response.status === 429
-    && response.headers.get("X-Get3W-Error-Code") === OPENWORK_MODELS_ALLOWANCE_ERROR_CODE
+    && response.headers.get("X-Get3W-Error-Code") === GET3W_MODELS_ALLOWANCE_ERROR_CODE
     && response.headers.get("X-Get3W-Usage-State") === "blocked";
 }
 
@@ -363,8 +363,8 @@ export const INFERENCE_PROVIDER_CREDENTIAL_STATUSES = [
 export type InferenceProviderCredentialStatus =
   (typeof INFERENCE_PROVIDER_CREDENTIAL_STATUSES)[number];
 
-// openwork_free: signed-in members' free Auto, served from the dedicated OpenAI key.
-export const INFERENCE_REQUEST_ROUTES = ["openwork_openrouter", "org_provider", "openwork_free"] as const;
+// get3w_free: signed-in members' free Auto, served from the dedicated OpenAI key.
+export const INFERENCE_REQUEST_ROUTES = ["get3w_openrouter", "org_provider", "get3w_free"] as const;
 export type InferenceRequestRoute = (typeof INFERENCE_REQUEST_ROUTES)[number];
 
 export const INFERENCE_REQUEST_PROTOCOLS = [

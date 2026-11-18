@@ -39,15 +39,15 @@ for (const diverged of [false, true]) for (const initialSequence of [50, 1000]) 
       const request = { database: db, sourceKey: "source", progress: () => {} };
       await assert.rejects(copyHistoryBatches({ ...request, signal: controller.signal,
         batch: async () => { controller.abort(new Error("Intentional committed-batch interruption")); } }), /Intentional committed-batch interruption/);
-      assert.equal(numberField(db.prepare("SELECT completed FROM openwork_history_copy").get(), "completed"), 0);
-      assert.equal(numberField(db.prepare("SELECT created_session FROM openwork_history_copy").get(), "created_session"), 0);
+      assert.equal(numberField(db.prepare("SELECT completed FROM get3w_history_copy").get(), "completed"), 0);
+      assert.equal(numberField(db.prepare("SELECT created_session FROM get3w_history_copy").get(), "created_session"), 0);
       assert.equal(numberField(db.prepare("SELECT count(*) AS n FROM session_message").get(), "n"), diverged ? 151 : 150);
       const sequence = numberField(db.prepare("SELECT seq FROM event_sequence WHERE aggregate_id = 'copy'").get(), "seq");
       assert.ok(sequence >= numberField(db.prepare("SELECT max(seq) AS seq FROM session_message").get(), "seq"));
       assert.equal(sequence, Math.max(initialSequence, 150), "advance atomically, but never rewind");
       assert.equal(stringField(db.prepare("SELECT owner_id FROM event_sequence WHERE aggregate_id = 'copy'").get(), "owner_id"), "existing-owner");
       await copyHistoryBatches(request);
-      assert.equal(numberField(db.prepare("SELECT completed FROM openwork_history_copy").get(), "completed"), 1);
+      assert.equal(numberField(db.prepare("SELECT completed FROM get3w_history_copy").get(), "completed"), 1);
       assert.equal(numberField(db.prepare("SELECT seq FROM event_sequence WHERE aggregate_id = 'copy'").get(), "seq"), sequence);
       assert.equal(stringField(db.prepare("SELECT owner_id FROM event_sequence WHERE aggregate_id = 'copy'").get(), "owner_id"), "existing-owner");
     } finally { db.close(); }

@@ -159,7 +159,7 @@ export function createComputerScripting({ stateDir, bridgeScript, platform = pro
   /**
    * @param {{ app: string, code: string, timeoutMs: number }} request
    * @param {AbortSignal} signal
-   * @returns {Promise<import("@openwork/computer-use/computer-control").ScriptResult>}
+   * @returns {Promise<import("@get3w/computer-use/computer-control").ScriptResult>}
    */
   return async function runScript({ app, code, timeoutMs }, signal) {
     if (platform !== "darwin") return { ok: false, error: { code: "script_unavailable", message: "App scripting is available on macOS only." } };

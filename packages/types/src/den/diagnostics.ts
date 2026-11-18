@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { denServerFactsSchema, deploymentServiceReadinessSchema } from "@openwork/types/den/service-readiness"
+import { denServerFactsSchema, deploymentServiceReadinessSchema } from "@get3w/types/den/service-readiness"
 
 /**
  * Settings › Diagnostics: one page and one endpoint for cloud, single-org and
@@ -105,7 +105,7 @@ export const providerCheckReasonSchema = z.enum([
   /** Each member signs in with their own account; Den never probes with a member's credential. */
   "member_sign_in",
   "endpoint_not_found", "network_error", "timeout", "configuration_error",
-  "credential_missing", "sync_error", "managed_by_openwork", "not_checked_yet",
+  "credential_missing", "sync_error", "managed_by_get3w", "not_checked_yet",
   /** The provider refused the stored credential (HTTP 401/403, or a stored refresh/client failure). */
   "credential_rejected",
   /** The stored credential's expiry has passed and it cannot be refreshed. */
@@ -116,9 +116,9 @@ export const providerCheckReasonSchema = z.enum([
 export type ProviderCheckReason = z.infer<typeof providerCheckReasonSchema>
 
 export const providerCheckSchema = z.strictObject({
-  /** Stable row id (gateway provider + credential set, legacy provider, or "openwork"). */
+  /** Stable row id (gateway provider + credential set, legacy provider, or "get3w"). */
   id: z.string().min(1).max(160),
-  source: z.enum(["gateway", "legacy", "openwork"]),
+  source: z.enum(["gateway", "legacy", "get3w"]),
   /** Catalog provider id, e.g. "anthropic", "openai", "litellm", "amazon-bedrock". Used for the logo. */
   providerId: z.string().min(1).max(128),
   name: z.string().min(1).max(255),

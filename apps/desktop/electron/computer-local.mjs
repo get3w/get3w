@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const defaultAppRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const helperName = "Get3W Computer Use.app";
 const helperExecutable = path.join("Contents", "MacOS", "ComputerUse");
-const protocolVersion = "openwork.computer-use/1";
+const protocolVersion = "get3w.computer-use/1";
 // Exactly the native helper's tools in mcp-embedded mode. The handshake rejects
 // any other list, so a new or missing tool cannot drift out of the contract.
 const toolNames = new Set([
@@ -31,7 +31,7 @@ async function loadMcp() {
     import("@modelcontextprotocol/sdk/client/stdio.js"),
     import("zod"),
   ]);
-  return { Client, StdioClientTransport, uiNotificationSchema: z.object({ method: z.literal("openwork/ui"), params: z.unknown() }) };
+  return { Client, StdioClientTransport, uiNotificationSchema: z.object({ method: z.literal("get3w/ui"), params: z.unknown() }) };
 }
 
 async function bounded(work, timeoutMs, signal) {
@@ -410,7 +410,7 @@ export function createLocalComputerAdapter({
       if (state.readiness !== "ready") throw new Error(state.detail);
       const { Client, StdioClientTransport, uiNotificationSchema } = await loadMcp();
       signal?.throwIfAborted();
-      const client = new Client({ name: "openwork-computer", version: "1.0.0" }, { capabilities: {}, enforceStrictCapabilities: true });
+      const client = new Client({ name: "get3w-computer", version: "1.0.0" }, { capabilities: {}, enforceStrictCapabilities: true });
       // Only this trusted host gets embedded presentation; Continue stays human-only.
       // Name and color for the on-desktop cursor; display only, never authority.
       const hex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
@@ -459,7 +459,7 @@ export function createLocalComputerAdapter({
         await bounded(async (options) => {
           await client.connect(transport, options);
           const server = client.getServerVersion();
-          if (server?.name !== "openwork-computer-use" || server.version !== "1.0.0" || !client.getServerCapabilities()?.tools) {
+          if (server?.name !== "get3w-computer-use" || server.version !== "1.0.0" || !client.getServerCapabilities()?.tools) {
             throw new Error("The Computer Use MCP handshake is incompatible.");
           }
           const { tools, nextCursor } = await client.listTools({}, options);
@@ -488,7 +488,7 @@ export function createLocalComputerAdapter({
             throw new Error("A scoped native presentation action is required.");
           }
           // Notifications must not wait behind a pending consent or agent tool call.
-          await bounded(() => client.notification({ method: "openwork/ui", params }), limits.close, lifetime.signal);
+          await bounded(() => client.notification({ method: "get3w/ui", params }), limits.close, lifetime.signal);
         },
         /**
          * One native tool call at a time. A failed or cancelled call closes the connection.

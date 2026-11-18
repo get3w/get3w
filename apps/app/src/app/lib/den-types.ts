@@ -2,7 +2,7 @@
 // desktop config and connector views). Kept in a leaf module so callers that
 // only need the shapes do not import the den.ts implementation; den.ts
 // re-exports everything here, so existing imports keep working.
-import type { DesktopConfig } from "@openwork/types/den/desktop-policies";
+import type { DesktopConfig } from "@get3w/types/den/desktop-policies";
 
 export type DenSettings = {
   baseUrl: string;

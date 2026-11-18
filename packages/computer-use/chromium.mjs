@@ -37,26 +37,26 @@ export async function publicDestination(value) {
 // DNS admission is defense in depth. Chromium resolves independently, so the
 // per-browser-UID kernel filter must exist before any automation connects.
 export const BROWSER_EGRESS_CHECK = `set -eu
-uid=$(id -u openwork-browser)
+uid=$(id -u get3w-browser)
 [ "$uid" -ne 0 ]
-iptables -w -C OUTPUT -m owner --uid-owner "$uid" -j OPENWORK_DESKTOP_EGRESS
-${IPV4_PRIVATE.map(([network, prefix]) => `iptables -w -C OPENWORK_DESKTOP_EGRESS -d ${network}/${prefix} -j REJECT`).join("\n")}
+iptables -w -C OUTPUT -m owner --uid-owner "$uid" -j GET3W_DESKTOP_EGRESS
+${IPV4_PRIVATE.map(([network, prefix]) => `iptables -w -C GET3W_DESKTOP_EGRESS -d ${network}/${prefix} -j REJECT`).join("\n")}
 if [ -e /proc/net/if_inet6 ]; then
-  ip6tables -w -C OUTPUT -m owner --uid-owner "$uid" -j OPENWORK_DESKTOP_EGRESS
-  ${IPV6_PRIVATE.map(([network, prefix]) => `ip6tables -w -C OPENWORK_DESKTOP_EGRESS -d ${network}/${prefix} -j REJECT`).join("\n  ")}
+  ip6tables -w -C OUTPUT -m owner --uid-owner "$uid" -j GET3W_DESKTOP_EGRESS
+  ${IPV6_PRIVATE.map(([network, prefix]) => `ip6tables -w -C GET3W_DESKTOP_EGRESS -d ${network}/${prefix} -j REJECT`).join("\n  ")}
 fi`;
 /** The native guard must attach complete, UID-scoped reject rules to OUTPUT. */
 export function nativeBrowserEgress(payload, uid) {
   if (!Number.isInteger(uid) || uid <= 0 || !Array.isArray(payload?.nftables)) return false;
   const entries = payload.nftables.filter(entry => entry && typeof entry === "object");
-  if (!entries.some(({ chain }) => chain?.family === "inet" && chain.table === "openwork_desktop"
+  if (!entries.some(({ chain }) => chain?.family === "inet" && chain.table === "get3w_desktop"
     && chain.name === "output" && chain.type === "filter" && chain.hook === "output")) return false;
   const address = (value, family) => {
     if (typeof value !== "string" || isIP(value) !== (family === "ip" ? 4 : 6)) return null;
     return family === "ip" ? value : new URL(`http://[${value}]`).hostname;
   };
   return [["ip", IPV4_PRIVATE], ["ip6", IPV6_PRIVATE]].every(([family, required]) => entries.some(({ rule }) => {
-    if (rule?.family !== "inet" || rule.table !== "openwork_desktop" || rule.chain !== "output" || rule.expr?.length !== 3) return false;
+    if (rule?.family !== "inet" || rule.table !== "get3w_desktop" || rule.chain !== "output" || rule.expr?.length !== 3) return false;
     const [owner, destination, verdict] = rule.expr;
     if (owner?.match?.op !== "==" || owner.match.left?.meta?.key !== "skuid" || owner.match.right !== uid || !verdict?.reject) return false;
     const match = destination?.match;
@@ -76,9 +76,9 @@ export async function browserEgressStatus(execute = egressCommand) {
     backend = native ? "nft" : "iptables";
     if (!native) { stage = "legacy"; await execute("/bin/sh", ["-c", BROWSER_EGRESS_CHECK]); return { ok: true, backend }; }
     stage = "uid";
-    const uid = Number((await execute("id", ["-u", "openwork-browser"])).trim());
+    const uid = Number((await execute("id", ["-u", "get3w-browser"])).trim());
     stage = "query";
-    const rules = JSON.parse(await execute("nft", ["-n", "-j", "list", "table", "inet", "openwork_desktop"]));
+    const rules = JSON.parse(await execute("nft", ["-n", "-j", "list", "table", "inet", "get3w_desktop"]));
     stage = "validate";
     const entries = Array.isArray(rules?.nftables) ? rules.nftables.filter(entry => entry && typeof entry === "object") : [];
     return { ok: nativeBrowserEgress(rules, uid), backend, uid, stage,
@@ -193,7 +193,7 @@ export function createCloudBrowser({ statePath, assertActive, enabled, beforeInp
         assertActive();
         if (context === null) {
           const tree = await wire.send("Page.getFrameTree");
-          context = (await wire.send("Page.createIsolatedWorld", { frameId: tree.frameTree.frame.id, worldName: "openwork-browser" })).executionContextId;
+          context = (await wire.send("Page.createIsolatedWorld", { frameId: tree.frameTree.frame.id, worldName: "get3w-browser" })).executionContextId;
         }
         const result = await wire.send("Runtime.evaluate", { expression: scripts[0].code, contextId: context, returnByValue: true, awaitPromise: true });
         if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);

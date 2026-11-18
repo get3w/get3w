@@ -4,7 +4,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import { act } from "react"
 import type { Root } from "react-dom/client"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router"
-import type { ComputerRequest } from "@openwork/types/desktop-ipc"
+import type { ComputerRequest } from "@get3w/types/desktop-ipc"
 
 let createRoot: typeof import("react-dom/client")["createRoot"]
 let ComputerRequestPanel: typeof import("../src/react-app/domains/session/computer/computer-request-panel")["ComputerRequestPanel"]

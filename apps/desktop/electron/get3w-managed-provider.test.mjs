@@ -6,8 +6,8 @@ import path from "node:path";
 import { createGet3wManagedProvider } from "./get3w-managed-provider.mjs";
 
 test("sign-in automatically enables models, survives restart, isolates accounts and cleans up on logout",async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-provider-'));
- let snapshot={status:'signed_in',user:{id:'a'}},provider={openwork:{name:'User key'}},closed=0,created=0;
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-'));
+ let snapshot={status:'signed_in',user:{id:'a'}},provider={get3w:{name:'User key'}},closed=0,created=0;
  const deps={userData,auth:{status:async()=>snapshot,models:async()=>({models:[{id:'test',protocols:['openai'],input_modalities:['text','image']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host',pid:1}),createProxy:async()=>({baseURL:'http://127.0.0.1:2345/v1',apiKey:'local-'+(++created),close:async()=>{closed++;}}),fetchImpl:async(url,options)=>{
   if(url.endsWith('/health'))return new Response(null,{status:200});
   assert.equal(url,'http://127.0.0.1:1234/runtime-config/providers');
@@ -19,7 +19,7 @@ test("sign-in automatically enables models, survives restart, isolates accounts 
   await writeFile(path.join(userData,'get3w-managed-provider.json'),JSON.stringify({enabled:false}));
   assert.equal((await manager.reconcile(snapshot)).state,'connected');
   assert.equal(provider['get3w-account'].name,'Get3W Models');
-  assert.equal(created,1);assert.equal(provider.openwork.name,'User key');
+  assert.equal(created,1);assert.equal(provider.get3w.name,'User key');
   assert.equal(provider['get3w-account'].models.test.attachment,true);
   assert.deepEqual(provider['get3w-account'].models.test.modalities,{input:['text','image'],output:['text']});
   await manager.reconcile(snapshot);assert.equal(created,1);
@@ -38,13 +38,13 @@ test("sign-in automatically enables models, survives restart, isolates accounts 
   assert.equal(created,4);
   snapshot={status:'signed_out'};
   assert.equal((await manager.reconcile(snapshot)).enabled,false);
-  assert.equal(provider['get3w-account'],undefined);assert.equal(provider.openwork.name,'User key');
+  assert.equal(provider['get3w-account'],undefined);assert.equal(provider.get3w.name,'User key');
   assert.equal(closed,4);
  }finally{await rm(userData,{recursive:true,force:true});}
 });
 
 test("remote server and edited provider fail closed",async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-provider-'));let remote=true,calls=0;
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-'));let remote=true,calls=0;
  const snapshot={status:'signed_in',user:{id:'a'}};
  const manager=createGet3wManagedProvider({userData,auth:{status:async()=>snapshot},getServerInfo:async()=>({running:true,baseUrl:remote?'https://example.com':'http://127.0.0.1:1234',hostToken:'host'}),fetchImpl:async()=>{calls++;return Response.json({provider:{'get3w-account':{name:'User custom'}}});}});
  try {
@@ -54,7 +54,7 @@ test("remote server and edited provider fail closed",async()=>{
 });
 
 test("deferred reload stays pending",async()=>{
- const userData=await mkdtemp(path.join(os.tmpdir(),'openwork-provider-'));let patches=0,provider={},reload='deferred',created=0;
+ const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-'));let patches=0,provider={},reload='deferred',created=0;
  const snapshot={status:'signed_in',user:{id:'a'}};
  const manager=createGet3wManagedProvider({userData,auth:{status:async()=>snapshot,models:async()=>({models:[{id:'test',protocols:['openai']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host'}),createProxy:async()=>{created++;return {baseURL:'http://127.0.0.1:2345/v1',apiKey:'local',close:async()=>{}};},fetchImpl:async(url,options)=>{
   if(url.endsWith('/health'))return new Response(null,{status:200});
@@ -70,12 +70,12 @@ test("deferred reload stays pending",async()=>{
  }finally{await manager.close();await rm(userData,{recursive:true,force:true});}
 });
 
-test('owned legacy provider migrates atomically and unowned legacy provider is preserved',async()=>{
+test('owned account provider refreshes and edited account provider is preserved',async()=>{
  const {createHash}=await import('node:crypto');
  const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
  const userData=await mkdtemp(path.join(os.tmpdir(),'get3w-provider-migration-'));
  const legacy={name:'Get3W Models',npm:'@ai-sdk/openai-compatible',models:{'get3w-auto':{name:'Auto'}}};
- let provider={'openwork-account':legacy},patches=[];
+ let provider={'get3w-account':legacy},patches=[];
  const snapshot={status:'signed_in',user:{id:'u'}};
  const deps={userData,auth:{models:async()=>({models:[{id:'get3w-auto',protocols:['openai']}]})},getServerInfo:async()=>({running:true,baseUrl:'http://127.0.0.1:1234',hostToken:'host'}),createProxy:async()=>({baseURL:'http://127.0.0.1:2345/v1',apiKey:'local',close:async()=>{}}),fetchImpl:async(url,opt)=>{
   if(opt.method==='PATCH'){const patch=JSON.parse(opt.body).provider;patches.push(patch);for(const [id,v] of Object.entries(patch)){if(v===null)delete provider[id];else provider[id]=v;}}
@@ -83,14 +83,13 @@ test('owned legacy provider migrates atomically and unowned legacy provider is p
  }};
  let m=createGet3wManagedProvider(deps);
  try {
-  await writeFile(path.join(userData,'openwork-managed-provider.json'),JSON.stringify({fingerprint:createHash('sha256').update(JSON.stringify(canonical(legacy))).digest('hex')}));
+  await writeFile(path.join(userData,'get3w-managed-provider.json'),JSON.stringify({fingerprint:createHash('sha256').update(JSON.stringify(canonical(legacy))).digest('hex')}));
   await m.reconcile(snapshot);
-  assert.equal(provider['openwork-account'],undefined);
   assert.equal(provider['get3w-account'].name,'Get3W Models');
-  assert.equal(patches.length,1);assert.equal(patches[0]['openwork-account'],null);
-  await m.close();provider['openwork-account']={name:'User edited'};m=createGet3wManagedProvider(deps);
+  assert.equal(patches.length,1);assert.equal(patches[0]['get3w-account'].name,'Get3W Models');
+  await m.close();provider['get3w-account']={name:'User edited'};m=createGet3wManagedProvider(deps);
   await assert.rejects(m.reconcile(snapshot),/edited locally/);
-  assert.equal(provider['openwork-account'].name,'User edited');
+  assert.equal(provider['get3w-account'].name,'User edited');
  }finally{await m.close();await rm(userData,{recursive:true,force:true});}
 });
 

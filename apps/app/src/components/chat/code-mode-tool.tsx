@@ -2,16 +2,16 @@ import { t } from "@/i18n";
 import { useEffect, useState } from "react";
 import type { DynamicToolUIPart } from "ai";
 
-import { CapabilityCallLine, ConnectorMark, DetailsToggle, isOpenWorkActivity, OPENWORK_IDENTITY, TechnicalDetailsPanel } from "./capability-call-line";
+import { CapabilityCallLine, ConnectorMark, DetailsToggle, isGet3WActivity, GET3W_IDENTITY, TechnicalDetailsPanel } from "./capability-call-line";
 import { RAIL_LINE, RAIL_ROW, RailMeta, TextSentenceLine, TrailingChevron } from "./activity-rail";
-import { isOpenWorkSkillCall } from "@/lib/created-skill";
+import { isGet3WSkillCall } from "@/lib/created-skill";
 import { splitSentence } from "@/lib/text-activity";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getCapabilityCallSentence } from "@/lib/capability-call";
 import { codeModeSummary } from "@/lib/code-mode-summary";
 import type { CapabilityCallSentence } from "@/lib/capability-call";
 import { savedSkillSentence, skillShareFailureReason, skillShareRequest, skillShareSentence } from "@/lib/created-skill";
-import { openWorkNativeSentence } from "@/lib/openwork-native-activity";
+import { get3wNativeSentence } from "@/lib/get3w-native-activity";
 import { useCreatedSkills } from "./created-skill-card";
 import { codeModeScriptError, codeModeToolCalls } from "@/lib/code-mode-tools";
 import type { CurrentToolLifecycle } from "@/lib/current-tool-lifecycle";
@@ -24,7 +24,7 @@ import { resolveConnectorToolIdentity, type ConnectorToolIdentity } from "@/reac
 export function isToolLookup(call: DynamicToolUIPart) {
   return call.toolName === "search" || call.toolName.endsWith("search_capabilities")
     // Reading what the app offers is the same kind of plumbing (T2).
-    || (call.toolName === "openwork_context" && call.state === "output-available");
+    || (call.toolName === "get3w_context" && call.state === "output-available");
 }
 
 /**
@@ -79,7 +79,7 @@ export function CodeModeTool({ part, calls: allCalls, lifecycle, connectors }: {
     const saved = savedSkillSentence(call);
     if (saved) return { service: null, ...saved };
     if (skillShareRequest(call)) return { service: null, ...skillShareSentence(shareLabels.get(call.toolCallId) ?? null) };
-    return openWorkNativeSentence(call);
+    return get3wNativeSentence(call);
   };
   const isBlocked = (call: DynamicToolUIPart) => skillShareRequest(call) !== null && skillShareFailureReason(call) === "blocked";
   const blockedCalls = calls.filter(isBlocked);
@@ -93,7 +93,7 @@ export function CodeModeTool({ part, calls: allCalls, lifecycle, connectors }: {
     // ran; the MCP's settings title ("Cloud Control") is plumbing.
     const connector = resolveConnectorToolIdentity(call, connectors);
     if (connector?.name) return connector.name;
-    if (call.toolName.startsWith("openwork-cloud_")) return t("ui.d0bfeadb5575");
+    if (call.toolName.startsWith("get3w-cloud_")) return t("ui.d0bfeadb5575");
     return getCapabilityCallSentence(call, { includeQuery: false }).service;
   };
   const summary = codeModeSummary(calls, { running, failed, serviceName, sentence: knownSentence, isBlocked });
@@ -168,7 +168,7 @@ export function CodeModeTool({ part, calls: allCalls, lifecycle, connectors }: {
   // service's real mark inline ("[Get3W] Looked up 2 tools"), never a glyph.
   const groupMarks = [...new Map(calls.map((call) => {
     const identity = resolveConnectorToolIdentity(call, connectors)
-      ?? (isOpenWorkSkillCall(call) || isOpenWorkActivity(call) || call.toolName.startsWith("openwork-cloud_") ? OPENWORK_IDENTITY : null);
+      ?? (isGet3WSkillCall(call) || isGet3WActivity(call) || call.toolName.startsWith("get3w-cloud_") ? GET3W_IDENTITY : null);
     return [identity?.id ?? "", identity] as const;
   })).values()];
   const groupMark = groupMarks.length === 1 ? groupMarks[0] ?? null : null;

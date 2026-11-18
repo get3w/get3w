@@ -108,7 +108,7 @@ export function buildManagedProviderConfig(provider: ManagedProviderConfigInput)
     name: provider.name,
     env: readProviderEnvNames(provider.providerConfig),
   };
-  if (Object.keys(models).length > 0 || provider.source !== "openwork") config.models = models;
+  if (Object.keys(models).length > 0 || provider.source !== "get3w") config.models = models;
 
   const npm = readString(provider.providerConfig.npm);
   if (npm) config.npm = npm;

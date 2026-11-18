@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 
-import type { OpenworkSessionHistory } from "../../../../app/lib/openwork-server";
+import type { Get3wSessionHistory } from "../../../../app/lib/get3w-server";
 import { mergeSnapshotAndLiveMessages } from "../sync/message-merge";
 import { applyRevertCursor, dropDuplicateTurnErrors } from "../sync/transcript-reconcile";
 import { snapshotToUIMessages } from "../sync/usechat-adapter";
@@ -10,8 +10,8 @@ import { parseSlashCommandInvocation } from "./composer/slash-command";
 
 export function resolveRenderedSessionSnapshot(input: {
   sessionId: string;
-  currentSnapshot: OpenworkSessionHistory | null | undefined;
-  cachedRendered: { sessionId: string; snapshot: OpenworkSessionHistory } | null | undefined;
+  currentSnapshot: Get3wSessionHistory | null | undefined;
+  cachedRendered: { sessionId: string; snapshot: Get3wSessionHistory } | null | undefined;
 }) {
   if (input.currentSnapshot?.session.id === input.sessionId) {
     return input.currentSnapshot;
@@ -30,9 +30,9 @@ export type LatestSessionHistory = {
   source: UIMessage[];
 };
 
-const historyProjections = new WeakMap<OpenworkSessionHistory["messages"], UIMessage[]>();
+const historyProjections = new WeakMap<Get3wSessionHistory["messages"], UIMessage[]>();
 
-export function projectHistoryRead(snapshot: OpenworkSessionHistory) {
+export function projectHistoryRead(snapshot: Get3wSessionHistory) {
   let projected = historyProjections.get(snapshot.messages);
   if (!projected) {
     const messages = snapshot.messages.every(({ info }) => Number.isFinite(info.time?.created))
@@ -162,7 +162,7 @@ export function applyHistorySourceChanges(history: LatestSessionHistory, source:
 
 export function deriveRenderedSessionMessages(input: {
   transcriptState: UIMessage[] | null | undefined;
-  snapshot: OpenworkSessionHistory | null | undefined;
+  snapshot: Get3wSessionHistory | null | undefined;
   historyComplete?: boolean;
   latestHistory?: LatestSessionHistory | null;
 }) {

@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 ICONS = ROOT / 'apps/desktop/resources/icons'
-MARK = ROOT / 'apps/app/public/openwork-mark.svg'
+MARK = ROOT / 'apps/app/public/get3w-mark.svg'
 SIZE = 1024
 
 # macOS icon canvas: inset plate, soft corners, generous internal whitespace.

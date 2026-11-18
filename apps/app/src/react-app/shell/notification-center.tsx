@@ -13,7 +13,7 @@ import { ActivityCaughtUp, ActivityLoading, ActivityNothingShared, ActivityRefre
 import { useActivityFeed, type ActivityFeedItem } from "@/react-app/domains/activity/use-activity-feed";
 import { useActivityStore } from "@/react-app/kernel/activity-store";
 import { useNotificationStore } from "@/react-app/kernel/notification-store";
-import { useControlAction, type OpenworkControlAction } from "./control/control-provider";
+import { useControlAction, type Get3wControlAction } from "./control/control-provider";
 import { openNotificationCenterEvent } from "./notifications";
 import { useShellConfig } from "./shell-config";
 
@@ -27,7 +27,7 @@ export function NotificationBell({ align = "end" }: { align?: "start" | "end" })
   const onActivityPage = useLocation().pathname === "/activity";
   const navigate = useNavigate();
 
-  const notificationsListAction = useMemo<OpenworkControlAction>(() => ({
+  const notificationsListAction = useMemo<Get3wControlAction>(() => ({
     id: "notifications.list",
     label: t("ui.cd74057712e8"),
     description: t("ui.920990bdbad1"),
@@ -47,7 +47,7 @@ export function NotificationBell({ align = "end" }: { align?: "start" | "end" })
     })),
   }), [notifications]);
   useControlAction(notificationsListAction);
-  const activityListAction = useMemo<OpenworkControlAction>(() => ({
+  const activityListAction = useMemo<Get3wControlAction>(() => ({
     id: "activity.list",
     label: t("ui.f6b5d9448ca4"),
     description: t("ui.1d5edda73545"),

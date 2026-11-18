@@ -14,12 +14,12 @@ const option = (providerID: string, modelID: string, title: string): ModelOption
 });
 const sonnet = option("ipr_gateway", "gwm_sonnet", "Claude Sonnet 4.5");
 const haiku = option("ipr_gateway", "gwm_haiku", "Claude Haiku 4.5");
-const luna = option("openwork", "openai/gpt-6-luna", "GPT-6 Luna");
+const luna = option("get3w", "openai/gpt-6-luna", "GPT-6 Luna");
 
 test("live sync uses its subscribed engine catalog rather than a deliberately absent legacy snapshot", () => {
   const context = {
     workspaceReady: true, loading: false, signedIn: true, cloudProviderSyncReady: true,
-    openWorkModelsSyncing: false, restrictToCloud: false, checkRestriction: () => false,
+    get3wModelsSyncing: false, restrictToCloud: false, checkRestriction: () => false,
     cloudProviderList: null, providerList: { all: [], connected: [], default: {} },
   };
   expect(computeModelAvailability(old, { ...context, liveProviderSync: true })).toEqual({ status: "unavailable", reason: "model_missing" });

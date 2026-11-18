@@ -11,7 +11,7 @@ import {
 import { replyModelLabel } from "../src/react-app/domains/session/sync/reply-model"
 
 const SESSION = "ses_live_reply_model"
-const sync = { workspaceId: "ws_live_reply_model", baseUrl: "http://127.0.0.1:9/w/ws_live_reply_model/opencode2", openworkToken: "token" }
+const sync = { workspaceId: "ws_live_reply_model", baseUrl: "http://127.0.0.1:9/w/ws_live_reply_model/opencode2", get3wToken: "token" }
 const location = { directory: "/tmp/live-reply-model" }
 const originalFetch = globalThis.fetch
 let cleanup: () => void = () => {}

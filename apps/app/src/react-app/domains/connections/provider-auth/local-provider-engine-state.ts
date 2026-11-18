@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type { EngineV2PreviewStatus, OpenworkServerClient } from "@/app/lib/openwork-server";
+import type { EngineV2PreviewStatus, Get3wServerClient } from "@/app/lib/get3w-server";
 import { isCloudManagedProviderKey } from "./cloud-provider-config";
 
 /**
@@ -61,7 +61,7 @@ export function deviceProviders(input: {
  * before the save returns, so that read already explains it. The last answer
  * stays on screen while the next one loads.
  */
-export function useLocalProviderEngineStates(client: OpenworkServerClient | null, refreshKey: string): ReadonlyMap<string, LocalProviderEngineState> {
+export function useLocalProviderEngineStates(client: Get3wServerClient | null, refreshKey: string): ReadonlyMap<string, LocalProviderEngineState> {
   const status = useQuery({
     queryKey: ["local-provider-engine-states", client?.baseUrl ?? "", client?.token ?? "", refreshKey],
     queryFn: () => (client ? client.getEngineV2PreviewStatus() : null),

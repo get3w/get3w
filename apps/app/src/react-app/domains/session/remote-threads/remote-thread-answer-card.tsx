@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
-import type { RemoteSessionAnswerInput, RemoteSessionPending } from "@openwork/types/automations"
+import type { RemoteSessionAnswerInput, RemoteSessionPending } from "@get3w/types/automations"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

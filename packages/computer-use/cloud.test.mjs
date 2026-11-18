@@ -47,9 +47,9 @@ test("cloud browser uses the installed native guard and fails closed when it cha
     ip6: ["::/96", "::ffff:0.0.0.0/96", "64:ff9b::/96", "64:ff9b:1::/48", "fc00::/7", "fe80::/10"],
   };
   const rules = { nftables: [
-    { chain: { family: "inet", table: "openwork_desktop", name: "output", type: "filter", hook: "output" } },
+    { chain: { family: "inet", table: "get3w_desktop", name: "output", type: "filter", hook: "output" } },
     ...Object.entries(ranges).map(([protocol, prefixes]) => ({ rule: {
-      family: "inet", table: "openwork_desktop", chain: "output", expr: [
+      family: "inet", table: "get3w_desktop", chain: "output", expr: [
         { match: { op: "==", left: { meta: { key: "skuid" } }, right: 1001 } },
         { match: { op: "==", left: { payload: { protocol, field: "daddr" } }, right: { set: prefixes.map(prefix => {
           const [addr, len] = prefix.split("/"); return { prefix: { addr, len: Number(len) } };

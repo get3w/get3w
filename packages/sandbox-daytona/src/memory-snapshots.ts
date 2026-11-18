@@ -1,4 +1,4 @@
-import { RuntimeProviderError, type SandboxSnapshots } from "@openwork/sandbox"
+import { RuntimeProviderError, type SandboxSnapshots } from "@get3w/sandbox"
 
 /** Same hot-snapshot REST contract used by Daytona evidence worlds; no build or warm pool. */
 export function memorySnapshots(config: { apiKey: string; apiUrl: string }, sandboxId: (ref: Parameters<SandboxSnapshots["create"]>[0]["ref"]) => string, request: typeof fetch = fetch): SandboxSnapshots {

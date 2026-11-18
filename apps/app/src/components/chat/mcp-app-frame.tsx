@@ -8,8 +8,8 @@ import { AppBridge, PostMessageTransport } from "@modelcontextprotocol/ext-apps/
 import type { McpUiStyles, McpUiStyleVariableKey } from "@modelcontextprotocol/ext-apps"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
 
-import { connectionActionAppResourceUri, legacyConnectionActionAppResourceUri } from "@openwork/types/connection-action-app"
-import { parseMcpAppResourceUri } from "@openwork/types/mcp-app"
+import { connectionActionAppResourceUri, legacyConnectionActionAppResourceUri } from "@get3w/types/connection-action-app"
+import { parseMcpAppResourceUri } from "@get3w/types/mcp-app"
 import { appToolResultConnectionToolName, connectionCardFromMcpToolResult, isConnectionDiscoveryTool } from "@/components/tools/error-attribution"
 import { AppChatArtifact } from "@/react-app/domains/apps/app-chat-artifact"
 import { createConnectionActionController, hasHostConnectionActions, standardMcpToolResult } from "./mcp-connection-action"
@@ -20,10 +20,10 @@ import { cachedMcpAppResult, forgetMcpAppResult, MCP_APP_CACHE_REQUEST_META, MCP
 import { createMcpAppOpenLoads } from "@/app/lib/mcp-app-open-loads"
 import { onCloudCredentialRefreshed, readCloudCredentialRevision } from "@/react-app/domains/connections/cloud-credential-revision"
 import {
-  OpenworkServerError,
-  type OpenworkMcpAppLaunchReference,
-  type OpenworkMcpAppResource,
-} from "@/app/lib/openwork-server"
+  Get3wServerError,
+  type Get3wMcpAppLaunchReference,
+  type Get3wMcpAppResource,
+} from "@/app/lib/get3w-server"
 import { useOptionalMessageList } from "./message-list-provider"
 import { createMcpAppActions, type McpAppOrigin } from "./mcp-app-origin"
 import { McpAppSignInPrompts, signInPromptFromToolResult, useMcpAppSignIn } from "./mcp-app-sign-in"
@@ -122,10 +122,10 @@ function sameMcpAppValue(left: unknown, right: unknown): boolean {
     && keys.every(key => Object.hasOwn(right, key) && sameMcpAppValue(left[key], right[key]))
 }
 
-const CSP_KEYS: ReadonlyArray<keyof OpenworkMcpAppResource["csp"]> = ["connectDomains", "resourceDomains", "frameDomains", "baseUriDomains"]
+const CSP_KEYS: ReadonlyArray<keyof Get3wMcpAppResource["csp"]> = ["connectDomains", "resourceDomains", "frameDomains", "baseUriDomains"]
 
 /** A launch that serves exactly the document a saved view is already showing. */
-export function sameMcpAppDocument(saved: OpenworkMcpAppResource, live: OpenworkMcpAppResource) {
+export function sameMcpAppDocument(saved: Get3wMcpAppResource, live: Get3wMcpAppResource) {
   return saved.serverName === live.serverName && saved.toolName === live.toolName && saved.resourceUri === live.resourceUri
     && saved.html === live.html && saved.prefersBorder === live.prefersBorder
     && CSP_KEYS.every(key => JSON.stringify(saved.csp[key]) === JSON.stringify(live.csp[key]))
@@ -137,11 +137,11 @@ function normalizeMcpAppHeight(height: number, minimum: number): number {
 
 function preservedResult(part: DynamicToolUIPart): PreservedMcpAppResult | null {
   if (isConnectionDiscoveryTool(part.toolName) && (!isRecord(part.input) || (part.input.intent !== "connect" && part.input.type !== "connectors"))) return null
-  const openwork = isRecord(part.callProviderMetadata?.openwork) ? part.callProviderMetadata.openwork : null
-  const result = openwork && isRecord(openwork.mcpResult)
-    ? openwork.mcpResult
-    : openwork && isRecord(openwork.mcpApp)
-      ? openwork.mcpApp
+  const get3w = isRecord(part.callProviderMetadata?.get3w) ? part.callProviderMetadata.get3w : null
+  const result = get3w && isRecord(get3w.mcpResult)
+    ? get3w.mcpResult
+    : get3w && isRecord(get3w.mcpApp)
+      ? get3w.mcpApp
       : null
   if (!result || !Array.isArray(result.content)) return null
   const content = result.content.filter(isRecord) as Array<Record<string, unknown>>
@@ -165,9 +165,9 @@ export function builtMcpAppId(part: DynamicToolUIPart): string | null {
   return app && launch?.connectionId === app.appId && launch.toolName === "open_app" ? app.appId : null
 }
 
-export function gatewayMcpAppLaunch(meta: unknown): OpenworkMcpAppLaunchReference | null {
-  if (!isRecord(meta) || !isRecord(meta["openwork/mcpApp"])) return null
-  const launch = meta["openwork/mcpApp"]
+export function gatewayMcpAppLaunch(meta: unknown): Get3wMcpAppLaunchReference | null {
+  if (!isRecord(meta) || !isRecord(meta["get3w/mcpApp"])) return null
+  const launch = meta["get3w/mcpApp"]
   if ((launch.connectionId !== undefined && typeof launch.connectionId !== "string")
     || typeof launch.toolName !== "string"
     || typeof launch.resourceUri !== "string"
@@ -180,7 +180,7 @@ export function gatewayMcpAppLaunch(meta: unknown): OpenworkMcpAppLaunchReferenc
   }
 }
 
-export function buildMcpAppCsp(app: OpenworkMcpAppResource): string {
+export function buildMcpAppCsp(app: Get3wMcpAppResource): string {
   const resources = app.csp.resourceDomains.join(" ")
   const withResources = (source: string) => resources ? `${source} ${resources}` : source
   const sourceList = (values: string[]) => values.length ? values.join(" ") : "'none'"
@@ -203,7 +203,7 @@ function escapeAttribute(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;")
 }
 
-export function secureMcpAppHtml(app: OpenworkMcpAppResource): string {
+export function secureMcpAppHtml(app: Get3wMcpAppResource): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(buildMcpAppCsp(app))}">`
   const html = /<html(?:\s[^>]*)?>/i.exec(app.html)
   if (html?.index !== undefined) {
@@ -275,17 +275,17 @@ function hostStyleVariables(): McpUiStyles {
 }
 
 export function isActionableMcpAppResolutionError(cause: unknown): boolean {
-  return cause instanceof OpenworkServerError && ACTIONABLE_MCP_APP_RESOLUTION_CODES.has(cause.code)
+  return cause instanceof Get3wServerError && ACTIONABLE_MCP_APP_RESOLUTION_CODES.has(cause.code)
 }
 
 function isRetiredFirstPartyConfirmation(toolName: string, result: PreservedMcpAppResult | null): boolean {
   const launch = gatewayMcpAppLaunch(result?._meta)
-  if (result?._meta?.["openwork/mcpApp"] !== undefined && !launch) return false
+  if (result?._meta?.["get3w/mcpApp"] !== undefined && !launch) return false
   if (launch?.connectionId !== undefined) return false
-  if (/^(?:openwork_|openwork-cloud_)(?:create_skill|update_skill|plugin_flow)$/.test(toolName)) return true
-  return /^(?:openwork_|openwork-cloud_)execute_capability$/.test(toolName)
-    && (launch?.resourceUri === "ui://openwork/skill-created/v1/view.html"
-      || launch?.resourceUri === "ui://openwork/plugin-flow/v1/view.html")
+  if (/^(?:get3w_|get3w-cloud_)(?:create_skill|update_skill|plugin_flow)$/.test(toolName)) return true
+  return /^(?:get3w_|get3w-cloud_)execute_capability$/.test(toolName)
+    && (launch?.resourceUri === "ui://get3w/skill-created/v1/view.html"
+      || launch?.resourceUri === "ui://get3w/plugin-flow/v1/view.html")
 }
 
 const CHAT_MCP_APP_UNAVAILABLE_NOTICE = "Interactive view unavailable. The normal tool result is still available."
@@ -331,14 +331,14 @@ export function McpAppDiagnosticNotice({ error, notice, onRetry, engine }: { err
 
 export type McpAppSandboxViewProps = {
   origin: McpAppOrigin
-  app: OpenworkMcpAppResource
+  app: Get3wMcpAppResource
   /**
    * A cached Dashboard may paint now, but its tools must await a fresh,
    * access-checked lease. Called again for each call, so a host that keeps
    * this view open across launches can hand it each newer lease. Given the
    * lease a call just found stale, it renews that lease or throws.
    */
-  resolveLiveActions?: (staleLaunchId?: string) => Promise<{ origin: McpAppOrigin; app: OpenworkMcpAppResource }>
+  resolveLiveActions?: (staleLaunchId?: string) => Promise<{ origin: McpAppOrigin; app: Get3wMcpAppResource }>
   /**
    * With resolveLiveActions: this saved view goes live in place, so the App
    * may ask for its kept read-only results. Like every call, such a read
@@ -417,7 +417,7 @@ function AuthorizedAppSandbox({ appId, revisionId, ...props }: McpAppSandboxView
 }
 
 function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace = false, liveReady = false, renewsLease = true, toolName, inputArguments, result, connectionController, updateMode = "replace", onReady, unavailableNotice, onRequestTeardown, initialHeight, onHeightChange, presentation = "inline", onError, onRetry, onAppToolResult, openKey }: McpAppSandboxViewProps) {
-  const openworkServerClient = origin.client
+  const get3wServerClient = origin.client
   const workspaceId = origin.workspaceId
   const readOnly = origin.readOnly
   // A saved Dashboard view or cached chat preview that becomes live in place once its lease arrives.
@@ -466,7 +466,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
 
   useLayoutEffect(() => {
     const iframe = iframeRef.current
-    if (!iframe || !iframe.contentWindow || !openworkServerClient || !workspaceId) return
+    if (!iframe || !iframe.contentWindow || !get3wServerClient || !workspaceId) return
     let disposed = false
     let actions = createMcpAppActions(origin, app)
     // A retry or sign-in reload is a new open.
@@ -527,7 +527,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
         "This artifact has no live launch context. Update Get3W and reopen the artifact before using its actions.")
       return
     }
-    const sandbox = openworkServerClient.mcpAppSandbox(app, window.location.origin)
+    const sandbox = get3wServerClient.mcpAppSandbox(app, window.location.origin)
     if (sandbox.expectedOrigin === window.location.origin) {
       fail(
         "MCP_APP_SANDBOX_ORIGIN_INVALID",
@@ -549,8 +549,8 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
       containerDimensions: { maxHeight: MAX_HEIGHT, width: Math.round(iframe.getBoundingClientRect().width) },
       ...(!readOnly || savedLive ? { experimental: {
         // The App may ask for its last read-only results; see the cache-read branch of oncalltool.
-        "openwork/result-cache": true,
-        ...(!readOnly && connectionController && hasHostConnectionActions(app) ? { "openwork/connection-actions": true } : {}),
+        "get3w/result-cache": true,
+        ...(!readOnly && connectionController && hasHostConnectionActions(app) ? { "get3w/connection-actions": true } : {}),
       } } : {}),
     })
     const bridge = new AppBridge(
@@ -641,7 +641,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
           }
           return cached.result
         }
-        const userInteraction = _meta?.["openwork/userInteraction"] === true
+        const userInteraction = _meta?.["get3w/userInteraction"] === true
         const callOnce = async () => connectionController
           ? await connectionController.callTool(actions, app, name, args, userInteraction)
           : standardMcpToolResult(await actions.callTool(name, args, userInteraction))
@@ -653,7 +653,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
           try {
             return await callOnce()
           } catch (cause) {
-            if (!renewsStaleLease || !leaseId || !(cause instanceof OpenworkServerError)
+            if (!renewsStaleLease || !leaseId || !(cause instanceof Get3wServerError)
               || !["missing_launch_context", "stale_launch_context"].includes(cause.code)) throw cause
             await bindLiveActions(leaseId)
             if (liveLaunchId === leaseId) throw cause
@@ -670,7 +670,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
           // that needs no approval, and it runs once for this open.
           const loaded = await loads.load(call, callNow, async (kept) => {
             const identity = await actions.checkRead(name, args ?? {})
-            return identity !== null && identity === kept._meta?.["openwork/providerIdentity"]
+            return identity !== null && identity === kept._meta?.["get3w/providerIdentity"]
           })
           if (disposed || failed) throw new Error(t("ui.a90f07809eee"))
           toolResult = loaded.result
@@ -693,7 +693,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
         // A Dashboard view that goes live in place outlives each lease: a call
         // caught by a refresh fails alone, the next uses the newer lease, and
         // the tile itself retires the view if no lease can be had.
-        if (!renewsStaleLease && cause instanceof OpenworkServerError && ["missing_launch_context", "stale_launch_context", "inactive_session"].includes(cause.code)) {
+        if (!renewsStaleLease && cause instanceof Get3wServerError && ["missing_launch_context", "stale_launch_context", "inactive_session"].includes(cause.code)) {
           fail("MCP_APP_LAUNCH_CONTEXT_STALE", "resource-resolution", cause, "Reopen the artifact in its original conversation before trying again.")
         }
         throw cause
@@ -725,7 +725,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
           }
           if (next !== toolDeliveryRef.current) continue
           if (!ready) {
-            performance.measure("openwork.mcp-app.first-paint", { start: startedAt, duration: performance.now() - startedAt })
+            performance.measure("get3w.mcp-app.first-paint", { start: startedAt, duration: performance.now() - startedAt })
             ready = true
             onReadyRef.current?.()
           }
@@ -762,7 +762,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
       syncHostContext()
       releaseStartup?.()
       checkpoint("app-initialized")
-      performance.measure("openwork.mcp-app.sandbox-ready", { start: startedAt, duration: performance.now() - startedAt })
+      performance.measure("get3w.mcp-app.sandbox-ready", { start: startedAt, duration: performance.now() - startedAt })
       if (resourceDeliveryTimer !== undefined) window.clearTimeout(resourceDeliveryTimer)
       if (initializeTimer !== undefined) window.clearTimeout(initializeTimer)
       void deliverToolData()
@@ -952,7 +952,7 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
       stopHostContextSync?.()
       stopSandbox?.()
     }
-  }, [app, replacementInput, openworkServerClient, replacementResult, toolName, workspaceId, readOnly, origin, origin.sessionId, origin.engine, presentation, updateMode, connectionController, retryAttempt, resolveLiveActions, openKey])
+  }, [app, replacementInput, get3wServerClient, replacementResult, toolName, workspaceId, readOnly, origin, origin.sessionId, origin.engine, presentation, updateMode, connectionController, retryAttempt, resolveLiveActions, openKey])
 
   const reload = onRetry ?? (() => {
     setError(null)
@@ -997,8 +997,8 @@ function McpAppSandboxContent({ origin, app, resolveLiveActions, goesLiveInPlace
 export function isNativeConnectionAppLaunch(part: DynamicToolUIPart): boolean {
   const result = preservedResult(part)
   const launch = gatewayMcpAppLaunch(result?._meta)
-  if (!launch) return /^(?:openwork_|openwork-cloud_)connection_action$/.test(part.toolName)
-  return /^(?:openwork_|openwork-cloud_)/.test(part.toolName) && !launch.connectionId
+  if (!launch) return /^(?:get3w_|get3w-cloud_)connection_action$/.test(part.toolName)
+  return /^(?:get3w_|get3w-cloud_)/.test(part.toolName) && !launch.connectionId
     && (launch.resourceUri === connectionActionAppResourceUri || launch.resourceUri === legacyConnectionActionAppResourceUri)
 }
 
@@ -1014,7 +1014,7 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
   const nextOrigin = surfaceOrigin ?? context?.mcpAppOrigin ?? null
   const { uiStateOwner, readOnly, getConnectionDecision, onMcpReconnect } = context ?? {}
   const origin = useMemo(() => nextOrigin, [nextOrigin?.client, nextOrigin?.workspaceId, nextOrigin?.sessionId, nextOrigin?.engine, nextOrigin?.readOnly])
-  const openworkServerClient = origin?.client
+  const get3wServerClient = origin?.client
   const workspaceId = origin?.workspaceId
   const nextResult = preservedResult(part)
   const nextResultSignature = mcpAppDiscoverySignature(nextResult)
@@ -1028,15 +1028,15 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
   const result = resultCache.current.value
   const draft = useMemo(() => {
     if (part.toolName !== "save_artifact_view" && !part.toolName.endsWith("_save_artifact_view")
-      && !/^(?:openwork_|openwork-cloud_)?preview_artifact_/.test(part.toolName)) return null
-    const reference = result?._meta?.["openwork/appDraft"]
+      && !/^(?:get3w_|get3w-cloud_)?preview_artifact_/.test(part.toolName)) return null
+    const reference = result?._meta?.["get3w/appDraft"]
     if (!isRecord(reference) || typeof reference.appId !== "string" || typeof reference.revisionId !== "string"
       || typeof reference.title !== "string" || (reference.receiptId !== undefined && typeof reference.receiptId !== "string")) return null
     return { appId: reference.appId, revisionId: reference.revisionId, title: reference.title, receiptId: reference.receiptId }
   }, [part.toolName, result])
   const launch = useMemo(() => gatewayMcpAppLaunch(result?._meta), [result])
   const scope = uiStateOwner ?? JSON.stringify([origin?.workspaceId, origin?.sessionId])
-  const sourceConnectionId = launch?.resourceUri === "ui://openwork/connection-action/v2/view.html"
+  const sourceConnectionId = launch?.resourceUri === "ui://get3w/connection-action/v2/view.html"
     && launch.toolName === "connection_action" && !launch.connectionId
     && typeof launch.arguments.connectionId === "string" ? launch.arguments.connectionId : null
   const source = useMemo<{ connectionId: string | null; sessionId: string | null }>(
@@ -1052,10 +1052,10 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
       connectionId: initialConnectionId, current: () => hostRef.current }) : null,
   [scope, source, part.toolCallId, initialConnectionId])
   connectionController?.observeBinding()
-  const [app, setApp] = useState<OpenworkMcpAppResource | null>(null)
-  const [previewActions, setPreviewActions] = useState<(() => Promise<{ origin: McpAppOrigin; app: OpenworkMcpAppResource }>) | undefined>()
+  const [app, setApp] = useState<Get3wMcpAppResource | null>(null)
+  const [previewActions, setPreviewActions] = useState<(() => Promise<{ origin: McpAppOrigin; app: Get3wMcpAppResource }>) | undefined>()
   // The live launch a cached preview took in place, when it serves the same document.
-  const [liveApp, setLiveApp] = useState<OpenworkMcpAppResource | null>(null)
+  const [liveApp, setLiveApp] = useState<Get3wMcpAppResource | null>(null)
   // The sandbox rebuilds whenever its origin identity changes; keep the inert
   // preview origin stable across unrelated re-renders.
   const previewOrigin = useMemo(() => origin ? { ...origin, readOnly: true } : origin, [origin])
@@ -1080,26 +1080,26 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
 
   useEffect(() => {
     let cancelled = false
-    const live = Promise.withResolvers<{ origin: McpAppOrigin; app: OpenworkMcpAppResource }>()
+    const live = Promise.withResolvers<{ origin: McpAppOrigin; app: Get3wMcpAppResource }>()
     // Discovery failure retires the preview through the existing error state.
     void live.promise.catch(() => undefined)
     let launchId: string | undefined
     const release = () => {
-      if (launchId && openworkServerClient && workspaceId) {
-        void openworkServerClient.releaseMcpApp(workspaceId, launchId).catch(() => undefined)
+      if (launchId && get3wServerClient && workspaceId) {
+        void get3wServerClient.releaseMcpApp(workspaceId, launchId).catch(() => undefined)
       }
     }
     let stopCredentialRetry: (() => void) | undefined
-    let previewed: OpenworkMcpAppResource | null = null
+    let previewed: Get3wMcpAppResource | null = null
     setApp(null)
     setPreviewActions(undefined)
     setLiveApp(null)
     setError(null)
-    if (draft || !result || !openworkServerClient || !workspaceId || !origin) return () => { cancelled = true }
+    if (draft || !result || !get3wServerClient || !workspaceId || !origin) return () => { cancelled = true }
     const startedAt = performance.now()
     const checkpoints = ["resolve-started"]
-    const usesCloudCredentials = Boolean(launch) || part.toolName.startsWith("openwork-cloud_")
-    const credentialScope = { serverBaseUrl: openworkServerClient.baseUrl, workspaceId }
+    const usesCloudCredentials = Boolean(launch) || part.toolName.startsWith("get3w-cloud_")
+    const credentialScope = { serverBaseUrl: get3wServerClient.baseUrl, workspaceId }
     const credentialRevision = usesCloudCredentials ? readCloudCredentialRevision(credentialScope) : 0
     const manual = consumedRetryToken.current !== resolveToken
     consumedRetryToken.current = resolveToken
@@ -1130,7 +1130,7 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
           if (launch || isActionableMcpAppResolutionError(cause)) {
             const diagnostic: McpAppDiagnostic = {
               code: "MCP_APP_RESOURCE_RESOLUTION_FAILED",
-              ...(cause instanceof OpenworkServerError ? { causeCode: cause.code } : {}),
+              ...(cause instanceof Get3wServerError ? { causeCode: cause.code } : {}),
               stage: "resource-resolution",
               message: safeMcpAppDiagnosticMessage(cause, "The interactive view resource could not be resolved."),
               toolName: part.toolName,
@@ -1140,7 +1140,7 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
             console.error(`[Get3W MCP App] ${diagnostic.code}`, diagnostic)
             setError(diagnostic)
           }
-          if (usesCloudCredentials && cause instanceof OpenworkServerError && cause.code === "mcp_auth_required") {
+          if (usesCloudCredentials && cause instanceof Get3wServerError && cause.code === "mcp_auth_required") {
             stopCredentialRetry = onCloudCredentialRefreshed([credentialScope], credentialRevision,
               () => { if (!cancelled) setResolveToken(token => token + 1) },
             )
@@ -1168,12 +1168,12 @@ function EmbeddedMcpAppFrame({ part, origin: surfaceOrigin }: { part: DynamicToo
       stopCredentialRetry?.()
       release()
     }
-  }, [draft, launch, openworkServerClient, part.toolName, result, workspaceId, origin, resolution])
+  }, [draft, launch, get3wServerClient, part.toolName, result, workspaceId, origin, resolution])
 
   if (draft) return <AppChatArtifact key={`${draft.appId}:${draft.revisionId}:${draft.receiptId}`} {...draft} />
   const viewId = result?._meta?.artifactViewId
   const revisionId = result?._meta?.viewRevisionId
-  if (app && resolvedFor.current === resolution && typeof viewId === "string" && typeof revisionId === "string" && app.resourceUri === `ui://openwork/artifacts/${viewId}/views/${revisionId}/index.html`) {
+  if (app && resolvedFor.current === resolution && typeof viewId === "string" && typeof revisionId === "string" && app.resourceUri === `ui://get3w/artifacts/${viewId}/views/${revisionId}/index.html`) {
     const artifact = result?.structuredContent?.artifact
     const title = typeof result?._meta?.appTitle === "string" ? result._meta.appTitle : isRecord(artifact) && typeof artifact.title === "string" ? artifact.title : t("ui.473d17d76a08")
     const receiptId = isRecord(artifact) && typeof artifact.receiptId === "string" ? artifact.receiptId : undefined

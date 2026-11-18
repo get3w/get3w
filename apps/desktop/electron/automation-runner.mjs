@@ -3,7 +3,7 @@ import {
   connectionBlockerMessage,
   createHeadlessThreadClient,
   isHeadlessModelAccessError,
-} from "@openwork/headless-threads"
+} from "@get3w/headless-threads"
 import { desktopEngineForcePolicy } from "./engine-force-policy.mjs"
 
 const EMPTY_USAGE = { inputTokens: null, outputTokens: null, costMicros: null }
@@ -380,7 +380,7 @@ export const REMOTE_SESSION_REQUEST_POLL = Object.freeze({
 })
 export const REMOTE_SESSION_CONTROL_CAPABILITY = "remote_session_control_v1"
 /** Asks Den's runner event stream to announce queued remote-session tasks (feature remoteSessionPush). */
-export const REMOTE_SESSION_PUSH_HEADER = "X-OpenWork-Remote-Session-Push"
+export const REMOTE_SESSION_PUSH_HEADER = "X-Get3W-Remote-Session-Push"
 /** Den answers 404 while remoteSessionPush is off; ask again this much later. */
 const REMOTE_SESSION_PUSH_DISABLED_RETRY_MS = 10 * 60_000
 
@@ -718,7 +718,7 @@ export function createWorkspaceSessionClient(local, workspaceId, fetchImpl, requ
     // resume an occurrence that its scheduler may already have settled or retried.
     fetch: (input, init) => {
       const headers = new Headers(init?.headers)
-      headers.set("x-openwork-task-recovery", "off")
+      headers.set("x-get3w-task-recovery", "off")
       return fetchImpl(input, { ...init, headers })
     },
     requestTimeoutMs: requireModelAvailability ? 15_000 : 0,
@@ -831,7 +831,7 @@ export async function selectRunnableWorkItem(items, listWorkspaceIds) {
   return null
 }
 
-/** Runs the assignment as a normal visible local OpenWork thread. */
+/** Runs the assignment as a normal visible local Get3W thread. */
 export async function executeDesktopAutomation(assignment, options) {
   const timeout = AbortSignal.timeout(assignment.timeoutMs)
   const signal = AbortSignal.any([options.signal, timeout])
@@ -991,7 +991,7 @@ function defaultModelFrom(payload) {
 /**
  * What this desktop has for remote-session callers: a friendly computer
  * label and, per workspace, its engine, default model and usable models.
- * Every source is optional: an endpoint this openwork-server lacks (404) or
+ * Every source is optional: an endpoint this get3w-server lacks (404) or
  * that fails reads as "nothing known" rather than failing the report. Returns
  * null when the local runtime is not up yet.
  */
@@ -1064,16 +1064,16 @@ function workspaceUnavailable(workspaceId) {
 }
 
 /**
- * The desktop app is connected and took the command, but its local OpenWork
+ * The desktop app is connected and took the command, but its local Get3W
  * server or engine is not answering. Den shows this code as final, so the
- * caller does not queue the same task again until OpenWork is running.
+ * caller does not queue the same task again until Get3W is running.
  */
 const LOCAL_RUNTIME_UNREACHABLE = Object.freeze({
-  code: "openwork_unreachable",
-  message: "Can't reach OpenWork on your desktop. Make sure OpenWork is running.",
+  code: "get3w_unreachable",
+  message: "Can't reach Get3W on your desktop. Make sure Get3W is running.",
 })
 
-/** Codes the local OpenWork server answers with when its engine is down or not started. */
+/** Codes the local Get3W server answers with when its engine is down or not started. */
 const LOCAL_ENGINE_DOWN_CODES = new Set(["opencode_unreachable", "opencode_engine_unreachable", "engine_v2_preview_not_running"])
 
 /** True only when the local runtime gave no answer, or said its engine is down; an engine's own error is not that. */
@@ -1107,7 +1107,7 @@ export function classifyRemoteSessionCommandError(error) {
   }
 }
 
-/** Delivers a remote command as a normal visible local OpenWork session. */
+/** Delivers a remote command as a normal visible local Get3W session. */
 export async function executeDesktopRemoteSession(assignment, options) {
   const local = await options.getLocalRuntime()
   if (!local?.baseUrl || !local?.token) {
@@ -1209,14 +1209,14 @@ export function runnerTokenAudience(token) {
 const RUNNER_OFF_VALUES = new Set(["off", "0", "false", "disabled"])
 
 /**
- * `OPENWORK_AUTOMATION_RUNNER=off` keeps this desktop from claiming any
+ * `GET3W_AUTOMATION_RUNNER=off` keeps this desktop from claiming any
  * Automation run or remote-session command. Eval desktops set it by default:
  * Den hands a member's work to any of that member's runners, so a test
  * desktop signed in to a real account would otherwise take real work.
  */
 export function automationRunnerDisabledReason(env) {
-  const value = String(env?.OPENWORK_AUTOMATION_RUNNER ?? "").trim().toLowerCase()
-  return RUNNER_OFF_VALUES.has(value) ? `OPENWORK_AUTOMATION_RUNNER=${value}` : null
+  const value = String(env?.GET3W_AUTOMATION_RUNNER ?? "").trim().toLowerCase()
+  return RUNNER_OFF_VALUES.has(value) ? `GET3W_AUTOMATION_RUNNER=${value}` : null
 }
 
 export function createDesktopAutomationRunner(options) {
@@ -1387,7 +1387,7 @@ export function createDesktopAutomationRunner(options) {
     // released and feature-off credentials keep the legacy path untouched.
     entry.runner = (async () => {
       const [{ createSessionRunner }, { createDesktopSessionAdapter }, journal] = await Promise.all([
-        import("@openwork/remote-sessions"),
+        import("@get3w/remote-sessions"),
         import("./session-runner-adapter.mjs"),
         import("./session-runner-journal.mjs"),
       ])

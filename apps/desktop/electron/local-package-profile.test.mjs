@@ -7,7 +7,7 @@ import { prepareLocalPackageEnvironment } from "./local-package-profile.mjs";
 import { BLANK_SLATE_PATH_ENV_KEYS } from "./blank-slate-profile.mjs";
 
 test("local package isolates every runtime store and reuses paths on restart", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "openwork-local-profile-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "get3w-local-profile-"));
   try {
     const env = { PATH: "/usr/bin", OPENCODE_DB: "/existing/user/database" };
     prepareLocalPackageEnvironment(root, env, "linux");
@@ -23,7 +23,7 @@ test("local package isolates every runtime store and reuses paths on restart", a
 
 
 test("macOS preserves the system HOME for Keychain while isolating data stores",async()=>{
-  const root=await mkdtemp(path.join(os.tmpdir(),"openwork-keychain-home-"));
+  const root=await mkdtemp(path.join(os.tmpdir(),"get3w-keychain-home-"));
   try {
     const env={HOME:"/Users/test",PATH:"/usr/bin"};
     prepareLocalPackageEnvironment(root,env,"darwin");

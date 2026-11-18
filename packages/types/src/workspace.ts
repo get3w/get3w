@@ -2,10 +2,10 @@
  * Shared wire contract for workspace records.
  *
  * Producers:
- * - openwork-server (apps/server): `GET /workspaces` and friends — emits plain
+ * - get3w-server (apps/server): `GET /workspaces` and friends — emits plain
  *   optionals (never null) plus the `opencode*` engine credential fields.
  * - desktop Electron IPC bridge (apps/desktop main.mjs): emits explicit nulls
- *   and the desktop-managed `openworkClientToken`/`openworkHostToken`.
+ *   and the desktop-managed `get3wClientToken`/`get3wHostToken`.
  *
  * Consumers (apps/app) must treat every optional field as possibly absent,
  * undefined, or null. Producer-side types assert assignability against this
@@ -25,13 +25,13 @@ export type WorkspaceWire = {
   displayName?: string | null;
   /**
    * Vocabulary differs per producer today ("docker" | "microsandbox" on the
-   * desktop, "none" | "docker" | "container" in openwork-server), so the wire
+   * desktop, "none" | "docker" | "container" in get3w-server), so the wire
    * stays a plain string until the backends converge.
    */
   sandboxBackend?: string | null;
   sandboxRunId?: string | null;
   sandboxContainerName?: string | null;
-  /** openwork-server only: credentials for the proxied opencode engine. */
+  /** get3w-server only: credentials for the proxied opencode engine. */
   opencodeUsername?: string | null;
   opencodePassword?: string | null;
   opencode?: {

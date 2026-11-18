@@ -4,9 +4,9 @@ The Server hosts the desktop workspace API, local engine integration, file acces
 personal Provider and MCP configuration. It is a private workspace package;
 upstream npm publication commands are not part of this release.
 
-Build from the repository root with `pnpm --filter openwork-server build`.
-Run `pnpm --filter openwork-server typecheck` and the targeted tests for your
-change. The `openwork-server` package and command name are
+Build from the repository root with `pnpm --filter get3w-server build`.
+Run `pnpm --filter get3w-server typecheck` and the targeted tests for your
+change. The `get3w-server` package and command name are
 retained as internal compatibility identifiers.
 
 Organization services, enterprise Gateway and cloud resource synchronization are

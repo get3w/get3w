@@ -1,12 +1,12 @@
-import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wWorkspaceCatalogEntry } from "@/app/lib/get3w-server";
 
 export const parentDirectory = (path: string) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
 export const fileName = (path: string) => path.split("/").at(-1) ?? path;
 export const joinFilePath = (directory: string, name: string) => directory ? `${directory}/${name}` : name;
 
 /** Follow every page, including workspaces containing more than 10,000 entries. */
-export async function loadFilePages(client: OpenworkServerClient, workspaceId: string, options: { directory?: string; query?: string; showSystem?: boolean }) {
-  const items: OpenworkWorkspaceCatalogEntry[] = [];
+export async function loadFilePages(client: Get3wServerClient, workspaceId: string, options: { directory?: string; query?: string; showSystem?: boolean }) {
+  const items: Get3wWorkspaceCatalogEntry[] = [];
   let after: string | undefined;
   let incomplete = false;
   do {

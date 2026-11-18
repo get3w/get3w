@@ -1,4 +1,4 @@
-import { cellInputFromText, openXlsxWorkbook, sheetGridRows, writeXlsxWorkbook } from "@openwork/workbook";
+import { cellInputFromText, openXlsxWorkbook, sheetGridRows, writeXlsxWorkbook } from "@get3w/workbook";
 
 import type { Data } from "./open-target";
 

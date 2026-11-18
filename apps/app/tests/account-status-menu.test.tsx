@@ -8,29 +8,29 @@ beforeEach(() => { savedLocale = currentLocale(); setLocale("zh"); });
 afterEach(() => setLocale(savedLocale));
 
 test("a connected workspace reports its connection instead of promising task availability", () => {
-  expect(resolveRuntimeStatus({ clientConnected: true, openworkServerStatus: "connected", initializing: false }))
+  expect(resolveRuntimeStatus({ clientConnected: true, get3wServerStatus: "connected", initializing: false }))
     .toEqual({ variant: "connected", label: "工作区已连接", detail: null });
 });
 
 test("workspace connection startup is not shown as disconnected", () => {
-  expect(resolveRuntimeStatus({ clientConnected: false, openworkServerStatus: "disconnected", initializing: true }).label)
+  expect(resolveRuntimeStatus({ clientConnected: false, get3wServerStatus: "disconnected", initializing: true }).label)
     .toBe("正在连接工作区");
 });
 
 test("workspace startup remains connecting when the server is available before the workspace", () => {
-  expect(resolveRuntimeStatus({ clientConnected: false, openworkServerStatus: "connected", initializing: true }).label)
+  expect(resolveRuntimeStatus({ clientConnected: false, get3wServerStatus: "connected", initializing: true }).label)
     .toBe("正在连接工作区");
 });
 
 test("a disconnected workspace names the connection and provides recovery", () => {
-  const status = resolveRuntimeStatus({ clientConnected: false, openworkServerStatus: "disconnected", initializing: false });
+  const status = resolveRuntimeStatus({ clientConnected: false, get3wServerStatus: "disconnected", initializing: false });
   expect(status.variant).toBe("disconnected");
   expect(status.label).toBe("工作区连接已断开");
   expect(status.detail).toBe("重新打开工作区以重试连接");
 });
 
 test("limited service and configuration failures keep their specific statuses", () => {
-  expect(resolveRuntimeStatus({ clientConnected: false, openworkServerStatus: "limited", initializing: false }).variant).toBe("partial");
-  expect(resolveRuntimeStatus({ clientConnected: true, openworkServerStatus: "connected", initializing: false, reloadBusy: true }).variant).toBe("loading");
-  expect(resolveRuntimeStatus({ clientConnected: true, openworkServerStatus: "connected", initializing: false, reloadError: "Reload failed" }).detail).toBe("Reload failed");
+  expect(resolveRuntimeStatus({ clientConnected: false, get3wServerStatus: "limited", initializing: false }).variant).toBe("partial");
+  expect(resolveRuntimeStatus({ clientConnected: true, get3wServerStatus: "connected", initializing: false, reloadBusy: true }).variant).toBe("loading");
+  expect(resolveRuntimeStatus({ clientConnected: true, get3wServerStatus: "connected", initializing: false, reloadError: "Reload failed" }).detail).toBe("Reload failed");
 });

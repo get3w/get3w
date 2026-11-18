@@ -1,5 +1,5 @@
 import {t,useLocale} from "@/i18n";
-import { parseMcpAppResourceUri } from "@openwork/types/mcp-app";
+import { parseMcpAppResourceUri } from "@get3w/types/mcp-app";
 import { AuthoredAppPreview } from "./authored-app-preview";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -51,7 +51,7 @@ export function AppArtifact({ appId, revisionId, receiptId, onClose, onAsk, fall
     },
   });
   const app = query.isError ? undefined : query.data;
-  const toolName = `openwork-cloud_run_artifact_${appId}`;
+  const toolName = `get3w-cloud_run_artifact_${appId}`;
   const connectionOutput = app?.runError?.connectionCard;
   const connection = connectionCardPayloadFromChatToolResult(toolName, connectionOutput);
   const updatePrompt = canManage ? getAppUpdatePrompt(app) : undefined;

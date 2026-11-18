@@ -12,7 +12,7 @@ const electronHelperDir = resolve(desktopRoot, "resources", "helpers");
 const electronRoot = resolve(desktopRoot, "electron");
 const packagedServerRoot = resolve(desktopRoot, "server");
 const packagedRuntimeRoot = resolve(desktopRoot, ".electron-runtime", "node_modules");
-const sentryBuildConfigPath = resolve(desktopRoot, ".electron-runtime", "openwork-sentry.json");
+const sentryBuildConfigPath = resolve(desktopRoot, ".electron-runtime", "get3w-sentry.json");
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const nodeCmd = process.execPath;
@@ -50,17 +50,17 @@ run(nodeCmd, [resolve(__dirname, "prepare-sidecar.mjs"), "--force", "--outdir", 
 run(nodeCmd, [resolve(__dirname, "prepare-computer-use-helper.mjs"), "--force", "--outdir", electronHelperDir], desktopRoot);
 run(nodeCmd, [resolve(__dirname, "prepare-dictation-helper.mjs"), "--outdir", electronHelperDir], desktopRoot);
 // Build before staging: the runtime copy must contain this checkout's ESM.
-run(pnpmCmd, ["--filter", "@openwork/remote-sessions", "build"], repoRoot);
-run(pnpmCmd, ["--filter", "@openwork/headless-threads", "build"], repoRoot);
-run(pnpmCmd, ["--filter", "@openwork/computer-use", "build"], repoRoot);
+run(pnpmCmd, ["--filter", "@get3w/remote-sessions", "build"], repoRoot);
+run(pnpmCmd, ["--filter", "@get3w/headless-threads", "build"], repoRoot);
+run(pnpmCmd, ["--filter", "@get3w/computer-use", "build"], repoRoot);
 // Remote computers for computer use load these lazily from their builds.
-run(pnpmCmd, ["--filter", "@openwork/sandbox", "--filter", "@openwork/sandbox-freestyle", "--filter", "@openwork/sandbox-daytona", "build"], repoRoot);
+run(pnpmCmd, ["--filter", "@get3w/sandbox", "--filter", "@get3w/sandbox-freestyle", "--filter", "@get3w/sandbox-daytona", "build"], repoRoot);
 run(nodeCmd, [resolve(__dirname, "prepare-runtime-node-modules.mjs"), "--outdir", packagedRuntimeRoot], desktopRoot);
 writeSentryBuildConfig();
 // Build the server TS → JS so Electron can import it in-process
 // CI already compiles this exact checkout in the required build job.
 if (!process.argv.includes("--server-built")) {
-  run(pnpmCmd, ["--filter", "openwork-server", "build"], repoRoot);
+  run(pnpmCmd, ["--filter", "get3w-server", "build"], repoRoot);
 }
 // Resolve the pinned v1 engine's plugin dependencies at build time. Fresh
 // desktops unpack this install instead of requiring npm access to open a folder.
@@ -68,7 +68,7 @@ run(nodeCmd, [resolve(repoRoot, "apps/server/scripts/build-opencode-plugin-deps.
 // GET3W_ELECTRON_BUILD tells Vite to emit relative asset paths so
 // index.html resolves /assets/* correctly when loaded via file:// from
 // inside the packaged .app bundle.
-run(pnpmCmd, ["--filter", "@openwork/app", "build"], repoRoot, {
+run(pnpmCmd, ["--filter", "@get3w/app", "build"], repoRoot, {
   GET3W_ELECTRON_BUILD: "1",
 });
 // Relocate repository constants for every compiled server module, including v2.

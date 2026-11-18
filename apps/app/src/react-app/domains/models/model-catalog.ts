@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import { AUTO_ROUTER_PROVIDER_ID, autoRouterIdFromModel } from "@openwork/types/den/auto-router";
+import { AUTO_ROUTER_PROVIDER_ID, autoRouterIdFromModel } from "@get3w/types/den/auto-router";
 import type { ModelOption, ModelRef } from "@/app/types";
 import type { CloudImportedProvider } from "@/app/cloud/import-state";
 import { modelRefKey, nextFavoriteModel } from "../session/models/model-collections-store";
@@ -28,7 +28,7 @@ export function nonDefaultModelSummary(model: ModelRef, value: string | null, la
   return !managesOwnBehavior(model) && value !== null ? label : null;
 }
 
-/** GPT-6 Luna as served by Get3W Models (provider `openwork`). */
+/** GPT-6 Luna as served by Get3W Models (provider `get3w`). */
 export const AUTO_MODEL_ID = "openai/gpt-6-luna";
 /** The picker group that holds only Smart Router models, above everything else, without a label. */
 export const AUTO_ROUTER_GROUP = "Smart";
@@ -38,7 +38,7 @@ export const SMART_MODEL_FALLBACK_NAME = "Smart";
 /**
  * One of the organization's Smart Routers (feature `autoRouter`): the Gateway
  * picks the real model for every prompt. Every router is a model of the one
- * `openwork-auto` provider, named "Smart: <router name>".
+ * `get3w-auto` provider, named "Smart: <router name>".
  */
 export function isAutoRouterModel(model: ModelRef | null | undefined) {
   return model?.providerID === AUTO_ROUTER_PROVIDER_ID;
@@ -48,7 +48,7 @@ export function isAutoRouterModel(model: ModelRef | null | undefined) {
 export function managesOwnBehavior(model: ModelRef | null | undefined) {
   return isAutoRouterModel(model) || (model?.providerID === "get3w-account" && model.modelID === "get3w-auto");
 }
-export const EXPLICIT_MODEL_CHOICE_KEY = "openwork.modelChoice.explicit";
+export const EXPLICIT_MODEL_CHOICE_KEY = "get3w.modelChoice.explicit";
 export function shouldSelectInitialAuto(input: { available: readonly ModelRef[]; current: ModelRef | null; empty: boolean; explicit: boolean }) {
   return input.empty && !input.explicit && Boolean(starterModel(input.available))
     && (!input.current || (input.current.providerID === "opencode" && input.current.modelID === "big-pickle"));
@@ -78,7 +78,7 @@ export function fixedModelTitle(model: ModelRef & { title?: string }): string | 
 }
 
 export function modelSource(model: ModelRef & { source?: ModelOption["source"] }): ModelSource {
-  if (isAutoRouterModel(model) || model.providerID === "openwork" || model.providerID === "get3w-account" || model.source === "gateway" || model.providerID.startsWith("ipr_")) return "gateway";
+  if (isAutoRouterModel(model) || model.providerID === "get3w" || model.providerID === "get3w-account" || model.source === "gateway" || model.providerID.startsWith("ipr_")) return "gateway";
   if (model.source === "cloud" || model.providerID.startsWith("lpr_")) return "organization";
   return "local";
 }
@@ -92,7 +92,7 @@ function isOpaqueModelId(value: string) {
 export function modelTitle(model: ModelRef & { title?: string; description?: string }) {
   const fixed = fixedModelTitle(model);
   if (fixed) return fixed;
-  // A Smart model's id (`openwork-smart-…`) is never a name a person reads.
+  // A Smart model's id (`get3w-smart-…`) is never a name a person reads.
   if (isAutoRouterModel(model)) return SMART_MODEL_FALLBACK_NAME;
   const name = model.title?.trim() || model.modelID;
   if (!isOpaqueModelId(name)) return name;
@@ -143,7 +143,7 @@ export function withImportedModelMetadata(options: readonly ModelOption[], impor
   const pins = new Map<string, number>();
   const sources = new Map<string, ModelOption["source"]>();
   for (const provider of Object.values(imports)) {
-    sources.set(provider.providerId, provider.source === "openwork_gateway" ? "gateway" : "cloud");
+    sources.set(provider.providerId, provider.source === "get3w_gateway" ? "gateway" : "cloud");
     for (const id of provider.pinnedModelIds ?? []) {
       const key = modelRefKey({ providerID: provider.providerId, modelID: id });
       if (provider.modelIds.includes(id) && !pins.has(key)) pins.set(key, pins.size);
@@ -207,7 +207,7 @@ export function modelGroups(options: readonly ModelOption[], personal: readonly 
     .sort((a, b) => modelTitle(a).localeCompare(modelTitle(b)) || a.modelID.localeCompare(b.modelID)));
   add("Pinned", orderedModelPins(available, personal));
   add("Recent", recent.flatMap((model) => available.filter((option) => modelRefKey(option) === modelRefKey(model))), false);
-  add("Get3W Models", available.filter((option) => option.providerID === "openwork" || option.providerID === "get3w-account"));
+  add("Get3W Models", available.filter((option) => option.providerID === "get3w" || option.providerID === "get3w-account"));
   const providers = [...new Set(available.map((option) => option.providerID))].sort((a, b) => {
     const name = (id: string) => available.find((option) => option.providerID === id)?.description || id;
     return name(a).localeCompare(name(b));

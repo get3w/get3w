@@ -5,7 +5,7 @@ export function computerHistoryMessages(images: string[]): UIMessage[] {
   const call = (id: string, name: string, intent: string, time: number): DynamicToolUIPart => ({
     type: "dynamic-tool", toolName: name, toolCallId: id, state: "output-available",
     input: { intent }, output: '{"ok":true}',
-    callProviderMetadata: { openwork: { toolStartedAt: 1000 + time, toolCompletedAt: 2000 + time } },
+    callProviderMetadata: { get3w: { toolStartedAt: 1000 + time, toolCompletedAt: 2000 + time } },
   })
   const view = (image: string, id: string) => withToolAttachmentOwner([{ type: "file", mediaType: "image/png", url: image }], id)
   return [

@@ -1,12 +1,12 @@
 import { t } from "@/i18n";
 import { useCallback, useEffect, useState } from "react"
-import { connectionActionPayloadSchema, type ConnectionActionPayload } from "@openwork/types/connection-action-app"
+import { connectionActionPayloadSchema, type ConnectionActionPayload } from "@get3w/types/connection-action-app"
 import { type DenExternalMcpConnection } from "@/app/lib/den"
 import { cn } from "@/lib/utils"
 import { useOptionalMessageList } from "./message-list-provider"
 
 // The native connection card reads a connection report from this tool's results.
-const CONNECTION_TOOL_NAME = "openwork-cloud_connection_action"
+const CONNECTION_TOOL_NAME = "get3w-cloud_connection_action"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -57,7 +57,7 @@ export function signInPromptsForConnections(connectionIds: readonly string[], co
       state: reconnect ? "reauth_required" as const : "needs_connection" as const,
       actor: "member" as const,
       message: reconnect ? `Your ${connection.name} sign-in expired.` : `You haven't connected your ${connection.name} account yet.`,
-      action: { type: reconnect ? "reconnect" as const : "connect" as const, label: reconnect ? t("ui.51fbe1dc8a73") : t("ui.bfd402b2f6f3"), surface: "openwork_your_connections" as const },
+      action: { type: reconnect ? "reconnect" as const : "connect" as const, label: reconnect ? t("ui.51fbe1dc8a73") : t("ui.bfd402b2f6f3"), surface: "get3w_your_connections" as const },
     }]
   })
 }

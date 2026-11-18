@@ -12,11 +12,11 @@ test("release metadata and relative artifacts stay on the Get3W release origin",
 });
 
 test("development server cannot restore a retired organization proxy from old environment settings", () => {
-  expect(devDenProxy({ OPENWORK_DEV_HEADLESS_DEN_TARGET: "https://app.openworklabs.com" })).toEqual({});
+  expect(devDenProxy({ GET3W_DEV_HEADLESS_DEN_TARGET: "https://app.get3wlabs.com" })).toEqual({});
 });
 
 test("old or external artifact URLs cannot restore upstream update downloads", () => {
-  for (const url of ["https://github.com/different-ai/openwork/releases/download/v1.2.3/app.zip", "https://example.test/app.zip", "https://get3w.com/other/app.zip"]) {
+  for (const url of ["https://github.com/different-ai/get3w/releases/download/v1.2.3/app.zip", "https://example.test/app.zip", "https://get3w.com/other/app.zip"]) {
     expect(() => parseElectronLatestMacYml(`version: 1.2.3\npath: ${url}\nsha512: fixture-checksum`, "arm64")).toThrow("Get3W release service");
   }
 });

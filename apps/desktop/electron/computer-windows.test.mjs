@@ -3,18 +3,18 @@ import test from "node:test";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
-import { WINDOWS_HELPER_PROTOCOL } from "@openwork/computer-use/computer-windows-driver";
+import { WINDOWS_HELPER_PROTOCOL } from "@get3w/computer-use/computer-windows-driver";
 import { createWindowsComputerAdapter } from "./computer-windows.mjs";
 
 const payload = (result) => JSON.parse(result.content.find((item) => item.type === "text").text);
 const resourcesPath = join("C:", "Get3W", "resources");
-const helper = join(resourcesPath, "helpers", "openwork-computer-use.exe");
+const helper = join(resourcesPath, "helpers", "get3w-computer-use.exe");
 const notepad = { hwnd: "65800", pid: 4120, started: "133400000000000000", app: "notepad", name: "Notepad", title: "Draft - Notepad", region: { x: 100, y: 80, width: 800, height: 600 }, focused: true, minimized: false };
 const admin = { hwnd: "65900", pid: 5200, started: "133400000000000001", app: "regsvc", name: "Registry tool", title: "Admin tool", region: { x: 0, y: 0, width: 640, height: 480 }, focused: false, minimized: false,
   restricted: "elevated", message: "This window belongs to an app running with higher privileges (as administrator). Get3W does not elevate itself to control it." };
 
 /**
- * A stand-in for openwork-computer-use.exe speaking its line protocol.
+ * A stand-in for get3w-computer-use.exe speaking its line protocol.
  * @param {{ check?: Record<string, unknown>, windows?: Array<Record<string, unknown>>, handle?: (request: any, reply: (value: unknown) => void) => unknown }} [options]
  */
 function fakeHelper({ check = { protocol: WINDOWS_HELPER_PROTOCOL, ok: true, reason: null, supported: true }, windows = [notepad, admin], handle } = {}) {
@@ -83,7 +83,7 @@ test("This PC is a local computer whose readiness comes from the helper's own ch
     [{ protocol: WINDOWS_HELPER_PROTOCOL, ok: true, reason: null }, "ready", /ready/],
     [{ protocol: WINDOWS_HELPER_PROTOCOL, ok: false, reason: "desktop_unavailable" }, "unavailable", /locked/],
     [{ protocol: WINDOWS_HELPER_PROTOCOL, ok: false, reason: "noninteractive" }, "unsupported", /signed-in Windows desktop/],
-    [{ protocol: "openwork.computer-use/0", ok: true }, "unavailable", /incompatible/],
+    [{ protocol: "get3w.computer-use/0", ok: true }, "unavailable", /incompatible/],
   ];
   for (const [check, readiness, detail] of cases) {
     const fake = fakeHelper({ check });

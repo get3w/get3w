@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import en from "./locales/en";
 import zh from "./locales/zh";
-export const LANGUAGE_PREF_KEY = "openwork.language";
+export const LANGUAGE_PREF_KEY = "get3w.language";
 
 /**
  * Supported languages
@@ -91,7 +91,7 @@ export const setLocale = (newLocale: Language) => {
       console.warn("Failed to persist language preference:", e);
     }
   }
-  if (typeof window !== "undefined") void window.__OPENWORK_I18N__?.setLanguage(newLocale).catch(() => {});
+  if (typeof window !== "undefined") void window.__GET3W_I18N__?.setLanguage(newLocale).catch(() => {});
   if (changed) for (const listener of localeListeners) listener();
 };
 
@@ -188,5 +188,5 @@ export const initLocale = (): Language => {
 };
 
 declare global {
-  interface Window { __OPENWORK_I18N__?: { setLanguage: (language: Language) => Promise<void> }; }
+  interface Window { __GET3W_I18N__?: { setLanguage: (language: Language) => Promise<void> }; }
 }

@@ -54,7 +54,7 @@ import { composerDiagnosticBlockers } from "./composer-diagnostics";
 import { resolveComposerSubmit } from "./composer-submit";
 import { ModelRecoveryNote } from "./model-recovery-note";
 import { modelRecoveryChatKey, useModelRecoveryStore } from "../model-recovery-store";
-import { useNativeDictation } from "@openwork/ui/react";
+import { useNativeDictation } from "@get3w/ui/react";
 import { useNativeDictationFeature } from "./use-native-dictation-feature";
 import { startNativeDictation } from "./start-native-dictation";
 import { useDesktopSpeechDictation } from "./desktop-speech-dictation";
@@ -106,8 +106,8 @@ type ComposerProps = {
   /** When set, the full model picker opened from here targets this session. */
   workspaceId?: string;
   sessionId?: string;
-  openWorkModelsEntitled?: boolean;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsEntitled?: boolean;
+  get3wModelsSyncing?: boolean;
   onRefreshOrganizationModels?: () => void | Promise<void>;
   onModelPickerOpenChange: (open: boolean) => void;
   onModelChange: (model: ModelRef, variant?: string | null) => void;
@@ -156,15 +156,15 @@ type ComposerProps = {
   contextControl?: ReactNode;
 };
 
-const FLUSH_PROMPT_EVENT = "openwork:flushPromptDraft";
-const FOCUS_PROMPT_EVENT = "openwork:focusPrompt";
+const FLUSH_PROMPT_EVENT = "get3w:flushPromptDraft";
+const FOCUS_PROMPT_EVENT = "get3w:focusPrompt";
 /**
  * The composer the person last typed in. With a side window open, "focus the
  * prompt" (after a palette pick, a dialog, a model change) returns to that one
  * instead of whichever composer registered last.
  */
 let lastFocusedComposerRoot: HTMLElement | null = null;
-const DEFAULT_AGENT_NAME = "openwork";
+const DEFAULT_AGENT_NAME = "get3w";
 
 function isNonDefaultAgent(agent: Agent) {
   return agent.name !== DEFAULT_AGENT_NAME;
@@ -775,7 +775,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
       origin: "local" as const,
     })),
     ...skills.filter((skill) =>
-      skill.origin === "openwork-connect" || !localCommandSkillNames.has(skill.name)
+      skill.origin === "get3w-connect" || !localCommandSkillNames.has(skill.name)
     ),
   ];
   const plusMenuConnectors = useMemo<PlusMenuConnector[]>(
@@ -861,7 +861,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
     const skill = typeof input === "string"
       ? { name: input, path: "", origin: "local" as const }
       : input;
-    if (skill.origin === "openwork-connect") {
+    if (skill.origin === "get3w-connect") {
       const slug = skillSlashCommandName(skill);
       const token = encodeConnectSkillToken({
         slug,
@@ -901,11 +901,11 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
   };
 
   const applyPluginFileSelection = (file: CloudImportedPluginFile) => {
-    if (file.skillOrigin === "openwork-connect") {
+    if (file.skillOrigin === "get3w-connect") {
       applySkillSelection({
         name: file.skillName ?? file.title,
         path: file.path,
-        origin: "openwork-connect",
+        origin: "get3w-connect",
         marketplaceName: file.marketplaceName,
         pluginName: file.pluginName,
         connectCapabilityName: file.connectCapabilityName,
@@ -1349,7 +1349,7 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                 if (event.detail === 0) applySessionReferenceSelection(candidate);
               }}
             >
-              <img src={resolveExtensionIconSrc("/openwork-sidebar-mark.svg")} alt="" aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 object-contain opacity-80 dark:invert" />
+              <img src={resolveExtensionIconSrc("/get3w-sidebar-mark.svg")} alt="" aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 object-contain opacity-80 dark:invert" />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
                   <span className="truncate text-xs font-semibold">{candidate.title}</span>
@@ -1590,8 +1590,8 @@ export const ReactSessionComposer = memo(function ReactSessionComposer(props: Co
                   }}
                   disabled={props.steering}
                   sessionId={props.sessionId}
-                  openWorkModelsEntitled={props.openWorkModelsEntitled}
-                  openWorkModelsSyncing={props.openWorkModelsSyncing}
+                  get3wModelsEntitled={props.get3wModelsEntitled}
+                  get3wModelsSyncing={props.get3wModelsSyncing}
                   fallbackOptions={props.modelOptions}
                   behaviorValue={props.modelVariant}
                   behaviorLabel={props.modelVariantLabel}

@@ -57,7 +57,7 @@ export function iframeAllowsTools(allow, parentOrigin, childOrigin, sourceOrigin
 }
 
 async function readIsolatedFramePolicy(frame, childIndex = null) {
-  const replyChannel = `openwork:webmcp:policy-result:${randomUUID()}`;
+  const replyChannel = `get3w:webmcp:policy-result:${randomUUID()}`;
   let ipc;
   let listener;
   let timer;
@@ -71,7 +71,7 @@ async function readIsolatedFramePolicy(frame, childIndex = null) {
       listener = (event, value) => resolve(event.senderFrame === frame ? value : null);
       ipc.once(replyChannel, listener);
       timer = setTimeout(() => resolve(null), 3_000);
-      frame.send("openwork:webmcp:read-policy", replyChannel, childIndex);
+      frame.send("get3w:webmcp:read-policy", replyChannel, childIndex);
     });
     if (frame.detached || frame.isDestroyed() || frame.origin !== origin || frame.url !== url) return null;
     return result;

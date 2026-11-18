@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hand, LoaderCircle, ShieldAlert, ShieldCheck } from "lucide-react";
-import type { OpenworkServerClient, WorkspaceRunMode } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, WorkspaceRunMode } from "@/app/lib/get3w-server";
 import { isDesktopRuntime } from "@/app/lib/runtime-env";
 import { toast } from "@/components/ui/sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel
 import { useDesktopRestriction } from "@/react-app/domains/cloud/desktop-config-provider";
 import { useFeatureFlagsPreferences } from "@/react-app/domains/settings/state/feature-flags-preferences";
 
-type Props = { client: OpenworkServerClient | null; workspaceId: string | null; busy: boolean };
+type Props = { client: Get3wServerClient | null; workspaceId: string | null; busy: boolean };
 
 const modes = [
   { value: "approve", get label() { return t("ui.c63cc32600bb"); }, get description() { return t("ui.ff30c67f0671"); }, icon: Hand },
@@ -27,7 +27,7 @@ export function WorkspaceRunModeMenu(props: Props) {
   return <WorkspaceRunModePicker key={`${props.client.baseUrl}:${props.workspaceId}`} client={props.client} workspaceId={props.workspaceId} busy={props.busy} />;
 }
 
-function WorkspaceRunModePicker({ client, workspaceId, busy }: { client: OpenworkServerClient; workspaceId: string; busy: boolean }) {
+function WorkspaceRunModePicker({ client, workspaceId, busy }: { client: Get3wServerClient; workspaceId: string; busy: boolean }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const queryClient = useQueryClient();

@@ -1,8 +1,8 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { expect, test } from "bun:test";
 import { createExtensionsStore } from "../src/react-app/domains/settings/state/extensions-store";
-import { createOpenworkServerClient } from "../src/app/lib/openwork-server";
-import type { OpenworkServerStore } from "../src/react-app/domains/connections/openwork-server-store";
+import { createGet3wServerClient } from "../src/app/lib/get3w-server";
+import type { Get3wServerStore } from "../src/react-app/domains/connections/get3w-server-store";
 
 test("personal skills and plugins work while legacy organization resources never sync", async () => {
   GlobalRegistrator.register({ url: "http://localhost" });
@@ -23,18 +23,18 @@ test("personal skills and plugins work while legacy organization resources never
     if (path.startsWith("/workspace/local/plugins/") && method === "DELETE") { plugins.splice(0); return Response.json({}); }
     throw new Error(`Unexpected request: ${method} ${request.url}`);
   }, originalFetch);
-  const client = createOpenworkServerClient({ baseUrl: "http://127.0.0.1:8787", token: "fixture" });
+  const client = createGet3wServerClient({ baseUrl: "http://127.0.0.1:8787", token: "fixture" });
   // Only the store's subscription/snapshot interface is exercised here.
-  const serverStore = { getSnapshot: () => ({ openworkServerClient: client, openworkServerStatus: "connected", openworkServerCapabilities: null }), subscribe: () => () => {} } as unknown as OpenworkServerStore;
+  const serverStore = { getSnapshot: () => ({ get3wServerClient: client, get3wServerStatus: "connected", get3wServerCapabilities: null }), subscribe: () => () => {} } as unknown as Get3wServerStore;
   const store = createExtensionsStore({
     checkDesktopAppRestriction: () => false, client: () => null, projectDir: () => "/fixture",
     selectedWorkspaceId: () => "local", selectedWorkspaceRoot: () => "/fixture", workspaceType: () => "local",
-    runtimeWorkspaceId: () => "local", openworkServer: serverStore,
+    runtimeWorkspaceId: () => "local", get3wServer: serverStore,
     setBusy() {}, setBusyLabel() {}, setBusyStartedAt() {}, setError() {},
     markReloadRequired: reason => reloads.push(reason),
   });
   try {
-    localStorage.setItem("openwork.den.authToken", "legacy-fixture");
+    localStorage.setItem("get3w.den.authToken", "legacy-fixture");
     expect((await store.removeCloudOrgPlugin("legacy")).ok).toBe(false);
     await expect(store.createLibraryItem("plugin", { name: "fixture", description: "", instructions: "" })).rejects.toThrow();
     expect(requests).toEqual([]);
@@ -47,7 +47,7 @@ test("personal skills and plugins work while legacy organization resources never
     await store.uninstallSkill("local-skill");
     expect(store.getSnapshot().skills).toEqual([]);
     expect(reloads).toContain("plugins");
-    expect(localStorage.getItem("openwork.den.authToken")).toBe("legacy-fixture");
+    expect(localStorage.getItem("get3w.den.authToken")).toBe("legacy-fixture");
     expect(requests.every(path => !/cloud|den|marketplace/.test(path))).toBe(true);
   } finally {
     store.dispose(); globalThis.fetch = originalFetch;

@@ -1,4 +1,4 @@
-// Places the PDFium wasm binary next to the bundled openwork-pdf-attachments
+// Places the PDFium wasm binary next to the bundled get3w-pdf-attachments
 // plugin. The plugin is loaded by the OpenCode engine from a directory without
 // node_modules (dist/opencode-plugins in development, Resources/opencode-plugins
 // in packaged apps), so the runtime must travel as a sibling file.

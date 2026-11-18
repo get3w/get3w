@@ -3,8 +3,8 @@ import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 
-import { isWebDeployment } from "@/app/lib/openwork-deployment";
-import { hydrateOpenworkServerSettingsFromEnv } from "@/app/lib/openwork-server";
+import { isWebDeployment } from "@/app/lib/get3w-deployment";
+import { hydrateGet3wServerSettingsFromEnv } from "@/app/lib/get3w-server";
 import { isDesktopRuntime } from "@/app/utils";
 import { DenAuthProvider } from "@/react-app/domains/cloud/den-auth-provider";
 import { GlobalQueueDrainerBridge } from "@/react-app/domains/session/sync/global-queue-drainer-bridge";
@@ -18,21 +18,21 @@ import { ArchitectureMismatchGate } from "./architecture-mismatch-gate";
 import { BootStateProvider } from "./boot-state";
 import { DesktopRuntimeBoot } from "./desktop-runtime-boot";
 import { startDebugLogger, stopDebugLogger } from "./debug-logger";
-import { resolveOpenworkConnection } from "./openwork-connection";
+import { resolveGet3wConnection } from "./get3w-connection";
 import { ReloadCoordinatorProvider } from "./reload-coordinator";
 import { LinkOpenDialog } from "./link-open-dialog";
 
 export function resolveDefaultServerUrl(): string {
   if (isDesktopRuntime()) return "http://127.0.0.1:4096";
 
-  const openworkUrl =
+  const get3wUrl =
     typeof import.meta.env?.VITE_GET3W_URL === "string"
       ? import.meta.env.VITE_GET3W_URL.trim()
       : "";
-  if (openworkUrl) {
-    const baseUrl = openworkUrl === "/api/openwork" && typeof window !== "undefined"
-      ? new URL(openworkUrl, window.location.origin).href
-      : openworkUrl;
+  if (get3wUrl) {
+    const baseUrl = get3wUrl === "/api/get3w" && typeof window !== "undefined"
+      ? new URL(get3wUrl, window.location.origin).href
+      : get3wUrl;
     return `${baseUrl.replace(/\/+$/, "")}/opencode`;
   }
 
@@ -74,14 +74,14 @@ export function DesktopAppProviders({ children }: AppProvidersProps) {
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
-  hydrateOpenworkServerSettingsFromEnv();
+  hydrateGet3wServerSettingsFromEnv();
 
   useEffect(() => {
-    // Start the dev observability forwarder. Reads the current openwork-server
+    // Start the dev observability forwarder. Reads the current get3w-server
     // URL on every flush so reconnects after port changes still work. In prod
     // builds `startDebugLogger` is a no-op.
     startDebugLogger({
-      serverUrl: async () => (await resolveOpenworkConnection()).normalizedBaseUrl,
+      serverUrl: async () => (await resolveGet3wConnection()).normalizedBaseUrl,
     });
     return () => {
       stopDebugLogger();

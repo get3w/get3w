@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mcpToolId } from "../src/opencode-v2-mcp-readiness.js";
 import { NATIVE_MEDIA_TASK_SELECTION } from "../src/native-media-instructions.js";
-import contextPlugin from "../src/opencode-plugins/openwork-context-v2.js";
+import contextPlugin from "../src/opencode-plugins/get3w-context-v2.js";
 import { addProviderSafeTool, providerSchemaProblems } from "../src/opencode-plugins/provider-safe-tool-schema.js";
 
 type Registered = { name: string; description: string; input: Record<string, unknown> };
@@ -23,7 +23,7 @@ async function registeredTools(nativeMediaReady = false) {
 
 test("every Get3W tool on OpenCode v2 sends a schema providers accept", async () => {
   const tools = await registeredTools();
-  for (const name of ["openwork_context", "openwork_query", "openwork_execute", "browser_act", "computer_run", "computer_act"]) assert.ok(tools.some(tool => tool.name === name), name);
+  for (const name of ["get3w_context", "get3w_query", "get3w_execute", "browser_act", "computer_run", "computer_act"]) assert.ok(tools.some(tool => tool.name === name), name);
   for (const tool of tools) assert.deepEqual(providerSchemaProblems(tool.input), [], tool.name);
 });
 

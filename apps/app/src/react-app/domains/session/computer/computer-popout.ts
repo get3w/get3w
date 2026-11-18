@@ -4,7 +4,7 @@ import { t } from "@/i18n";
 // renderer still owns the view: it portals into the new window's document, which
 // mirrors this document's styles and theme so it reads like the in-chat card.
 
-export const COMPUTER_POPOUT_PREFIX = "openwork-computer-view-"
+export const COMPUTER_POPOUT_PREFIX = "get3w-computer-view-"
 let opened = 0
 
 export type ComputerPopout = { window: Window; dispose: () => void }

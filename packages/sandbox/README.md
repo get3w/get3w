@@ -1,4 +1,4 @@
-# @openwork/sandbox — composable infrastructure
+# @get3w/sandbox — composable infrastructure
 
 One vocabulary for the sandboxes Get3W jobs use. MIT-licensed, no runtime
 SDK dependency. Providers own transport; jobs own policy.
@@ -6,7 +6,7 @@ SDK dependency. Providers own transport; jobs own policy.
 ## Two minutes: use a computer
 
 ```ts
-import { ensureRunning, sandboxName, SCOPE_LABEL, withBlocks } from "@openwork/sandbox"
+import { ensureRunning, sandboxName, SCOPE_LABEL, withBlocks } from "@get3w/sandbox"
 
 const { run, files } = withBlocks(provider, ["run", "files"], "computer")
 const box = await ensureRunning(provider, {
@@ -119,14 +119,14 @@ in adapter-specific APIs. Promote a feature when a second real job needs it;
 do not build a universal cloud registry or a plan/apply engine here.
 
 ```sh
-pnpm --filter @openwork/sandbox test
-pnpm --filter @openwork/sandbox-daytona test
-pnpm --filter @openwork/sandbox-freestyle test
-pnpm --filter @openwork/sandbox-differently test
+pnpm --filter @get3w/sandbox test
+pnpm --filter @get3w/sandbox-daytona test
+pnpm --filter @get3w/sandbox-freestyle test
+pnpm --filter @get3w/sandbox-differently test
 # Opt-in: allocate real instances, with cleanup in finally.
-DAYTONA_API_KEY=… pnpm --filter @openwork/sandbox-daytona test:live
-FREESTYLE_API_KEY=… pnpm --filter @openwork/sandbox-freestyle test:live
-DIFFERENTLY_URL=… DIFFERENTLY_API_KEY=… pnpm --filter @openwork/sandbox-differently test:live
+DAYTONA_API_KEY=… pnpm --filter @get3w/sandbox-daytona test:live
+FREESTYLE_API_KEY=… pnpm --filter @get3w/sandbox-freestyle test:live
+DIFFERENTLY_URL=… DIFFERENTLY_API_KEY=… pnpm --filter @get3w/sandbox-differently test:live
 ```
 
 Live tests verify exact process output, binary files and missing-file behavior;

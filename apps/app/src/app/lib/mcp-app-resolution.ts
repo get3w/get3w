@@ -1,4 +1,4 @@
-import { OpenworkServerError } from "./openwork-server"
+import { Get3wServerError } from "./get3w-server"
 
 // Catalog discovery can fail while Get3W Connect is still warming up; that
 // is not evidence the connection or the App is gone.
@@ -8,6 +8,6 @@ const MCP_APP_RESOLUTION_RETRY_DELAYS_MS = [1_000, 3_000]
 /** Retry discovery only, never the launch tool or a deterministic rejection.
  * In particular, mcp_auth_required and mcp_access_denied require human action. */
 export function mcpAppResolutionRetryDelayMs(cause: unknown, attemptIndex: number): number | null {
-  if (!(cause instanceof OpenworkServerError) || !TRANSIENT_MCP_APP_RESOLUTION_CODES.has(cause.code)) return null
+  if (!(cause instanceof Get3wServerError) || !TRANSIENT_MCP_APP_RESOLUTION_CODES.has(cause.code)) return null
   return MCP_APP_RESOLUTION_RETRY_DELAYS_MS[attemptIndex] ?? null
 }

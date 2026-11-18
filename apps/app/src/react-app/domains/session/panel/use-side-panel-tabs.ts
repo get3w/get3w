@@ -1,5 +1,5 @@
 import * as React from "react";
-import { activeBrowserTabIdForSession, browserTabsForSession } from "@openwork/browser-tabs";
+import { activeBrowserTabIdForSession, browserTabsForSession } from "@get3w/browser-tabs";
 
 import type { BrowserStatePayload } from "@/app/lib/desktop";
 import { toast } from "@/components/ui/sonner";

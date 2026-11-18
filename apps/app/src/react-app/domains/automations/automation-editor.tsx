@@ -6,7 +6,7 @@ import {
   isAutomationCloudDefaultModel,
   type AutomationExecutionTarget,
   type CreateAutomation,
-} from "@openwork/types/automations"
+} from "@get3w/types/automations"
 
 import { currentLocale } from "@/i18n"
 import { Button } from "@/components/ui/button"
@@ -84,7 +84,7 @@ export type AutomationEditorProps = {
 export type AutomationConnectedAccount = { id: string; name: string; iconUrl: string | null }
 
 export type AutomationCloudOptions = {
-  /** The person has an OpenWork Web computer, whose files a cloud run can use. */
+  /** The person has an Get3W Web computer, whose files a cloud run can use. */
   cloudComputer: boolean
   /** The headless runtime: runs that reach only connected accounts, on the organization's one model. */
   accountsOnly: boolean

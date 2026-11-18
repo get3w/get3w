@@ -4,11 +4,11 @@
 
 import type { Session } from "@opencode-ai/sdk/v2/client";
 
-import { describeOpencodeConfigError } from "@openwork/types/opencode-config-error";
+import { describeOpencodeConfigError } from "@get3w/types/opencode-config-error";
 import { createClient, unwrap } from "@/app/lib/opencode";
 import { createClientV2, isOpencodeV2BaseUrl } from "@/app/lib/opencode-v2-adapter";
 import { deleteNativeSession } from "@/app/lib/opencode-session-native";
-import { OpenworkServerError, type OpenworkWorkspaceInfo } from "@/app/lib/openwork-server";
+import { Get3wServerError, type Get3wWorkspaceInfo } from "@/app/lib/get3w-server";
 import type { ResolvedWorkspaceEndpoint } from "@/app/lib/workspace-endpoint";
 import type { WorkspaceInfo } from "@/app/lib/desktop-types";
 import type { WorkspaceSessionGroup } from "@/app/types";
@@ -19,7 +19,7 @@ import {
 } from "@/app/utils";
 import { t } from "@/i18n";
 
-export type RouteWorkspace = OpenworkWorkspaceInfo & {
+export type RouteWorkspace = Get3wWorkspaceInfo & {
   displayNameResolved: string;
 };
 
@@ -46,7 +46,7 @@ export type RouteSessionListTransport = (input: {
 
 const nativeRouteSessionList: RouteSessionListTransport = async ({ endpoint, limit }) => {
   const client = createClient(endpoint.opencodeBaseUrl, undefined, {
-    mode: "openwork",
+    mode: "get3w",
     token: endpoint.token,
   });
   return client.session.list({ limit });
@@ -61,7 +61,7 @@ export const v2RouteSessionList: RouteSessionListTransport = async ({ endpoint, 
 export async function routeSessionEndpoint(endpoint: ResolvedWorkspaceEndpoint): Promise<ResolvedWorkspaceEndpoint> {
   const status = await endpoint.client.getEngineV2PreviewStatus().catch((error: unknown) => {
     // Servers predating the preview endpoint still use v1.
-    if (error instanceof OpenworkServerError && error.status === 404) return null;
+    if (error instanceof Get3wServerError && error.status === 404) return null;
     throw error;
   });
   return status?.enabled && status.chatRouting
@@ -82,7 +82,7 @@ export async function createRouteSessionOnEngine(
   const native = await routeSessionEndpoint(endpoint);
   const client = isOpencodeV2BaseUrl(native.opencodeBaseUrl)
     ? createClientV2(native.opencodeBaseUrl, directory, { token: native.token })
-    : createClient(native.opencodeBaseUrl, directory, { token: native.token, mode: "openwork" });
+    : createClient(native.opencodeBaseUrl, directory, { token: native.token, mode: "get3w" });
   return { session: unwrap(await client.session.create({ directory })), endpoint: native };
 }
 
@@ -95,7 +95,7 @@ export async function deleteRouteSession(endpoint: ResolvedWorkspaceEndpoint, se
 }
 
 /** The Get3W server's own `opencode_config_invalid` answer already says which file and field. */
-function openworkConfigErrorMessage(error: unknown): string | null {
+function get3wConfigErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== "object" || !("code" in error) || error.code !== "opencode_config_invalid") return null;
   return "message" in error && typeof error.message === "string" && error.message.trim() ? error.message : null;
 }
@@ -116,7 +116,7 @@ export async function listRouteSessions(
     } catch (thrown) {
       // A folder whose OpenCode config is invalid lists nothing. Say why,
       // instead of an empty list that looks like lost chats.
-      const configMessage = describeOpencodeConfigError(result.error) ?? openworkConfigErrorMessage(result.error);
+      const configMessage = describeOpencodeConfigError(result.error) ?? get3wConfigErrorMessage(result.error);
       const error = configMessage
         ? Object.assign(new Error(configMessage), { code: "opencode_config_invalid" })
         : thrown;
@@ -158,7 +158,7 @@ export function mapDesktopWorkspace(workspace: WorkspaceInfo): RouteWorkspace {
   };
 }
 
-export function workspaceLabel(workspace: OpenworkWorkspaceInfo) {
+export function workspaceLabel(workspace: Get3wWorkspaceInfo) {
   return (
     workspace.displayName?.trim() ||
     workspace.name?.trim() ||
@@ -298,7 +298,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isOpenworkWorkspaceArray(value: unknown): value is OpenworkWorkspaceInfo[] {
+function isGet3wWorkspaceArray(value: unknown): value is Get3wWorkspaceInfo[] {
   return Array.isArray(value);
 }
 
@@ -320,7 +320,7 @@ export function resolveRouteWorkspaceListState(input: {
   previousWorkspaces: RouteWorkspace[];
   orderIds: string[];
 }): RouteWorkspaceListState {
-  const serverItems = isRecord(input.list) && isOpenworkWorkspaceArray(input.list.items) ? input.list.items : null;
+  const serverItems = isRecord(input.list) && isGet3wWorkspaceArray(input.list.items) ? input.list.items : null;
   const workspaces = serverItems
     ? mergeRouteWorkspaces(serverItems, input.desktopWorkspaces)
     : input.previousWorkspaces.length > 0
@@ -392,7 +392,7 @@ export function mergeRouteWorkspaces(
   serverWorkspaces: unknown,
   desktopWorkspaces: RouteWorkspace[],
 ): RouteWorkspace[] {
-  const serverWorkspaceList = isOpenworkWorkspaceArray(serverWorkspaces) ? serverWorkspaces : [];
+  const serverWorkspaceList = isGet3wWorkspaceArray(serverWorkspaces) ? serverWorkspaces : [];
   const desktopById = new Map(desktopWorkspaces.map((workspace) => [workspace.id, workspace]));
   const desktopByPath = new Map(
     desktopWorkspaces.flatMap((workspace) => {
@@ -464,8 +464,8 @@ export function orderRouteWorkspaces(workspaces: RouteWorkspace[], orderIds: str
 }
 
 /**
- * Capture the first visible workspace order and extend it without letting the
- * server's active-workspace-first list reshuffle existing sidebar entries.
+ * Capture the first visible workspace order and prepend newly discovered IDs.
+ * The server's active-workspace-first list must not reshuffle existing entries.
  * IDs that are temporarily absent stay in the preference so a transient
  * discovery gap cannot move them when they return.
  */
@@ -483,12 +483,14 @@ export function stabilizeRouteWorkspaceOrder(
     seenIds.add(id);
   }
 
+  const newIds: string[] = [];
   for (const workspace of workspaces) {
     const id = workspace.id.trim();
     if (!id || seenIds.has(id)) continue;
-    stableOrderIds.push(id);
+    newIds.push(id);
     seenIds.add(id);
   }
+  stableOrderIds.unshift(...newIds);
 
   return {
     orderIds: stableOrderIds,

@@ -2,7 +2,7 @@ import { XMLParser } from "fast-xml-parser"
 import { z } from "zod"
 // Self-reference, not "./schema.js": den-api loads this package's TypeScript
 // source at runtime, where only package exports resolve to the .ts files.
-import { awsRegionSchema, type AwsTarget } from "@openwork/managed-deployments/schema"
+import { awsRegionSchema, type AwsTarget } from "@get3w/managed-deployments/schema"
 
 /**
  * AWS adapter: bootstrap (CloudFormation), naming shared with the Terraform
@@ -12,13 +12,13 @@ export function compactDeploymentId(deploymentId: string) {
   return deploymentId.replaceAll("-", "")
 }
 export function stackName(deploymentId: string) {
-  return `openwork-${compactDeploymentId(deploymentId)}`
+  return `get3w-${compactDeploymentId(deploymentId)}`
 }
 export function runnerRoleName(deploymentId: string) {
-  return `openwork-${compactDeploymentId(deploymentId)}-runner`
+  return `get3w-${compactDeploymentId(deploymentId)}-runner`
 }
 export function healthRoleName(deploymentId: string) {
-  return `openwork-${compactDeploymentId(deploymentId)}-health`
+  return `get3w-${compactDeploymentId(deploymentId)}-health`
 }
 export function consoleUrl(deploymentId: string, region: string) {
   return `https://${region}.console.aws.amazon.com/cloudformation/home?region=${region}#/stacks?filteringText=${stackName(deploymentId)}`
@@ -26,11 +26,11 @@ export function consoleUrl(deploymentId: string, region: string) {
 
 // ---- Identity proof: a signed, unsent STS GetCallerIdentity request ----
 // The runner (enrollment) and health agent (reports) sign the request with
-// their own temporary role credentials and an `x-openwork-proof` header. The
+// their own temporary role credentials and an `x-get3w-proof` header. The
 // control plane replays it only to the fixed regional STS endpoint; AWS
 // verifies the signature and returns the caller's account and role.
 
-export const PROOF_HEADER = "x-openwork-proof"
+export const PROOF_HEADER = "x-get3w-proof"
 const SIGNED_HEADERS = ["content-type", "host", PROOF_HEADER, "x-amz-date", "x-amz-security-token"].sort().join(";")
 export const awsSignedIdentitySchema = z.object({
   authorization: z.string().max(2048),
@@ -112,7 +112,7 @@ function launchParameters(input: AwsLaunch) {
   return {
     DeploymentId: input.deploymentId, RunId: input.runId, Challenge: input.challenge,
     ExpectedAccountId: input.target.accountId, ControlPlaneOrigin: input.release.apiOrigin,
-    BundleUrl: input.release.bundleUrl, BundleSha256: input.release.bundleSha256, OpenWorkVersion: input.release.version,
+    BundleUrl: input.release.bundleUrl, BundleSha256: input.release.bundleSha256, Get3WVersion: input.release.version,
     DomainName: input.domainName, Route53ZoneId: input.target.route53ZoneId, OwnerEmail: input.ownerEmail, Size: input.size,
     ...networkParameters(input.target.network),
   }

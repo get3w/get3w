@@ -1,6 +1,6 @@
 import { t, currentLocale } from "@/i18n";
-import { formatAutomationSchedule as formatSchedule } from "@openwork/types/automation-schedule";
-import type { AutomationRun } from "@openwork/types/automations";
+import { formatAutomationSchedule as formatSchedule } from "@get3w/types/automation-schedule";
+import type { AutomationRun } from "@get3w/types/automations";
 
 type RunReceiptState = Pick<AutomationRun, "status" | "error" | "attemptCount" | "startedAt">;
 

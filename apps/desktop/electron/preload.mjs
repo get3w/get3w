@@ -1,21 +1,21 @@
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 import { installBrowserShortcutFocusTracking } from "./browser-shortcut-focus.mjs";
 
-const NATIVE_DEEP_LINK_EVENT = "openwork:deep-link-native";
-const NATIVE_MENU_OPEN_SETTINGS_EVENT = "openwork:native-menu:open-settings";
-const NATIVE_MENU_TOGGLE_SIDEBAR_EVENT = "openwork:native-menu:toggle-sidebar";
-const NATIVE_MENU_CHECK_UPDATES_EVENT = "openwork:native-menu:check-updates";
-const NATIVE_MENU_ZOOM_EVENT = "openwork:native-menu:zoom";
-const AUTOMATION_RUNNER_CREDENTIAL_REJECTED_EVENT = "openwork:automation-runner:credential-rejected";
-const BROWSER_BOUNDS_INVALIDATED_EVENT = "openwork:browser:bounds-invalidated";
+const NATIVE_DEEP_LINK_EVENT = "get3w:deep-link-native";
+const NATIVE_MENU_OPEN_SETTINGS_EVENT = "get3w:native-menu:open-settings";
+const NATIVE_MENU_TOGGLE_SIDEBAR_EVENT = "get3w:native-menu:toggle-sidebar";
+const NATIVE_MENU_CHECK_UPDATES_EVENT = "get3w:native-menu:check-updates";
+const NATIVE_MENU_ZOOM_EVENT = "get3w:native-menu:zoom";
+const AUTOMATION_RUNNER_CREDENTIAL_REJECTED_EVENT = "get3w:automation-runner:credential-rejected";
+const BROWSER_BOUNDS_INVALIDATED_EVENT = "get3w:browser:bounds-invalidated";
 
 let lastBrowserGeometry = null;
-let windowFullscreen = ipcRenderer.sendSync("openwork:window-fullscreen-sync") === true;
+let windowFullscreen = ipcRenderer.sendSync("get3w:window-fullscreen-sync") === true;
 
 async function sendBrowserGeometry(channel, bounds, ...args) {
   // Capture zoom in the same renderer turn as the CSS measurement, not after IPC.
   const geometry = { ...bounds, zoomFactor: webFrame.getZoomFactor() };
-  if (channel === "openwork:browser:bounds" && lastBrowserGeometry
+  if (channel === "get3w:browser:bounds" && lastBrowserGeometry
     && ["x", "y", "width", "height", "zoomFactor"].every((key) => geometry[key] === lastBrowserGeometry[key])) {
     return true;
   }
@@ -41,15 +41,15 @@ function applyShellDocumentMarkers() {
     const root = document?.documentElement;
     if (!root) return false;
 
-    root.dataset.openworkShell = "electron";
+    root.dataset.get3wShell = "electron";
     root.dataset.windowFullscreen = String(windowFullscreen);
-    root.classList.add("openwork-electron");
+    root.classList.add("get3w-electron");
     if (process.platform === "darwin") {
-      root.classList.add("openwork-platform-mac");
+      root.classList.add("get3w-platform-mac");
     } else if (process.platform === "win32") {
-      root.classList.add("openwork-platform-windows");
+      root.classList.add("get3w-platform-windows");
     } else if (process.platform === "linux") {
-      root.classList.add("openwork-platform-linux");
+      root.classList.add("get3w-platform-linux");
     }
     return true;
   } catch {
@@ -58,7 +58,7 @@ function applyShellDocumentMarkers() {
 }
 
 function notifyMenuOverlayDismiss() {
-  ipcRenderer.send("openwork:menu-overlay:dismiss");
+  ipcRenderer.send("get3w:menu-overlay:dismiss");
 }
 
 function installMenuOverlayDismissListeners() {
@@ -77,7 +77,7 @@ function linkOpenPreferences() {
   // Read at activation so Settings changes and reloads use the same saved
   // preference as the renderer, without a second main-process preference store.
   try {
-    const prefs = JSON.parse(window.localStorage.getItem("openwork.preferences"));
+    const prefs = JSON.parse(window.localStorage.getItem("get3w.preferences"));
     return { external: prefs?.linkOpenDestination === "external", ask: prefs?.askBeforeOpeningLinks !== false };
   } catch {
     return { external: false, ask: true };
@@ -85,12 +85,12 @@ function linkOpenPreferences() {
 }
 
 function openLink(url, sessionId) {
-  ipcRenderer.send("openwork:browser:linkClick", { url, sessionId, ...linkOpenPreferences() });
+  ipcRenderer.send("get3w:browser:linkClick", { url, sessionId, ...linkOpenPreferences() });
 }
 
 if (process.isMainFrame) {
   installBrowserShortcutFocusTracking(window, (tabId) => {
-    ipcRenderer.send("openwork:browser:shortcut-focus", tabId);
+    ipcRenderer.send("get3w:browser:shortcut-focus", tabId);
   });
   window.addEventListener("click", (event) => {
     if (!event.isTrusted || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -138,7 +138,7 @@ window.addEventListener("contextmenu", (event) => {
   if (url.origin === location.origin && url.pathname === location.pathname && url.search === location.search) return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  ipcRenderer.send("openwork:browser:linkContextMenu", {
+  ipcRenderer.send("get3w:browser:linkContextMenu", {
     url: url.href,
     point: { x: event.clientX, y: event.clientY },
     sessionId: anchor.closest("[data-session-surface-id]")?.getAttribute("data-session-surface-id") ?? null,
@@ -148,14 +148,14 @@ window.addEventListener("contextmenu", (event) => {
 let desktopBootstrap = null;
 let desktopDistribution = null;
 try {
-  desktopBootstrap = ipcRenderer.sendSync("openwork:desktop-bootstrap-sync");
-  desktopDistribution = ipcRenderer.sendSync("openwork:desktop-distribution-sync");
+  desktopBootstrap = ipcRenderer.sendSync("get3w:desktop-bootstrap-sync");
+  desktopDistribution = ipcRenderer.sendSync("get3w:desktop-distribution-sync");
 } catch {
   desktopBootstrap = null;
   desktopDistribution = null;
 }
 
-contextBridge.exposeInMainWorld("__OPENWORK_I18N__", { setLanguage: language => ipcRenderer.invoke("openwork:set-language", language) });
+contextBridge.exposeInMainWorld("__GET3W_I18N__", { setLanguage: language => ipcRenderer.invoke("get3w:set-language", language) });
 
 contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {
   modelTasks: (input) => ipcRenderer.invoke("get3w:auth", "modelTasks", input),
@@ -179,23 +179,23 @@ contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {
   logout: () => ipcRenderer.invoke("get3w:auth", "logout"),
 });
 
-contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
+contextBridge.exposeInMainWorld("__GET3W_ELECTRON__", {
   invokeDesktop(command, ...args) {
-    return ipcRenderer.invoke("openwork:desktop", command, ...args);
+    return ipcRenderer.invoke("get3w:desktop", command, ...args);
   },
   computer: {
     // The agent needs computer use the chat does not have yet; null when answered.
     onRequest(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:computer:request", handler);
-      return () => ipcRenderer.removeListener("openwork:computer:request", handler);
+      ipcRenderer.on("get3w:computer:request", handler);
+      return () => ipcRenderer.removeListener("get3w:computer:request", handler);
     },
   },
   dictation: {
     onEvent(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:dictation:event", handler);
-      return () => ipcRenderer.removeListener("openwork:dictation:event", handler);
+      ipcRenderer.on("get3w:dictation:event", handler);
+      return () => ipcRenderer.removeListener("get3w:dictation:event", handler);
     },
   },
   automationRunner: {
@@ -212,163 +212,163 @@ contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
   },
   shell: {
     openExternal(url) {
-      return ipcRenderer.invoke("openwork:shell:openExternal", url);
+      return ipcRenderer.invoke("get3w:shell:openExternal", url);
     },
     relaunch() {
-      return ipcRenderer.invoke("openwork:shell:relaunch");
+      return ipcRenderer.invoke("get3w:shell:relaunch");
     },
   },
   system: {
     getArchitectureInfo() {
-      return ipcRenderer.invoke("openwork:system:architecture");
+      return ipcRenderer.invoke("get3w:system:architecture");
     },
   },
   migration: {
     readSnapshot() {
-      return ipcRenderer.invoke("openwork:migration:read");
+      return ipcRenderer.invoke("get3w:migration:read");
     },
     ackSnapshot() {
-      return ipcRenderer.invoke("openwork:migration:ack");
+      return ipcRenderer.invoke("get3w:migration:ack");
     },
   },
   brandIcon: {
     apply(url) {
-      return ipcRenderer.invoke("openwork:desktop", "__applyBrandIcon", url ?? null);
+      return ipcRenderer.invoke("get3w:desktop", "__applyBrandIcon", url ?? null);
     },
     getState() {
-      return ipcRenderer.invoke("openwork:desktop", "__getBrandIconState");
+      return ipcRenderer.invoke("get3w:desktop", "__getBrandIconState");
     },
   },
   dev: {
     evalRelaunch() {
-      return ipcRenderer.invoke("openwork:desktop", "__evalRelaunch");
+      return ipcRenderer.invoke("get3w:desktop", "__evalRelaunch");
     },
   },
   updater: {
     getChannel() {
-      return ipcRenderer.invoke("openwork:updater:getChannel");
+      return ipcRenderer.invoke("get3w:updater:getChannel");
     },
     setChannel(channel) {
-      return ipcRenderer.invoke("openwork:updater:setChannel", channel);
+      return ipcRenderer.invoke("get3w:updater:setChannel", channel);
     },
     check(channel, targetVersion, options) {
-      return ipcRenderer.invoke("openwork:updater:check", channel, targetVersion, options);
+      return ipcRenderer.invoke("get3w:updater:check", channel, targetVersion, options);
     },
     download() {
-      return ipcRenderer.invoke("openwork:updater:download");
+      return ipcRenderer.invoke("get3w:updater:download");
     },
     installAndRestart() {
-      return ipcRenderer.invoke("openwork:updater:installAndRestart");
+      return ipcRenderer.invoke("get3w:updater:installAndRestart");
     },
     /** Subscribe to incremental download progress from electron-updater. */
     onDownloadProgress(callback) {
       const handler = (_event, data) => callback(data);
-      ipcRenderer.on("openwork:updater:download-progress", handler);
+      ipcRenderer.on("get3w:updater:download-progress", handler);
       return () => {
-        ipcRenderer.removeListener("openwork:updater:download-progress", handler);
+        ipcRenderer.removeListener("get3w:updater:download-progress", handler);
       };
     },
   },
   recovery: {
     recordHealthy() {
-      return ipcRenderer.invoke("openwork:recovery:recordHealthy");
+      return ipcRenderer.invoke("get3w:recovery:recordHealthy");
     },
     list(policy) {
-      return ipcRenderer.invoke("openwork:recovery:list", policy);
+      return ipcRenderer.invoke("get3w:recovery:list", policy);
     },
     restorePrevious() {
-      return ipcRenderer.invoke("openwork:recovery:restorePrevious");
+      return ipcRenderer.invoke("get3w:recovery:restorePrevious");
     },
     use(id) {
-      return ipcRenderer.invoke("openwork:recovery:use", id);
+      return ipcRenderer.invoke("get3w:recovery:use", id);
     },
   },
   browser: {
     openLink,
-    chooseLinkDestination(id, destination) { return ipcRenderer.invoke("openwork:browser:chooseLinkDestination", id, destination); },
+    chooseLinkDestination(id, destination) { return ipcRenderer.invoke("get3w:browser:chooseLinkDestination", id, destination); },
     onLinkOpenRequest(callback) {
       const handler = (_event, request) => callback(request);
-      ipcRenderer.on("openwork:browser:link-open-request", handler);
-      return () => ipcRenderer.removeListener("openwork:browser:link-open-request", handler);
+      ipcRenderer.on("get3w:browser:link-open-request", handler);
+      return () => ipcRenderer.removeListener("get3w:browser:link-open-request", handler);
     },
-    show(bounds, sessionId) { return sendBrowserGeometry("openwork:browser:show", bounds, sessionId); },
+    show(bounds, sessionId) { return sendBrowserGeometry("get3w:browser:show", bounds, sessionId); },
     hide(options) {
       lastBrowserGeometry = null;
-      return ipcRenderer.invoke("openwork:browser:hide", options);
+      return ipcRenderer.invoke("get3w:browser:hide", options);
     },
-    openUrl(url, provider, options) { return ipcRenderer.invoke("openwork:browser:openUrl", url, provider, options); },
-    setVisibleSession(sessionId) { return ipcRenderer.invoke("openwork:browser:setVisibleSession", sessionId); },
-    setPresentation(sessionId, mode) { return ipcRenderer.invoke("openwork:browser:presentation", { sessionId, mode }); },
-    thumbnail(tabId) { return ipcRenderer.invoke("openwork:browser:thumbnail", tabId); },
-    navigate(url) { return ipcRenderer.invoke("openwork:browser:navigate", url); },
-    back() { return ipcRenderer.invoke("openwork:browser:back"); },
-    forward() { return ipcRenderer.invoke("openwork:browser:forward"); },
-    reload() { return ipcRenderer.invoke("openwork:browser:reload"); },
-    setBounds(bounds) { return sendBrowserGeometry("openwork:browser:bounds", bounds); },
-    getState() { return ipcRenderer.invoke("openwork:browser:state"); },
-    createTab(url, sessionId) { return ipcRenderer.invoke("openwork:browser:createTab", url, sessionId); },
-    closeTab(tabId) { return ipcRenderer.invoke("openwork:browser:closeTab", tabId); },
-    suspendTab(tabId) { return ipcRenderer.invoke("openwork:browser:suspendTab", tabId); },
-    restoreTab(tabId, sessionId) { return ipcRenderer.invoke("openwork:browser:restoreTab", tabId, sessionId); },
-    releaseTab(tabId, sessionId) { return ipcRenderer.invoke("openwork:browser:releaseTab", tabId, sessionId); },
-    closeSessionTabs(sessionId) { return ipcRenderer.invoke("openwork:browser:closeSessionTabs", sessionId); },
-    selectTab(tabId) { return ipcRenderer.invoke("openwork:browser:selectTab", tabId); },
-    reorderTabs(tabIds) { return ipcRenderer.invoke("openwork:browser:reorderTabs", tabIds); },
-    taskControl(tabId, action) { return ipcRenderer.invoke("openwork:browser:taskControl", tabId, action); },
-    setProxy(proxy) { return ipcRenderer.invoke("openwork:browser:setProxy", proxy); },
-    setControlEnabled(enabled) { return ipcRenderer.invoke("openwork:browser:setControlEnabled", enabled); },
-    setAgentViewport(key) { return ipcRenderer.invoke("openwork:browser:setAgentViewport", key); },
-    startAgentTurn(sessionId) { return ipcRenderer.invoke("openwork:browser:startAgentTurn", sessionId); },
-    endAgentTurn(sessionId) { return ipcRenderer.invoke("openwork:browser:endAgentTurn", sessionId); },
-    setAgentPermissionRules(rules) { return ipcRenderer.invoke("openwork:browser:setAgentPermissionRules", rules); },
-    showTabContextMenu(tabId, point) { return ipcRenderer.invoke("openwork:browser:tabContextMenu", tabId, point); },
+    openUrl(url, provider, options) { return ipcRenderer.invoke("get3w:browser:openUrl", url, provider, options); },
+    setVisibleSession(sessionId) { return ipcRenderer.invoke("get3w:browser:setVisibleSession", sessionId); },
+    setPresentation(sessionId, mode) { return ipcRenderer.invoke("get3w:browser:presentation", { sessionId, mode }); },
+    thumbnail(tabId) { return ipcRenderer.invoke("get3w:browser:thumbnail", tabId); },
+    navigate(url) { return ipcRenderer.invoke("get3w:browser:navigate", url); },
+    back() { return ipcRenderer.invoke("get3w:browser:back"); },
+    forward() { return ipcRenderer.invoke("get3w:browser:forward"); },
+    reload() { return ipcRenderer.invoke("get3w:browser:reload"); },
+    setBounds(bounds) { return sendBrowserGeometry("get3w:browser:bounds", bounds); },
+    getState() { return ipcRenderer.invoke("get3w:browser:state"); },
+    createTab(url, sessionId) { return ipcRenderer.invoke("get3w:browser:createTab", url, sessionId); },
+    closeTab(tabId) { return ipcRenderer.invoke("get3w:browser:closeTab", tabId); },
+    suspendTab(tabId) { return ipcRenderer.invoke("get3w:browser:suspendTab", tabId); },
+    restoreTab(tabId, sessionId) { return ipcRenderer.invoke("get3w:browser:restoreTab", tabId, sessionId); },
+    releaseTab(tabId, sessionId) { return ipcRenderer.invoke("get3w:browser:releaseTab", tabId, sessionId); },
+    closeSessionTabs(sessionId) { return ipcRenderer.invoke("get3w:browser:closeSessionTabs", sessionId); },
+    selectTab(tabId) { return ipcRenderer.invoke("get3w:browser:selectTab", tabId); },
+    reorderTabs(tabIds) { return ipcRenderer.invoke("get3w:browser:reorderTabs", tabIds); },
+    taskControl(tabId, action) { return ipcRenderer.invoke("get3w:browser:taskControl", tabId, action); },
+    setProxy(proxy) { return ipcRenderer.invoke("get3w:browser:setProxy", proxy); },
+    setControlEnabled(enabled) { return ipcRenderer.invoke("get3w:browser:setControlEnabled", enabled); },
+    setAgentViewport(key) { return ipcRenderer.invoke("get3w:browser:setAgentViewport", key); },
+    startAgentTurn(sessionId) { return ipcRenderer.invoke("get3w:browser:startAgentTurn", sessionId); },
+    endAgentTurn(sessionId) { return ipcRenderer.invoke("get3w:browser:endAgentTurn", sessionId); },
+    setAgentPermissionRules(rules) { return ipcRenderer.invoke("get3w:browser:setAgentPermissionRules", rules); },
+    showTabContextMenu(tabId, point) { return ipcRenderer.invoke("get3w:browser:tabContextMenu", tabId, point); },
     destroy() {
       lastBrowserGeometry = null;
-      return ipcRenderer.invoke("openwork:browser:destroy");
+      return ipcRenderer.invoke("get3w:browser:destroy");
     },
     onStateChange(callback) {
       const handler = (_event, state) => callback(state);
-      ipcRenderer.on("openwork:browser:state", handler);
-      return () => ipcRenderer.removeListener("openwork:browser:state", handler);
+      ipcRenderer.on("get3w:browser:state", handler);
+      return () => ipcRenderer.removeListener("get3w:browser:state", handler);
     },
     onPanelOpened(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:browser:panel-opened", handler);
-      return () => ipcRenderer.removeListener("openwork:browser:panel-opened", handler);
+      ipcRenderer.on("get3w:browser:panel-opened", handler);
+      return () => ipcRenderer.removeListener("get3w:browser:panel-opened", handler);
     },
     onPanelClosed(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:browser:panel-closed", handler);
-      return () => ipcRenderer.removeListener("openwork:browser:panel-closed", handler);
+      ipcRenderer.on("get3w:browser:panel-closed", handler);
+      return () => ipcRenderer.removeListener("get3w:browser:panel-closed", handler);
     },
     onPresentationExit(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:browser:presentation-exit", handler);
-      return () => ipcRenderer.removeListener("openwork:browser:presentation-exit", handler);
+      ipcRenderer.on("get3w:browser:presentation-exit", handler);
+      return () => ipcRenderer.removeListener("get3w:browser:presentation-exit", handler);
     },
   },
   // Development-only observation of native popup menus; main registers no handler otherwise.
   ...(process.env.GET3W_DEV_MODE === "1" ? {
     contextMenu: {
-      inspect() { return ipcRenderer.invoke("openwork:context-menu:inspect"); },
-      choose(id) { return ipcRenderer.invoke("openwork:context-menu:choose", id); },
-      dismiss() { return ipcRenderer.invoke("openwork:context-menu:dismiss"); },
+      inspect() { return ipcRenderer.invoke("get3w:context-menu:inspect"); },
+      choose(id) { return ipcRenderer.invoke("get3w:context-menu:choose", id); },
+      dismiss() { return ipcRenderer.invoke("get3w:context-menu:dismiss"); },
     },
   } : {}),
   terminal: {
-    create(options) { return ipcRenderer.invoke("openwork:terminal:create", options); },
-    write(terminalId, data) { return ipcRenderer.invoke("openwork:terminal:write", terminalId, data); },
-    resize(terminalId, cols, rows) { return ipcRenderer.invoke("openwork:terminal:resize", terminalId, cols, rows); },
-    kill(terminalId) { return ipcRenderer.invoke("openwork:terminal:kill", terminalId); },
+    create(options) { return ipcRenderer.invoke("get3w:terminal:create", options); },
+    write(terminalId, data) { return ipcRenderer.invoke("get3w:terminal:write", terminalId, data); },
+    resize(terminalId, cols, rows) { return ipcRenderer.invoke("get3w:terminal:resize", terminalId, cols, rows); },
+    kill(terminalId) { return ipcRenderer.invoke("get3w:terminal:kill", terminalId); },
     onData(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:terminal:data", handler);
-      return () => ipcRenderer.removeListener("openwork:terminal:data", handler);
+      ipcRenderer.on("get3w:terminal:data", handler);
+      return () => ipcRenderer.removeListener("get3w:terminal:data", handler);
     },
     onExit(callback) {
       const handler = (_event, payload) => callback(payload);
-      ipcRenderer.on("openwork:terminal:exit", handler);
-      return () => ipcRenderer.removeListener("openwork:terminal:exit", handler);
+      ipcRenderer.on("get3w:terminal:exit", handler);
+      return () => ipcRenderer.removeListener("get3w:terminal:exit", handler);
     },
   },
   meta: {
@@ -385,12 +385,12 @@ if (
   process.env.GET3W_EVAL_FATAL_DESKTOP_BOOTSTRAP_FAILURE
   && (process.env.GET3W_EVAL_RECOVERY_CANDIDATES || process.env.GET3W_EVAL_RECOVERY_RELEASES)
 ) {
-  contextBridge.exposeInMainWorld("__openworkRecoveryControl", {
+  contextBridge.exposeInMainWorld("__get3wRecoveryControl", {
     snapshot() {
-      return ipcRenderer.invoke("openwork:recovery:evalSnapshot");
+      return ipcRenderer.invoke("get3w:recovery:evalSnapshot");
     },
     select(id) {
-      return ipcRenderer.invoke("openwork:recovery:use", id);
+      return ipcRenderer.invoke("get3w:recovery:use", id);
     },
   });
 }
@@ -425,7 +425,7 @@ ipcRenderer.on(BROWSER_BOUNDS_INVALIDATED_EVENT, () => {
   window.dispatchEvent(new Event(BROWSER_BOUNDS_INVALIDATED_EVENT));
 });
 
-ipcRenderer.on("openwork:window-fullscreen", (_event, fullscreen) => {
+ipcRenderer.on("get3w:window-fullscreen", (_event, fullscreen) => {
   windowFullscreen = fullscreen === true;
   applyShellDocumentMarkers();
 });

@@ -1,6 +1,6 @@
 import net from "node:net";
 
-const GUARDED_SOCKET_TYPE_OF_SERVICE = Symbol.for("openwork.socket-type-of-service-guard");
+const GUARDED_SOCKET_TYPE_OF_SERVICE = Symbol.for("get3w.socket-type-of-service-guard");
 
 export function isHarmlessSocketTypeOfServiceError(error) {
   if (!(error instanceof Error)) return false;

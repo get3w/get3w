@@ -85,7 +85,7 @@ function fakeUpdaterHarness({ version, platform, manualNativeStaging }) {
  * @param {{ version: string, platform?: string, manualNativeStaging?: boolean, nativeStagingTimeoutMs?: number, assertActivation?: () => void }} options
  */
 async function registerFakeUpdaterIpc({ version, platform = "linux", manualNativeStaging = false, nativeStagingTimeoutMs, assertActivation, localValidationPackage = false }, { arch = process.arch, runningUnderARM64Translation = false } = {}) {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "openwork-updater-test-"));
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "get3w-updater-test-"));
   const handlers = new Map();
   const harness = fakeUpdaterHarness({ version, platform, manualNativeStaging });
   const defaultsWrites = [];
@@ -111,7 +111,7 @@ async function registerFakeUpdaterIpc({ version, platform = "linux", manualNativ
     platform,
     arch,
     nativeStagingTimeoutMs,
-    shipItDefaultsDomain: "test.openwork.ShipIt",
+    shipItDefaultsDomain: "test.get3w.ShipIt",
     writeDefaults: async (args) => { defaultsWrites.push(args); },
     localValidationPackage,
     ...(assertActivation ? { assertActivation } : {}),
@@ -202,7 +202,7 @@ describe("recovery metadata and candidates", () => {
   });
 
   it("atomically preserves the immediately prior healthy version", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-state-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-state-"));
     const app = { getPath: () => userData };
     try {
       await recordHealthyVersion(app, "public", "1.2.3");
@@ -312,13 +312,13 @@ releaseDate: '2026-08-11T00:00:00.000Z'
   });
 
   it("rejects a checksum mismatch without producing a cached installer", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-checksum-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-checksum-"));
     try {
       await assert.rejects(
         cacheVerifiedRecoveryArtifact({
 
           app: { getPath: () => userData },
-          artifact: { url: "https://get3w.com/desktop/releases/download/v1.2.3/openwork.dmg", sha512: "invalid" },
+          artifact: { url: "https://get3w.com/desktop/releases/download/v1.2.3/get3w.dmg", sha512: "invalid" },
           fetchArtifact: async () => new Response("tampered"),
         }),
         /checksum did not match/,
@@ -329,7 +329,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
   });
 
   it("preserves a valid rollback cache across network and checksum replacement failures", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-cache-preserve-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-cache-preserve-"));
     const app = { getPath: () => userData };
     const bytes = Buffer.from("known-good");
     const artifact = {
@@ -368,7 +368,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
   });
 
   it("rejects cached metadata with a modified URL or wrong installer filename", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-cache-identity-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-cache-identity-"));
     const app = { getPath: () => userData };
     const bytes = Buffer.from("known-good-identity");
     const artifact = {
@@ -394,7 +394,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
   });
 
   it("discovers and opens a reverified cached healthy installer while offline", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-offline-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-offline-"));
     const quitCalls = [];
     const app = {
       isPackaged: true,
@@ -431,18 +431,18 @@ releaseDate: '2026-08-11T00:00:00.000Z'
         arch: "arm64",
         distribution: "public",
       });
-      const listed = await handlers.get("openwork:recovery:list")(null, {
+      const listed = await handlers.get("get3w:recovery:list")(null, {
         versions: [], minimumVersion: "0.0.0",
       });
       assert.deepEqual(listed.releases, [{ id: "1.9.0", version: "1.9.0", marking: "previous" }]);
       assert.deepEqual(networkCalls, []);
-      assert.deepEqual(await handlers.get("openwork:recovery:use")(null, "1.9.0"), {
+      assert.deepEqual(await handlers.get("get3w:recovery:use")(null, "1.9.0"), {
         ok: false,
         reason: "installer blocked",
       });
       assert.deepEqual(quitCalls, []);
       openError = "";
-      assert.deepEqual(await handlers.get("openwork:recovery:use")(null, "1.9.0"), {
+      assert.deepEqual(await handlers.get("get3w:recovery:use")(null, "1.9.0"), {
         ok: true,
         action: "installer",
         message: "The verified installer is open. Follow the operating system steps to finish.",
@@ -454,7 +454,7 @@ releaseDate: '2026-08-11T00:00:00.000Z'
   });
 
   it("rejects a candidate whose fresh manifest changes without any destructive action", async () => {
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-recovery-fresh-mismatch-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-recovery-fresh-mismatch-"));
     const handlers = new Map();
     const destructiveCalls = [];
     let candidateFetches = 0;
@@ -482,11 +482,11 @@ releaseDate: '2026-08-11T00:00:00.000Z'
         arch: "arm64",
         distribution: "public",
       });
-      const listed = await handlers.get("openwork:recovery:list")(null, {
+      const listed = await handlers.get("get3w:recovery:list")(null, {
         versions: ["1.9.0"], minimumVersion: "0.0.0",
       });
       assert.deepEqual(listed.releases, [{ id: "1.9.0", version: "1.9.0", marking: null }]);
-      const result = await handlers.get("openwork:recovery:use")(null, "1.9.0");
+      const result = await handlers.get("get3w:recovery:use")(null, "1.9.0");
       assert.equal(result.ok, false);
       assert.match(result.reason, /could not be verified/);
       assert.deepEqual(destructiveCalls, []);
@@ -518,12 +518,12 @@ releaseDate: '2026-08-11T00:00:00.000Z'
       } },
       env: {
         GET3W_EVAL_RECOVERY_CANDIDATES: JSON.stringify([
-          { version: "1.2.2", verified: false, artifactUrl: "https://tampered.invalid/openwork.dmg" },
+          { version: "1.2.2", verified: false, artifactUrl: "https://tampered.invalid/get3w.dmg" },
         ]),
       },
     });
-    await handlers.get("openwork:recovery:list")(null, {});
-    assert.equal((await handlers.get("openwork:recovery:use")(null, "1.2.2")).ok, false);
+    await handlers.get("get3w:recovery:list")(null, {});
+    assert.equal((await handlers.get("get3w:recovery:use")(null, "1.2.2")).ok, false);
     assert.deepEqual(destructiveCalls, []);
   });
 });
@@ -538,7 +538,7 @@ describe("installAndRestart", () => {
       getMainWindow: () => null,
     });
 
-    const install = handlers.get("openwork:updater:installAndRestart");
+    const install = handlers.get("get3w:updater:installAndRestart");
     assert.equal(typeof install, "function");
     assert.deepEqual(await install(), {
       ok: false,
@@ -557,9 +557,9 @@ describe("pre-activation guard", () => {
       },
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
-      const install = handlers.get("openwork:updater:installAndRestart");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
+      const install = handlers.get("get3w:updater:installAndRestart");
       await assert.rejects(() => check(null, "stable"), /must be activated/, "check must reject before activation");
       await assert.rejects(() => download(), /must be activated/, "download must reject before activation");
       await assert.rejects(() => install(), /must be activated/, "installAndRestart must reject before activation");
@@ -586,15 +586,15 @@ describe("downloaded update lifecycle", () => {
       platform: "win32",
     });
     try {
-      assert.equal((await handlers.get("openwork:updater:check")(null, "stable")).available, true);
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      assert.equal((await handlers.get("get3w:updater:check")(null, "stable")).available, true);
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       assert.equal(updater.autoInstallOnAppQuit, true);
 
       controls.holdInstallForSessionEnd();
       assert.equal(updater.autoInstallOnAppQuit, false);
 
       // A download that finishes during shutdown must not re-arm install on quit.
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       assert.equal(updater.autoInstallOnAppQuit, false);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -606,8 +606,8 @@ describe("downloaded update lifecycle", () => {
       version: "0.17.1",
     });
     try {
-      assert.equal((await handlers.get("openwork:updater:check")(null, "stable")).available, true);
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      assert.equal((await handlers.get("get3w:updater:check")(null, "stable")).available, true);
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       controls.holdInstallForSessionEnd();
       assert.equal(updater.autoInstallOnAppQuit, true);
     } finally {
@@ -620,9 +620,9 @@ describe("downloaded update lifecycle", () => {
       version: "0.17.1",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
-      const install = handlers.get("openwork:updater:installAndRestart");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
+      const install = handlers.get("get3w:updater:installAndRestart");
       assert.equal(typeof check, "function");
       assert.equal(typeof download, "function");
       assert.equal(typeof install, "function");
@@ -649,9 +649,9 @@ describe("downloaded update lifecycle", () => {
       version: "0.17.1",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
-      const install = handlers.get("openwork:updater:installAndRestart");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
+      const install = handlers.get("get3w:updater:installAndRestart");
       assert.equal(typeof check, "function");
       assert.equal(typeof download, "function");
       assert.equal(typeof install, "function");
@@ -673,9 +673,9 @@ describe("downloaded update lifecycle", () => {
       version: "0.17.1",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
-      const install = handlers.get("openwork:updater:installAndRestart");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
+      const install = handlers.get("get3w:updater:installAndRestart");
       assert.equal(typeof check, "function");
       assert.equal(typeof download, "function");
       assert.equal(typeof install, "function");
@@ -703,8 +703,8 @@ describe("metadata-only updater checks", () => {
       version: "0.17.1", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      const check = handlers.get("get3w:updater:check");
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       const nativeFeed = nativeUpdater.getFeedURL();
       const autoInstall = updater.autoInstallOnAppQuit;
       updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.2" } });
@@ -716,7 +716,7 @@ describe("metadata-only updater checks", () => {
       assert.equal(nativeUpdater.getFeedURL(), nativeFeed);
       assert.equal(updater.squirrelDownloadedUpdate, true);
       assert.deepEqual(calls, ["download", "nativeCheck"]);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), { ok: true });
       assert.deepEqual(calls, ["download", "nativeCheck", "quitAndInstall"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -728,8 +728,8 @@ describe("metadata-only updater checks", () => {
       version: "0.17.1", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
       assert.deepEqual(await download(), { ok: true });
       updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.2" } });
       assert.equal((await check(null, "stable", "0.17.2", { preserveStaged: true })).stagedVersion, "0.17.1");
@@ -750,7 +750,7 @@ describe("metadata-only updater checks", () => {
         version: "0.17.1", platform: "darwin",
       });
       try {
-        assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+        assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
         const nativeFeed = nativeUpdater.getFeedURL();
         updater.checkForUpdates = async () => {
           if (outcome === "error") throw new Error("offline");
@@ -758,7 +758,7 @@ describe("metadata-only updater checks", () => {
         };
         for (const autoInstall of [true, false]) {
           updater.autoInstallOnAppQuit = autoInstall;
-          const result = await handlers.get("openwork:updater:check")(null, "stable", undefined, { preserveStaged: true });
+          const result = await handlers.get("get3w:updater:check")(null, "stable", undefined, { preserveStaged: true });
           assert.equal(result.available, outcome === "equal");
           assert.equal(result.stagedVersion, "0.17.1");
           assert.equal(result.totalBytes, null);
@@ -767,7 +767,7 @@ describe("metadata-only updater checks", () => {
           assert.equal(nativeUpdater.getFeedURL(), nativeFeed);
         }
         assert.deepEqual(calls, ["download", "nativeCheck"]);
-        assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), { ok: true });
+        assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), { ok: true });
       } finally {
         await rm(tempDir, { recursive: true, force: true });
       }
@@ -780,15 +780,15 @@ describe("metadata-only updater checks", () => {
         version: "0.17.1", platform: "darwin",
       });
       try {
-        assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+        assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
         updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.2" } });
-        const result = await handlers.get("openwork:updater:check")(null, "stable", undefined, options);
+        const result = await handlers.get("get3w:updater:check")(null, "stable", undefined, options);
         assert.equal(result.available, true);
         assert.equal(Object.hasOwn(result, "stagedVersion"), false);
         assert.equal(updater.autoInstallOnAppQuit, false);
-        const recheck = await handlers.get("openwork:updater:check")(null, "stable", undefined, { preserveStaged: true });
+        const recheck = await handlers.get("get3w:updater:check")(null, "stable", undefined, { preserveStaged: true });
         assert.equal(recheck.stagedVersion, null);
-        assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), {
+        assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), {
           ok: false, reason: "update-not-downloaded",
         });
         assert.deepEqual(calls, ["download", "nativeCheck"]);
@@ -803,13 +803,13 @@ describe("metadata-only updater checks", () => {
       version: "0.17.1", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
+      const check = handlers.get("get3w:updater:check");
       assert.equal((await check(null, "stable", undefined, { preserveStaged: true })).stagedVersion, null);
       assert.deepEqual(calls, []);
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
-      await handlers.get("openwork:updater:setChannel")(null, "stable");
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
+      await handlers.get("get3w:updater:setChannel")(null, "stable");
       assert.equal((await check(null, "stable", undefined, { preserveStaged: true })).stagedVersion, null);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), {
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), {
         ok: false, reason: "update-not-downloaded",
       });
     } finally {
@@ -822,8 +822,8 @@ describe("metadata-only updater checks", () => {
       version: "0.17.1", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
       await check(null, "stable", "0.17.1");
       assert.deepEqual(await download(), { ok: true });
       const nativeFeed = nativeUpdater.getFeedURL();
@@ -842,7 +842,7 @@ describe("metadata-only updater checks", () => {
         assert.deepEqual(feeds, originalFeeds);
       }
       assert.deepEqual(calls, ["download", "nativeCheck"]);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), { ok: true });
       assert.deepEqual(calls, ["download", "nativeCheck", "quitAndInstall"]);
       assert.deepEqual(await download(), { ok: true });
       assert.equal(feeds.at(-1).url, targetedStableUpdaterFeed("0.17.0", "0.17.1"));
@@ -856,9 +856,9 @@ describe("metadata-only updater checks", () => {
       version: "0.18.0-alpha.2962", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
+      const check = handlers.get("get3w:updater:check");
       assert.equal((await check(null, "alpha")).available, true);
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       assert.equal(downloadFeeds.at(-1).url, "https://get3w.com/desktop/releases/download/alpha-macos-latest");
       const nativeFeed = nativeUpdater.getFeedURL();
       const autoInstall = updater.autoInstallOnAppQuit;
@@ -872,7 +872,7 @@ describe("metadata-only updater checks", () => {
       assert.equal(nativeUpdater.getFeedURL(), nativeFeed);
       assert.equal(updater.squirrelDownloadedUpdate, true);
       assert.deepEqual(calls, ["download", "nativeCheck"]);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), { ok: true });
       assert.deepEqual(calls, ["download", "nativeCheck", "quitAndInstall"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -899,7 +899,7 @@ describe("updater artifact metadata size", () => {
       }, { arch, runningUnderARM64Translation });
       try {
         updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.1", files } });
-        const result = await handlers.get("openwork:updater:check")(null, "stable", undefined, { preserveStaged: true });
+        const result = await handlers.get("get3w:updater:check")(null, "stable", undefined, { preserveStaged: true });
         assert.equal(result.totalBytes, totalBytes);
         assert.equal(result.stagedVersion, null);
         assert.deepEqual(calls, []);
@@ -911,11 +911,11 @@ describe("updater artifact metadata size", () => {
 
   for (const [name, artifacts, totalBytes] of [
     ["DMG only", files.slice(0, 2), null],
-    ["universal ZIP", [{ url: "openwork-universal.zip", size: 500 }], 500],
+    ["universal ZIP", [{ url: "get3w-universal.zip", size: 500 }], 500],
     ["x64 fallback on ARM", [files[2]], 700],
-    ["missing size", [{ url: "openwork-arm64.zip" }], null],
-    ["invalid size", [{ url: "openwork-arm64.zip", size: -1 }], null],
-    ["string size", [{ url: "openwork-arm64.zip", size: "500" }], null],
+    ["missing size", [{ url: "get3w-arm64.zip" }], null],
+    ["invalid size", [{ url: "get3w-arm64.zip", size: -1 }], null],
+    ["string size", [{ url: "get3w-arm64.zip", size: "500" }], null],
   ]) {
     it(`handles ${name}`, async () => {
       const { tempDir, handlers, updater } = await registerFakeUpdaterIpc({
@@ -923,7 +923,7 @@ describe("updater artifact metadata size", () => {
       }, { arch: "arm64" });
       try {
         updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.1", files: artifacts } });
-        assert.equal((await handlers.get("openwork:updater:check")(null, "stable")).totalBytes, totalBytes);
+        assert.equal((await handlers.get("get3w:updater:check")(null, "stable")).totalBytes, totalBytes);
       } finally {
         await rm(tempDir, { recursive: true, force: true });
       }
@@ -939,7 +939,7 @@ describe("macOS native staging", () => {
     try {
       const started = once(nativeUpdater, "checking-for-update");
       let downloaded = false;
-      const download = handlers.get("openwork:updater:download")().then((result) => {
+      const download = handlers.get("get3w:updater:download")().then((result) => {
         downloaded = true;
         return result;
       });
@@ -948,7 +948,7 @@ describe("macOS native staging", () => {
       assert.equal(updater.autoInstallOnAppQuit, false);
       assert.deepEqual(calls, ["download", "nativeCheck"]);
       assert.equal(nativeUpdater.listenerCount("update-downloaded"), 2);
-      const install = handlers.get("openwork:updater:installAndRestart")();
+      const install = handlers.get("get3w:updater:installAndRestart")();
       finishNativeStage();
       assert.deepEqual(await download, { ok: true });
       assert.equal(updater.autoInstallOnAppQuit, true);
@@ -958,7 +958,7 @@ describe("macOS native staging", () => {
       assert.equal(nativeUpdater.listenerCount("error"), 1);
       if (process.platform === "darwin") {
         assert.equal(defaultsWrites.length, 2);
-        assert.ok(defaultsWrites.every((args) => args[1] === "test.openwork.ShipIt"));
+        assert.ok(defaultsWrites.every((args) => args[1] === "test.get3w.ShipIt"));
       }
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -971,23 +971,23 @@ describe("macOS native staging", () => {
     });
     try {
       const started = once(nativeUpdater, "checking-for-update");
-      const download = handlers.get("openwork:updater:download")();
+      const download = handlers.get("get3w:updater:download")();
       await started;
       nativeUpdater.emit("error", new Error("native signature validation failed"));
       assert.deepEqual(await download, { ok: false, reason: "native signature validation failed" });
       assert.equal(updater.autoInstallOnAppQuit, false);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), {
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), {
         ok: false, reason: "update-not-downloaded",
       });
       assert.equal(nativeUpdater.listenerCount("update-downloaded"), 1);
       assert.equal(nativeUpdater.listenerCount("error"), 1);
 
       const retryStarted = once(nativeUpdater, "checking-for-update");
-      const retry = handlers.get("openwork:updater:download")();
+      const retry = handlers.get("get3w:updater:download")();
       await retryStarted;
       finishNativeStage();
       assert.deepEqual(await retry, { ok: true });
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), { ok: true });
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), { ok: true });
       assert.deepEqual(calls, ["download", "nativeCheck", "download", "nativeCheck", "quitAndInstall"]);
       assert.equal(nativeUpdater.listenerCount("update-downloaded"), 1);
       assert.equal(nativeUpdater.listenerCount("error"), 1);
@@ -1001,7 +1001,7 @@ describe("macOS native staging", () => {
       version: "0.17.1", platform: "darwin", manualNativeStaging: true, nativeStagingTimeoutMs: 25,
     });
     try {
-      const download = handlers.get("openwork:updater:download");
+      const download = handlers.get("get3w:updater:download");
       const started = once(nativeUpdater, "checking-for-update");
       const pending = download();
       await started;
@@ -1013,12 +1013,12 @@ describe("macOS native staging", () => {
       assert.equal(nativeUpdater.listenerCount("update-downloaded"), 1);
       assert.equal(nativeUpdater.listenerCount("error"), 1);
       finishNativeStage();
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), {
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), {
         ok: false, reason: "update-not-downloaded",
       });
 
       updater.checkForUpdates = async () => ({ updateInfo: { version: "0.17.2" } });
-      await handlers.get("openwork:updater:check")(null, "stable");
+      await handlers.get("get3w:updater:check")(null, "stable");
       const retryStarted = once(nativeUpdater, "checking-for-update");
       let downloaded = false;
       const retry = download().then((value) => { downloaded = true; return value; });
@@ -1043,9 +1043,9 @@ describe("macOS native staging", () => {
       version: "0.17.1", platform: "darwin",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const install = handlers.get("openwork:updater:installAndRestart");
-      assert.deepEqual(await handlers.get("openwork:updater:download")(), { ok: true });
+      const check = handlers.get("get3w:updater:check");
+      const install = handlers.get("get3w:updater:installAndRestart");
+      assert.deepEqual(await handlers.get("get3w:updater:download")(), { ok: true });
       updater.checkForUpdates = async () => { throw new Error("network flake"); };
       assert.equal((await check(null, "stable")).available, false);
       // Wrapper errors from checks remain informational, not native-stage failures.
@@ -1072,7 +1072,7 @@ describe("macOS native staging", () => {
     });
     try {
       delete updater.nativeUpdater;
-      const download = handlers.get("openwork:updater:download");
+      const download = handlers.get("get3w:updater:download");
       assert.deepEqual(await download(), { ok: false, reason: "Native macOS updater is unavailable." });
       assert.deepEqual(calls, []);
       updater.nativeUpdater = nativeUpdater;
@@ -1081,7 +1081,7 @@ describe("macOS native staging", () => {
       assert.equal(updater.autoInstallOnAppQuit, false);
       assert.equal(nativeUpdater.listenerCount("update-downloaded"), 1);
       assert.equal(nativeUpdater.listenerCount("error"), 1);
-      assert.deepEqual(await handlers.get("openwork:updater:installAndRestart")(), {
+      assert.deepEqual(await handlers.get("get3w:updater:installAndRestart")(), {
         ok: false, reason: "update-not-downloaded",
       });
     } finally {
@@ -1114,7 +1114,7 @@ describe("evalUpdaterFeedUrl", () => {
 
   it("points the untargeted feed at the loopback feed", async () => {
     const handlers = new Map();
-    const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-eval-feed-"));
+    const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-eval-feed-"));
     const previous = process.env.GET3W_EVAL_UPDATE_FEED_URL;
     process.env.GET3W_EVAL_UPDATE_FEED_URL = "http://127.0.0.1:4567";
     try {
@@ -1125,7 +1125,7 @@ describe("evalUpdaterFeedUrl", () => {
         getMainWindow: () => null,
         manifestChannel: "enterprise",
       });
-      assert.equal((await handlers.get("openwork:updater:getChannel")()).feedUrl, "http://127.0.0.1:4567");
+      assert.equal((await handlers.get("get3w:updater:getChannel")()).feedUrl, "http://127.0.0.1:4567");
       // A version-targeted check still resolves to the fixed GitHub release.
       assert.equal(targetedStableUpdaterFeed("0.17.22", "0.17.23"), "https://get3w.com/desktop/releases/download/v0.17.23");
     } finally {
@@ -1160,7 +1160,7 @@ describe("release channel changes", () => {
         manifestChannel: "enterprise",
       });
 
-      const setChannel = handlers.get("openwork:updater:setChannel");
+      const setChannel = handlers.get("get3w:updater:setChannel");
       assert.equal(typeof setChannel, "function");
       assert.deepEqual(await setChannel(null, "alpha"), {
         channel: "stable",
@@ -1179,9 +1179,9 @@ describe("release channel changes", () => {
       version: "0.18.0",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const setChannel = handlers.get("openwork:updater:setChannel");
-      const getChannel = handlers.get("openwork:updater:getChannel");
+      const check = handlers.get("get3w:updater:check");
+      const setChannel = handlers.get("get3w:updater:setChannel");
+      const getChannel = handlers.get("get3w:updater:getChannel");
 
       assert.equal((await setChannel(null, "alpha")).channel, "alpha");
       assert.equal((await check(null, "stable")).channel, "stable");
@@ -1198,8 +1198,8 @@ describe("release channel changes", () => {
       version: "0.18.0-alpha.1",
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const download = handlers.get("openwork:updater:download");
+      const check = handlers.get("get3w:updater:check");
+      const download = handlers.get("get3w:updater:download");
 
       assert.equal((await check(null, "alpha")).channel, "alpha");
       assert.deepEqual(await download(), { ok: true });
@@ -1228,9 +1228,9 @@ describe("release channel changes", () => {
       });
     });
     try {
-      const check = handlers.get("openwork:updater:check");
-      const setChannel = handlers.get("openwork:updater:setChannel");
-      const getChannel = handlers.get("openwork:updater:getChannel");
+      const check = handlers.get("get3w:updater:check");
+      const setChannel = handlers.get("get3w:updater:setChannel");
+      const getChannel = handlers.get("get3w:updater:getChannel");
 
       const stableCheck = check(null, "stable");
       await stableCheckStarted;
@@ -1266,7 +1266,7 @@ describe("release channel changes", () => {
   try {
     await assert.rejects(h.controls.ensureAutoUpdater(), /unavailable/);
     for (const name of ["updater:getChannel", "updater:setChannel", "updater:check", "updater:download", "updater:installAndRestart", "recovery:list", "recovery:use", "recovery:restorePrevious"]) {
-      await assert.rejects(h.handlers.get(`openwork:${name}`)(null, "stable"), /unavailable/, name);
+      await assert.rejects(h.handlers.get(`get3w:${name}`)(null, "stable"), /unavailable/, name);
     }
     assert.deepEqual(h.calls, []);
     assert.deepEqual(h.feeds, []);
@@ -1290,7 +1290,7 @@ it("an explicit release gate blocks update and recovery before side effects", as
   });
   await assert.rejects(controls.ensureAutoUpdater(), /Release service unavailable/);
   for (const name of ["updater:getChannel", "updater:setChannel", "updater:check", "updater:download", "updater:installAndRestart", "recovery:list", "recovery:use", "recovery:restorePrevious"]) {
-    const handler = handlers.get(`openwork:${name}`);
+    const handler = handlers.get(`get3w:${name}`);
     assert.equal(typeof handler, "function", name);
     await assert.rejects(Promise.resolve().then(() => handler(null)), /Release service unavailable/, name);
   }

@@ -31,10 +31,10 @@ function useUpdater() {
   // versions cannot be honoured, so no update check (and therefore no
   // download) may run yet.
   const allowedVersionsKnown = !desktopConfig.loading;
-  const [updateAutoCheck, setUpdateAutoCheck] = useUpdatePreference("openwork.react.settings.update-auto-check");
+  const [updateAutoCheck, setUpdateAutoCheck] = useUpdatePreference("get3w.react.settings.update-auto-check");
   // Older Settings wrote "0" even when the user never touched the old opt-in.
   // Start the automatic-download default once, then retain future opt-outs.
-  const [updateAutoDownload, setUpdateAutoDownload] = useUpdatePreference("openwork.react.settings.update-auto-download.v2");
+  const [updateAutoDownload, setUpdateAutoDownload] = useUpdatePreference("get3w.react.settings.update-auto-download.v2");
   const onReleaseChannelChange = useCallback((next: "stable" | "alpha") => {
     local.setPrefs((previous) => ({ ...previous, releaseChannel: next }));
   }, [local.setPrefs]);

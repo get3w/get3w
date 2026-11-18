@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Ellipsis, ExternalLink, FolderOpen, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 
-import type { OpenworkServerClient, OpenworkWorkspaceCatalogEntry } from "@/app/lib/openwork-server";
+import type { Get3wServerClient, Get3wWorkspaceCatalogEntry } from "@/app/lib/get3w-server";
 import type { OpenTargetOptions } from "@/lib/target-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ const EMPTY_TRANSCRIPT_TARGETS: OpenTarget[] = [];
 type ArtifactPanelProps = {
   sessionId: string;
   tab: ArtifactPanelTab;
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string | null;
   workspaceRoot: string;
   onOpenTarget?: (target: OpenTarget, options?: OpenTargetOptions) => void;
@@ -47,7 +47,7 @@ type ArtifactPanelProps = {
 
 type ArtifactPanelViewProps = {
   sessionId: string;
-  client: OpenworkServerClient;
+  client: Get3wServerClient;
   workspaceId: string;
   workspaceRoot: string;
   onOpenTarget?: (target: OpenTarget, options?: OpenTargetOptions) => void;
@@ -109,7 +109,7 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, targ
   const canUseDesktopFileActions = target.kind === "file" && canUseDesktopWorkspaceActions;
   const workspaceName = workspaceRoot.split(/[/\\]/).filter(Boolean).pop() ?? "Workspace";
 
-  const openWorkspaceFile = (entry: { path: string; size: number; mtimeMs: number }) => {
+  const get3wspaceFile = (entry: { path: string; size: number; mtimeMs: number }) => {
     const nextTarget = openTargetFromWorkspaceFile(entry.path, { size: entry.size, updatedAt: entry.mtimeMs });
     if (!nextTarget) return;
     usePanelTabStore.getState().openTab(sessionId, {
@@ -380,13 +380,13 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, targ
               workspaceId={workspaceId}
               workspaceName={workspaceName}
               selectedPath={target.value}
-              onOpenFile={openWorkspaceFile}
+              onOpenFile={get3wspaceFile}
               fileActions={[
                 { id: "download", get label() { return t("ui.d6eafe823591"); }, run: (entry) => void downloadFile(entry.path, entry.path.split(/[/\\]/).pop() ?? entry.path) },
                 ...(canUseDesktopWorkspaceActions
                   ? [
-                    { id: "reveal", label: t("ui.da478765741e"), run: (entry: OpenworkWorkspaceCatalogEntry) => void revealFile(entry.path) },
-                    { id: "open-external", label: t("ui.1b4935ffcfa8"), run: (entry: OpenworkWorkspaceCatalogEntry) => void openFileExternally(entry.path) },
+                    { id: "reveal", label: t("ui.da478765741e"), run: (entry: Get3wWorkspaceCatalogEntry) => void revealFile(entry.path) },
+                    { id: "open-external", label: t("ui.1b4935ffcfa8"), run: (entry: Get3wWorkspaceCatalogEntry) => void openFileExternally(entry.path) },
                   ]
                   : []),
               ]}

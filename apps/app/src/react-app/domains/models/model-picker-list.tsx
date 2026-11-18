@@ -66,7 +66,7 @@ export type ModelPickerListProps = {
   onSetWorkspaceDefault?: (model: ModelRef, variant?: string | null) => void | boolean | Promise<void | boolean>;
   /** Effort currently applied to `current`; kept when that model becomes the workspace default. */
   currentBehaviorValue?: string | null;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsSyncing?: boolean;
   onReloadWorkspace?: () => void | Promise<unknown>;
 };
 
@@ -80,7 +80,7 @@ function menuChord(label: string, chord: string) {
 }
 
 function ModelPickerRows({ options, current, query, onQueryChange, onSelect, focusAlternative = false, footer, leading, searchInputRef, autoFocusSearch = true,
-  catalogState, retainedSelection, onConnectProvider, onOpenProviderSettings, onSetWorkspaceDefault, currentBehaviorValue, openWorkModelsSyncing, onReloadWorkspace,
+  catalogState, retainedSelection, onConnectProvider, onOpenProviderSettings, onSetWorkspaceDefault, currentBehaviorValue, get3wModelsSyncing, onReloadWorkspace,
 }: ModelPickerListProps) {
   const favorites = useModelCollectionsStore((state) => state.favorites);
   const recent = useModelCollectionsStore((state) => state.recent);
@@ -243,7 +243,7 @@ function ModelPickerRows({ options, current, query, onQueryChange, onSelect, foc
         {retained?.reason === "unavailable" && catalogState?.onRetry ? <Button size="sm" variant="outline" disabled={retryBusy || catalogState.refreshing} onClick={() => void retry()}>{t("ui.0e9161011702")}</Button> : null}
         {retained?.reason === "disabled" && onOpenProviderSettings ? <Button size="sm" variant="outline" onClick={onOpenProviderSettings}>{t("ui.2c4aed90f68a")}</Button> : null}
       </>}>{retainedCopy.detail}</PickerNotice> : null}
-      {openWorkModelsSyncing ? <PickerNotice testId="models-sync-notice" action={onReloadWorkspace ? <Button size="sm" variant="outline" onClick={() => void onReloadWorkspace()}>{t("ui.bdc090ec61e3")}</Button> : null}>{t("models.sync_notice")}</PickerNotice> : null}
+      {get3wModelsSyncing ? <PickerNotice testId="models-sync-notice" action={onReloadWorkspace ? <Button size="sm" variant="outline" onClick={() => void onReloadWorkspace()}>{t("ui.bdc090ec61e3")}</Button> : null}>{t("models.sync_notice")}</PickerNotice> : null}
       {empty ? <PickerNotice action={onConnectProvider ? <Button size="sm" onClick={onConnectProvider}>{t("ui.a002b3f35f99")}</Button> : null}>{t("ui.9ae67eb036c7")}</PickerNotice> : null}
       {focusAlternative && !alternativeKey && hasOptions && onConnectProvider ? <PickerNotice action={<Button size="sm" variant="outline" onClick={onConnectProvider}>{t("ui.a002b3f35f99")}</Button>}>{t("ui.d9e69bd725db")}</PickerNotice> : null}
       {footer}

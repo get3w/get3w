@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ModelOption, ModelRef } from "@/app/types";
 import { getModelBehaviorControls, getModelBehaviorSelection } from "@/app/lib/model-behavior";
-import { FAST_DEFAULT_VARIANT } from "@openwork/types/cloud-model-fast";
+import { FAST_DEFAULT_VARIANT } from "@get3w/types/cloud-model-fast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ModelPickerPanel } from "@/react-app/domains/models/model-picker-panel";
 import { useModelCatalog, useModelChoice } from "@/react-app/domains/models/use-model-catalog";
@@ -28,8 +28,8 @@ interface ModelSelectProps {
   onChange: (model: ModelRef, variant?: string | null) => void;
   disabled?: boolean;
   sessionId?: string;
-  openWorkModelsEntitled?: boolean;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsEntitled?: boolean;
+  get3wModelsSyncing?: boolean;
   fallbackOptions?: readonly ModelOption[];
   behaviorValue?: string | null;
   behaviorLabel?: string;
@@ -41,7 +41,7 @@ interface ModelSelectProps {
 }
 
 export function ModelSelect({ open, value, hideValue = false, onOpenChange, onChange, disabled = false, sessionId,
-  openWorkModelsSyncing = false, fallbackOptions = [], behaviorValue = null, behaviorOptions = [], onBehaviorChange, onSetWorkspaceDefault, onReloadWorkspace, retainedSelection: savedSelection }: ModelSelectProps) {
+  get3wModelsSyncing = false, fallbackOptions = [], behaviorValue = null, behaviorOptions = [], onBehaviorChange, onSetWorkspaceDefault, onReloadWorkspace, retainedSelection: savedSelection }: ModelSelectProps) {
   const [focusAlternative, setFocusAlternative] = React.useState(false);
   const isMobile = useIsMobile();
   const popupRef = React.useRef<HTMLDivElement>(null);
@@ -101,7 +101,7 @@ export function ModelSelect({ open, value, hideValue = false, onOpenChange, onCh
       <ModelPickerPanel searchInputRef={searchInputRef} options={options} current={value} behaviorValue={behaviorValue} fallbackBehaviorOptions={behaviorOptions}
         onSelect={select} onBehaviorChange={onBehaviorChange} focusAlternative={focusAlternative} catalogState={catalogState} retainedSelection={retainedSelection}
         onConnectProvider={!restrictToCloud ? openProvider : undefined} onOpenProviderSettings={!checkRestriction({ restriction: "allowControlSettings" }) ? openSettings : undefined}
-        onSetWorkspaceDefault={onSetWorkspaceDefault ?? setWorkspaceDefault} openWorkModelsSyncing={openWorkModelsSyncing} onReloadWorkspace={onReloadWorkspace} />
+        onSetWorkspaceDefault={onSetWorkspaceDefault ?? setWorkspaceDefault} get3wModelsSyncing={get3wModelsSyncing} onReloadWorkspace={onReloadWorkspace} />
     </PopoverContent>
   </Popover>;
 }

@@ -28,6 +28,7 @@ export type {
   HeadlessThreadUsage,
   HeadlessThreadTranscript,
   HeadlessThreadTurnInput,
+  HeadlessThreadAttachment,
   HeadlessThreadWaitInput,
   HeadlessThreadWaitOutcome,
   HeadlessThreadWaitResult,

@@ -25,7 +25,7 @@ export function BuiltMcpAppPanel({
     >
       <header className="flex h-10 items-center justify-between border-b px-3">
         <div className="flex min-w-0 items-center gap-2">
-          <img src={resolveExtensionIconSrc("/openwork-mark.svg")} alt="" className="size-4 dark:invert" />
+          <img src={resolveExtensionIconSrc("/get3w-mark.svg")} alt="" className="size-4 dark:invert" />
           <span className="truncate text-sm font-medium">{tab.label}</span>
           <span role="status" className={`shrink-0 text-xs ${tab.updating ? "text-muted-foreground" : "text-emerald-700 dark:text-emerald-400"}`}>{tab.updating ? t("ui.0b5260e1b405") : t("boot.ready")}</span>
         </div>

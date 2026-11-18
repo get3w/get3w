@@ -1,7 +1,7 @@
 /**
  * Transcript projection.
  *
- * A snapshot carries the thread exactly as OpenWork stores it. A transcript is
+ * A snapshot carries the thread exactly as Get3W stores it. A transcript is
  * the flattened, comparable view of the same data: what each side said, what
  * it reasoned about, and which tools it called. Deriving it here keeps every
  * consumer from re-implementing part handling the way the desktop UI does.
@@ -46,6 +46,9 @@ function toParts(message: HeadlessThreadMessage): HeadlessTranscriptPart[] {
         ? part.endedAt - part.startedAt
         : null;
       return [{ type: "reasoning", text: part.text, durationMs }];
+    }
+    if (part.type === "file") {
+      return [{ type: "file", partId: part.id, url: part.url ?? null, mime: part.mime ?? null, filename: part.filename ?? null }];
     }
     if (part.type !== "tool") return [];
     return [{

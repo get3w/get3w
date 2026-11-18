@@ -10,11 +10,11 @@ import {
 } from "lucide-react";
 
 import type {
-  OpenworkAuditEntry,
-  OpenworkRuntimeConfigStatus,
-  OpenworkServerCapabilities,
-  OpenworkServerDiagnostics,
-} from "../../../../app/lib/openwork-server";
+  Get3wAuditEntry,
+  Get3wRuntimeConfigStatus,
+  Get3wServerCapabilities,
+  Get3wServerDiagnostics,
+} from "../../../../app/lib/get3w-server";
 import type { NukeManifestPreview } from "../../../../app/lib/desktop";
 import type {
   OpencodeConnectStatus,
@@ -41,8 +41,8 @@ import {
   type AgentContextDiagnosticsSectionProps,
 } from "./agent-context-diagnostics-section";
 import type {
-  OpenworkServerClient,
-} from "@/app/lib/openwork-server";
+  Get3wServerClient,
+} from "@/app/lib/get3w-server";
 
 const sectionHeaderClass = "flex flex-col gap-1 pb-2";
 const sectionTitleClass = "text-[15px] font-semibold tracking-[-0.2px] text-dls-text";
@@ -61,7 +61,7 @@ type RuntimeSummary = {
   appVersionLabel: string;
   appCommitLabel: string;
   opencodeVersionLabel: string;
-  openworkServerVersionLabel: string;
+  get3wServerVersionLabel: string;
 };
 
 type StatusPill = {
@@ -96,7 +96,7 @@ export type DebugViewProps = {
   runtimeSummary: RuntimeSummary;
   runtimeDebugReportJson: string;
   bootstrapConfigDebugJson: string;
-  runtimeConfigStatus: OpenworkRuntimeConfigStatus | null;
+  runtimeConfigStatus: Get3wRuntimeConfigStatus | null;
   runtimeConfigStatusError: string | null;
   runtimeDebugStatus: string | null;
   onCopyRuntimeDebugReport: () => void | Promise<void>;
@@ -141,33 +141,33 @@ export type DebugViewProps = {
   resetModalBusy: boolean;
   resetStatus: string | null;
   opencodeRestarting: boolean;
-  openworkServerRestarting: boolean;
+  get3wServerRestarting: boolean;
   opencodeServiceStatus: ServiceStatus;
-  openworkServiceStatus: ServiceStatus;
+  get3wServiceStatus: ServiceStatus;
   opencodeLogStatus: string | null;
-  openworkLogStatus: string | null;
+  get3wLogStatus: string | null;
   onCopyOpencodeLogs: () => void | Promise<void>;
   onExportOpencodeLogs: () => void | Promise<void>;
-  onCopyOpenworkLogs: () => void | Promise<void>;
-  onExportOpenworkLogs: () => void | Promise<void>;
+  onCopyGet3wLogs: () => void | Promise<void>;
+  onExportGet3wLogs: () => void | Promise<void>;
   serviceRestartError: string | null;
   onRestartOpencode: () => void | Promise<void>;
-  onRestartOpenworkServer: () => void | Promise<void>;
+  onRestartGet3wServer: () => void | Promise<void>;
   engineCard: RuntimeServiceCard;
   opencodeConnectCard: OpenCodeConnectDebugCard;
-  openworkCard: RuntimeServiceCard;
-  openworkServerDiagnostics: OpenworkServerDiagnostics | null;
+  get3wCard: RuntimeServiceCard;
+  get3wServerDiagnostics: Get3wServerDiagnostics | null;
   runtimeWorkspaceId: string | null;
-  openworkServerCapabilities: OpenworkServerCapabilities | null;
+  get3wServerCapabilities: Get3wServerCapabilities | null;
   pendingPermissions: unknown;
   events: unknown;
   workspaceDebugEvents: unknown;
   workspaceDebugEventsStatus: string | null;
   safeStringify: (value: unknown) => string;
   onClearWorkspaceDebugEvents: () => void | Promise<void>;
-  openworkAuditEntries: OpenworkAuditEntry[];
-  openworkAuditStatus: StatusPill;
-  openworkAuditError: string | null;
+  get3wAuditEntries: Get3wAuditEntry[];
+  get3wAuditStatus: StatusPill;
+  get3wAuditError: string | null;
   opencodeConnectStatus: OpencodeConnectStatus | null;
   opencodeDevModeEnabled: boolean;
   nukeConfigBusy: boolean;
@@ -181,10 +181,10 @@ export type DebugViewProps = {
   onCloseNukeDialog: () => void;
   onSetNukeConfirmationText: (value: string) => void;
   onSetNukeDeleteBootstrap: (value: boolean) => void | Promise<void>;
-  onConfirmNukeOpenworkAndOpencodeConfig: () => void | Promise<void>;
+  onConfirmNukeGet3wAndOpencodeConfig: () => void | Promise<void>;
 };
 
-function formatActor(entry: OpenworkAuditEntry) {
+function formatActor(entry: Get3wAuditEntry) {
   if (entry.actor.type === "host") return "host";
   if (entry.actor.clientId) return entry.actor.clientId;
   if (entry.actor.tokenHash) return entry.actor.tokenHash;
@@ -291,7 +291,7 @@ function formatManagedFileTime(value: number | null | undefined): string {
 }
 
 function RuntimeConfigOwnershipCard(props: {
-  status: OpenworkRuntimeConfigStatus | null;
+  status: Get3wRuntimeConfigStatus | null;
   error: string | null;
 }) {
   return (
@@ -477,8 +477,8 @@ export function DebugView(props: DebugViewProps) {
             {t("settings.debug_opencode_version", { version: props.runtimeSummary.opencodeVersionLabel })}
           </div>
           <div>
-            {t("settings.debug_openwork_server_version", {
-              version: props.runtimeSummary.openworkServerVersionLabel,
+            {t("settings.debug_get3w_server_version", {
+              version: props.runtimeSummary.get3wServerVersionLabel,
             })}
           </div>
         </div>
@@ -512,21 +512,21 @@ export function DebugView(props: DebugViewProps) {
 
         <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
           <ServiceCard
-            title={t("settings.openwork_server_label")}
-            description={t("settings.openwork_config_sidecar_desc")}
-            pill={props.openworkCard}
-            lines={props.openworkCard.lines}
-            stdout={props.openworkCard.stdout ?? null}
-            stderr={props.openworkCard.stderr ?? null}
-            execution={props.openworkCard.execution ?? null}
-            error={props.openworkCard.error ?? null}
-            restarting={props.openworkServerRestarting}
-            restartLabel={t("settings.restart_openwork_server")}
-            onRestart={props.onRestartOpenworkServer}
-            serviceStatus={props.openworkServiceStatus}
-            logStatus={props.openworkLogStatus}
-            onCopyLogs={props.onCopyOpenworkLogs}
-            onExportLogs={props.onExportOpenworkLogs}
+            title={t("settings.get3w_server_label")}
+            description={t("settings.get3w_config_sidecar_desc")}
+            pill={props.get3wCard}
+            lines={props.get3wCard.lines}
+            stdout={props.get3wCard.stdout ?? null}
+            stderr={props.get3wCard.stderr ?? null}
+            execution={props.get3wCard.execution ?? null}
+            error={props.get3wCard.error ?? null}
+            restarting={props.get3wServerRestarting}
+            restartLabel={t("settings.restart_get3w_server")}
+            onRestart={props.onRestartGet3wServer}
+            serviceStatus={props.get3wServiceStatus}
+            logStatus={props.get3wLogStatus}
+            onCopyLogs={props.onCopyGet3wLogs}
+            onExportLogs={props.onExportGet3wLogs}
             isDesktop={isDesktop}
           />
 
@@ -588,52 +588,52 @@ export function DebugView(props: DebugViewProps) {
       {/* Section: Diagnostics */}
       <div className={cardClass}>
         <div className={sectionHeaderClass}>
-          <div className={sectionTitleClass}>{t("settings.openwork_diagnostics_title")}</div>
+          <div className={sectionTitleClass}>{t("settings.get3w_diagnostics_title")}</div>
           <div className={sectionDescClass}>
             <span className="font-mono text-[11px] text-dls-secondary">
-              {props.openworkServerDiagnostics?.version ?? "—"}
+              {props.get3wServerDiagnostics?.version ?? "—"}
             </span>
           </div>
         </div>
 
-        {props.openworkServerDiagnostics ? (
+        {props.get3wServerDiagnostics ? (
           <div className="grid gap-2 text-[12px] text-dls-secondary md:grid-cols-2">
-            <div>{t("settings.diag_started", { time: formatUptime(props.openworkServerDiagnostics.uptimeMs) })}</div>
+            <div>{t("settings.diag_started", { time: formatUptime(props.get3wServerDiagnostics.uptimeMs) })}</div>
             <div>
               {t("settings.diag_read_only", {
-                value: props.openworkServerDiagnostics.readOnly ? "true" : "false",
+                value: props.get3wServerDiagnostics.readOnly ? "true" : "false",
               })}
             </div>
             <div>
               {t("settings.diag_approval", {
-                mode: props.openworkServerDiagnostics.approval.mode,
-                ms: String(props.openworkServerDiagnostics.approval.timeoutMs),
+                mode: props.get3wServerDiagnostics.approval.mode,
+                ms: String(props.get3wServerDiagnostics.approval.timeoutMs),
               })}
             </div>
-            <div>{t("settings.diag_workspaces", { count: String(props.openworkServerDiagnostics.workspaceCount) })}</div>
+            <div>{t("settings.diag_workspaces", { count: String(props.get3wServerDiagnostics.workspaceCount) })}</div>
             <div>
               {t("settings.diag_selected_workspace", {
-                id: props.openworkServerDiagnostics.selectedWorkspaceId ?? "—",
+                id: props.get3wServerDiagnostics.selectedWorkspaceId ?? "—",
               })}
             </div>
             <div>
               {t("settings.diag_runtime_workspace", {
-                id: props.openworkServerDiagnostics.activeWorkspaceId ?? "—",
+                id: props.get3wServerDiagnostics.activeWorkspaceId ?? "—",
               })}
             </div>
             <div>
               {t("settings.diag_config_path", {
-                path: props.openworkServerDiagnostics.server.configPath ?? "default",
+                path: props.get3wServerDiagnostics.server.configPath ?? "default",
               })}
             </div>
             <div>
               {t("settings.diag_token_source", {
-                source: props.openworkServerDiagnostics.tokenSource.client,
+                source: props.get3wServerDiagnostics.tokenSource.client,
               })}
             </div>
             <div>
               {t("settings.diag_host_token_source", {
-                source: props.openworkServerDiagnostics.tokenSource.host,
+                source: props.get3wServerDiagnostics.tokenSource.host,
               })}
             </div>
           </div>
@@ -652,17 +652,17 @@ export function DebugView(props: DebugViewProps) {
                 : t("settings.worker_unresolved")}
             </div>
           </div>
-          {props.openworkServerCapabilities ? (
+          {props.get3wServerCapabilities ? (
             <div className="grid gap-2 text-[12px] text-dls-secondary md:grid-cols-2">
-              <div>{t("settings.cap_skills", { value: formatCapability(props.openworkServerCapabilities.skills) })}</div>
-              <div>{t("settings.cap_plugins", { value: formatCapability(props.openworkServerCapabilities.plugins) })}</div>
-              <div>{t("settings.cap_mcp", { value: formatCapability(props.openworkServerCapabilities.mcp) })}</div>
-              <div>{t("settings.cap_commands", { value: formatCapability(props.openworkServerCapabilities.commands) })}</div>
-              <div>{t("settings.cap_config", { value: formatCapability(props.openworkServerCapabilities.config) })}</div>
+              <div>{t("settings.cap_skills", { value: formatCapability(props.get3wServerCapabilities.skills) })}</div>
+              <div>{t("settings.cap_plugins", { value: formatCapability(props.get3wServerCapabilities.plugins) })}</div>
+              <div>{t("settings.cap_mcp", { value: formatCapability(props.get3wServerCapabilities.mcp) })}</div>
+              <div>{t("settings.cap_commands", { value: formatCapability(props.get3wServerCapabilities.commands) })}</div>
+              <div>{t("settings.cap_config", { value: formatCapability(props.get3wServerCapabilities.config) })}</div>
               <div>
                 {t("settings.cap_browser_tools", {
                   value: (() => {
-                    const browser = props.openworkServerCapabilities.toolProviders?.browser;
+                    const browser = props.get3wServerCapabilities.toolProviders?.browser;
                     if (!browser?.enabled) return t("settings.disabled");
                     return `${browser.mode} · ${browser.placement}`;
                   })(),
@@ -671,7 +671,7 @@ export function DebugView(props: DebugViewProps) {
               <div>
                 {t("settings.cap_file_tools", {
                   value: (() => {
-                    const files = props.openworkServerCapabilities.toolProviders?.files;
+                    const files = props.get3wServerCapabilities.toolProviders?.files;
                     if (!files) return t("config.unavailable");
                     return [
                       files.injection ? t("settings.cap_inbox_on") : t("settings.cap_inbox_off"),
@@ -682,8 +682,8 @@ export function DebugView(props: DebugViewProps) {
               </div>
               <div>
                 {t("settings.cap_sandbox", {
-                  value: props.openworkServerCapabilities.sandbox
-                    ? `${props.openworkServerCapabilities.sandbox.backend} (${props.openworkServerCapabilities.sandbox.enabled ? t("settings.on") : t("settings.off")})`
+                  value: props.get3wServerCapabilities.sandbox
+                    ? `${props.get3wServerCapabilities.sandbox.backend} (${props.get3wServerCapabilities.sandbox.enabled ? t("settings.on") : t("settings.off")})`
                     : t("config.unavailable"),
                 })}
               </div>
@@ -706,14 +706,14 @@ export function DebugView(props: DebugViewProps) {
             <div className="text-sm font-semibold tracking-[-0.1px] text-dls-text">
               {t("settings.audit_log_title")}
             </div>
-            <div className={`rounded-full border px-2 py-1 text-[11px] font-medium ${props.openworkAuditStatus.className}`}>
-              {props.openworkAuditStatus.label}
+            <div className={`rounded-full border px-2 py-1 text-[11px] font-medium ${props.get3wAuditStatus.className}`}>
+              {props.get3wAuditStatus.label}
             </div>
           </div>
-          {props.openworkAuditError ? <StatusBanner tone="error" message={props.openworkAuditError} /> : null}
-          {props.openworkAuditEntries.length > 0 ? (
+          {props.get3wAuditError ? <StatusBanner tone="error" message={props.get3wAuditError} /> : null}
+          {props.get3wAuditEntries.length > 0 ? (
             <div className="divide-y divide-dls-border/60">
-              {props.openworkAuditEntries.map((entry) => (
+              {props.get3wAuditEntries.map((entry) => (
                 <div key={entry.id} className="flex items-start justify-between gap-4 py-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm text-dls-text">{entry.summary}</div>
@@ -1150,12 +1150,12 @@ export function DebugView(props: DebugViewProps) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold tracking-[-0.1px] text-dls-text">
-                {t("settings.reset_openwork_title")}
+                {t("settings.reset_get3w_title")}
               </div>
               <div className="text-[12px] text-dls-secondary">
                 {props.opencodeDevModeEnabled
-                  ? t("settings.reset_openwork_desc_dev")
-                  : t("settings.reset_openwork_desc_prod")}
+                  ? t("settings.reset_get3w_desc_dev")
+                  : t("settings.reset_get3w_desc_prod")}
               </div>
             </div>
             <div
@@ -1288,7 +1288,7 @@ export function DebugView(props: DebugViewProps) {
           <AlertDialogCancel disabled={props.nukeConfigBusy}>{t("settings.nuke_cancel")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={() => void props.onConfirmNukeOpenworkAndOpencodeConfig()}
+            onClick={() => void props.onConfirmNukeGet3wAndOpencodeConfig()}
             disabled={!canConfirmNuke}
           >
             {props.nukeConfigBusy ? t("settings.removing_local_state") : t("settings.nuke_confirm_button")}

@@ -39,7 +39,7 @@ test("the actual native destination wins over the model's rooted input and retai
   const part: DynamicToolUIPart = {
     type: "dynamic-tool", toolName: "write", toolCallId: "resolved-report", state: "output-available",
     input: { filePath: "/report.html" }, output: "Wrote file successfully.",
-    callProviderMetadata: { openwork: { fileDestination: resolved, workspacePaths: [{ requested: "/report.html", resolved }] } },
+    callProviderMetadata: { get3w: { fileDestination: resolved, workspacePaths: [{ requested: "/report.html", resolved }] } },
   }
   assert.deepEqual(getAggregateRowFile(part), { verb: "Wrote", path: resolved })
   assert.deepEqual(getWorkspacePathResolutions(part), [{ requested: "/report.html", resolved }])
@@ -49,7 +49,7 @@ test("a plain relative file reports the actual opened-workspace path", () => {
   const part: DynamicToolUIPart = {
     type: "dynamic-tool", toolName: "write", toolCallId: "relative", state: "output-available",
     input: { filePath: "report.html" }, output: "Wrote file successfully.",
-    callProviderMetadata: { openwork: { fileDestination: "/opened/report.html" } },
+    callProviderMetadata: { get3w: { fileDestination: "/opened/report.html" } },
   }
   assert.deepEqual(getWorkspacePathResolutions(part), [{ requested: "report.html", resolved: "/opened/report.html" }])
 })
@@ -58,7 +58,7 @@ test("v2 path-only inputs and malformed mapping metadata do not invent a v1 file
   const part: DynamicToolUIPart = {
     type: "dynamic-tool", toolName: "write", toolCallId: "native-v2", state: "output-available",
     input: { path: "/opened/report.html" }, output: "Created file successfully.",
-    callProviderMetadata: { openwork: { workspacePaths: [{ requested: 42, resolved: false }] } },
+    callProviderMetadata: { get3w: { workspacePaths: [{ requested: 42, resolved: false }] } },
   }
   assert.equal(getAggregateRowFile(part), null)
   assert.deepEqual(getWorkspacePathResolutions(part), [])

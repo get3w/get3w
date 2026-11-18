@@ -15,7 +15,7 @@ test('rejects malformed host policy',()=>{
 });
 test('V2 caller resolves its preceding user across pages and ignores newer prompts',async()=>{
  const policy={models:{'text-to-image':{slug:'bytedance/seedream-5.5/text-to-image',source:'user'}},outputs:{'text-to-image':{resolution:'1K'}}};
- const resolved=await generationPolicyFromMessages('assistant',async cursor=>cursor?{data:[{id:'user',type:'user',metadata:{openwork:{generationPolicy:policy}}}]}:{data:[{id:'newer-user',type:'user'},{id:'assistant',type:'assistant'}],cursor:{next:'older'}});
+ const resolved=await generationPolicyFromMessages('assistant',async cursor=>cursor?{data:[{id:'user',type:'user',metadata:{get3w:{generationPolicy:policy}}}]}:{data:[{id:'newer-user',type:'user'},{id:'assistant',type:'assistant'}],cursor:{next:'older'}});
  expect(resolved).toEqual({messageId:'user',policy});
  await expect(generationPolicyFromMessages('missing',async()=>({data:[{id:'user',type:'user'}]}))).rejects.toThrow('could not be verified');
 });

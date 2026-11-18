@@ -2,22 +2,22 @@ import { t } from "@/i18n";
 import { z } from "zod";
 import {
   INFERENCE_WINDOW_TYPES,
-  OPENWORK_MODELS_ALLOWANCE_ERROR_CODE,
-  OPENWORK_MODELS_ALLOWANCE_MESSAGE,
-  OPENWORK_MODELS_ALLOWANCE_SOURCE,
+  GET3W_MODELS_ALLOWANCE_ERROR_CODE,
+  GET3W_MODELS_ALLOWANCE_MESSAGE,
+  GET3W_MODELS_ALLOWANCE_SOURCE,
   isInferenceWindowType,
   type InferenceWindowType,
-} from "@openwork/types/den/inference";
+} from "@get3w/types/den/inference";
 
 /**
  * The organization used its Get3W Models allowance (the gateway's classified 429). Stored on the transcript's
  * error message, so the reset time is absolute. No organization identifiers: they never reach the UI.
  */
-export const openWorkModelsLimitSchema = z.object({
+export const get3wModelsLimitSchema = z.object({
   windowType: z.enum(INFERENCE_WINDOW_TYPES).nullable(),
   resetAt: z.iso.datetime().nullable(),
 });
-export type OpenWorkModelsLimit = z.infer<typeof openWorkModelsLimitSchema>;
+export type Get3WModelsLimit = z.infer<typeof get3wModelsLimitSchema>;
 
 function field(value: unknown, key: string): unknown {
   return value && typeof value === "object" && key in value ? Reflect.get(value, key) : undefined;
@@ -32,7 +32,7 @@ function header(headers: unknown, name: string): string | null {
   return null;
 }
 
-/** The gateway's own body: `{ error: { code: "openwork_models_allowance_reached", source: "openwork_models" } }`. */
+/** The gateway's own body: `{ error: { code: "get3w_models_allowance_reached", source: "get3w_models" } }`. */
 function allowanceBody(value: unknown): boolean {
   if (typeof value !== "string" || value.length > 16_384) return false;
   const start = value.indexOf("{");
@@ -40,7 +40,7 @@ function allowanceBody(value: unknown): boolean {
   try {
     const parsed: unknown = JSON.parse(value.slice(start));
     const error = field(parsed, "error");
-    return field(error, "code") === OPENWORK_MODELS_ALLOWANCE_ERROR_CODE && field(error, "source") === OPENWORK_MODELS_ALLOWANCE_SOURCE;
+    return field(error, "code") === GET3W_MODELS_ALLOWANCE_ERROR_CODE && field(error, "source") === GET3W_MODELS_ALLOWANCE_SOURCE;
   } catch {
     return false;
   }
@@ -51,21 +51,21 @@ function allowanceBody(value: unknown): boolean {
  * v2 text naming HTTP 429 with the body, or v2's bare gateway message). Anything else, including an ordinary 429, is
  * not this limit.
  */
-export function parseOpenWorkModelsLimitError(value: unknown, now = Date.now()): OpenWorkModelsLimit | null {
+export function parseGet3WModelsLimitError(value: unknown, now = Date.now()): Get3WModelsLimit | null {
   const records = [value, field(value, "data"), field(value, "cause"), field(field(value, "cause"), "data")];
   const statuses = records.flatMap((record) => [field(record, "statusCode"), field(record, "status")]).filter((status) => typeof status === "number");
   if (statuses.some((status) => status !== 429)) return null;
   for (const record of records) {
     const headers = field(record, "responseHeaders");
-    const marked = header(headers, "x-openwork-error-code") === OPENWORK_MODELS_ALLOWANCE_ERROR_CODE
-      && header(headers, "x-openwork-usage-state") === "blocked";
+    const marked = header(headers, "x-get3w-error-code") === GET3W_MODELS_ALLOWANCE_ERROR_CODE
+      && header(headers, "x-get3w-usage-state") === "blocked";
     const body = allowanceBody(field(record, "responseBody")) || allowanceBody(field(record, "message"));
     const http429 = statuses.includes(429) || /\bHTTP 429\b/.test(String(field(record, "message") ?? ""));
     // Engine v2 reports the gateway's exact message without the response; it is the gateway's own constant.
-    const gatewayMessage = field(record, "message") === OPENWORK_MODELS_ALLOWANCE_MESSAGE;
+    const gatewayMessage = field(record, "message") === GET3W_MODELS_ALLOWANCE_MESSAGE;
     if (!(http429 && (marked || body)) && !gatewayMessage) continue;
-    const windowType = header(headers, "x-openwork-limit-window-type");
-    const resetHeader = header(headers, "x-openwork-limit-reset-at");
+    const windowType = header(headers, "x-get3w-limit-window-type");
+    const resetHeader = header(headers, "x-get3w-limit-reset-at");
     const retryAfter = Number(header(headers, "retry-after") ?? NaN);
     const resetAt = resetHeader && Number.isFinite(Date.parse(resetHeader)) ? new Date(Date.parse(resetHeader)).toISOString()
       : Number.isFinite(retryAfter) && retryAfter > 0 ? new Date(now + retryAfter * 1000).toISOString() : null;
@@ -89,7 +89,7 @@ const windowNames: Record<InferenceWindowType, string> = {
   five_hour: "5-hour allowance", weekly: "Weekly allowance", monthly: "Monthly allowance",
 };
 
-export function openWorkModelsLimitCopy(limit: OpenWorkModelsLimit, workspaceName: string | null, now = Date.now()) {
+export function get3wModelsLimitCopy(limit: Get3WModelsLimit, workspaceName: string | null, now = Date.now()) {
   const back = usageLimitResetPhrase(limit.resetAt, now);
   return {
     title: `${workspaceName?.trim() || "Your workspace"} used its Get3W Models allowance`,

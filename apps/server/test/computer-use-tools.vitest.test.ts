@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { z } from "zod";
-import { server } from "../src/opencode-plugins/openwork-computer-use.js";
+import { server } from "../src/opencode-plugins/get3w-computer-use.js";
 
 test("the agent can discover computer tools on every desktop platform, including Linux VM clients", async () => {
   const plugin = await server();

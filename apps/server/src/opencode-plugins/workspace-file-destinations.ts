@@ -119,7 +119,7 @@ export function workspaceFileHooks(context?: Context, options: { platform?: stri
       const resolutions = resolvedCalls.get(input.args);
       if (!resolutions) return;
       resolvedCalls.delete(input.args);
-      output.metadata.openworkWorkspacePaths = resolutions;
+      output.metadata.get3wWorkspacePaths = resolutions;
       output.output = resolutions.map(entry => `Workspace destination: ${entry.resolved} (interpreted ${JSON.stringify(entry.requested)} relative to the opened workspace).`).join("\n") + "\n" + output.output;
     },
   };

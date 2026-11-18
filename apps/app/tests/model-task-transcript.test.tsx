@@ -217,7 +217,7 @@ test("markdown delivery video uses a thumbnail and dialog playback",async()=>{
   await act(async()=>root.render(createElement(MarkdownBlock,{text:"最终交付：\n\n[final.mp4](https://xianchou.com/final.mp4)"})));
   const thumbnail=node.querySelector("video");expect(thumbnail?.controls).toBe(false);
   expect(thumbnail?.className).toContain("max-h-40");
-  const trigger=node.querySelector<HTMLButtonElement>('[data-openwork-video-preview]');expect(trigger).not.toBeNull();
+  const trigger=node.querySelector<HTMLButtonElement>('[data-get3w-video-preview]');expect(trigger).not.toBeNull();
   await act(async()=>trigger?.click());
   const popup=document.querySelector('[data-video-lightbox]');expect(popup?.querySelector("video")?.controls).toBe(true);
   await act(async()=>popup?.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]')?.click());

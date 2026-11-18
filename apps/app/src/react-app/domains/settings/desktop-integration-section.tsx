@@ -80,7 +80,7 @@ export function DesktopIntegrationSection() {
   if (!status?.supported) return null;
 
   const externallyManaged = status.ownership === "external";
-  const openworkManaged = status.ownership === "openwork";
+  const get3wManaged = status.ownership === "get3w";
 
   return (
     <LayoutSection>
@@ -105,7 +105,7 @@ export function DesktopIntegrationSection() {
                 {t("ui.ef6a2b3e1b43")}
               </Button>
             ) : null}
-            {openworkManaged ? (
+            {get3wManaged ? (
               <>
                 <Button
                   size="sm"

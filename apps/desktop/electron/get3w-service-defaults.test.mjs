@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { initOpenworkSentry, setOpenworkSentrySession, captureException } from "./sentry.mjs";
+import { initGet3wSentry, setGet3wSentrySession, captureException } from "./sentry.mjs";
 test("Get3W native telemetry stays inactive even with a signed-in session", async () => {
-  assert.equal(await initOpenworkSentry({ app: null, distribution: null, packageMetadata: null }), false);
-  assert.equal(setOpenworkSentrySession({ userId: "test" }), false);
+  assert.equal(await initGet3wSentry({ app: null, distribution: null, packageMetadata: null }), false);
+  assert.equal(setGet3wSentrySession({ userId: "test" }), false);
   assert.equal(captureException(new Error("sensitive test error")), false);
 });
 
@@ -30,7 +30,7 @@ test("resolveGet3wOrigins reads only GET3W_CLOUD_ORIGIN in development", async (
 test("resolveGet3wOrigins ignores env in packaged builds and only trusts local validation metadata", async () => {
   const { resolveGet3wOrigins } = await import("./get3w-services.mjs");
   const env = { GET3W_CLOUD_ORIGIN: "http://127.0.0.1:6605" };
-  const packageMetadata = { openworkAuthOrigins: { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700", apiBase: "x" } };
+  const packageMetadata = { get3wAuthOrigins: { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700", apiBase: "x" } };
   assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata }), {});
   assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata, localValidation: true }), { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700" });
 });

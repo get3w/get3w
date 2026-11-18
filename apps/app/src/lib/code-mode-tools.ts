@@ -99,7 +99,7 @@ function capturedDetails(part: DynamicToolUIPart, codeMode: Record<string, unkno
 
 /** Project recorded calls, never infer execution by parsing the generated code. */
 export function codeModeToolCalls(part: DynamicToolUIPart): DynamicToolUIPart[] | null {
-  const codeMode = part.callProviderMetadata?.openwork?.codeMode;
+  const codeMode = part.callProviderMetadata?.get3w?.codeMode;
   if (!isRecord(codeMode) || !Array.isArray(codeMode.calls)) return null;
   const calls = codeMode.calls;
   const details = capturedDetails(part, codeMode, calls);
@@ -116,7 +116,7 @@ export function codeModeToolCalls(part: DynamicToolUIPart): DynamicToolUIPart[] 
       toolCallId: `${part.toolCallId}:call:${ordinal}`,
       toolName: call.tool.replaceAll(".", "_"),
       input: call.input,
-      ...(startedAt === null ? {} : { callProviderMetadata: { openwork: { toolStartedAt: startedAt } } }),
+      ...(startedAt === null ? {} : { callProviderMetadata: { get3w: { toolStartedAt: startedAt } } }),
     };
     if (call.status === "running") return [{ ...base, type: "dynamic-tool", state: "input-streaming" }];
     if (call.status === "completed") return [{ ...base, type: "dynamic-tool", state: "output-available", output: detail?.output }];

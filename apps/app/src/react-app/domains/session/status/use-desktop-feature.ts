@@ -7,5 +7,5 @@ type DesktopFeatureKey = "computerUse" | "computerSessionHistory" | "remoteCompu
 export function useDesktopFeature(key: DesktopFeatureKey): boolean {
   if (!isDesktopRuntime() || key === "remoteComputers") return false;
   if (key === "settledSessions") return true;
-  return Boolean(window.__OPENWORK_ELECTRON__?.computer);
+  return Boolean(window.__GET3W_ELECTRON__?.computer);
 }

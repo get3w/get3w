@@ -9,7 +9,7 @@ export type ManualAuthInput = {
 export function parseManualAuthInput(value: string): ManualAuthInput | null {
   // A sign-in code pasted next to text already in the field (for example after
   // the workspace address) still counts: use the embedded deep link.
-  const embedded = /openwork(?:-dev)?:\/\/den-auth[^\s"'<>]*/i.exec(value)?.[0];
+  const embedded = /get3w(?:-dev)?:\/\/den-auth[^\s"'<>]*/i.exec(value)?.[0];
   const trimmed = (embedded ?? value).trim();
   if (!trimmed) return null;
 
@@ -21,7 +21,7 @@ export function parseManualAuthInput(value: string): ManualAuthInput | null {
     const routeSegments = routePath.split("/").filter(Boolean);
     const routeTail = routeSegments[routeSegments.length - 1] ?? "";
     if (
-      (protocol === "openwork:" || protocol === "openwork-dev:") &&
+      (protocol === "get3w:" || protocol === "get3w-dev:") &&
       (routeHost === "den-auth" ||
         routePath === "den-auth" ||
         routeTail === "den-auth")

@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { OPENWORK_MODELS_ALLOWANCE_ERROR_CODE, openWorkModelsAllowanceErrorBody } from "@openwork/types/den/inference";
+import { GET3W_MODELS_ALLOWANCE_ERROR_CODE, get3wModelsAllowanceErrorBody } from "@get3w/types/den/inference";
 import { presentOpencodeSessionError, sessionErrorPresentationFromUIMessage } from "../src/react-app/domains/session/sync/session-error";
 import { createSessionErrorUIMessage } from "../src/react-app/domains/session/sync/usechat-adapter";
 import {
-  openWorkModelsLimitCopy,
-  parseOpenWorkModelsLimitError,
+  get3wModelsLimitCopy,
+  parseGet3WModelsLimitError,
   usageLimitActions,
   type UsageLimitViewer,
 } from "../src/react-app/domains/cloud/usage-limit-state";
 
 const now = Date.parse("2026-10-21T12:00:00.000Z");
 const resetAt = "2026-10-21T13:10:00.000Z";
-const body = JSON.stringify(openWorkModelsAllowanceErrorBody());
+const body = JSON.stringify(get3wModelsAllowanceErrorBody());
 
 /** What engine v1 reports after the quota plugin answers the gateway's allowance response once. */
 function v1Error(headers: Record<string, string> = {}) {
@@ -19,8 +19,8 @@ function v1Error(headers: Record<string, string> = {}) {
     name: "APIError",
     data: {
       message: "Your workspace used its Get3W Models allowance.", statusCode: 429, isRetryable: false,
-      responseHeaders: { "x-openwork-error-code": OPENWORK_MODELS_ALLOWANCE_ERROR_CODE, "x-openwork-usage-state": "blocked",
-        "x-openwork-limit-window-type": "five_hour", "x-openwork-limit-reset-at": resetAt, "retry-after": "4200", ...headers },
+      responseHeaders: { "x-get3w-error-code": GET3W_MODELS_ALLOWANCE_ERROR_CODE, "x-get3w-usage-state": "blocked",
+        "x-get3w-limit-window-type": "five_hour", "x-get3w-limit-reset-at": resetAt, "retry-after": "4200", ...headers },
       responseBody: body,
     },
   };
@@ -28,48 +28,48 @@ function v1Error(headers: Record<string, string> = {}) {
 
 describe("a used-up Get3W Models allowance", () => {
   test("is classified with its window and reset, not as a rate limit", () => {
-    expect(parseOpenWorkModelsLimitError(v1Error(), now)).toEqual({ windowType: "five_hour", resetAt });
+    expect(parseGet3WModelsLimitError(v1Error(), now)).toEqual({ windowType: "five_hour", resetAt });
   });
 
   test("reads the reset from retry-after when the gateway sent no absolute time", () => {
     const error = v1Error();
-    delete error.data.responseHeaders["x-openwork-limit-reset-at"];
-    expect(parseOpenWorkModelsLimitError(error, now)?.resetAt).toBe(new Date(now + 4200_000).toISOString());
+    delete error.data.responseHeaders["x-get3w-limit-reset-at"];
+    expect(parseGet3WModelsLimitError(error, now)?.resetAt).toBe(new Date(now + 4200_000).toISOString());
   });
 
   test("engine v2 text naming HTTP 429 with the gateway body is the same limit", () => {
-    expect(parseOpenWorkModelsLimitError({ name: "UnknownError", data: { message: `Provider request failed with HTTP 429: ${body}` } }, now))
+    expect(parseGet3WModelsLimitError({ name: "UnknownError", data: { message: `Provider request failed with HTTP 429: ${body}` } }, now))
       .toEqual({ windowType: null, resetAt: null });
   });
 
   test("engine v2's bare gateway message is the same limit, without a reset it cannot read", () => {
-    expect(parseOpenWorkModelsLimitError({ name: "UnknownError", data: { message: "Your workspace used its Get3W Models allowance." } }, now))
+    expect(parseGet3WModelsLimitError({ name: "UnknownError", data: { message: "Your workspace used its Get3W Models allowance." } }, now))
       .toEqual({ windowType: null, resetAt: null });
-    expect(presentOpencodeSessionError({ name: "UnknownError", data: { message: "Your workspace used its Get3W Models allowance." } }).openworkModelsLimit)
+    expect(presentOpencodeSessionError({ name: "UnknownError", data: { message: "Your workspace used its Get3W Models allowance." } }).get3wModelsLimit)
       .toEqual({ windowType: null, resetAt: null });
   });
 
   test("an ordinary 429, another status or a spoofed header alone is not this limit", () => {
-    expect(parseOpenWorkModelsLimitError({ name: "APIError", data: { message: "Too many requests", statusCode: 429, responseBody: "{}" } }, now)).toBeNull();
-    expect(parseOpenWorkModelsLimitError({ ...v1Error(), data: { ...v1Error().data, statusCode: 503 } }, now)).toBeNull();
-    expect(parseOpenWorkModelsLimitError({ name: "APIError", data: { message: "Too many requests", statusCode: 429,
-      responseHeaders: { "x-openwork-error-code": "other", "x-openwork-usage-state": "blocked" }, responseBody: "{}" } }, now)).toBeNull();
+    expect(parseGet3WModelsLimitError({ name: "APIError", data: { message: "Too many requests", statusCode: 429, responseBody: "{}" } }, now)).toBeNull();
+    expect(parseGet3WModelsLimitError({ ...v1Error(), data: { ...v1Error().data, statusCode: 503 } }, now)).toBeNull();
+    expect(parseGet3WModelsLimitError({ name: "APIError", data: { message: "Too many requests", statusCode: 429,
+      responseHeaders: { "x-get3w-error-code": "other", "x-get3w-usage-state": "blocked" }, responseBody: "{}" } }, now)).toBeNull();
   });
 
   test("the transcript classifies the allowance without a rollout flag and carries its reset evidence", () => {
     const presentation = presentOpencodeSessionError(v1Error());
     expect(presentation.kind).toBe("generic");
     expect(presentation.title).toBe("Your workspace used its Get3W Models allowance");
-    expect(presentation.openworkModelsLimit).toEqual({ windowType: "five_hour", resetAt });
+    expect(presentation.get3wModelsLimit).toEqual({ windowType: "five_hour", resetAt });
     expect(presentation.technicalDetails).not.toMatch(/org_/);
     const restored = sessionErrorPresentationFromUIMessage(createSessionErrorUIMessage("turn", presentation));
-    expect(restored?.openworkModelsLimit).toEqual({ windowType: "five_hour", resetAt });
+    expect(restored?.get3wModelsLimit).toEqual({ windowType: "five_hour", resetAt });
   });
 
   test("says which workspace ran out and when it resets, never an organization id", () => {
-    expect(openWorkModelsLimitCopy({ windowType: "five_hour", resetAt }, "Acme", now))
+    expect(get3wModelsLimitCopy({ windowType: "five_hour", resetAt }, "Acme", now))
       .toEqual({ title: "Acme used its Get3W Models allowance", reset: "5-hour allowance resets in 1 hour" });
-    expect(openWorkModelsLimitCopy({ windowType: null, resetAt: null }, null, now))
+    expect(get3wModelsLimitCopy({ windowType: null, resetAt: null }, null, now))
       .toEqual({ title: "Your workspace used its Get3W Models allowance", reset: null });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { desktopStartupReportSchema, type DesktopStartupReport } from "@openwork/types/den/diagnostics";
+import { desktopStartupReportSchema, type DesktopStartupReport } from "@get3w/types/den/diagnostics";
 
 import { DenApiError } from "../src/app/lib/den";
 import type { DesktopStartupTimings } from "../src/app/lib/desktop";
@@ -394,7 +394,7 @@ describe("report fields", () => {
   });
 
   test("failed Den requests are classified", () => {
-    const ipc = (message: string) => new Error(`Error invoking remote method 'openwork:desktop': Error: ${message}`);
+    const ipc = (message: string) => new Error(`Error invoking remote method 'get3w:desktop': Error: ${message}`);
     const withCode = (code: string) => Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(code), { code }) });
 
     expect(classifyStartupError(new DenApiError(401, "unauthorized", "Unauthorized"), true)).toBe("session_expired");

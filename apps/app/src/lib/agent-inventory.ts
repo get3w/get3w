@@ -21,12 +21,12 @@ export function agentInventory(parent: string, messages: UIMessage[], records: R
     if (!byChild.has(child)) byChild.set(child, {
       type: "dynamic-tool", toolName: "task", toolCallId: `inventory:${child}`, state: "input-available",
       input: { get description() { return t("ui.11b39c93777e"); }, prompt: "", subagent_type: "" },
-      callProviderMetadata: { openwork: { childSessionId: child, inventoryOnly: true } },
+      callProviderMetadata: { get3w: { childSessionId: child, inventoryOnly: true } },
     });
     pending.push(...(records[child]?.childSessionIds ?? []));
   }
   return [...byChild.values()].sort((left, right) => {
-    const start = (part: TaskToolPart) => part.callProviderMetadata?.openwork?.toolStartedAt
+    const start = (part: TaskToolPart) => part.callProviderMetadata?.get3w?.toolStartedAt
       ?? records[taskChildSessionId(part) ?? ""]?.runStartedAt ?? 0;
     return Number(start(left)) - Number(start(right));
   });

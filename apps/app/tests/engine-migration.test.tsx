@@ -5,7 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import type { EngineV2PreviewStatus } from "../src/app/lib/openwork-server";
+import type { EngineV2PreviewStatus } from "../src/app/lib/get3w-server";
 
 import { currentLocale, setLocale } from "../src/i18n";
 let savedLocale: ReturnType<typeof currentLocale>;
@@ -15,9 +15,9 @@ afterEach(() => setLocale(savedLocale));
 const ownedDom = typeof window === "undefined";
 if (ownedDom) GlobalRegistrator.register({ url: "http://localhost/" });
 // Base UI chooses its layout-effect shim at import time; portals need the DOM first.
-const server = await import("../src/app/lib/openwork-server");
+const server = await import("../src/app/lib/get3w-server");
 const { isDesktopRuntime } = await import("../src/app/lib/runtime-env");
-const connection = await import("../src/react-app/shell/openwork-connection");
+const connection = await import("../src/react-app/shell/get3w-connection");
 const { EngineMigrationOverlay, observeEngineMigration, requestEngineMigration, resetEngineMigrationForTest, useEngineMigrationStore } = await import("../src/react-app/shell/engine-migration");
 const { useOpencodeEngineControls } = await import("../src/react-app/shell/opencode-engine-controls");
 const previousAct = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
@@ -34,14 +34,14 @@ const status: EngineV2PreviewStatus = {
 const orgId = "org_test";
 
 beforeEach(() => {
-  previousBridge = window.__OPENWORK_ELECTRON__;
-  Reflect.deleteProperty(window, "__OPENWORK_ELECTRON__");
+  previousBridge = window.__GET3W_ELECTRON__;
+  Reflect.deleteProperty(window, "__GET3W_ELECTRON__");
   resetEngineMigrationForTest();
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   // This is the same cache entry populated by Calendar and other org-feature consumers.
   queryClient.setQueryData(["den", "org-features", orgId], { engineV2ForceUpgrade: true });
   spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network offline"));
-  spyOn(connection, "resolveOpenworkConnection").mockResolvedValue({
+  spyOn(connection, "resolveGet3wConnection").mockResolvedValue({
     normalizedBaseUrl: "http://localhost:8787", resolvedToken: "test-token", resolvedHostToken: "test-host",
     hostInfo: null, source: "stored-settings",
   });
@@ -52,7 +52,7 @@ afterEach(async () => {
   root = null;
   queryClient.clear();
   resetEngineMigrationForTest();
-  Reflect.set(window, "__OPENWORK_ELECTRON__", previousBridge);
+  Reflect.set(window, "__GET3W_ELECTRON__", previousBridge);
   document.body.innerHTML = "";
   mock.restore();
 });
@@ -63,7 +63,7 @@ afterAll(async () => {
 });
 
 function engineClient() {
-  const client = server.createOpenworkServerClient({ baseUrl: "http://localhost:8787", token: "test-token" });
+  const client = server.createGet3wServerClient({ baseUrl: "http://localhost:8787", token: "test-token" });
   spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue(status);
   spyOn(client, "setEngineV2ForcePolicy").mockResolvedValue(status);
   spyOn(client, "migrateOpencodeHistory").mockResolvedValue(status);
@@ -71,7 +71,7 @@ function engineClient() {
     v1: { verdict: "idle", busySessions: 0, waitingRequests: 0 }, v2: null,
   });
   spyOn(client, "switchOpencodeEngine").mockResolvedValue({ ...status, enabled: true, chatRouting: true });
-  spyOn(server, "createOpenworkServerClient").mockReturnValue(client);
+  spyOn(server, "createGet3wServerClient").mockReturnValue(client);
   return client;
 }
 
@@ -85,7 +85,7 @@ async function renderOverlay(discoverRunningMigration?: boolean) {
 }
 
 test("restoring reports message counts rather than a stalled chat counter", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   const migration = { state: "running", phase: "restoring", imported: 0, skipped: 0, total: 2471, restored: 44000, restoreTotal: 208014 } satisfies EngineV2PreviewStatus["migration"];
   spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue({ ...status, migration });
@@ -104,7 +104,7 @@ test("web never upgrades the engine from another consumer's enabled feature cach
   expect(queryClient.getQueryData(["den", "org-features", orgId])).toEqual({ engineV2ForceUpgrade: true });
   expect(document.querySelector('[data-testid="engine-migration-consent"]')).toBeNull();
   // A render-only guard is insufficient: the feature hook must not start engine reads on web either.
-  expect(connection.resolveOpenworkConnection).not.toHaveBeenCalled();
+  expect(connection.resolveGet3wConnection).not.toHaveBeenCalled();
   expect(client.getEngineV2PreviewStatus).not.toHaveBeenCalled();
   expect(client.setEngineV2ForcePolicy).not.toHaveBeenCalled();
 });
@@ -113,12 +113,12 @@ test("web palette omits the hidden engine settings destination, desktop retains 
   const { buildCommandPaletteSettingsItems } = await import("../src/react-app/shell/command-palette-settings");
   const input = { developerMode: false, capabilities: { autoUpdate: false }, onOpenSettings: () => {}, onOpenExtensions: () => {} };
   expect(buildCommandPaletteSettingsItems(input).some(item => item.id === "settings:advanced/experimental-engine")).toBe(false);
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   expect(buildCommandPaletteSettingsItems(input).some(item => item.id === "settings:advanced/experimental-engine")).toBe(true);
 });
 
 test("desktop with the upgrade off still opens consent for a manual upgrade", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   await setFeatures(false);
   await renderOverlay();
@@ -187,7 +187,7 @@ test("web settings and palette controls ignore migration progress from the share
 
 for (const desktop of [false, true]) {
   test(`${desktop ? "desktop retains" : "web omits"} engine switching and migration palette actions`, async () => {
-    if (desktop) Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+    if (desktop) Reflect.set(window, "__GET3W_ELECTRON__", {});
     const client = engineClient();
     const observed: { actions: string[] | null } = { actions: null };
     function Controls() {
@@ -239,13 +239,13 @@ const pendingStatus: EngineV2PreviewStatus = {
 
 for (const signedOut of [false, true]) {
   test(`desktop discovers host-owned migration with legacy false cache and offline Den (${signedOut ? "signed out" : "signed in"})`, async () => {
-    Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+    Reflect.set(window, "__GET3W_ELECTRON__", {});
     const client = engineClient();
     spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue(pendingStatus);
     await setFeatures(false);
     await renderOverlay();
-    expect(connection.resolveOpenworkConnection).toHaveBeenCalledTimes(1);
-    expect(server.createOpenworkServerClient).toHaveBeenCalledWith({
+    expect(connection.resolveGet3wConnection).toHaveBeenCalledTimes(1);
+    expect(server.createGet3wServerClient).toHaveBeenCalledWith({
       baseUrl: "http://localhost:8787", token: "test-token", hostToken: "test-host",
     });
     expect(client.getEngineV2PreviewStatus).toHaveBeenCalledTimes(1);
@@ -264,7 +264,7 @@ for (const upgrade of [false, true]) {
     const client = engineClient();
     await setFeatures(upgrade);
     await renderOverlay();
-    expect(connection.resolveOpenworkConnection).not.toHaveBeenCalled();
+    expect(connection.resolveGet3wConnection).not.toHaveBeenCalled();
     expect(client.getEngineV2PreviewStatus).not.toHaveBeenCalled();
     expectReadOnlyDiscovery(client);
     expect(document.body.textContent).toBe("");
@@ -272,17 +272,17 @@ for (const upgrade of [false, true]) {
 }
 
 test("discovery can be explicitly disabled on desktop", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   await renderOverlay(false);
-  expect(connection.resolveOpenworkConnection).not.toHaveBeenCalled();
+  expect(connection.resolveGet3wConnection).not.toHaveBeenCalled();
   expect(client.getEngineV2PreviewStatus).not.toHaveBeenCalled();
   expectReadOnlyDiscovery(client);
 });
 
 for (const state of ["completed", "error"] satisfies Array<"completed" | "error">) {
   test(`discovery polls pending migration to ${state} without renderer recovery or switching`, async () => {
-    Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+    Reflect.set(window, "__GET3W_ELECTRON__", {});
     const client = engineClient();
     const read = spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue(pendingStatus);
     await renderOverlay();
@@ -305,7 +305,7 @@ for (const state of ["completed", "error"] satisfies Array<"completed" | "error"
 }
 
 test("observing host ownership replaces a manual progress dialog without taking over migration", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   useEngineMigrationStore.setState({ progress: {
     client, migration: { state: "running", imported: 1, skipped: 0, total: 2 },
@@ -322,14 +322,14 @@ test("observing host ownership replaces a manual progress dialog without taking 
 });
 
 test("fresh forced v2 status refreshes routing once, then polls without duplicate routing events", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue({
     ...status, enabled: true, running: true, chatRouting: true,
     v1HistoryAvailable: false, engineOrigin: "forced", engineForced: true,
   });
   const changed = mock(() => {});
-  window.addEventListener("openwork-engine-changed", changed);
+  window.addEventListener("get3w-engine-changed", changed);
   try {
     await setFeatures(false);
     await renderOverlay();
@@ -340,18 +340,18 @@ test("fresh forced v2 status refreshes routing once, then polls without duplicat
     expect(document.body.textContent).toBe("");
     expectReadOnlyDiscovery(client);
   } finally {
-    window.removeEventListener("openwork-engine-changed", changed);
+    window.removeEventListener("get3w-engine-changed", changed);
   }
 });
 
 test("pending host routing changes dispatch an event, not a renderer engine switch", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   const read = spyOn(client, "getEngineV2PreviewStatus").mockResolvedValue({
     ...status, forceUpgradePending: true,
   });
   const changed = mock(() => {});
-  window.addEventListener("openwork-engine-changed", changed);
+  window.addEventListener("get3w-engine-changed", changed);
   try {
     await renderOverlay();
     expect(changed).not.toHaveBeenCalled();
@@ -361,12 +361,12 @@ test("pending host routing changes dispatch an event, not a renderer engine swit
     expect(changed).toHaveBeenCalledTimes(1);
     expectReadOnlyDiscovery(client);
   } finally {
-    window.removeEventListener("openwork-engine-changed", changed);
+    window.removeEventListener("get3w-engine-changed", changed);
   }
 });
 
 test("a failed discovery read never falls back to renderer migration, policy writes, or consent", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   spyOn(client, "getEngineV2PreviewStatus").mockRejectedValue(new Error("Host unavailable"));
   await renderOverlay();
@@ -376,7 +376,7 @@ test("a failed discovery read never falls back to renderer migration, policy wri
 });
 
 test("legacy cache changes neither write host policy nor remove manual upgrade consent", async () => {
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   const client = engineClient();
   await setFeatures(false);
   await renderOverlay();
@@ -392,7 +392,7 @@ test("force API sends host authentication and parses ownership fields without in
   const fetch = spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
     ...status, engineOrigin: "manual", engineForced: false, forceUpgradePending: true,
   }), { status: 200, headers: { "Content-Type": "application/json" } }));
-  const client = server.createOpenworkServerClient({ baseUrl: "http://localhost:8787", token: "test-token", hostToken: "test-host" });
+  const client = server.createGet3wServerClient({ baseUrl: "http://localhost:8787", token: "test-token", hostToken: "test-host" });
   const result = await client.setEngineV2ForcePolicy({ upgrade: true });
   expect(result.engineOrigin).toBe("manual");
   expect(result.engineForced).toBe(false);

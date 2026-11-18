@@ -1,7 +1,7 @@
-import type { OpenworkSessionGroupEvent } from "@/app/lib/openwork-server";
+import type { Get3wSessionGroupEvent } from "@/app/lib/get3w-server";
 
 export type SessionGroupEventResponse = {
-  items: OpenworkSessionGroupEvent[];
+  items: Get3wSessionGroupEvent[];
   gap?: boolean;
   reset?: boolean;
 };
@@ -19,7 +19,7 @@ export class SessionGroupEventPoller {
   async poll(
     key: string,
     request: (options: { since: number }) => Promise<SessionGroupEventResponse>,
-    apply: (items: OpenworkSessionGroupEvent[]) => Promise<void>,
+    apply: (items: Get3wSessionGroupEvent[]) => Promise<void>,
   ): Promise<void> {
     const currentCursor = this.cursorByWorkspace.get(key) ?? 0;
     try {

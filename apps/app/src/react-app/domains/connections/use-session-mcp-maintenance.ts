@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import type { DenAuthStatus } from "../cloud/den-auth-provider";
 import type { Client, McpServerEntry, McpStatusMap } from "../../../app/types";
-import type { OpenworkCloudMcpFailure, OpenworkCloudMcpProviderModelContext, OpenworkServerClient } from "../../../app/lib/openwork-server";
+import type { Get3wCloudMcpFailure, Get3wCloudMcpProviderModelContext, Get3wServerClient } from "../../../app/lib/get3w-server";
 import { unwrap } from "../../../app/lib/opencode";
 import { attemptSilentMcpReauth } from "./mcp-silent-reauth";
 
 export const SESSION_MCP_MAINTENANCE_INTERVAL_MS = 5 * 60 * 1000;
 export type SessionCloudMcpMaintenanceState = {
   status: "idle" | "checking" | "ready" | "skipped" | "retrying" | "failed";
-  issue: Pick<OpenworkCloudMcpFailure, "code" | "stage" | "retryable" | "recommendedAction" | "message"> | null;
+  issue: Pick<Get3wCloudMcpFailure, "code" | "stage" | "retryable" | "recommendedAction" | "message"> | null;
   attempt: number;
   maxAttempts: number;
 };
@@ -16,7 +16,7 @@ const IDLE_STATE: SessionCloudMcpMaintenanceState = { status: "idle", issue: nul
 
 /** Refresh user-configured OAuth transports only; never provision organization entries. */
 export async function healWorkspaceMcpInBackground(input: {
-  client: Pick<OpenworkServerClient, "listMcp">;
+  client: Pick<Get3wServerClient, "listMcp">;
   workspaceId: string;
   opencodeClient: Client;
   directory: string;
@@ -27,7 +27,7 @@ export async function healWorkspaceMcpInBackground(input: {
   if (!workspaceId || !directory || input.isCurrent?.() === false) return false;
   const listed = await input.client.listMcp(workspaceId);
   if (input.isCurrent?.() === false) return false;
-  const servers = listed.items.filter(entry => entry.name !== "openwork-cloud" && !entry.name.startsWith("openwork-direct-")).map(entry => ({
+  const servers = listed.items.filter(entry => entry.name !== "get3w-cloud" && !entry.name.startsWith("get3w-direct-")).map(entry => ({
     name: entry.name, config: entry.config as McpServerEntry["config"],
   }));
   if (!servers.length) return false;
@@ -39,12 +39,12 @@ export async function healWorkspaceMcpInBackground(input: {
 export function useSessionMcpMaintenance(input: {
   cloudSignedIn: boolean;
   cloudAuthStatus?: DenAuthStatus;
-  client: OpenworkServerClient | null;
+  client: Get3wServerClient | null;
   workspaceId: string | null;
   opencodeClient: Client | null;
   directory: string;
   engineReloadBusy?: boolean;
-  providerModel?: OpenworkCloudMcpProviderModelContext;
+  providerModel?: Get3wCloudMcpProviderModelContext;
 }): SessionCloudMcpMaintenanceState {
   useEffect(() => {
     const { client, opencodeClient } = input;

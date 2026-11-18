@@ -5,7 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { DynamicToolUIPart } from "ai";
-import { mcpAppResourceUri } from "@openwork/types/mcp-app";
+import { mcpAppResourceUri } from "@get3w/types/mcp-app";
 import type { AppCreationRun } from "../src/react-app/domains/apps/app-creation-progress";
 
 const ownedDom = typeof window === "undefined";
@@ -137,10 +137,10 @@ function completed(toolName = "create_app"): DynamicToolUIPart {
   const resourceUri = mcpAppResourceUri(appId, revisionId);
   return {
     ...build(), toolName, state: "output-available", output: "Ready",
-    callProviderMetadata: { openwork: { mcpResult: {
+    callProviderMetadata: { get3w: { mcpResult: {
       content: [{ type: "text", text: "Ready" }],
       structuredContent: { app: { appId, revisionId, pluginId: `plg_0${"0".repeat(25)}`, title: "Revenue pulse", description: null, textFallback: "Revenue pulse", toolName: "open_app", resourceUri, serverPath: "/mcp/app", tools: [] } },
-      _meta: { "openwork/mcpApp": { connectionId: appId, toolName: "open_app", resourceUri, arguments: {} } },
+      _meta: { "get3w/mcpApp": { connectionId: appId, toolName: "open_app", resourceUri, arguments: {} } },
     } } },
   };
 }
@@ -162,7 +162,7 @@ test("unavailable and unrecorded results never pretend a launch exists", async (
   expect(host.textContent).toContain("Couldn’t open the preview. Review details.");
   expect(host.textContent).not.toContain("Created artifact");
   expect(host.textContent).not.toContain("Open");
-  await render(run({ ...build(), state: "output-available", output: "Unrecorded", callProviderMetadata: { openwork: { mcpResult: { structuredContent: { unrecorded: true } } } } }), false);
+  await render(run({ ...build(), state: "output-available", output: "Unrecorded", callProviderMetadata: { get3w: { mcpResult: { structuredContent: { unrecorded: true } } } } }), false);
   expect(host.textContent).toContain("Created artifact “Revenue pulse”");
   expect(host.textContent).toContain("Open it from your Library");
 });

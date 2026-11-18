@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { opencodeDataDirs, resolveGlobalOpencodeConfigPath } from "@openwork/paths";
+import { opencodeDataDirs, resolveGlobalOpencodeConfigPath } from "@get3w/paths";
 import { readJsoncFile } from "./jsonc.js";
 import { RESERVED_PROVIDER_ID } from "./reserved-provider-id.js";
 import { loopbackFetch } from "./server-fetch.js";

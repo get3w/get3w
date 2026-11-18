@@ -1,6 +1,6 @@
-# @openwork/remote-sessions
+# @get3w/remote-sessions
 
-Dependency-free Get3W offload ownership, shared by desktop and bundled harness plugins. Source imports **only this package's own `.ts` files**, with no workspace dependencies, Node imports, SDK, Zod, Electron, scheduler, or native HTTP client. Build with `pnpm --filter @openwork/remote-sessions build` before desktop consumption: default package exports resolve standalone `dist/*.js` ESM, and TypeScript resolves `dist/*.d.ts`. Bun and `development` conditions select source for bundling; a plugin can also bundle `src/index.ts` directly. Normal Node imports never rely on TypeScript stripping inside `node_modules` (which Node refuses). Source tests use Node TypeScript stripping (22.18+).
+Dependency-free Get3W offload ownership, shared by desktop and bundled harness plugins. Source imports **only this package's own `.ts` files**, with no workspace dependencies, Node imports, SDK, Zod, Electron, scheduler, or native HTTP client. Build with `pnpm --filter @get3w/remote-sessions build` before desktop consumption: default package exports resolve standalone `dist/*.js` ESM, and TypeScript resolves `dist/*.d.ts`. Bun and `development` conditions select source for bundling; a plugin can also bundle `src/index.ts` directly. Normal Node imports never rely on TypeScript stripping inside `node_modules` (which Node refuses). Source tests use Node TypeScript stripping (22.18+).
 
 Callers own admission, polling, account discovery, inventory collection, and lifecycle; this core does not decide whether offloading is allowed. Refusing admission must not erase journals or stop recovery of already delivered work.
 
@@ -15,7 +15,7 @@ Journals contain prompts/transcripts, receipts and progress, which are sensitive
 
 ## API
 
-All domain types and factories are exported from `src/index.ts` (`@openwork/remote-sessions`). `Command`, `Request`, `Complete`, `RequestComplete`, `Progress`, `Inventory`, and transcript types structurally mirror the existing wire contract. Timestamps (`expiresAt`, `observedAt`, `createdAt`) are integer epoch milliseconds. Wire discriminants `kind: "remote_session_create"` and `kind: "remote_session_request"` are retained. `Progress.engine` is optional `"v1" | "v2"`; the core never selects or routes a native engine. `Request.engine` is a wire hint, not authority over a receipt's actual native owner.
+All domain types and factories are exported from `src/index.ts` (`@get3w/remote-sessions`). `Command`, `Request`, `Complete`, `RequestComplete`, `Progress`, `Inventory`, and transcript types structurally mirror the existing wire contract. Timestamps (`expiresAt`, `observedAt`, `createdAt`) are integer epoch milliseconds. Wire discriminants `kind: "remote_session_create"` and `kind: "remote_session_request"` are retained. `Progress.engine` is optional `"v1" | "v2"`; the core never selects or routes a native engine. `Request.engine` is a wire hint, not authority over a receipt's actual native owner.
 
 ```ts
 import {
@@ -23,7 +23,7 @@ import {
   createRemoteSessionTransport,
   emptyJournal,
   parseJournal,
-} from "@openwork/remote-sessions"
+} from "@get3w/remote-sessions"
 
 const transport = createRemoteSessionTransport({
   baseUrl: "https://api.example.test",

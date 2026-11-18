@@ -430,7 +430,7 @@ export function registerUpdaterIpc({
             // Forward download progress to the renderer so the UI can show
             // incremental bytes instead of staying stuck at 0.
             autoUpdaterInstance.on("download-progress", (info) => {
-              sendToRenderer("openwork:updater:download-progress", {
+              sendToRenderer("get3w:updater:download-progress", {
                 bytesPerSecond: info.bytesPerSecond ?? 0,
                 percent: info.percent ?? 0,
                 transferred: info.transferred ?? 0,
@@ -588,11 +588,11 @@ export function registerUpdaterIpc({
     return null;
   }
 
-  ipcMain.handle("openwork:recovery:recordHealthy", async () => {
+  ipcMain.handle("get3w:recovery:recordHealthy", async () => {
     return recordHealthyVersion(app, distribution, resolveAppVersion(app));
   });
 
-  ipcMain.handle("openwork:recovery:list", async (_event, policy = {}) => {
+  ipcMain.handle("get3w:recovery:list", async (_event, policy = {}) => {
     assertUpdatesAvailable();
     const evalReleases = evalRecoveryReleases();
     if (evalReleases) {
@@ -702,28 +702,28 @@ export function registerUpdaterIpc({
     }
   }
 
-  ipcMain.handle("openwork:recovery:use", async (_event, id) =>
+  ipcMain.handle("get3w:recovery:use", async (_event, id) =>
     queueUpdaterOperation(() => useRecoveryRelease(id)));
-  ipcMain.handle("openwork:recovery:restorePrevious", async () => {
+  ipcMain.handle("get3w:recovery:restorePrevious", async () => {
     return queueUpdaterOperation(() => {
       assertUpdatesAvailable();
       const previous = recoveryReleases.find((release) => release.marking === "previous");
       return previous ? useRecoveryRelease(previous.id) : { ok: false, reason: "No verified previous version is available." };
     });
   });
-  ipcMain.handle("openwork:recovery:evalSnapshot", async () => ({
+  ipcMain.handle("get3w:recovery:evalSnapshot", async () => ({
     candidates: recoveryReleases,
     releases: recoveryReleases,
     ...recoveryWitness,
   }));
 
-  ipcMain.handle("openwork:updater:getChannel", async () => queueUpdaterOperation(async () => {
+  ipcMain.handle("get3w:updater:getChannel", async () => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     const channel = await readElectronUpdaterChannel(app, manifestChannel);
     return updaterChannelState(app, channel, null, manifestChannel);
   }));
 
-  ipcMain.handle("openwork:updater:setChannel", async (_event, rawChannel) => queueUpdaterOperation(async () => {
+  ipcMain.handle("get3w:updater:setChannel", async (_event, rawChannel) => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     const channel = await writeElectronUpdaterChannel(app, rawChannel, manifestChannel);
     checkedUpdateVersion = null;
@@ -757,7 +757,7 @@ export function registerUpdaterIpc({
     }
   }
 
-  ipcMain.handle("openwork:updater:check", async (_event, rawChannel, rawTargetVersion, options) => queueUpdaterOperation(async () => {
+  ipcMain.handle("get3w:updater:check", async (_event, rawChannel, rawTargetVersion, options) => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     assertActivation();
     // A check selects a feed for this operation only. The persisted preference
@@ -846,7 +846,7 @@ export function registerUpdaterIpc({
     }
   }));
 
-  ipcMain.handle("openwork:updater:download", async () => queueUpdaterOperation(async () => {
+  ipcMain.handle("get3w:updater:download", async () => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     assertActivation();
     const updater = await ensureAutoUpdater();
@@ -899,7 +899,7 @@ export function registerUpdaterIpc({
     }
   }));
 
-  ipcMain.handle("openwork:updater:installAndRestart", async () => queueUpdaterOperation(async () => {
+  ipcMain.handle("get3w:updater:installAndRestart", async () => queueUpdaterOperation(async () => {
     assertUpdatesAvailable();
     assertActivation();
     if (!updateDownloaded) return { ok: false, reason: "update-not-downloaded" };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import vm from "node:vm";
-import { runComputerProgram } from "@openwork/computer-use/runtime";
+import { runComputerProgram } from "@get3w/computer-use/runtime";
 import { createBrowserTaskHost } from "./browser-task.mjs";
 
 test("withheld field values cannot escape through accessible labels", async () => {
@@ -50,7 +50,7 @@ test("withheld field values cannot escape through accessible labels", async () =
   assert.equal(staleCheckbox.code, "stale_observation");
   assert.notEqual(checkbox.checked, true);
   checkbox.value = "on";
-  context.__openworkAgentEntered.set(email, email.value);
+  context.__get3wAgentEntered.set(email, email.value);
   const entered = await observe();
   assert.equal(entered.elements[0].name, `Email ${email.value}`);
   assert.equal(entered.elements[0].value, email.value);

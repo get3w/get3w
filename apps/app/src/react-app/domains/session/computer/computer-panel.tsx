@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, ty
 import { createPortal } from "react-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { ExternalLink, GripVertical, Maximize2, Minimize2, Minus, Monitor, PanelBottomClose, PictureInPicture2 } from "lucide-react"
-import type { ComputerPresentation } from "@openwork/types/desktop-ipc"
+import type { ComputerPresentation } from "@get3w/types/desktop-ipc"
 
 import { desktopBridge } from "@/app/lib/desktop"
 import { Button } from "@/components/ui/button"

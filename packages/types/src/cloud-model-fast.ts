@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const CLOUD_MODEL_CONFIG_VERSION = 4;
-export const CATALOG_FAST_VARIANT = "__openwork_catalog_fast_v1";
-export const FAST_VARIANT_PREFIX = "__openwork_fast_v1/";
+export const CATALOG_FAST_VARIANT = "__get3w_catalog_fast_v1";
+export const FAST_VARIANT_PREFIX = "__get3w_fast_v1/";
 export const FAST_DEFAULT_VARIANT = `${FAST_VARIANT_PREFIX}default`;
 
 const fastMode = z.object({
@@ -12,7 +12,7 @@ const fastMode = z.object({
 const reasoningEffort = z.enum(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const effortOption = z.object({ type: z.literal("effort"), values: z.array(reasoningEffort) }).strict();
 const fastMetadata = z.object({
-  disabled: z.literal(true), openworkNativeFast: z.literal(1), reasoningEfforts: z.array(reasoningEffort).optional(),
+  disabled: z.literal(true), get3wNativeFast: z.literal(1), reasoningEfforts: z.array(reasoningEffort).optional(),
 }).strict();
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -37,7 +37,7 @@ export function catalogFastVariants(config: Record<string, unknown>, providerNpm
     return parsed.success ? parsed.data.values : [];
   }))];
   return { ...variants, [CATALOG_FAST_VARIANT]: {
-    disabled: true, openworkNativeFast: 1,
+    disabled: true, get3wNativeFast: 1,
     ...(reasoningEfforts.length > 0 ? { reasoningEfforts } : {}),
   } };
 }

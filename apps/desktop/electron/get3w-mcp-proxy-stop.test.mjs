@@ -92,3 +92,20 @@ test('definitive personal refusal retains RPC identity and records terminal fail
   assert.equal(observations.at(-1)[1].result.structuredContent.result.status,'failed');
  }finally{await proxy.close();}
 });
+
+test('web tools bind the proxy account and reject browser or missing credentials',async()=>{
+ const calls=[];
+ const proxy=await createGet3wMcpProxy({userId:'account',auth:{webTools:async input=>{
+  calls.push(input);return {status:200,json:{request_id:'req_test',provider:'bocha',results:[]}};
+ }}});
+ const url=proxy.url.replace('/mcp','/web-tools/search');
+ try {
+  assert.equal((await fetch(url,{method:'POST',body:'{}'})).status,401);
+  assert.equal((await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${proxy.token}`,Origin:'https://get3w.com'},body:'{}'})).status,401);
+  const response=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${proxy.token}`,'Content-Type':'application/json'},body:JSON.stringify({query:'hello',userId:'forged'})});
+  assert.equal(response.status,200);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].userId,'account');
+  assert.equal(calls[0].operation,'search');
+ } finally {await proxy.close();}
+});

@@ -1,5 +1,5 @@
 // Minimal Streamable-HTTP MCP client used to read discovery resources from an
-// openwork-cloud connection. Extracted from connect-skill-catalog so the skill
+// get3w-cloud connection. Extracted from connect-skill-catalog so the skill
 // index and the Automation index speak to the same connection the same way.
 export type McpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -98,7 +98,7 @@ export type McpResourceReader = {
 };
 
 /**
- * Opens one initialized Streamable HTTP session against an openwork-cloud
+ * Opens one initialized Streamable HTTP session against an get3w-cloud
  * config. Returns null when the config is unusable (invalid URL, disabled, auth
  * rejected, transport or protocol error). The reader issues sequential
  * `resources/read` requests on that session, so one session can serve a whole
@@ -170,7 +170,7 @@ export async function openMcpResourceReader(input: {
 }
 
 /**
- * Reads one JSON resource from an openwork-cloud config. Returns the resource
+ * Reads one JSON resource from an get3w-cloud config. Returns the resource
  * text, or null when the config is unusable (invalid URL, disabled, auth
  * rejected, transport or protocol error) so callers can try another candidate.
  */

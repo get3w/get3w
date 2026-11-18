@@ -1,4 +1,4 @@
-import type { GeneratedArtifactView, GeneratedArtifactViewRevision, SavedAppDetail, SavedAppSummary } from "@openwork/types/workflows";
+import type { GeneratedArtifactView, GeneratedArtifactViewRevision, SavedAppDetail, SavedAppSummary } from "@get3w/types/workflows";
 import { DASHBOARD_TILE_CACHE_STORAGE_PREFIX } from "@/app/lib/dashboard-cache-storage";
 import type { DashboardMcpAppEntry } from "../dashboard/dashboard-mcp-app-entry";
 
@@ -11,9 +11,9 @@ export function liveGeneratedAppEntry(view: GeneratedArtifactView, revision: Gen
   return {
     kind: "mcp",
     id: JSON.stringify([view.id, revision.resourceUri, timeZone, viewerLocalDate(timeZone, now)]),
-    serverName: "openwork-cloud",
+    serverName: "get3w-cloud",
     toolName,
-    projectedToolName: `openwork-cloud_${toolName}`,
+    projectedToolName: `get3w-cloud_${toolName}`,
     resourceUri: revision.resourceUri,
     title: view.title,
     launchArguments: { timeZone },

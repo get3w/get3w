@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import { currentLocale } from "@/i18n"
-import type { AutomationSchedule } from "@openwork/types/automations"
+import type { AutomationSchedule } from "@get3w/types/automations"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"

@@ -17,7 +17,7 @@ import { reconcilePolicyDisabledProviders } from "@/react-app/domains/connection
 import {
   type OrganizationModelsRefreshReason,
 } from "./managed-models-recovery";
-import { createSessionOpenworkServer, type SessionServerEndpoint } from "./session-openwork-server";
+import { createSessionGet3wServer, type SessionServerEndpoint } from "./session-get3w-server";
 import { createProviderAuthStore, useProviderAuthStoreSnapshot } from "./store";
 import { useLiveProviderSync } from "./use-live-provider-sync";
 import { skipsLegacyProviderRefresh } from "./live-provider-sync";
@@ -150,7 +150,7 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
         // server's providerSync capability and host-token auth so sign-in
         // pushes the Den session to the local server and sync runs
         // server-side.
-        openworkServer: createSessionOpenworkServer({
+        get3wServer: createSessionGet3wServer({
           endpoint: () => stateRef.current.selectedWorkspaceEndpoint ?? stateRef.current.engineRootServer ?? null,
           hostToken: () => stateRef.current.localServerHostToken ?? "",
           generation: () => stateRef.current.localServerGeneration ?? null,
@@ -227,7 +227,7 @@ export function useSessionProviderAuth(input: UseSessionProviderAuthInput) {
     policyProviderReconcileInFlightRef.current = true;
     void reconcilePolicyDisabledProviders({
       opencodeClient,
-      openworkClient: selectedWorkspaceEndpoint?.client ?? null,
+      get3wClient: selectedWorkspaceEndpoint?.client ?? null,
       workspaceId: selectedWorkspaceEndpoint?.workspaceId ?? null,
       workspaceType: selectedWorkspace?.workspaceType ?? null,
       allProviders: providers,

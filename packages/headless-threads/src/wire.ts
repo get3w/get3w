@@ -48,6 +48,9 @@ const partSchema = z
     id: z.string(),
     type: z.string().optional(),
     text: z.string().optional(),
+    url: z.string().optional(),
+    mime: z.string().optional(),
+    filename: z.string().optional(),
     tool: z.string().optional(),
     callID: z.string().optional(),
     time: spanSchema.optional(),
@@ -122,6 +125,9 @@ function toPart(part: PartWire): HeadlessThreadMessagePart {
   const mapped: HeadlessThreadMessagePart = { id: part.id };
   if (part.type !== undefined) mapped.type = part.type;
   if (part.text !== undefined) mapped.text = part.text;
+  if (part.url !== undefined) mapped.url = part.url;
+  if (part.mime !== undefined) mapped.mime = part.mime;
+  if (part.filename !== undefined) mapped.filename = part.filename;
   if (part.tool !== undefined) mapped.tool = part.tool;
   if (part.callID !== undefined) mapped.callId = part.callID;
   if (part.state?.status !== undefined) mapped.toolStatus = part.state.status;

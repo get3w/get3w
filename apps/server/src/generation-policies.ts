@@ -20,8 +20,8 @@ export async function generationPolicyFromMessages(callerId:string,read:(cursor?
     for(const row of parsed.data){
       if(row.id===callerId)found=true;
       if(found&&row.type==='user'){
-        const metadata=z.object({openwork:z.object({generationPolicy:policySchema.optional()}).optional()}).parse(row.metadata??{});
-        return {messageId:row.id,policy:metadata.openwork?.generationPolicy??{models:{},outputs:{}},...(row.time?{receivedAt:row.time.created}:{})};
+        const metadata=z.object({get3w:z.object({generationPolicy:policySchema.optional()}).optional()}).parse(row.metadata??{});
+        return {messageId:row.id,policy:metadata.get3w?.generationPolicy??{models:{},outputs:{}},...(row.time?{receivedAt:row.time.created}:{})};
       }
     }
     const next=parsed.cursor?.next;

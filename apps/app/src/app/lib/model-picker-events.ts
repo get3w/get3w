@@ -1,4 +1,4 @@
-export const openComposerModelPickerEvent = "openwork-open-composer-model-picker";
+export const openComposerModelPickerEvent = "get3w-open-composer-model-picker";
 
 /** Opens the composer's model picker for a session, focused on the first alternative model. */
 export function openAlternativeModelPicker(sessionId: string) {

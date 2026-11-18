@@ -6,7 +6,7 @@ import path from "node:path";
 import { createGet3wAuth } from "./get3w-auth.mjs";
 
 async function fixture() {
-  const userData = await mkdtemp(path.join(os.tmpdir(), "openwork-auth-"));
+  const userData = await mkdtemp(path.join(os.tmpdir(), "get3w-auth-"));
   let available = true, approved = false, revoked = false, offline = false, time = 0, refreshes = 0, origin;
   let profile = {id:"u",name:"Test"};
   const calls = [], urls = [];
@@ -236,7 +236,7 @@ test("main-only MCP binds identity, filters headers and aborts on logout",async(
  };
  try {
   h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();
-  const response=await auth.mcp({userId:'u',sessionId:'host-session-123456',method:'POST',body:Buffer.from('{}'),headers:{authorization:'evil','x-openwork-organization':'evil','x-get3w-session-id':'agent-forged','accept':'application/json, text/event-stream','mcp-protocol-version':'2025-03-26'}});
+  const response=await auth.mcp({userId:'u',sessionId:'host-session-123456',method:'POST',body:Buffer.from('{}'),headers:{authorization:'evil','x-get3w-organization':'evil','x-get3w-session-id':'agent-forged','accept':'application/json, text/event-stream','mcp-protocol-version':'2025-03-26'}});
   assert.equal(options.headers.Authorization,'Bearer access-secret');
   assert.equal(options.headers['X-Get3W-Organization'],undefined);assert.equal(options.headers.authorization,undefined);
   assert.equal(options.headers['mcp-protocol-version'],'2025-03-26');assert.equal(options.redirect,'error');
@@ -387,4 +387,52 @@ test("status refreshes web profile changes without requiring a new desktop login
     assert.deepEqual((await auth.status()).user, profile);
     assert.equal(h.refreshes(), 0);
   } finally { await h.cleanup(); }
+});
+
+test("managed web tools use the model API origin, enforce identity, and never retry", async (t) => {
+  const timeouts = [];
+  const originalTimeout = AbortSignal.timeout.bind(AbortSignal);
+  t.mock.method(AbortSignal, "timeout", (milliseconds) => {
+    timeouts.push(milliseconds);
+    return originalTimeout(milliseconds);
+  });
+  const h = await fixture();
+  const requests = [];
+  try {
+    const auth = createGet3wAuth({ ...h.deps, fetchImpl: async (url, options) => {
+      if (url.includes('/v1/tools/')) {
+        requests.push({ url, options });
+        return Response.json({ request_id: 'req_test', provider: 'bocha', results: [] });
+      }
+      return h.deps.fetchImpl(url, options);
+    }});
+    h.set({approved:true}); await auth.begin(); await auth.poll();
+    await assert.rejects(auth.webTools({userId:'another-user',operation:'search',body:{query:'test'}}));
+    assert.equal(requests.length,0);
+    const result = await auth.webTools({userId:'u',operation:'search',body:{query:'test'}});
+    assert.equal(result.status,200);
+    assert.equal(requests.length,1);
+    assert.equal(requests[0].url,'https://api.get3w.com/v1/tools/search');
+    assert.equal(requests[0].options.headers.Authorization,'Bearer access-secret');
+    assert.equal(requests[0].options.redirect,'error');
+    await auth.webTools({userId:'u',operation:'fetch',body:{url:'https://example.com/'}});
+    assert.equal(requests[1].url,'https://api.get3w.com/v1/tools/fetch');
+    assert.equal(timeouts.filter(value => value === 310_000).length, 2);
+    assert.equal(timeouts.includes(65_000), false);
+  } finally { await h.cleanup(); }
+});
+
+
+test("managed web tools can target the development API without changing production defaults", async () => {
+  const h=await fixture();
+  const urls=[];
+  try {
+    const auth=createGet3wAuth({...h.deps,apiBase:'http://127.0.0.1:6600',fetchImpl:async(url,options)=>{
+      if(url.includes('/v1/tools/')) {urls.push(url);return Response.json({request_id:'req_local',provider:'deepseek',results:[]});}
+      return h.deps.fetchImpl(url,options);
+    }});
+    h.set({approved:true});await auth.begin();await auth.poll();
+    await auth.webTools({userId:'u',operation:'search',body:{query:'test'}});
+    assert.deepEqual(urls,['http://127.0.0.1:6600/v1/tools/search']);
+  } finally {await h.cleanup();}
 });

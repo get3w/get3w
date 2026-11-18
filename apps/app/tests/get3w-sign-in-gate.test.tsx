@@ -8,17 +8,17 @@ beforeAll(() => {
 afterAll(async () => { await GlobalRegistrator.unregister(); });
 
 test("native sends require a signed-in account and open the existing sign-in dialog", async () => {
-  const { requireGet3wSignIn, openworkSignInEvent } = await import("../src/react-app/domains/cloud/get3w-account");
+  const { requireGet3wSignIn, get3wSignInEvent } = await import("../src/react-app/domains/cloud/get3w-account");
   expect(requireGet3wSignIn()).toBe(true); // Self-hosted web has its own authentication.
   let requests = 0;
   const onSignIn = () => { requests++; };
-  window.addEventListener(openworkSignInEvent, onSignIn);
+  window.addEventListener(get3wSignInEvent, onSignIn);
   Reflect.set(window, "__GET3W_ACCOUNT__", { status: async () => ({ status: "signed_out", user: null, pending: false, error: null }) });
   try {
     expect(requireGet3wSignIn()).toBe(false);
     expect(requests).toBe(1);
   } finally {
-    window.removeEventListener(openworkSignInEvent, onSignIn);
+    window.removeEventListener(get3wSignInEvent, onSignIn);
     delete window.__GET3W_ACCOUNT__;
   }
 });
@@ -33,7 +33,7 @@ test("desktop shows loading until signed out is confirmed, including unavailable
   let resolveStatus: (snapshot: Snapshot) => void = () => {};
   let rejectStatus: (error: Error) => void = () => {};
   const status = () => new Promise<Snapshot>((resolve, reject) => { resolveStatus = resolve; rejectStatus = reject; });
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   Reflect.set(window, "__GET3W_ACCOUNT__", { status });
   const node = document.createElement("div");
   document.body.append(node);
@@ -61,7 +61,7 @@ test("desktop shows loading until signed out is confirmed, including unavailable
   } finally {
     await act(async () => { root.unmount(); });
     node.remove();
-    Reflect.deleteProperty(window, "__OPENWORK_ELECTRON__");
+    Reflect.deleteProperty(window, "__GET3W_ELECTRON__");
     delete window.__GET3W_ACCOUNT__;
   }
 });
@@ -74,7 +74,7 @@ test("desktop login cannot be dismissed and gates operations until authenticatio
   Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
   let signedIn = false;
   const status = async () => ({ status: signedIn ? "signed_in" : "signed_out", user: signedIn ? { id: "test", name: "Test" } : null, error: null, pending: false });
-  Reflect.set(window, "__OPENWORK_ELECTRON__", {});
+  Reflect.set(window, "__GET3W_ELECTRON__", {});
   Reflect.set(window, "__GET3W_ACCOUNT__", { status, begin: async () => { signedIn = true; return status(); } });
   const node = document.createElement("div");
   document.body.append(node);
@@ -97,7 +97,7 @@ test("desktop login cannot be dismissed and gates operations until authenticatio
   } finally {
     await act(async () => { root.unmount(); });
     node.remove();
-    Reflect.deleteProperty(window, "__OPENWORK_ELECTRON__");
+    Reflect.deleteProperty(window, "__GET3W_ELECTRON__");
     delete window.__GET3W_ACCOUNT__;
   }
 });

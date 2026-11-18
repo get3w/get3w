@@ -105,7 +105,7 @@ for (const error of [
   { name: "APIError", data: { statusCode: 403, message: "Access denied" } },
   { name: "APIError", data: { statusCode: 429, message: "Invalid API key" } },
   { name: "APIError", data: { statusCode: 500, message: "Invalid API key" } },
-  { name: "APIError", data: { statusCode: 401, responseBody: '{"error":{"code":"openwork_auth_required"}}' } },
+  { name: "APIError", data: { statusCode: 401, responseBody: '{"error":{"code":"get3w_auth_required"}}' } },
   { name: "APIError", data: { statusCode: 401, message: "Invalid Get3W Gateway key.", responseBody: '{"error":{"code":"invalid_api_key"}}' } },
   { name: "APIError", data: { statusCode: 401, message: "An Get3W Models key is required." } },
   { name: "APIError", data: { message: "ECONNRESET" } },
@@ -118,7 +118,7 @@ for (const error of [
 });
 
 for (const providerId of ["openrouter", "ipr_fixture"]) test(`native lifecycle updates only the provider that actually ran: ${providerId}`, () => {
-  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode2", openworkToken: "synthetic-local-token" };
+  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode2", get3wToken: "synthetic-local-token" };
   spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ data: [] }));
   useSessionActivityStore.setState({ recordsByWorkspaceId: {} });
   const dispose = __createWorkspaceSessionSyncForTest(sync);
@@ -140,7 +140,7 @@ for (const providerId of ["openrouter", "ipr_fixture"]) test(`native lifecycle u
 });
 
 test("v1 idle without a completed assistant response is not credential verification", () => {
-  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode", openworkToken: "synthetic-local-token" };
+  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode", get3wToken: "synthetic-local-token" };
   spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ data: [] }));
   useSessionActivityStore.setState({ recordsByWorkspaceId: {} });
   const dispose = __createWorkspaceSessionSyncForTest(sync);
@@ -176,7 +176,7 @@ test("replacing a shared device credential invalidates every workspace using it,
 });
 
 test("a delayed native start using the old key cannot reject its replacement", () => {
-  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode2", openworkToken: "synthetic-local-token" };
+  const sync = { workspaceId: workspace, baseUrl: "http://127.0.0.1:9/w/fixture/opencode2", get3wToken: "synthetic-local-token" };
   spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ data: [] }));
   useSessionActivityStore.setState({ recordsByWorkspaceId: {} });
   const dispose = __createWorkspaceSessionSyncForTest(sync);

@@ -1,9 +1,9 @@
 import { t } from "@/i18n";
 import type {
-  OpenworkCloudMcpFailure,
-  OpenworkCloudMcpHealth,
-  OpenworkCloudMcpProviderModelContext,
-} from "../../../app/lib/openwork-server";
+  Get3wCloudMcpFailure,
+  Get3wCloudMcpHealth,
+  Get3wCloudMcpProviderModelContext,
+} from "../../../app/lib/get3w-server";
 import type { CloudMcpUserState } from "./cloud-mcp-user-state";
 
 export const CLOUD_MCP_SUBMISSION_RETRY_DELAYS_MS = [1_000, 3_000];
@@ -12,12 +12,12 @@ export const CLOUD_MCP_AUTH_RESOLUTION_TIMEOUT_MS = 12_000;
 
 const REQUIRED_DIRECT_TOOL_IDS = ["search_capabilities", "execute_capability"];
 const REQUIRED_PROJECTED_TOOL_IDS = [
-  "openwork-cloud_search_capabilities",
-  "openwork-cloud_execute_capability",
+  "get3w-cloud_search_capabilities",
+  "get3w-cloud_execute_capability",
 ];
 
 export type CloudMcpSubmissionIssue = Pick<
-  OpenworkCloudMcpFailure,
+  Get3wCloudMcpFailure,
   "code" | "stage" | "retryable" | "recommendedAction" | "message"
 >;
 
@@ -28,7 +28,7 @@ export type CloudMcpSubmissionGateContext = {
   serverBaseUrl: string;
   orgId: string | null;
   workspaceId: string;
-  providerModel?: OpenworkCloudMcpProviderModelContext;
+  providerModel?: Get3wCloudMcpProviderModelContext;
   userState: CloudMcpUserState | null;
 };
 
@@ -42,13 +42,13 @@ export type CloudMcpSubmissionGateDecision =
     };
 
 export type CloudMcpSubmissionReadinessAssessment =
-  | { ready: true; health: OpenworkCloudMcpHealth }
-  | { ready: false; health: OpenworkCloudMcpHealth | null; issue: CloudMcpSubmissionIssue };
+  | { ready: true; health: Get3wCloudMcpHealth }
+  | { ready: false; health: Get3wCloudMcpHealth | null; issue: CloudMcpSubmissionIssue };
 
 export type CloudMcpSubmissionReadinessResult =
-  | { outcome: "ready"; health: OpenworkCloudMcpHealth; attempts: number }
-  | { outcome: "bypass"; health: OpenworkCloudMcpHealth; attempts: number; reason: "disabled" }
-  | { outcome: "failed"; health: OpenworkCloudMcpHealth | null; issue: CloudMcpSubmissionIssue; attempts: number };
+  | { outcome: "ready"; health: Get3wCloudMcpHealth; attempts: number }
+  | { outcome: "bypass"; health: Get3wCloudMcpHealth; attempts: number; reason: "disabled" }
+  | { outcome: "failed"; health: Get3wCloudMcpHealth | null; issue: CloudMcpSubmissionIssue; attempts: number };
 
 export type CloudMcpSubmissionAttempt = {
   phase: "readiness" | "repair";
@@ -118,7 +118,7 @@ function genericSubmissionIssue(input?: {
   };
 }
 
-function failureIssue(health: OpenworkCloudMcpHealth): CloudMcpSubmissionIssue {
+function failureIssue(health: Get3wCloudMcpHealth): CloudMcpSubmissionIssue {
   const failure = health.firstFailure;
   if (!failure) return genericSubmissionIssue();
   return {
@@ -130,7 +130,7 @@ function failureIssue(health: OpenworkCloudMcpHealth): CloudMcpSubmissionIssue {
   };
 }
 
-function healthShowsExplicitDisable(health: OpenworkCloudMcpHealth): boolean {
+function healthShowsExplicitDisable(health: Get3wCloudMcpHealth): boolean {
   const code = health.firstFailure?.code.trim().toLowerCase().replace(/[-.]/g, "_") ?? "";
   return health.desired.config?.enabled === false || code === "cloud_mcp_disabled" || code === "cloud_disabled";
 }
@@ -216,8 +216,8 @@ export async function resolveCloudMcpSubmissionAuth(
  * experimental listing or be verified as tool-capable by its provider.
  */
 export function assessCloudMcpSubmissionReadiness(input: {
-  health: OpenworkCloudMcpHealth | null;
-  providerModel: OpenworkCloudMcpProviderModelContext;
+  health: Get3wCloudMcpHealth | null;
+  providerModel: Get3wCloudMcpProviderModelContext;
 }): CloudMcpSubmissionReadinessAssessment {
   const health = input.health;
   if (!health) {
@@ -360,9 +360,9 @@ function errorAssessment(error: unknown): CloudMcpSubmissionReadinessAssessment 
 }
 
 export async function ensureCloudMcpSubmissionReadiness(input: {
-  providerModel: OpenworkCloudMcpProviderModelContext;
-  check: () => Promise<OpenworkCloudMcpHealth | null>;
-  repair: () => Promise<OpenworkCloudMcpHealth | null>;
+  providerModel: Get3wCloudMcpProviderModelContext;
+  check: () => Promise<Get3wCloudMcpHealth | null>;
+  repair: () => Promise<Get3wCloudMcpHealth | null>;
   retryDelaysMs?: number[];
   attemptTimeoutMs?: number;
   wait?: (delayMs: number) => Promise<void>;

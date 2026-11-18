@@ -55,7 +55,7 @@ for row in records.values():
   for notice in previous.get('notices',[]):
    f=root/notice['file']
    if f.is_file() and sha(f.read_bytes())==notice['sha256'] and notice not in row['notices']:row['notices'].append(notice)
- if row['name'].startswith('@openwork/') and row['selectedLicense']=='Unknown':
+ if row['name'].startswith('@get3w/') and row['selectedLicense']=='Unknown':
   row['selectedLicense']='MIT';row['resolution']='non-ee workspace source under root MIT'
  if row['selectedLicense'] not in allow:problems.append({'package':row['name']+'@'+row['version'],'reason':'unresolved or restricted license','license':row['selectedLicense']})
  if not row['notices']:row['noticeStatus']='no root license file in installed package; manifest declaration retained'

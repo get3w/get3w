@@ -3,9 +3,9 @@ import { useCallback, useMemo, useState } from "react";
 import type {
   ReloadReason,
   ReloadTrigger,
-  ResetOpenworkMode,
+  ResetGet3wMode,
 } from "../../app/types";
-import { relaunchDesktopApp, resetOpenworkState } from "../../app/lib/desktop";
+import { relaunchDesktopApp, resetGet3wState } from "../../app/lib/desktop";
 import {
   addOpencodeCacheHint,
   isDesktopRuntime,
@@ -24,7 +24,7 @@ export type ReloadState = {
 
 export type ResetState = {
   resetModalOpen: boolean;
-  resetModalMode: ResetOpenworkMode;
+  resetModalMode: ResetGet3wMode;
   resetModalText: string;
   resetModalBusy: boolean;
 };
@@ -37,14 +37,14 @@ export type SystemStateControls = {
   reloadWorkspaceEngine: () => Promise<void>;
   canReloadWorkspaceEngine: boolean;
   reset: ResetState;
-  openResetModal: (mode: ResetOpenworkMode) => void;
+  openResetModal: (mode: ResetGet3wMode) => void;
   closeResetModal: () => void;
   setResetModalText: (value: string) => void;
   confirmReset: () => Promise<void>;
   setError: (message: string | null) => void;
 };
 
-function clearOpenworkLocalStorage(mode: ResetOpenworkMode) {
+function clearGet3wLocalStorage(mode: ResetGet3wMode) {
   if (typeof window === "undefined") return;
   try {
     if (mode === "all") {
@@ -53,9 +53,9 @@ function clearOpenworkLocalStorage(mode: ResetOpenworkMode) {
     }
     const keys = Object.keys(window.localStorage);
     for (const key of keys) {
-      if (/openwork/.test(key)) window.localStorage.removeItem(key);
+      if (/get3w/.test(key)) window.localStorage.removeItem(key);
     }
-    window.localStorage.removeItem("openwork_mode_pref");
+    window.localStorage.removeItem("get3w_mode_pref");
   } catch {
     // ignore
   }
@@ -83,7 +83,7 @@ export function useSystemState(
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetModalMode, setResetModalMode] =
-    useState<ResetOpenworkMode>("onboarding");
+    useState<ResetGet3wMode>("onboarding");
   const [resetModalText, setResetModalText] = useState("");
   const [resetModalBusy, setResetModalBusy] = useState(false);
 
@@ -172,7 +172,7 @@ export function useSystemState(
   }, [clearReloadRequired, options, reloadBusy]);
 
   const openResetModal = useCallback(
-    (mode: ResetOpenworkMode) => {
+    (mode: ResetGet3wMode) => {
       if (options.hasActiveRuns()) {
         options.setError(t("system.stop_active_runs_before_reset"));
         return;
@@ -203,9 +203,9 @@ export function useSystemState(
 
     try {
       if (isDesktopRuntime()) {
-        await resetOpenworkState(resetModalMode);
+        await resetGet3wState(resetModalMode);
       }
-      clearOpenworkLocalStorage(resetModalMode);
+      clearGet3wLocalStorage(resetModalMode);
       if (isDesktopRuntime()) {
         await relaunchDesktopApp();
       } else {

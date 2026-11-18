@@ -12,8 +12,8 @@ const outDir = resolve(outIndex >= 0 && raw[outIndex + 1] ? raw[outIndex + 1] : 
 const force = raw.includes("--force");
 const windows = process.platform === "win32";
 const source = resolve(desktopRoot, "native", "dictation", windows ? "windows.cs" : "main.swift");
-const executable = join(outDir, windows ? "openwork-dictation.exe" : "openwork-dictation");
-const fingerprintPath = join(outDir, "openwork-dictation.sha256");
+const executable = join(outDir, windows ? "get3w-dictation.exe" : "get3w-dictation");
+const fingerprintPath = join(outDir, "get3w-dictation.sha256");
 
 if (process.platform !== "darwin" && !windows) {
   process.stdout.write(JSON.stringify({ ok: true, skipped: true, reason: "dictation-helper-is-macos-and-windows-only" }) + "\n");

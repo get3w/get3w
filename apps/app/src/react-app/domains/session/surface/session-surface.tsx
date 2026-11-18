@@ -34,10 +34,10 @@ import { denSettingsChangedEvent } from "@/app/lib/den-session-events";
 import { useSessionDraftState } from "@/react-app/domains/session/sync/draft-store";
 import { autoRoutesFromSession, useAutoRouteStore } from "@/react-app/domains/session/sync/auto-route-store";
 import type {
-  OpenworkServerClient,
-  OpenworkSessionHistory,
-} from "@/app/lib/openwork-server";
-import { isLoopbackOpenworkServerUrl } from "@/app/lib/openwork-server";
+  Get3wServerClient,
+  Get3wSessionHistory,
+} from "@/app/lib/get3w-server";
+import { isLoopbackGet3wServerUrl } from "@/app/lib/get3w-server";
 import type {
   ComposerAttachment,
   ComposerDraft,
@@ -55,7 +55,7 @@ import {
   publishInspectorSlice,
   recordInspectorEvent,
 } from "@/app/lib/app-inspector";
-import { useControlAction, type OpenworkControlAction } from "@/react-app/shell/control/control-provider";
+import { useControlAction, type Get3wControlAction } from "@/react-app/shell/control/control-provider";
 import { isConnectDirectMcpServerName } from "@/react-app/domains/connections/cloud-mcp-user-state";
 import { attemptSilentMcpReauth } from "@/react-app/domains/connections/mcp-silent-reauth";
 import type {
@@ -85,7 +85,7 @@ import {
   subscribeQueuedDrain,
 } from "./queued-drain-machine";
 import { DevProfiler } from "@/react-app/shell/dev-profiler";
-import { PaperGrainGradient } from "@openwork/ui/react";
+import { PaperGrainGradient } from "@get3w/ui/react";
 import { useShellConfig } from "@/react-app/shell/shell-config";
 import { useReactRenderWatchdog } from "@/react-app/shell/react-render-watchdog";
 import { SessionDebugPanel } from "./debug-panel";
@@ -191,7 +191,7 @@ function sanitizedInspectorDiagnosticText(value: string) {
   return value
     .replace(/https?:\/\/[^\s"'<>]+/gi, "[url]")
     .replace(/\b(Bearer|Basic)\s+[^\s"'<>]+/gi, "$1 [redacted]")
-    .replace(/\b(authorization|ownerToken|clientToken|openworkToken|accessToken|apiKey|token)\b\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
+    .replace(/\b(authorization|ownerToken|clientToken|get3wToken|accessToken|apiKey|token)\b\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
     .replace(/[\r\n\t]+/g, " ")
     .slice(0, 240);
 }
@@ -339,7 +339,7 @@ function createChatTranscriptEvalMessages(sessionId: string) {
         },
         {
           type: "dynamic-tool",
-          toolName: "openwork-cloud_execute_capability",
+          toolName: "get3w-cloud_execute_capability",
           toolCallId: "eval-transcript-capability",
           state: "output-available",
           input: { name: "getCapabilitiesGoogleWorkspaceCalendarEvents", body: {} },
@@ -366,7 +366,7 @@ function createChatTranscriptEvalMessages(sessionId: string) {
           toolName: "edit",
           toolCallId: "eval-transcript-edit-1",
           state: "output-available",
-          input: { filePath: "/tmp/openwork-eval/plan-tomorrow.md", oldString: "", newString: "" },
+          input: { filePath: "/tmp/get3w-eval/plan-tomorrow.md", oldString: "", newString: "" },
           output: "",
         },
         {
@@ -374,7 +374,7 @@ function createChatTranscriptEvalMessages(sessionId: string) {
           toolName: "read",
           toolCallId: "eval-transcript-read-1",
           state: "output-available",
-          input: { filePath: "/tmp/openwork-eval/meeting-notes.md" },
+          input: { filePath: "/tmp/get3w-eval/meeting-notes.md" },
           output: "",
         },
         {
@@ -422,22 +422,22 @@ function createTextActivityEvalMessages(sessionId: string): UIMessage[] {
         { type: "dynamic-tool", toolName: "bash", toolCallId: "eval-text-activity-ls", state: "output-available",
           input: { command: "ls -1 notes", description: "list the notes folder" }, output: "brief.md\nsummary.md\n" },
         { type: "dynamic-tool", toolName: "read", toolCallId: "eval-text-activity-read", state: "output-available",
-          input: { filePath: "/tmp/openwork-eval/notes/brief.md" }, output: "" },
+          input: { filePath: "/tmp/get3w-eval/notes/brief.md" }, output: "" },
         { type: "dynamic-tool", toolName: "grep", toolCallId: "eval-text-activity-grep", state: "output-available",
           input: { pattern: "pricing", path: "notes" }, output: "" },
         { type: "dynamic-tool", toolName: "bash", toolCallId: "eval-text-activity-gh", state: "output-available",
           input: { command: "gh pr view 5212 --repo example/project --json title,state,mergeable", description: "check the pull request" },
-          output: "{\n  \"mergeable\": \"MERGEABLE\",\n  \"state\": \"OPEN\",\n  \"title\": \"feat(server): add openwork-server web self-host command\"\n}" },
+          output: "{\n  \"mergeable\": \"MERGEABLE\",\n  \"state\": \"OPEN\",\n  \"title\": \"feat(server): add get3w-server web self-host command\"\n}" },
         { type: "dynamic-tool", toolName: "write", toolCallId: "eval-text-activity-write", state: "output-available",
-          input: { filePath: "/tmp/openwork-eval/notes/summary.md", content: "# Summary\n\n- Lead with pricing.\n- Keep it short.\n" }, output: "" },
+          input: { filePath: "/tmp/get3w-eval/notes/summary.md", content: "# Summary\n\n- Lead with pricing.\n- Keep it short.\n" }, output: "" },
         { type: "dynamic-tool", toolName: "edit", toolCallId: "eval-text-activity-edit", state: "output-available",
-          input: { filePath: "/tmp/openwork-eval/notes/brief.md", oldString: "Introduce the old pricing.", newString: "Introduce the new pricing.\nMention the annual plan." }, output: "" },
+          input: { filePath: "/tmp/get3w-eval/notes/brief.md", oldString: "Introduce the old pricing.", newString: "Introduce the new pricing.\nMention the annual plan." }, output: "" },
         { type: "dynamic-tool", toolName: "bash", toolCallId: "eval-text-activity-fail", state: "output-error",
           input: { command: "infisical export --env dev --path /pricing", description: "export pricing secrets from Infisical" },
           errorText: "error: you must be logged in to run this command. Run infisical login first." },
-        { type: "dynamic-tool", toolName: "openwork-cloud_execute_capability", toolCallId: "eval-text-activity-capability", state: "output-available",
+        { type: "dynamic-tool", toolName: "get3w-cloud_execute_capability", toolCallId: "eval-text-activity-capability", state: "output-available",
           input: { name: "getOrg" }, output: JSON.stringify({ members: 2 }) },
-        { type: "text", text: "Your notes are summarised and the pricing line is fixed. PR opened: [#5212 feat(server): add openwork-server web self-host command](https://example.test/pull/5212)." },
+        { type: "text", text: "Your notes are summarised and the pricing line is fixed. PR opened: [#5212 feat(server): add get3w-server web self-host command](https://example.test/pull/5212)." },
       ],
       metadata: { opencode: { created: now + 1, completed: now + 95_001 } },
     },
@@ -458,7 +458,7 @@ function createConnectorToolCallEvalMessages(sessionId: string): UIMessage[] {
       role: "assistant",
       parts: [{
         type: "dynamic-tool",
-        toolName: "openwork-cloud_execute_capability",
+        toolName: "get3w-cloud_execute_capability",
         toolCallId: "eval-connector-google-workspace",
         state: "output-available",
         input: { name: "getCapabilitiesGoogleWorkspaceCalendarEvents", body: {} },
@@ -494,7 +494,7 @@ function createSessionLifecycleEvalMessages(sessionId: string): UIMessage[] {
           toolName: "read",
           toolCallId: "eval-lifecycle-read",
           state: "input-streaming",
-          input: { filePath: "/tmp/openwork-eval/brief.md" },
+          input: { filePath: "/tmp/get3w-eval/brief.md" },
         },
       ],
       metadata: { opencode: { created: now + 1 } },
@@ -566,7 +566,7 @@ function createSubagentActivityEvalMessages(sessionId: string, childSessionId?: 
             prompt: "Reproduce the Azure failure in isolation.",
             subagent_type: "executor-deep",
           },
-          ...(childSessionId ? { callProviderMetadata: { openwork: { childSessionId } } } : {}),
+          ...(childSessionId ? { callProviderMetadata: { get3w: { childSessionId } } } : {}),
         },
       ],
       metadata: { opencode: { created: now + 1 } },
@@ -643,7 +643,7 @@ function createSubagentTrackerEvalMessages(sessionId: string, scenario: Subagent
           toolName: "task",
           toolCallId: `eval-tracker-${scenario}-${index}`,
           input: { description: entry.description, prompt: entry.description, subagent_type: entry.agent },
-          callProviderMetadata: { openwork: { childSessionId: entry.childSessionId } },
+          callProviderMetadata: { get3w: { childSessionId: entry.childSessionId } },
         };
         if (entry.state === "done") return { ...base, state: "output-available" as const, output: "Finished." };
         if (entry.state === "error") return { ...base, state: "output-error" as const, errorText: "Task failed: 3 tests did not pass." };
@@ -709,8 +709,8 @@ function createImageLightboxEvalMessages(sessionId: string): UIMessage[] {
 }
 
 export type SessionSurfaceProps = {
-  client: OpenworkServerClient;
-  environmentClient?: OpenworkServerClient | null;
+  client: Get3wServerClient;
+  environmentClient?: Get3wServerClient | null;
   workspaceId: string;
   workspaceRoot: string;
   sandboxBackend?: string | null;
@@ -719,7 +719,7 @@ export type SessionSurfaceProps = {
   isControlTarget: boolean;
   chatPane?: "primary" | "secondary";
   opencodeBaseUrl: string;
-  openworkToken: string;
+  get3wToken: string;
   developerMode: boolean;
   modelLabel: string;
   onModelClick: (sessionId?: string) => void;
@@ -743,9 +743,9 @@ export type SessionSurfaceProps = {
   gatewayCloudProviderIds?: ReadonlyMap<string, string>;
   gatewayUsageProviderScope?: number | null;
   /** Den/import includes Get3W Models for this org member (not just local sync). */
-  openWorkModelsEntitled?: boolean;
+  get3wModelsEntitled?: boolean;
   /** The server is waiting to reload this workspace with Get3W Models. */
-  openWorkModelsSyncing?: boolean;
+  get3wModelsSyncing?: boolean;
   onRefreshOrganizationModels?: () => void | Promise<void>;
   modelOptions?: readonly ModelOption[];
   onModelPickerOpenChange: (open: boolean) => void;
@@ -1120,7 +1120,7 @@ function composerSessionHasContent(state: ComposerSessionState | undefined) {
   ));
 }
 
-function hiddenMessageCount(snapshot: OpenworkSessionHistory, revertMessageId: string): number {
+function hiddenMessageCount(snapshot: Get3wSessionHistory, revertMessageId: string): number {
   const index = snapshot.messages.findIndex((message) => message.info.id === revertMessageId);
   return index < 0 ? snapshot.messages.length : snapshot.messages.length - index;
 }
@@ -1264,7 +1264,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       workspaceId: props.workspaceId,
       workspaceRoot: props.workspaceRoot,
       opencodeBaseUrl: props.opencodeBaseUrl,
-      openworkToken: props.openworkToken,
+      get3wToken: props.get3wToken,
       client: props.client,
       agent: sessionAgent.selectedAgent,
       variant: props.modelVariant,
@@ -1277,7 +1277,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     props.environmentRuntimeKey,
     props.modelVariant,
     props.opencodeBaseUrl,
-    props.openworkToken,
+    props.get3wToken,
     sessionAgent.selectedAgent,
     props.selectedModel,
     props.sessionId,
@@ -1342,12 +1342,12 @@ export function SessionSurface(props: SessionSurfaceProps) {
   activeSessionOwnerRef.current = sessionOwner;
   const snapshotTargetRef = useRef<NativeSessionSnapshotTarget>({
     owner: sessionOwner,
-    endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.openworkToken },
+    endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.get3wToken },
     sessionId: props.sessionId,
   });
   snapshotTargetRef.current = {
     owner: sessionOwner,
-    endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.openworkToken },
+    endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.get3wToken },
     sessionId: props.sessionId,
   };
   const [ownedError, setOwnedError] = useState<{ owner: string; error: SessionError } | null>(null);
@@ -1361,7 +1361,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   // Terminal invariant: an accepted admission that reached idle with no
   // assistant result surfaces a bounded recovery card instead of plain idle.
   const [admissionOutcomeUnresolved, setAdmissionOutcomeUnresolved] = useState(false);
-  const [rendered, setRendered] = useState<{ owner: string; sessionId: string; snapshot: OpenworkSessionHistory } | null>(null);
+  const [rendered, setRendered] = useState<{ owner: string; sessionId: string; snapshot: Get3wSessionHistory } | null>(null);
   const [toolSkills, setToolSkills] = useState<SkillCard[]>([]);
   const [toolMcpServers, setToolMcpServers] = useState<McpServerEntry[]>([]);
   const [toolMcpStatus, setToolMcpStatus] = useState<string | null>(null);
@@ -1397,13 +1397,13 @@ export function SessionSurface(props: SessionSurfaceProps) {
   const composerShellRef = useRef<HTMLDivElement>(null);
   const opencodeClient = useMemo(
     () => isOpencodeV2BaseUrl(props.opencodeBaseUrl)
-      ? createClientV2(props.opencodeBaseUrl, props.workspaceRoot || undefined, { token: props.openworkToken })
-      : createClient(props.opencodeBaseUrl, props.workspaceRoot.trim() || undefined, { token: props.openworkToken, mode: "openwork" }),
-    [props.opencodeBaseUrl, props.openworkToken, props.workspaceRoot],
+      ? createClientV2(props.opencodeBaseUrl, props.workspaceRoot || undefined, { token: props.get3wToken })
+      : createClient(props.opencodeBaseUrl, props.workspaceRoot.trim() || undefined, { token: props.get3wToken, mode: "get3w" }),
+    [props.opencodeBaseUrl, props.get3wToken, props.workspaceRoot],
   );
   const interruptionClient = useMemo(
-    () => createSessionInterruptionClient(props.opencodeBaseUrl, opencodeClient, props.workspaceRoot, props.openworkToken),
-    [opencodeClient, props.opencodeBaseUrl, props.openworkToken, props.workspaceRoot],
+    () => createSessionInterruptionClient(props.opencodeBaseUrl, opencodeClient, props.workspaceRoot, props.get3wToken),
+    [opencodeClient, props.opencodeBaseUrl, props.get3wToken, props.workspaceRoot],
   );
 
   const transcriptQueryKey = useMemo(
@@ -1415,7 +1415,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     [props.workspaceId, props.sessionId],
   );
   const useDesktopLoopbackSnapshotRetry = isDesktopRuntime()
-    && isLoopbackOpenworkServerUrl(props.opencodeBaseUrl);
+    && isLoopbackGet3wServerUrl(props.opencodeBaseUrl);
   const readSnapshot = useCallback(async (signal: AbortSignal, window?: OpeningHistoryWindow, options?: { desktopTransport: "main" }) => {
       if (evalSnapshotFailureRef.current) {
         throw new Error("eval: forced session snapshot failure");
@@ -1431,13 +1431,13 @@ export function SessionSurface(props: SessionSurfaceProps) {
           { ...window, signal },
         )
         : await opencodeSessionNative.composeNativeSessionHistory(
-          { opencodeBaseUrl: props.opencodeBaseUrl, token: props.openworkToken, desktopTransport: options?.desktopTransport },
+          { opencodeBaseUrl: props.opencodeBaseUrl, token: props.get3wToken, desktopTransport: options?.desktopTransport },
           props.sessionId,
           { ...window, signal },
         );
       markSessionSnapshotFetchStart(item, startedAt);
       return item;
-  }, [props.opencodeBaseUrl, props.openworkToken, props.sessionId, sessionOwner, useDesktopLoopbackSnapshotRetry]);
+  }, [props.opencodeBaseUrl, props.get3wToken, props.sessionId, sessionOwner, useDesktopLoopbackSnapshotRetry]);
   const readOpening = useCallback(async (signal: AbortSignal, window: OpeningHistoryWindow) => {
     if (evalSnapshotFailureRef.current) throw new Error("eval: forced session snapshot failure");
     const startedAt = Date.now();
@@ -1445,28 +1445,28 @@ export function SessionSurface(props: SessionSurfaceProps) {
     // retained read never follows a later owner. Its bounded retry only covers
     // transient failures; permanent ones settle immediately into Retry.
     const target = { owner: sessionOwner, sessionId: props.sessionId,
-      endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.openworkToken } };
+      endpoint: { opencodeBaseUrl: props.opencodeBaseUrl, token: props.get3wToken } };
     const item = await opencodeSessionNative.composeNativeSessionHistoryWithRetry(sessionOwner, () => target, { ...window, signal });
     markSessionSnapshotFetchStart(item, startedAt);
     return item;
-  }, [props.opencodeBaseUrl, props.openworkToken, props.sessionId, sessionOwner]);
+  }, [props.opencodeBaseUrl, props.get3wToken, props.sessionId, sessionOwner]);
   const readLatest = useCallback(async (signal: AbortSignal, options?: { desktopTransport: "main" }) => {
-    const endpoint = { opencodeBaseUrl: props.opencodeBaseUrl, token: props.openworkToken, ...options };
+    const endpoint = { opencodeBaseUrl: props.opencodeBaseUrl, token: props.get3wToken, ...options };
     const [session, messages] = await Promise.all([
       opencodeSessionNative.getNativeSession(endpoint, props.sessionId, { signal }),
       opencodeSessionNative.getNativeSessionMessages(endpoint, props.sessionId, { signal, limit: LATEST_HISTORY_WINDOW }),
     ]);
     return { session, messages };
-  }, [props.opencodeBaseUrl, props.openworkToken, props.sessionId]);
-  const snapshotOwnerRef = useRef({ queryKey: snapshotQueryKey, owner: sessionOwner, authToken: props.openworkToken });
+  }, [props.opencodeBaseUrl, props.get3wToken, props.sessionId]);
+  const snapshotOwnerRef = useRef({ queryKey: snapshotQueryKey, owner: sessionOwner, authToken: props.get3wToken });
   const snapshotOwnerMatches = hashKey(snapshotOwnerRef.current.queryKey) !== hashKey(snapshotQueryKey)
-    || snapshotOwnerRef.current.owner === sessionOwner && snapshotOwnerRef.current.authToken === props.openworkToken;
+    || snapshotOwnerRef.current.owner === sessionOwner && snapshotOwnerRef.current.authToken === props.get3wToken;
   const metadataQueryKey = useMemo(() => sessionMetadataKey({ workspaceId: props.workspaceId,
-    baseUrl: props.opencodeBaseUrl, openworkToken: props.openworkToken }, props.sessionId),
-  [props.workspaceId, props.opencodeBaseUrl, props.openworkToken, props.sessionId]);
-  const openingHistory = useOpeningSessionHistory({ owner: sessionOwner, runtimeOwner, sessionId: props.sessionId, authToken: props.openworkToken,
+    baseUrl: props.opencodeBaseUrl, get3wToken: props.get3wToken }, props.sessionId),
+  [props.workspaceId, props.opencodeBaseUrl, props.get3wToken, props.sessionId]);
+  const openingHistory = useOpeningSessionHistory({ owner: sessionOwner, runtimeOwner, sessionId: props.sessionId, authToken: props.get3wToken,
     ignoreCached: !snapshotOwnerMatches, metadataQueryKey, snapshotQueryKey, transcriptQueryKey, readSnapshot, readOpening, readLatest });
-  const snapshotQuery = useQuery<OpenworkSessionHistory>({
+  const snapshotQuery = useQuery<Get3wSessionHistory>({
     queryKey: snapshotQueryKey,
     queryFn: ({ signal }) => openingHistory.readFullSnapshot(signal),
     enabled: openingHistory.backgroundReady || findOwned,
@@ -1479,12 +1479,12 @@ export function SessionSurface(props: SessionSurfaceProps) {
   const historyViewOwner = JSON.stringify([sessionOwner, openingHistory.options.queryKey[2]]);
   useEffect(() => {
     const previous = snapshotOwnerRef.current;
-    snapshotOwnerRef.current = { queryKey: snapshotQueryKey, owner: sessionOwner, authToken: props.openworkToken };
+    snapshotOwnerRef.current = { queryKey: snapshotQueryKey, owner: sessionOwner, authToken: props.get3wToken };
     if (hashKey(previous.queryKey) !== hashKey(snapshotQueryKey)
-      || previous.owner === sessionOwner && previous.authToken === props.openworkToken) return;
+      || previous.owner === sessionOwner && previous.authToken === props.get3wToken) return;
     void queryClient.resetQueries({ queryKey: snapshotQueryKey, exact: true });
     void queryClient.resetQueries({ queryKey: transcriptQueryKey, exact: true });
-  }, [queryClient, sessionOwner, props.openworkToken, snapshotQueryKey, transcriptQueryKey]);
+  }, [queryClient, sessionOwner, props.get3wToken, snapshotQueryKey, transcriptQueryKey]);
 
   const fullSnapshot = snapshotOwnerMatches && snapshotQuery.data?.session.id === props.sessionId ? snapshotQuery.data : null;
   const hasFullHistory = snapshotOwnerMatches && openingHistory.complete;
@@ -1581,7 +1581,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
         currentSnapshotId: currentSnapshot?.session.id ?? null,
         intendedSessionId: props.sessionId,
         opencodeBaseUrl: inspectorOpencodeBaseUrl,
-        tokenPresent: props.openworkToken.length > 0,
+        tokenPresent: props.get3wToken.length > 0,
       },
       error,
     }));
@@ -1594,7 +1594,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     pasteParts,
     currentSnapshot,
     inspectorOpencodeBaseUrl,
-    props.openworkToken,
+    props.get3wToken,
     props.sessionId,
     props.workspaceId,
     props.cloudMcpSubmissionState,
@@ -1749,7 +1749,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   useEffect(() => {
     renderedMessagesRef.current = renderedMessages;
   }, [renderedMessages]);
-  const seedMarkdownPrimitiveControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedMarkdownPrimitiveControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1771,7 +1771,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? seedMarkdownPrimitiveControlAction : null);
-  const setMermaidEvalThemeControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const setMermaidEvalThemeControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1789,7 +1789,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? setMermaidEvalThemeControlAction : null);
-  const seedMarkdownMathControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedMarkdownMathControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1813,7 +1813,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? seedMarkdownMathControlAction : null);
-  const seedChatTranscriptControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedChatTranscriptControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1830,7 +1830,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? seedChatTranscriptControlAction : null);
-  const seedTextActivityControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedTextActivityControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1847,7 +1847,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? seedTextActivityControlAction : null);
-  const seedConnectorToolCallControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedConnectorToolCallControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1863,7 +1863,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId]);
   useControlAction(props.isControlTarget ? seedConnectorToolCallControlAction : null);
-  const seedSessionErrorControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedSessionErrorControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1893,7 +1893,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId, setError]);
   useControlAction(props.isControlTarget ? seedSessionErrorControlAction : null);
-  const seedSessionLifecycleControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedSessionLifecycleControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1935,7 +1935,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId, props.workspaceId]);
   useControlAction(props.isControlTarget ? seedSessionLifecycleControlAction : null);
-  const seedSubagentActivityControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedSubagentActivityControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -1969,7 +1969,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId, props.workspaceId]);
   useControlAction(props.isControlTarget ? seedSubagentActivityControlAction : null);
-  const seedSubagentTrackerControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedSubagentTrackerControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -2014,7 +2014,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId, props.workspaceId]);
   useControlAction(props.isControlTarget ? seedSubagentTrackerControlAction : null);
-  const seedChatLoadingControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedChatLoadingControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -2036,7 +2036,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     };
   }, [props.sessionId, props.workspaceId]);
   useControlAction(props.isControlTarget ? seedChatLoadingControlAction : null);
-  const seedImageLightboxControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const seedImageLightboxControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -2197,7 +2197,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
     // A failed send stays visible for composer recovery; only snapshot failure invalidates the session transition.
     isError: snapshotQuery.isError || Boolean(openingHistory.openingError),
   });
-  const failSessionSnapshotControlAction = useMemo<OpenworkControlAction | null>(() => {
+  const failSessionSnapshotControlAction = useMemo<Get3wControlAction | null>(() => {
     if (!import.meta.env.DEV) return null;
 
     return {
@@ -2694,7 +2694,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       // passes the workspace root), so the abort must target the same scope —
       // without it the server resolves the default project, finds no live run,
       // and answers `200: false` while the stream keeps going (#2014).
-      const stopClient = createSessionInterruptionClient(props.opencodeBaseUrl, opencodeClient, props.workspaceRoot, props.openworkToken);
+      const stopClient = createSessionInterruptionClient(props.opencodeBaseUrl, opencodeClient, props.workspaceRoot, props.get3wToken);
       await interruptSessionTurn(props.opencodeBaseUrl, stopClient, props.sessionId,
         props.workspaceRoot.trim() || undefined, {
           admissionUnknown: phase.kind === "admission_unknown",
@@ -2717,7 +2717,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       pendingStopsRef.current.delete(sessionOwner);
       setPendingStopSessions([...pendingStopsRef.current]);
     }
-  }, [composerBusy, opencodeClient, openingHistory.refreshFullSnapshot, props.opencodeBaseUrl, props.openworkToken, props.sessionId, props.workspaceRoot, queryClient, sessionOwner, snapshotQueryKey, setError]);
+  }, [composerBusy, opencodeClient, openingHistory.refreshFullSnapshot, props.opencodeBaseUrl, props.get3wToken, props.sessionId, props.workspaceRoot, queryClient, sessionOwner, snapshotQueryKey, setError]);
 
   const checkUnknownAdmission = useCallback(async (notify = false) => {
     const phase = getQueuedDrainState(props.sessionId).phase;
@@ -2994,12 +2994,12 @@ export function SessionSurface(props: SessionSurfaceProps) {
 
   const typeComposerText = useCallback(async (text: string, revertMessageId?: string | null) => {
     if (archived || !archiveStateKnown || sessionWorkHeld(props.opencodeBaseUrl, props.sessionId)) return;
-    window.dispatchEvent(new Event("openwork:focusPrompt"));
+    window.dispatchEvent(new Event("get3w:focusPrompt"));
     replaceComposerDraft(props.sessionId, text, revertMessageId);
     await waitForControl(40);
   }, [archived, archiveStateKnown, props.opencodeBaseUrl, props.sessionId, replaceComposerDraft]);
 
-  const composerSetTextControlAction = useMemo<OpenworkControlAction>(() => ({
+  const composerSetTextControlAction = useMemo<Get3wControlAction>(() => ({
     id: "composer.set_text",
     label: "Type into the composer",
     description: "Replace the draft of the composer the person currently has focused and type the supplied text visibly. Focus-bound: it targets whichever pane is focused when it runs, never a session by id. To message another session use session.send.",
@@ -3020,7 +3020,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   }), [archived, archiveStateKnown, archiveHeld, attachments, buildDraft, props.onDraftChange, typeComposerText]);
   useControlAction(props.isControlTarget ? composerSetTextControlAction : null);
 
-  const composerSendControlAction = useMemo<OpenworkControlAction>(() => ({
+  const composerSendControlAction = useMemo<Get3wControlAction>(() => ({
     id: "composer.send",
     label: "Send the composer prompt",
     description: "Send the draft of the composer the person currently has focused to that session. Focus-bound: if focus moved since composer.set_text, the draft goes to the newly focused session. Disabled while that session is mid-turn. To message another session use session.send.",
@@ -3034,7 +3034,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   }), [archived, archiveStateKnown, archiveHeld, attachments.length, draft, handleSend, model.transitionState, queuedDrainState.phase.kind, sessionModelUnavailable]);
   useControlAction(props.isControlTarget ? composerSendControlAction : null);
 
-  const composerStopControlAction = useMemo<OpenworkControlAction>(() => ({
+  const composerStopControlAction = useMemo<Get3wControlAction>(() => ({
     id: "composer.stop",
     label: "Stop the current run",
     description: "Stop the run of the session the person currently has focused. Focus-bound: it never targets a session by id.",
@@ -3081,7 +3081,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
         name: entry.name,
         config: entry.config as McpServerEntry["config"],
         source: entry.source,
-        origin: entry.name === "openwork-cloud" ? "openwork-connect" : "local",
+        origin: entry.name === "get3w-cloud" ? "get3w-connect" : "local",
       } satisfies McpServerEntry));
 
     const servers = localServers;
@@ -3348,10 +3348,10 @@ export function SessionSurface(props: SessionSurfaceProps) {
 
   useEffect(() => {
     const refreshConnectionInventory = () => {
-      setToolSkills((current) => current.filter((skill) => skill.origin !== "openwork-connect"));
-      setToolMcpServers((current) => current.filter((server) => server.origin !== "openwork-connect"));
+      setToolSkills((current) => current.filter((skill) => skill.origin !== "get3w-connect"));
+      setToolMcpServers((current) => current.filter((server) => server.origin !== "get3w-connect"));
       setToolMcpStatuses((current) => Object.fromEntries(
-        Object.entries(current).filter(([key]) => !key.startsWith("openwork-connect:")),
+        Object.entries(current).filter(([key]) => !key.startsWith("get3w-connect:")),
       ));
     };
     window.addEventListener(denSettingsChangedEvent, refreshConnectionInventory);
@@ -3499,7 +3499,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       });
   }, [archived, archiveStateKnown, openingHistory.runWithFullSnapshot, props.onRestoreRevertedSession, props.opencodeBaseUrl, props.sessionId, queryClient, snapshotQueryKey, restoringRevertedMessages, sessionOwner, setError]);
 
-  const sessionScrollTopControlAction = useMemo<OpenworkControlAction>(() => ({
+  const sessionScrollTopControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.scroll_top",
     label: "Go to the top of the session",
     description: "Scroll the visible session transcript to the first messages.",
@@ -3512,7 +3512,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   }), [sessionScroll.scrollToTop]);
   useControlAction(props.isControlTarget ? sessionScrollTopControlAction : null);
 
-  const sessionScrollBottomControlAction = useMemo<OpenworkControlAction>(() => ({
+  const sessionScrollBottomControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.scroll_bottom",
     label: "Go to the bottom of the session",
     description: "Scroll the visible session transcript to the newest messages and composer area.",
@@ -3525,7 +3525,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   }), [sessionScroll.jumpToLatest]);
   useControlAction(props.isControlTarget ? sessionScrollBottomControlAction : null);
 
-  const sessionLatestMessageControlAction = useMemo<OpenworkControlAction>(() => ({
+  const sessionLatestMessageControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.latest_message",
     label: "Read the latest session message",
     description: "Return the latest visible message in the current session transcript.",
@@ -3546,7 +3546,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
   }), [props.sessionId, renderedMessages]);
   useControlAction(props.isControlTarget ? sessionLatestMessageControlAction : null);
 
-  const sessionReadTranscriptControlAction = useMemo<OpenworkControlAction>(() => ({
+  const sessionReadTranscriptControlAction = useMemo<Get3wControlAction>(() => ({
     id: "session.read_transcript",
     label: "Read the current session transcript",
     description: "Return the last messages of the session on screen (the current one only) as readable text, with its session ID and message count. To read any other session, use session.read with its sessionId.",
@@ -3846,8 +3846,8 @@ export function SessionSurface(props: SessionSurfaceProps) {
         statusLabel={statusLabel(liveStatus, chatStreaming)}
         modelPickerOpen={modelPickerOpen}
         selectedModel={sessionModel.selectedModel}
-        openWorkModelsEntitled={props.openWorkModelsEntitled}
-        openWorkModelsSyncing={props.openWorkModelsSyncing}
+        get3wModelsEntitled={props.get3wModelsEntitled}
+        get3wModelsSyncing={props.get3wModelsSyncing}
         onRefreshOrganizationModels={props.onRefreshOrganizationModels}
         modelOptions={props.modelOptions}
         onModelPickerOpenChange={handleModelPickerOpenChange}
@@ -3952,7 +3952,7 @@ export function SessionSurface(props: SessionSurfaceProps) {
       {/* Error display moved inline into the session conversation area */}
       {props.developerMode && props.isControlTarget ? <SessionDebugPanel
         client={props.client} workspaceId={props.workspaceId} workspaceRoot={props.workspaceRoot}
-        opencodeBaseUrl={props.opencodeBaseUrl} openworkToken={props.openworkToken}
+        opencodeBaseUrl={props.opencodeBaseUrl} get3wToken={props.get3wToken}
         thread={{
           model, status: liveStatus.type, messageCount: renderedMessages.length, todoCount: props.todos?.length ?? 0,
           modelLabel: sessionModel.modelLabel, threadTitle: snapshot?.session.title ?? "Focused thread",

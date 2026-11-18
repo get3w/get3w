@@ -23,7 +23,7 @@ function specFor(provider: SandboxProvider, key: string, extra: Partial<SandboxS
     workerId: `worker-${key}`,
     idempotencyKey: `conformance-${key}`,
     image: provider.currentImage(),
-    labels: { "openwork.den.conformance": key },
+    labels: { "get3w.den.conformance": key },
     env: provider.describe().createEnvironment === false ? {} : { DEN_CONFORMANCE: "1" },
     storage: [],
     exposePorts: [8787],
@@ -57,7 +57,7 @@ export function sandboxProviderConformanceCases(
   options: ConformanceOptions = {},
 ): ConformanceCase[] {
   const timeout = { timeoutMs: options.timeoutMs ?? 30_000 }
-  const volumeName = options.volumeName ?? "openwork-conformance"
+  const volumeName = options.volumeName ?? "get3w-conformance"
   const trivialCommand = options.trivialCommand ?? "true"
 
   return [

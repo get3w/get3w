@@ -93,7 +93,7 @@ test("account web settings opens the exact URL and reports browser failures", as
   const { openGet3wSignIn } = await import("../src/react-app/domains/cloud/get3w-account");
   const opened: string[] = [];
   let fail = false;
-  Reflect.set(window, "__OPENWORK_ELECTRON__", { shell: { openExternal: async (url: string) => {
+  Reflect.set(window, "__GET3W_ELECTRON__", { shell: { openExternal: async (url: string) => {
     opened.push(url);
     return fail ? { ok: false, error: "Browser unavailable" } : { ok: true };
   } } });
@@ -116,7 +116,7 @@ test("account web settings opens the exact URL and reports browser failures", as
     await act(async () => { button?.click(); });
     expect(document.querySelector('[role="alert"]')).toBeNull();
   } finally {
-    delete window.__OPENWORK_ELECTRON__;
+    delete window.__GET3W_ELECTRON__;
     await fixture.cleanup();
   }
 });

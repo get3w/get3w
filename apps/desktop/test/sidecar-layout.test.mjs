@@ -19,7 +19,7 @@ const targets = [
 ];
 
 function fixture(t, platform) {
-  const root = mkdtempSync(path.join(tmpdir(), "openwork-sidecar-layout-"));
+  const root = mkdtempSync(path.join(tmpdir(), "get3w-sidecar-layout-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const directory = platform === "darwin"
     ? path.join(root, "Get3W.app", "Contents", "Resources", "sidecars")

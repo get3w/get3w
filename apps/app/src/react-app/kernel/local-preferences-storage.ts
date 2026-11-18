@@ -1,10 +1,10 @@
-export const LOCAL_PREFERENCES_KEY = "openwork.preferences";
+export const LOCAL_PREFERENCES_KEY = "get3w.preferences";
 export const DEFAULT_SHOW_THINKING = false;
 
-export type LinkOpenDestination = "openwork" | "external";
+export type LinkOpenDestination = "get3w" | "external";
 
 export function isLinkOpenDestination(value: unknown): value is LinkOpenDestination {
-  return value === "openwork" || value === "external";
+  return value === "get3w" || value === "external";
 }
 
 /**

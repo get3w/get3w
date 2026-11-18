@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import type { BuiltMcpAppCatalogEntry } from "../src/app/lib/built-mcp-app-catalog";
-import type { SavedAppSummary } from "@openwork/types/workflows";
+import type { SavedAppSummary } from "@get3w/types/workflows";
 
 const ownsDom = !GlobalRegistrator.isRegistered;
 if (ownsDom) GlobalRegistrator.register({ url: "http://localhost/" });

@@ -11,7 +11,7 @@ const {Client}=await import(req.resolve('@modelcontextprotocol/sdk/client/index.
 const {StreamableHTTPClientTransport}=await import(req.resolve('@modelcontextprotocol/sdk/client/streamableHttp.js'));
 let raw='';for await(const chunk of process.stdin)raw+=chunk;
 const input=JSON.parse(raw);raw='';
-const root=await mkdtemp(path.join(os.tmpdir(),'openwork-native-mcp-')),key=randomBytes(32);
+const root=await mkdtemp(path.join(os.tmpdir(),'get3w-native-mcp-')),key=randomBytes(32);
 const storage={isAsyncEncryptionAvailable:async()=>true,getSelectedStorageBackend:()=> 'test-aes-gcm',encryptStringAsync:async text=>{const iv=randomBytes(12),c=createCipheriv('aes-256-gcm',key,iv);return Buffer.concat([iv,c.update(text),c.final(),c.getAuthTag()]);},decryptStringAsync:async value=>{const d=createDecipheriv('aes-256-gcm',key,value.subarray(0,12));d.setAuthTag(value.subarray(-16));return Buffer.concat([d.update(value.subarray(12,-16)),d.final()]).toString();}};
 const profile=fileURLToPath(new URL('../../../../.local/desktop-m1/electron/',import.meta.url));
 const credentials=JSON.parse(await readFile(path.join(profile,'get3w-server-tokens.json'),'utf8')).credentials;

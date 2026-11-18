@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { withBlocks } from "@openwork/sandbox"
+import { withBlocks } from "@get3w/sandbox"
 import { createDaytonaProvider, type DaytonaClient, type DaytonaSandboxClient, type DaytonaProviderConfig, type DaytonaCreateParams } from "./index.js"
 import { memorySnapshots } from "./memory-snapshots.js"
 function fixture(hang = false, config: Partial<DaytonaProviderConfig> = {}, imageClass = "linux-vm", pauseState = "paused", volumeGet: DaytonaClient["volume"]["get"] = async () => ({ id: "volume", state: "ready" })) {

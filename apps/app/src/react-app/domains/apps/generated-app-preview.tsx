@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { GeneratedArtifactViewRevision, WorkflowArtifactPayload } from "@openwork/types/workflows";
+import type { GeneratedArtifactViewRevision, WorkflowArtifactPayload } from "@get3w/types/workflows";
 import { McpAppSandboxView, type McpAppSandboxViewProps } from "@/components/chat/mcp-app-frame";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/react-app/shell/workspace-provider";
@@ -19,9 +19,9 @@ export function GeneratedAppPreview({ html, payload, title, revision, presentati
   title: string;
   revision: GeneratedArtifactViewRevision;
 }) {
-  const { openworkServerClient, workspaceId } = useWorkspace();
+  const { get3wServerClient, workspaceId } = useWorkspace();
   const resource = useMemo(() => ({
-    serverName: "openwork",
+    serverName: "get3w",
     toolName: `render_artifact_${revision.artifactViewId}`,
     resourceUri: revision.resourceUri,
     html,
@@ -29,9 +29,9 @@ export function GeneratedAppPreview({ html, payload, title, revision, presentati
     prefersBorder: true,
   }), [html, revision]);
   const result = useMemo(() => ({ content: [], structuredContent: payload }), [payload]);
-  const origin = useMemo(() => openworkServerClient
-    ? { client: openworkServerClient, workspaceId, sessionId: null, readOnly: true }
-    : null, [openworkServerClient, workspaceId]);
+  const origin = useMemo(() => get3wServerClient
+    ? { client: get3wServerClient, workspaceId, sessionId: null, readOnly: true }
+    : null, [get3wServerClient, workspaceId]);
   if (!origin || !workspaceId) {
     return <>
       <p role="status" className="text-sm text-muted-foreground">{t("ui.37f4cc8dea62")}</p>

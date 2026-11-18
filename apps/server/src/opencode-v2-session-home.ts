@@ -154,7 +154,7 @@ export function createV2SessionHomes(
     const session = nativeSession(value);
     const directory = nativeSessionDirectory(value);
     if (!session || !home || !directory || home === await canonical(directory)) return value;
-    const info = { ...session, openworkHomeDirectory: home };
+    const info = { ...session, get3wHomeDirectory: home };
     return isRecord(value) && isRecord(value.info) ? { ...value, info } : info;
   };
   return { canonical, stored, remember, created, resolve, project };

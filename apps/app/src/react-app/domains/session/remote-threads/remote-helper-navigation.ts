@@ -18,7 +18,7 @@ export type RemoteHelperOrigin = {
   parentTitle: string | null
 }
 
-const STORAGE_PREFIX = "openwork.remoteHelper."
+const STORAGE_PREFIX = "get3w.remoteHelper."
 const memory = new Map<string, RemoteHelperOrigin>()
 const drafts = new Map<string, string>()
 

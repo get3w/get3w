@@ -105,9 +105,9 @@ export function cloudWorkspaceTakeoverCopy(input: {
 export function formatCloudWorkspaceVersion(version: string | null): string | null {
   const trimmed = version?.trim() ?? "";
   if (!trimmed) return null;
-  const openworkPrefix = "openwork-";
-  if (!trimmed.toLowerCase().startsWith(openworkPrefix)) return trimmed;
-  const withoutPrefix = trimmed.slice(openworkPrefix.length);
+  const get3wPrefix = "get3w-";
+  if (!trimmed.toLowerCase().startsWith(get3wPrefix)) return trimmed;
+  const withoutPrefix = trimmed.slice(get3wPrefix.length);
   return withoutPrefix.toLowerCase().startsWith("v") ? withoutPrefix : `v${withoutPrefix}`;
 }
 

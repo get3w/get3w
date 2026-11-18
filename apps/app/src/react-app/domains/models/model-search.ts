@@ -1,5 +1,5 @@
 import { t } from "@/i18n";
-import { FAST_DEFAULT_VARIANT, fastVariantId } from "@openwork/types/cloud-model-fast";
+import { FAST_DEFAULT_VARIANT, fastVariantId } from "@get3w/types/cloud-model-fast";
 import type { ModelOption } from "@/app/types";
 import { modelTitle } from "./model-catalog";
 
@@ -38,12 +38,12 @@ const FAST_WORDS = new Set(["fast", "faster", "priority"]);
 
 /** Providers people name in a search, so one that is not connected is still recognised. */
 const KNOWN_PROVIDERS: Record<string, string> = {
-  anthropic: "Anthropic", openai: "OpenAI", google: "Google", openrouter: "OpenRouter", openwork: "Get3W",
+  anthropic: "Anthropic", openai: "OpenAI", google: "Google", openrouter: "OpenRouter", get3w: "Get3W",
   ollama: "Ollama", mistral: "Mistral", xai: "xAI", groq: "Groq", deepseek: "DeepSeek", bedrock: "Amazon Bedrock",
   azure: "Azure", vertex: "Google Vertex", together: "Together AI", fireworks: "Fireworks", cerebras: "Cerebras",
   perplexity: "Perplexity", lmstudio: "LM Studio", zen: "OpenCode Zen",
 };
-const ALIASES: Record<string, string> = { ow: "openwork", oai: "openai", or: "openrouter", aws: "bedrock", gcp: "vertex" };
+const ALIASES: Record<string, string> = { ow: "get3w", oai: "openai", or: "openrouter", aws: "bedrock", gcp: "vertex" };
 /** A model family answers for its maker wherever it is served: "anthropic" finds Claude on OpenRouter. */
 const FAMILIES: Record<string, readonly string[]> = {
   anthropic: ["claude"], openai: ["gpt", "o1", "o3", "o4", "codex"], google: ["gemini", "gemma"],
@@ -124,8 +124,8 @@ function providerIndex(options: readonly ModelOption[]): ProviderHint[] {
   for (const option of options) {
     const label = option.description?.trim() || option.providerID;
     const words = [...nameWords(option.providerID), ...nameWords(label)];
-    // Get3W Models answer to "openwork"/"ow".
-    const key = option.providerID === "openwork" ? "openwork"
+    // Get3W Models answer to "get3w"/"ow".
+    const key = option.providerID === "get3w" ? "get3w"
       : Object.keys(KNOWN_PROVIDERS).find((known) => words.includes(known) || normalize(KNOWN_PROVIDERS[known]) === normalize(label)) ?? normalize(label);
     add(key, KNOWN_PROVIDERS[key] ?? label, words, option.providerID);
   }

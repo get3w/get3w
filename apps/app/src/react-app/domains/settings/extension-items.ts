@@ -1,4 +1,4 @@
-import { getMcpServerName, isBuiltInOpenWorkExtension, type McpDirectoryInfo } from "../../../app/constants";
+import { getMcpServerName, isBuiltInGet3WExtension, type McpDirectoryInfo } from "../../../app/constants";
 import type { CloudImportedPlugin, CloudImportedPluginFile } from "../../../app/cloud/import-state";
 type PendingCloudPluginChange = "modified" | "removed";
 import { evaluateEnablement, type EnablementContext } from "../../../app/enablement";
@@ -48,16 +48,16 @@ export type ExtensionItemBuildInput = {
 };
 
 const MCP_IMPORT_PATH_PREFIX = "opencode.jsonc#mcp.";
-const OPENWORK_PROVIDED_SKILL_NAMES = new Set([
+const GET3W_PROVIDED_SKILL_NAMES = new Set([
   "workspace-guide",
   "skill-creator",
 ]);
 
-export function isOpenworkProvidedSkill(skill: Pick<SkillCard, "name" | "path">) {
+export function isGet3wProvidedSkill(skill: Pick<SkillCard, "name" | "path">) {
   const normalizedName = skill.name.trim().toLowerCase();
   const normalizedPath = skill.path.replace(/\\/g, "/").toLowerCase();
   return normalizedPath.includes("/.opencode/skills/") &&
-    OPENWORK_PROVIDED_SKILL_NAMES.has(normalizedName);
+    GET3W_PROVIDED_SKILL_NAMES.has(normalizedName);
 }
 
 function setupStateFromEnablement(enablement: { active: boolean; results: EnablementResult[] } | null): ExtensionSetupState {
@@ -94,7 +94,7 @@ function childKeysForPlugin(plugin: CloudImportedPlugin) {
 }
 
 export function buildExtensionItems(input: ExtensionItemBuildInput) {
-  const builtInItems = input.quickConnect.filter(isBuiltInOpenWorkExtension).map((entry): ExtensionItem => {
+  const builtInItems = input.quickConnect.filter(isBuiltInGet3WExtension).map((entry): ExtensionItem => {
     const enablement = entry.extensionManifest?.enablement
       ? evaluateEnablement(entry.extensionManifest.enablement, input.enablementContext)
       : null;
@@ -146,7 +146,7 @@ export function buildExtensionItems(input: ExtensionItemBuildInput) {
   }
 
   const standaloneMcpEntries = input.quickConnect.filter((entry) => {
-    if (isBuiltInOpenWorkExtension(entry)) return false;
+    if (isBuiltInGet3WExtension(entry)) return false;
     const serverName = getMcpServerName(entry);
     if (groupedMcpServerNames.has(serverName)) return false;
     return input.mcpServers.some((server) => server.name === serverName);

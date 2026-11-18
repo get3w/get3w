@@ -149,7 +149,7 @@ function optionHomeDir(opts) {
   return fromEnv || homedir();
 }
 
-function defaultOpenworkConfigDir(opts) {
+function defaultGet3wConfigDir(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
@@ -164,31 +164,31 @@ function defaultOpenworkConfigDir(opts) {
   return paths.join(root, "get3w");
 }
 
-export function openworkConfigDir(opts) {
+export function get3wConfigDir(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
   const override = envValue(env, "GET3W_SERVER_CONFIG", opts);
   if (override) return paths.dirname(paths.resolve(override));
-  return defaultOpenworkConfigDir(opts);
+  return defaultGet3wConfigDir(opts);
 }
 
-export function openworkServerConfigPath(opts) {
+export function get3wServerConfigPath(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
   const override = envValue(env, "GET3W_SERVER_CONFIG", opts);
   if (override) return paths.resolve(override);
-  return paths.join(defaultOpenworkConfigDir(opts), "server.json");
+  return paths.join(defaultGet3wConfigDir(opts), "server.json");
 }
 
-export function openworkEnvStorePath(opts) {
+export function get3wEnvStorePath(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
   const override = envValue(env, "GET3W_ENV_STORE", opts);
   if (override) return paths.resolve(override);
-  return paths.join(defaultOpenworkConfigDir(opts), "env.json");
+  return paths.join(defaultGet3wConfigDir(opts), "env.json");
 }
 
 function safeConfigRoot(value, paths) {
@@ -272,7 +272,7 @@ export function legacyDesktopBootstrapPath(opts) {
   // Electron used os.homedir(). optionHomeDir accepts an explicit homeDir but
   // otherwise checks the same env variables before os.homedir(), so both legacy
   // locations continue to resolve for normal installs.
-  return paths.join(optionHomeDir(opts), ".config", "openwork", "desktop-bootstrap.json");
+  return paths.join(optionHomeDir(opts), ".config", "get3w", "desktop-bootstrap.json");
 }
 
 export function expandHomePath(value, opts) {
@@ -283,7 +283,7 @@ export function expandHomePath(value, opts) {
   return value;
 }
 
-export function openworkServerDataDir(opts) {
+export function get3wServerDataDir(opts) {
   const env = optionEnv(opts);
   const platform = optionPlatform(opts);
   const paths = pathApi(platform);
@@ -342,4 +342,48 @@ export function opencodeCacheDirs(opts) {
   if (xdgCacheHome) dirs.push(paths.join(xdgCacheHome, "opencode"));
   dirs.push(paths.join(optionHomeDir(opts), ".cache", "opencode"));
   return Array.from(new Set(dirs));
+}
+
+// Runtime-neutral project configuration. Machine grants never come from this file.
+export function get3wProjectConfig(value = {}) {
+  const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const workspace = object.workspace && typeof object.workspace === 'object' ? object.workspace : {};
+  return {
+    version: 1,
+    workspace: Object.fromEntries(['name'].filter(key => typeof workspace[key] === 'string').map(key => [key, workspace[key]])),
+    ...(typeof object.runtime === 'string' ? { runtime: object.runtime } : {}),
+  };
+}
+
+export function get3wProjectConfigPath(workspaceRoot) {
+  return path.join(workspaceRoot, 'get3w.json');
+}
+
+export async function readGet3wProjectConfig(workspaceRoot) {
+  const { readFile, writeFile } = await import('node:fs/promises');
+  try {
+    const value = JSON.parse(await readFile(get3wProjectConfigPath(workspaceRoot), 'utf8'));
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1) throw Error('Unsupported get3w.json format');
+    if (value.workspace !== undefined && (!value.workspace || typeof value.workspace !== 'object' || Array.isArray(value.workspace))) throw Error('Invalid get3w.json workspace');
+    if (value.runtime !== undefined && (typeof value.runtime !== 'string' || !value.runtime.trim())) throw Error('Invalid get3w.json runtime');
+    // Remove the retired field in place while preserving unrelated project keys.
+    if (value.workspace && Object.hasOwn(value.workspace, 'preset')) {
+      delete value.workspace.preset;
+      await writeFile(get3wProjectConfigPath(workspaceRoot), JSON.stringify(value, null, 2) + '\n', 'utf8');
+    }
+    return get3wProjectConfig(value);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+export async function ensureGet3wProjectConfig(workspaceRoot, seed = {}) {
+  const current = await readGet3wProjectConfig(workspaceRoot);
+  if (current) return current;
+  const { readFile, writeFile } = await import('node:fs/promises');
+  const next = get3wProjectConfig(seed);
+  try { await writeFile(get3wProjectConfigPath(workspaceRoot), JSON.stringify(next, null, 2) + '\n', { flag: 'wx' }); }
+  catch (error) { if (error.code !== 'EEXIST') throw error; return readGet3wProjectConfig(workspaceRoot); }
+  return next;
 }

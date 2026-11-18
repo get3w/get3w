@@ -65,7 +65,7 @@ const ollamaConfigFactory = (ctx: ExtensionConfigContext) => (
   />
 );
 
-registerExtensionConfig("openwork.ollama.settings", ollamaConfigFactory);
+registerExtensionConfig("get3w.ollama.settings", ollamaConfigFactory);
 registerExtensionConfig("ollama", ollamaConfigFactory);
 
 type OllamaModel = {

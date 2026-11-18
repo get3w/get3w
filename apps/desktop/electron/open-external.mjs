@@ -3,7 +3,7 @@ import { appendFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const DEFAULT_TIMEOUT_MS = 4000;
-export const EXTERNAL_OPEN_CAPTURE_FILENAME = "openwork-eval-external-opens.jsonl";
+export const EXTERNAL_OPEN_CAPTURE_FILENAME = "get3w-eval-external-opens.jsonl";
 
 export function shouldCaptureExternalOpens(isPackaged, env) {
   return isPackaged === false

@@ -150,13 +150,13 @@ export function AppBuilderStep({
   );
   const parts = [...(run.executions ?? []), ...(run.attempts ?? []), ...(run.discoveries ?? []), ...(run.preparation ? [run.preparation] : []), ...run.builds];
   const starts = parts.flatMap((part) =>
-    typeof part.callProviderMetadata?.openwork?.toolStartedAt === "number"
-      ? [part.callProviderMetadata.openwork.toolStartedAt]
+    typeof part.callProviderMetadata?.get3w?.toolStartedAt === "number"
+      ? [part.callProviderMetadata.get3w.toolStartedAt]
       : [],
   );
   const ends = parts.flatMap((part) =>
-    typeof part.callProviderMetadata?.openwork?.toolCompletedAt === "number"
-      ? [part.callProviderMetadata.openwork.toolCompletedAt]
+    typeof part.callProviderMetadata?.get3w?.toolCompletedAt === "number"
+      ? [part.callProviderMetadata.get3w.toolCompletedAt]
       : [],
   );
   // A persisted message timestamp also covers engines without per-tool timing.

@@ -109,7 +109,7 @@ export function SessionReferenceChip(props: { reference: SessionReferenceIdentit
   return (
     <a
       href={sessionReferenceHref(resolved)}
-      aria-label={`Open ${resolved.archived ? t("ui.dc57e10e5c6f") : "task"}: ${resolved.title}`}
+      aria-label={t(resolved.archived ? "activity.open.archived" : "activity.open.task", { name: resolved.title })}
       title={resolved.title}
       data-session-reference=""
       className="inline-flex max-w-full rounded-lg align-middle transition-colors hover:[&>span]:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
@@ -208,7 +208,7 @@ export function AttachmentFileChip(props: {
           type="button"
           className="flex min-w-0 items-center gap-2 text-left transition-opacity hover:opacity-80"
           onClick={props.onOpen}
-          title={`Open ${props.filename} in Artifacts`}
+          title={t("activity.open.artifacts", { name: props.filename })}
         >
           {content}
         </button>

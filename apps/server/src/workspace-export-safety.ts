@@ -330,10 +330,10 @@ function readExportRecord(value: unknown): Record<string, unknown> | null {
 
 /**
  * Strips machine-local blueprint materialization state (session ids created on
- * one machine) from an openwork config so exports stay portable.
+ * one machine) from an get3w config so exports stay portable.
  */
-export function sanitizeOpenworkTemplateConfig(openwork: Record<string, unknown> | null | undefined): Record<string, unknown> {
-  const next = cloneJson(openwork ?? {});
+export function sanitizeGet3wTemplateConfig(get3w: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const next = cloneJson(get3w ?? {});
   const blueprint = readExportRecord(next.blueprint);
   if (!blueprint) return next;
 

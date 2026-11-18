@@ -3,7 +3,7 @@ import type { ToolPart } from "@opencode-ai/sdk/v2/client";
 import {
   connectionActionAppSchemaVersion,
   connectionActionPayloadSchema,
-} from "@openwork/types/connection-action-app";
+} from "@get3w/types/connection-action-app";
 
 import { safeStringify } from "@/app/utils";
 import { normalizeErrorText } from "@/lib/error-text";
@@ -12,7 +12,7 @@ import { isComputerToolName } from "@/lib/computer-session-history";
 export function withToolAttachmentOwner(parts: UIMessage["parts"], toolCallId: string): UIMessage["parts"] {
   return parts.map(part => part.type === "file" ? {
     ...part,
-    providerMetadata: { ...part.providerMetadata, openwork: { ...part.providerMetadata?.openwork, toolCallId } },
+    providerMetadata: { ...part.providerMetadata, get3w: { ...part.providerMetadata?.get3w, toolCallId } },
   } : part);
 }
 
@@ -67,10 +67,10 @@ function connectionActionMcpResultFromError(error: string): JSONValue | null {
 
 function toolCallProviderMetadata(part: ToolPart): ProviderMetadata {
   const stateMetadata = "metadata" in part.state && isRecord(part.state.metadata) ? part.state.metadata : {};
-  const persistedMcpResult = isJsonValue(stateMetadata.openworkMcpResult)
-    ? stateMetadata.openworkMcpResult
-    : isJsonValue(stateMetadata.openworkMcpApp)
-      ? stateMetadata.openworkMcpApp
+  const persistedMcpResult = isJsonValue(stateMetadata.get3wMcpResult)
+    ? stateMetadata.get3wMcpResult
+    : isJsonValue(stateMetadata.get3wMcpApp)
+      ? stateMetadata.get3wMcpApp
       : null;
   const mcpResult = persistedMcpResult
     ?? (part.state.status === "error" ? connectionActionMcpResultFromError(part.state.error) : null);
@@ -84,7 +84,7 @@ function toolCallProviderMetadata(part: ToolPart): ProviderMetadata {
   const remoteSession = /(?:^|_)execute_capability$/.test(part.tool) && isRecord(part.state.input)
     && typeof part.state.input.name === "string" && part.state.input.name.startsWith("remote-session:");
   const computer = isComputerToolName(part.tool);
-  const toolStartedAt = (appBuilder || computer || remoteSession || part.tool === "task" || part.metadata?.openworkV2CodeMode === true) && "time" in part.state && typeof part.state.time?.start === "number"
+  const toolStartedAt = (appBuilder || computer || remoteSession || part.tool === "task" || part.metadata?.get3wV2CodeMode === true) && "time" in part.state && typeof part.state.time?.start === "number"
     && Number.isFinite(part.state.time.start)
     ? part.state.time.start
     : null;
@@ -92,12 +92,12 @@ function toolCallProviderMetadata(part: ToolPart): ProviderMetadata {
     && Number.isFinite(part.state.time.end) ? part.state.time.end : null;
   const fileDestination = part.tool === "write" && typeof stateMetadata.filepath === "string" ? stateMetadata.filepath
     : part.tool === "edit" && isRecord(stateMetadata.filediff) && typeof stateMetadata.filediff.file === "string" ? stateMetadata.filediff.file : null;
-  const workspacePaths = isJsonValue(stateMetadata.openworkWorkspacePaths) ? stateMetadata.openworkWorkspacePaths : null;
+  const workspacePaths = isJsonValue(stateMetadata.get3wWorkspacePaths) ? stateMetadata.get3wWorkspacePaths : null;
   // An edit's own line counts, for the text-first rail's "+11 −3".
   const filediff = part.tool === "edit" && isRecord(stateMetadata.filediff) ? stateMetadata.filediff : null;
   const diffStats = filediff && typeof filediff.additions === "number" && typeof filediff.deletions === "number"
     ? { added: filediff.additions, removed: filediff.deletions } : null;
-  const openwork = {
+  const get3w = {
     ...(computer && stateMetadata.isError === true ? { computerFailure: true } : {}),
     ...(fileDestination ? { fileDestination } : {}),
     ...(workspacePaths ? { workspacePaths } : {}),
@@ -107,17 +107,17 @@ function toolCallProviderMetadata(part: ToolPart): ProviderMetadata {
     ...(childSessionId ? { childSessionId } : {}),
     ...(toolStartedAt === null ? {} : { toolStartedAt }),
     ...(toolCompletedAt === null ? {} : { toolCompletedAt }),
-    ...(part.metadata?.openworkV2CodeMode === true ? {
+    ...(part.metadata?.get3wV2CodeMode === true ? {
       codeMode: {
         calls: Array.isArray(stateMetadata.toolCalls) && isJsonValue(stateMetadata.toolCalls) ? stateMetadata.toolCalls : [],
-        details: Array.isArray(stateMetadata.openworkToolDetails) && isJsonValue(stateMetadata.openworkToolDetails) ? stateMetadata.openworkToolDetails : [],
-        ...(stateMetadata.openworkToolDetailsTruncated === true ? { detailsTruncated: true } : {}),
+        details: Array.isArray(stateMetadata.get3wToolDetails) && isJsonValue(stateMetadata.get3wToolDetails) ? stateMetadata.get3wToolDetails : [],
+        ...(stateMetadata.get3wToolDetailsTruncated === true ? { detailsTruncated: true } : {}),
       },
     } : {}),
   };
   return {
     opencode: { partId: part.id },
-    ...(Object.keys(openwork).length > 0 ? { openwork } : {}),
+    ...(Object.keys(get3w).length > 0 ? { get3w } : {}),
   };
 }
 
@@ -166,7 +166,7 @@ export function parseDynamicToolUIPart(part: ToolPart): DynamicToolUIPart | null
   }
 
   if (part.state.status === "completed") {
-    if (part.metadata?.openworkV2CodeMode === true && part.state.metadata.error === true) {
+    if (part.metadata?.get3wV2CodeMode === true && part.state.metadata.error === true) {
       return {
         type: "dynamic-tool", toolName: part.tool, toolCallId: part.callID,
         state: "output-error", input: part.state.input,

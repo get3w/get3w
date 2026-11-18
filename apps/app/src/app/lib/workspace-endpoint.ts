@@ -3,7 +3,7 @@
  *
  * Every workspace is owned by the user's local Get3W server. Always go
  * through {@link resolveWorkspaceEndpoint} when you need:
- *   - an `OpenworkServerClient` for a workspace
+ *   - an `Get3wServerClient` for a workspace
  *   - a mounted `/workspace/<id>` URL prefix
  *   - the `/opencode` URL for the OpenCode SDK
  *
@@ -12,10 +12,10 @@
 
 import type { WorkspaceInfo } from "./desktop";
 import {
-  buildOpenworkWorkspaceBaseUrl,
-  createOpenworkServerClient,
-  type OpenworkServerClient,
-} from "./openwork-server";
+  buildGet3wWorkspaceBaseUrl,
+  createGet3wServerClient,
+  type Get3wServerClient,
+} from "./get3w-server";
 
 export type ResolvedWorkspaceEndpoint = {
   /** Host URL of the Get3W server that owns this workspace (no `/workspace` mount). */
@@ -24,8 +24,8 @@ export type ResolvedWorkspaceEndpoint = {
   token: string;
   /** Workspace id as the owning server expects it in URL paths. */
   workspaceId: string;
-  /** OpenworkServerClient bound to {@link baseUrl}/{@link token}. */
-  client: OpenworkServerClient;
+  /** Get3wServerClient bound to {@link baseUrl}/{@link token}. */
+  client: Get3wServerClient;
   /** Mounted base url: `<baseUrl>/workspace/<workspaceId>`. No trailing slash. */
   mountedBaseUrl: string;
   /** OpenCode SDK base url: `<mountedBaseUrl>/opencode`. */
@@ -54,12 +54,12 @@ export function resolveWorkspaceEndpoint(
   if (!localBaseUrl) return null;
   const localToken = (localServer.token ?? "").trim();
   const workspaceId = workspace.id.trim();
-  const client = createOpenworkServerClient({
+  const client = createGet3wServerClient({
     baseUrl: localBaseUrl,
     token: localToken || undefined,
   });
   const mountedBaseUrl = (
-    buildOpenworkWorkspaceBaseUrl(localBaseUrl, workspaceId) ?? localBaseUrl
+    buildGet3wWorkspaceBaseUrl(localBaseUrl, workspaceId) ?? localBaseUrl
   ).replace(/\/+$/, "");
   return {
     baseUrl: localBaseUrl,

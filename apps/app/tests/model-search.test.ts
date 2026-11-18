@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FAST_DEFAULT_VARIANT, fastVariantId } from "@openwork/types/cloud-model-fast";
+import { FAST_DEFAULT_VARIANT, fastVariantId } from "@get3w/types/cloud-model-fast";
 
 import type { ModelOption } from "../src/app/types";
 import { modelMakerId } from "../src/react-app/domains/models/model-catalog";
@@ -15,11 +15,11 @@ const anthropicOpus = model("anthropic", "claude-opus-5-5", "Claude Opus 5.5", "
 const anthropicSonnet = model("anthropic", "claude-sonnet-4-5", "Claude Sonnet 4.5", "Anthropic", effort("high"));
 const routerOpus = model("openrouter", "anthropic/claude-opus-5.5", "Anthropic: Claude Opus 5.5", "OpenRouter");
 const routerGpt = model("openrouter", "openai/gpt-5.5", "OpenAI: GPT-5.5", "OpenRouter");
-const openworkOpus = model("openwork", "claude-opus-5-5", "Claude Opus 5.5", "Get3W Models", fastBehaviors("high"));
+const get3wOpus = model("get3w", "claude-opus-5-5", "Claude Opus 5.5", "Get3W Models", fastBehaviors("high"));
 const grok = model("xai", "grok-4", "Grok 4", "xAI");
 const groq = model("groq", "llama-3.3-70b", "Llama 3.3 70B", "Groq");
 const gpt = model("openai", "gpt-5.1", "GPT-5.1", "OpenAI");
-const all = [anthropicOpus, anthropicSonnet, routerOpus, routerGpt, openworkOpus, grok, groq, gpt];
+const all = [anthropicOpus, anthropicSonnet, routerOpus, routerGpt, get3wOpus, grok, groq, gpt];
 const top = (options: readonly ModelOption[], query: string) => searchModels(options, query).matches.map((match) => `${match.option.providerID}/${match.option.modelID}`);
 
 describe("model search", () => {
@@ -34,7 +34,7 @@ describe("model search", () => {
     const result = searchModels(withoutRouter, "opus 5.5 openrouter");
     expect(result.provider).toEqual({ label: "OpenRouter", found: false });
     expect(result.modelWords).toEqual(["opus", "5.5"]);
-    expect(top(withoutRouter, "opus 5.5 openrouter").slice(0, 2).sort()).toEqual(["anthropic/claude-opus-5-5", "openwork/claude-opus-5-5"]);
+    expect(top(withoutRouter, "opus 5.5 openrouter").slice(0, 2).sort()).toEqual(["anthropic/claude-opus-5-5", "get3w/claude-opus-5-5"]);
   });
 
   test("versions are exact: 5.5 never finds 4.5", () => {
@@ -60,8 +60,8 @@ describe("model search", () => {
   test("ow anthropic fast: Get3W's Claude first, with Fast mode", () => {
     const result = searchModels(all, "ow anthropic fast");
     expect(result.intent).toEqual({ fast: true });
-    expect(result.matches[0]?.option).toBe(openworkOpus);
-    expect(resolveSearchIntent(openworkOpus, result.intent)).toEqual({ variant: FAST_DEFAULT_VARIANT, applied: ["Fast mode"], missing: [] });
+    expect(result.matches[0]?.option).toBe(get3wOpus);
+    expect(resolveSearchIntent(get3wOpus, result.intent)).toEqual({ variant: FAST_DEFAULT_VARIANT, applied: ["Fast mode"], missing: [] });
   });
 
   test("models that offer the typed options rank above those that do not", () => {

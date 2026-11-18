@@ -3,9 +3,9 @@ import { t } from "@/i18n";
 
 import * as React from "react";
 import { formatCrashDiagnostic } from "@/app/lib/crash-diagnostics";
-import { openworkServerInfo, readDesktopDistributionInfo, revealDesktopItemInDir } from "@/app/lib/desktop";
+import { get3wServerInfo, readDesktopDistributionInfo, revealDesktopItemInDir } from "@/app/lib/desktop";
 import { reportCaughtWebError } from "@/app/lib/error-monitoring";
-import { getOpenWorkDeployment } from "@/app/lib/openwork-deployment";
+import { getGet3WDeployment } from "@/app/lib/get3w-deployment";
 
 const APP_VERSION = String(import.meta.env.VITE_GET3W_APP_VERSION ?? "").trim();
 
@@ -41,7 +41,7 @@ export function buildCrashReport(crash: CrashDetails, context: CrashContext): st
 function readCrashContext(): CrashContext {
   return {
     version: APP_VERSION,
-    deployment: getOpenWorkDeployment(),
+    deployment: getGet3WDeployment(),
     flavor: readDesktopDistributionInfo().flavor,
   };
 }
@@ -53,7 +53,7 @@ function readCrashContext(): CrashContext {
  */
 async function resolveLogFilePath(): Promise<string | null> {
   try {
-    return (await openworkServerInfo()).logFilePath;
+    return (await get3wServerInfo()).logFilePath;
   } catch {
     return null;
   }

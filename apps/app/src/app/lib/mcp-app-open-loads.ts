@@ -2,7 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { canonicalMcpAppArguments, MCP_APP_CACHED_AT_META } from "./mcp-app-result-cache";
 
 // Set by the Get3W server, never by the App or provider.
-const READ_ONLY_RESULT_META = "openwork/readOnly";
+const READ_ONLY_RESULT_META = "get3w/readOnly";
 const MAX_KEPT = 200;
 
 type Call = { serverName: string; resourceUri: string; name: string; args: Record<string, unknown> };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GeneratedArtifactView, GeneratedArtifactViewRevision } from "@openwork/types/workflows";
+import type { GeneratedArtifactView, GeneratedArtifactViewRevision } from "@get3w/types/workflows";
 import { McpAppTile, type DashboardLaunchEndpoint } from "../dashboard/mcp-app-tile";
 import { liveGeneratedAppEntry, liveGeneratedAppCacheScope, nextViewerDayBoundary, viewerLocalDate } from "./live-generated-app-model";
 export { isLiveGeneratedApp } from "./live-generated-app-model";

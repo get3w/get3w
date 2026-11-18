@@ -61,7 +61,7 @@ export type ModelPickerPanelProps = {
   onConnectProvider?: () => void;
   onOpenProviderSettings?: () => void;
   onSetWorkspaceDefault?: (model: ModelRef, variant?: string | null) => void | boolean | Promise<void | boolean>;
-  openWorkModelsSyncing?: boolean;
+  get3wModelsSyncing?: boolean;
   onReloadWorkspace?: () => void | Promise<unknown>;
   /** Rows under the footer that only one surface offers. */
   footerExtra?: React.ReactNode;
@@ -111,7 +111,7 @@ export function ModelPickerPanel(props: ModelPickerPanelProps) {
   return <ModelPickerList searchInputRef={props.searchInputRef} autoFocusSearch={false} options={options} current={current} query={query} onQueryChange={setQuery} onSelect={props.onSelect}
     focusAlternative={props.focusAlternative} catalogState={props.catalogState} retainedSelection={props.retainedSelection} onConnectProvider={props.onConnectProvider}
     onOpenProviderSettings={props.onOpenProviderSettings} onSetWorkspaceDefault={props.onSetWorkspaceDefault} currentBehaviorValue={behaviorValue}
-    openWorkModelsSyncing={props.openWorkModelsSyncing} onReloadWorkspace={props.onReloadWorkspace} footer={<>
+    get3wModelsSyncing={props.get3wModelsSyncing} onReloadWorkspace={props.onReloadWorkspace} footer={<>
       <ModelPickerFooter effortButtonRef={effortButtonRef} effortLabel={effortValueLabel} effortShortcut={thinkingModeShortcutLabel(shortcutOs)} canChangeEffort={canChangeEffort} onOpenEffort={() => setEffort(true)}
         fast={selected && onBehaviorChange && !autoSelected && controls.hasFast ? { on: controls.fast, shortcut: fastModeShortcutLabel(shortcutOs), disabled: controls.toggleValue === undefined,
           onToggle: () => { if (controls.toggleValue !== undefined) onBehaviorChange(controls.toggleValue); } } : undefined}

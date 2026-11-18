@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto"
 // Self-reference, not "./schema.js": den-api loads this package's TypeScript
 // source at runtime, where only package exports resolve to the .ts files.
-import { deploymentStepSchema, type DeploymentEventInput, type DeploymentHealth, type HealthCheck } from "@openwork/managed-deployments/schema"
+import { deploymentStepSchema, type DeploymentEventInput, type DeploymentHealth, type HealthCheck } from "@get3w/managed-deployments/schema"
 
 /** Health reports arrive every 5 minutes; three missed reports mean not reporting. */
 export const HEALTH_STALE_AFTER_MS = 16 * 60 * 1000

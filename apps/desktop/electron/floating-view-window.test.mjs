@@ -15,7 +15,7 @@ describe("floating view windows", () => {
     assert.equal(floatingViewWindowOptions({ url: "about:blank", frameName: "" }), null);
     assert.equal(floatingViewWindowOptions({ url: "about:blank", frameName: "anything-else" }), null);
     // The computer view's pop-out has its own handler.
-    assert.equal(floatingViewWindowOptions({ url: "about:blank", frameName: "openwork-computer-view-1" }), null);
+    assert.equal(floatingViewWindowOptions({ url: "about:blank", frameName: "get3w-computer-view-1" }), null);
   });
 
   it("shows the window above other apps without taking focus, and never navigates it", () => {

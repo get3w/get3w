@@ -28,8 +28,8 @@ import type { PdfRenderedBitmap } from "./pdfium.js";
  * covering the long reports people actually attach. Pages past the eager set
  * are rendered on demand through the plugin's page tool.
  */
-export const MATERIALIZED_DIR = join(".opencode", "openwork", "inbox", "chat-attachments");
-export const DERIVED_DIR = join(".opencode", "openwork", "inbox", "pdf-pages");
+export const MATERIALIZED_DIR = join(".get3w", "inbox", "chat-attachments");
+export const DERIVED_DIR = join(".get3w", "inbox", "pdf-pages");
 export const MANIFEST_FILENAME = "manifest.json";
 export const TEXT_FILENAME = "text.md";
 /** Pages whose text is extracted. Long documents keep their text reachable on disk. */
@@ -595,7 +595,7 @@ export function cachedDerivedPdf(root: string | null, digest: string, options: D
 /**
  * Derives (or reuses) the model-facing representation of a PDF. Results live
  * in memory per workspace root and content hash; a workspace copy is written
- * under `.opencode/openwork/inbox/pdf-pages/` for tools and people.
+ * under `.get3w/inbox/pdf-pages/` for tools and people.
  */
 export async function derivePdf(root: string | null, filename: string, bytes: Uint8Array, options: DeriveOptions): Promise<DerivedPdf> {
   const digest = sha256(bytes);
