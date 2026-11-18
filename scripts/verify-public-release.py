@@ -11,6 +11,12 @@ a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 results = []
 def run(name, command, env=None, cwd=root):
+    # Bun shares DOM globals and mock.module overrides between test files.
+    # Run each file in a fresh process so UI mocks cannot leak into native tests.
+    if command[:2] == ['bun', 'test'] and len(command) > 3:
+        for index, test_file in enumerate(command[2:], 1):
+            run(f'{name}-{index}', ['bun', 'test', test_file], env=env, cwd=cwd)
+        return
     start = time.monotonic()
     with (a.output / (name + '.log')).open('w') as log:
         result = subprocess.run(command, cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT)
