@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 "use client"
 
 import { useEffect, useId, useRef } from "react"
@@ -79,7 +80,7 @@ export function useChatToolReconnect(
       try {
         await onReopenAuthorization(reconnectAction, record.authorizeUrl, isCurrent)
       } catch (error) {
-        if (isCurrent()) setRecord(reconnectKey, { ...chatMcpReconnectRecord(reconnectKey), error: error instanceof Error ? error.message : "Could not reopen sign-in." })
+        if (isCurrent()) setRecord(reconnectKey, { ...chatMcpReconnectRecord(reconnectKey), error: error instanceof Error ? error.message : t("desktop.text.af6e25efd99b") })
       } finally {
         reopening.delete(reconnectKey)
       }
@@ -106,7 +107,7 @@ export function useChatToolReconnect(
       const latest = chatMcpReconnectRecord(reconnectKey)
       setRecord(reconnectKey, {
         phase: latest.phase === "connected" ? "connected" : "failed",
-        error: error instanceof Error ? error.message : "Could not reconnect this account.",
+        error: error instanceof Error ? error.message : t("desktop.text.8fef31490509"),
         authorizeUrl: null,
       })
     }
@@ -122,7 +123,7 @@ export function useChatToolReconnect(
         outcome: "skipped", continuation: "without_connection", alternativeAuthorization: false,
       })
     } catch (error) {
-      setRecord(reconnectKey, { phase: "skipped", error: error instanceof Error ? error.message : "Could not deliver the decision.", authorizeUrl: null })
+      setRecord(reconnectKey, { phase: "skipped", error: error instanceof Error ? error.message : t("desktop.text.0d2189f3b787"), authorizeUrl: null })
     }
   }
 
@@ -138,7 +139,7 @@ export function useChatToolReconnect(
         : { outcome: "skipped", continuation: "without_connection", alternativeAuthorization: false })
     } catch (error) {
       if (epoch !== lifecycle.current || current.current.scope !== scope) return
-      setRecord(reconnectKey, { ...chatMcpReconnectRecord(reconnectKey), error: error instanceof Error ? error.message : "Could not deliver the decision." })
+      setRecord(reconnectKey, { ...chatMcpReconnectRecord(reconnectKey), error: error instanceof Error ? error.message : t("desktop.text.0d2189f3b787") })
     }
   }
 

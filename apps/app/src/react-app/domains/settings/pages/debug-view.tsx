@@ -1031,7 +1031,7 @@ export function DebugView(props: DebugViewProps) {
                   type="text"
                   value={props.electronMigrationSha512}
                   onChange={(event) => props.onSetElectronMigrationSha512(event.currentTarget.value)}
-                  placeholder="recommended"
+                  placeholder={t("desktop.copy.dd6d87654803")}
                   className="h-10 w-full rounded-xl border border-dls-border bg-dls-surface px-3 font-mono text-[11px] text-dls-text outline-none transition-colors placeholder:text-dls-secondary focus:border-dls-accent"
                 />
               </label>
@@ -1127,7 +1127,7 @@ export function DebugView(props: DebugViewProps) {
           </div>
 
           <div className="text-[11px] text-dls-secondary">
-            {t("ui.8fa27e14b575")} <span className="font-mono">{"alpha-macos-latest/latest-mac.yml"}</span>. Stable feed:{" "}
+            {t("ui.8fa27e14b575")} <span className="font-mono">{"alpha-macos-latest/latest-mac.yml"}</span>{t("desktop.copy.595d97262cfc")}{" "}
             <span className="font-mono">{"releases/latest/download/latest-mac.yml"}</span>.
           </div>
 

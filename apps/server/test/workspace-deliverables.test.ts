@@ -101,3 +101,16 @@ test("extension names with or without a leading dot allocate the same safe filen
  await expect(planDeliverable(config,workspace,{key:"escape-extension",extension:"../json"})).rejects.toThrow("Invalid deliverable");
  await expect(planDeliverable(config,workspace,{key:"empty-extension",extension:""})).rejects.toThrow("Invalid deliverable");
 }));
+
+
+test("registering an unwritten collision path explains the reserved destination and preserves files",()=>fixture(async(config,workspace)=>{
+ await writeFile(join(workspace.path,"report.md"),"original");
+ const plan=await planDeliverable(config,workspace,{key:"collision-error",directory:".",filename:"report",extension:".md"});
+ expect(plan.path).toBe("report-2.md");
+ await expect(registerDeliverable(config,workspace,plan.fileId)).rejects.toMatchObject({status:422,code:"deliverable_not_written"});
+ await expect(registerDeliverable(config,workspace,plan.fileId)).rejects.toThrow("report-2.md");
+ expect((await resolveDeliverable(config,workspace,plan.fileId)).state).toBe("planned");
+ expect(await readFile(join(workspace.path,"report.md"),"utf8")).toBe("original");
+ await writeFile(join(workspace.path,plan.path),"new result");
+ expect((await registerDeliverable(config,workspace,plan.fileId)).path).toBe(plan.path);
+}));

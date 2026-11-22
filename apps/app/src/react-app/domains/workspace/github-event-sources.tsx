@@ -1,0 +1,58 @@
+import {useEffect,useState,useRef} from "react";
+import {z} from "zod";
+import {Github,RefreshCw} from "lucide-react";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Dialog,DialogContent,DialogTitle} from "@/components/ui/dialog";
+import {openDesktopUrlWithStatus} from "@/app/lib/desktop";
+import {t} from "@/i18n";
+import type {AlwaysOnSource} from "@get3w/types/workspace";
+import type {Get3wServerClient} from "@/app/lib/get3w-server";
+const connection=z.object({configured:z.boolean(),state:z.string(),account:z.string().nullish(),installationUrl:z.string().optional()});
+export function githubSourceFailure(status:number,body:unknown,serviceOrigin?:string){
+ const parsed=z.object({error:z.object({code:z.string()})}).safeParse(body);
+ const code=parsed.success?parsed.data.error.code:"";
+ if(status===404){
+  let local=false;try{local=["localhost","127.0.0.1","[::1]"].includes(new URL(serviceOrigin??"").hostname);}catch{}
+  return t(local?"workspace.github.local_outdated":"workspace.github.not_deployed");
+ }
+ if(code==="github_not_configured")return t("workspace.github.unconfigured");
+ if(status===401)return t("workspace.github.session_expired");
+ if(code==="github_reconnect_required"||code==="github_permissions_missing")return t("workspace.github.reauthorize");
+ if(status===429)return t("workspace.github.rate_limited");
+ return t("workspace.github.failed");
+}
+const subscription=z.object({id:z.string(),source_id:z.string(),workspace_id:z.string(),repository:z.string(),repository_id:z.number(),name:z.string(),enabled:z.boolean(),state:z.string(),pending:z.number(),last_received:z.number().nullable(),gap_at:z.number().nullable()});
+export function GitHubEventSources({workspaceId,client,onUpdated,localSources=[]}:{workspaceId:string;localSources?:AlwaysOnSource[];client:Pick<Get3wServerClient,"saveAlwaysOnSource"|"controlAlwaysOnSource">;onUpdated:()=>void}){
+ const revision=useRef(0);
+ const [accountUnavailable,setAccountUnavailable]=useState(false);
+ const [uid,setUid]=useState("");const [state,setState]=useState<z.infer<typeof connection>|null>(null);const [items,setItems]=useState<z.infer<typeof subscription>[]>([]);const [repos,setRepos]=useState<{id:number;name:string}[]>([]);const [selected,setSelected]=useState<number|null>(null);const [name,setName]=useState("");const [dialog,setDialog]=useState(false);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [editing,setEditing]=useState<z.infer<typeof subscription>|null>(null);const [disconnecting,setDisconnecting]=useState(false);const [confirm,setConfirm]=useState<{id:string;source_id:string;action:"delete"|"snapshot"}|null>(null);
+ async function request(path:string,method="GET",body?:unknown,user=uid){
+  const bridge=window.__GET3W_ACCOUNT__?.eventSources;if(!bridge)throw Error(t("workspace.github.restart"));
+  const r=await bridge({userId:user,path,method,...(body===undefined?{}:{body})});if(!r.ok)throw Error(githubSourceFailure(r.status,r.json,r.serviceOrigin));return r.json;
+ }
+ async function reload(){
+  const generation=++revision.current;
+  try{const account=await window.__GET3W_ACCOUNT__?.status();if(generation!==revision.current)return;setAccountUnavailable(account?.status==="unavailable"||account?.status==="checking");if(account?.status!=="signed_in"||!account.user){setUid("");setState(null);setItems([]);setError("");return;}setUid(account.user.id);const s=connection.parse(await request("/github","GET",undefined,account.user.id));if(generation!==revision.current)return;setState(s);if(s.configured){const v=z.object({items:z.array(subscription)}).parse(await request("/subscriptions","GET",undefined,account.user.id));const current=await window.__GET3W_ACCOUNT__?.status();if(generation!==revision.current||current?.user?.id!==account.user.id)return;setItems(v.items.filter(i=>i.workspace_id===workspaceId));}else setItems([]);setError("");}catch(e){if(generation!==revision.current)return;setError(e instanceof Error?e.message:t("workspace.github.failed"));}
+ }
+ useEffect(()=>{void reload();const timer=setInterval(()=>void reload(),15000);return()=>{revision.current++;clearInterval(timer);};},[workspaceId]);
+ async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);setError("");try{await fn();await reload();onUpdated();}catch(e){setError(e instanceof Error?e.message:t("workspace.github.failed"));}finally{setBusy(false);}}
+ async function control(item:z.infer<typeof subscription>,action:"enable"|"disable"|"delete"){
+  // Remote first: disconnected Desktop must not claim that cloud receipt stopped.
+  await request(`/subscriptions/${item.id}`,"PATCH",{action});await client.controlAlwaysOnSource(workspaceId,item.source_id,action);
+ }
+ return <section className="space-y-3" aria-label="GitHub"><div className="flex items-center justify-between border-b border-border pb-3"><h2 className="flex items-center gap-2 text-sm font-medium"><Github className="size-4"/>GitHub</h2><Button size="sm" variant="ghost" disabled={busy} onClick={()=>void reload()} aria-label={t("workspace.overview.reload")}><RefreshCw className="size-4"/></Button></div>
+ {!uid?<p className="text-sm text-muted-foreground">{t(accountUnavailable?"workspace.github.account_unavailable":"workspace.github.sign_in")}</p>:<><div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>{state?.account??t("workspace.github.connection")}</span><span className="text-muted-foreground">{state?t(!state.configured?"workspace.github.unconfigured":state.state==="connected"?"workspace.github.connected":"workspace.github.disconnected"):t("workspace.github.unverified")}</span></div><div className="flex flex-wrap gap-2">
+ <Button size="sm" variant="outline" disabled={busy||!state?.configured} onClick={()=>void run(async()=>{const v=z.object({url:z.string().url()}).parse(await request("/github/authorize","POST",{}));const u=new URL(v.url);if(u.origin!=="https://github.com"||u.pathname!=="/login/oauth/authorize")throw Error(t("workspace.github.failed"));await openDesktopUrlWithStatus(v.url);})}>{t("workspace.github.connect")}</Button>
+ {state?.installationUrl?<Button size="sm" variant="ghost" onClick={()=>void openDesktopUrlWithStatus(state.installationUrl!)}>{t("workspace.github.install")}</Button>:null}
+ <Button size="sm" variant="ghost" disabled={busy||state?.state!=="connected"} onClick={()=>setDisconnecting(true)}>{t("workspace.github.disconnect")}</Button>
+ <Button size="sm" variant="outline" disabled={busy||state?.state!=="connected"} onClick={()=>void run(async()=>{const v=z.object({items:z.array(z.object({id:z.number(),name:z.string()}))}).parse(await request("/github/repositories"));setRepos(v.items);setSelected(null);setName("");setDialog(true);})}>{t("workspace.github.add")}</Button>
+ {state&&!state.configured?<span className="self-center text-xs text-muted-foreground">{t("workspace.github.unconfigured")}</span>:null}</div></>}
+ {error?<p role="alert" className="text-sm text-destructive">{error}</p>:null}
+ <div className="divide-y divide-border">{items.map(item=><article key={item.id} className="space-y-3 py-4"><div className="flex justify-between gap-3 text-sm"><h3 className="font-medium">{item.name}</h3><span>{t(localSources.find(s=>s.subscriptionId===item.id)?.syncError?"workspace.github.sync_failed":`workspace.github.${item.state}`)}</span></div><p className="text-sm text-muted-foreground">{item.repository}</p><div className="flex gap-4 text-xs text-muted-foreground"><span>{t("workspace.github.pending")} {item.pending}</span><time>{item.last_received?new Date(item.last_received).toLocaleString():"—"}</time></div>{item.gap_at?<p className="text-sm text-amber-600">{t("workspace.github.gap")}</p>:null}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={()=>{setName(item.name);setEditing(item);}}>{t("workspace.inbox.edit")}</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void run(()=>control(item,item.enabled?"disable":"enable"))}>{t(item.enabled?"workspace.inbox.disable":"workspace.inbox.enable")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={()=>setConfirm({...item,action:"snapshot"})}>{t("workspace.github.snapshot")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={()=>setConfirm({...item,action:"delete"})}>{t("workspace.inbox.delete")}</Button></div></article>)}</div>
+ <Dialog open={editing!==null} onOpenChange={open=>{if(!open)setEditing(null);}}><DialogContent aria-describedby={undefined}><DialogTitle>{t("workspace.inbox.edit")}</DialogTitle><Input aria-label={t("workspace.inbox.name")} value={name} maxLength={80} onChange={e=>setName(e.target.value)}/><Button disabled={busy||!name.trim()} onClick={()=>void run(async()=>{if(!editing)return;await request("/subscriptions","POST",{workspaceId,sourceId:editing.source_id,name,repositoryId:editing.repository_id});await client.saveAlwaysOnSource(workspaceId,{kind:"github",name,scope:editing.repository,subscriptionId:editing.id,ownerUserId:uid,repositoryId:editing.repository_id},editing.source_id);setEditing(null);})}>{t("workspace.inbox.save")}</Button></DialogContent></Dialog>
+ <Dialog open={disconnecting} onOpenChange={setDisconnecting}><DialogContent aria-describedby={undefined}><DialogTitle>{t("workspace.github.disconnect")}</DialogTitle><p className="text-sm">{t("workspace.github.disconnect_effect")}</p><Button disabled={busy} onClick={()=>void run(async()=>{await request("/github","DELETE");setDisconnecting(false);})}>{t("workspace.github.disconnect")}</Button></DialogContent></Dialog>
+ <Dialog open={dialog} onOpenChange={setDialog}><DialogContent aria-describedby={undefined}><DialogTitle>{t("workspace.github.add")}</DialogTitle><Input aria-label={t("workspace.inbox.name")} placeholder={t("workspace.inbox.name")} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/><div className="max-h-64 overflow-y-auto">{repos.map(r=><Button key={r.id} variant={selected===r.id?"secondary":"ghost"} className="w-full justify-start" onClick={()=>{setSelected(r.id);if(!name)setName(r.name);}}>{r.name}</Button>)}</div><p className="text-xs text-muted-foreground">{t("workspace.github.events")}</p><Button disabled={busy||selected===null||!name.trim()} onClick={()=>void run(async()=>{const sourceId=crypto.randomUUID();const sub=z.object({id:z.string()}).parse(await request("/subscriptions","POST",{workspaceId,sourceId,name,repositoryId:selected}));try{await client.saveAlwaysOnSource(workspaceId,{id:sourceId,kind:"github",name,scope:repos.find(r=>r.id===selected)?.name??"",subscriptionId:sub.id,ownerUserId:uid,repositoryId:selected??undefined});}catch(e){await request(`/subscriptions/${sub.id}`,"PATCH",{action:"delete"});throw e;}setDialog(false);})}>{t("workspace.inbox.save")}</Button></DialogContent></Dialog>
+ <Dialog open={confirm!==null} onOpenChange={open=>{if(!open)setConfirm(null);}}><DialogContent aria-describedby={undefined}><DialogTitle>{t(confirm?.action==="delete"?"workspace.inbox.delete":"workspace.github.snapshot")}</DialogTitle><p className="text-sm">{t(confirm?.action==="delete"?"workspace.github.delete_effect":"workspace.github.snapshot_effect")}</p><Button disabled={busy} onClick={()=>void run(async()=>{if(!confirm)return;if(confirm.action==="delete"){const item=items.find(i=>i.id===confirm.id);if(item)await control(item,"delete");}else await request(`/subscriptions/${confirm.id}/snapshot`,"POST",{key:crypto.randomUUID()});setConfirm(null);})}>{t(confirm?.action==="delete"?"workspace.inbox.delete":"workspace.github.snapshot")}</Button></DialogContent></Dialog>
+ </section>;
+}

@@ -1,3 +1,5 @@
+import { createEventSourceSync } from "./get3w-event-sources.mjs";
+import { submitDesktopNotification, openNotificationRun, desktopNotificationOptions } from "./notification-delivery.mjs";
 import { createTaskPermissionBridge } from "./task-permissions.mjs";
 import { migrateStoragePath } from "./get3w-storage-migration.mjs";
 import { createTaskLogs } from "./task-logs.mjs";
@@ -7,9 +9,10 @@ import { createPersonalAutomationRunner } from "./get3w-automation-runner.mjs";
 import { nativeText, nativeMessage } from "./native-i18n.mjs";
 import { createModelApprovalBridge } from "./get3w-model-approvals.mjs";
 import { createGet3wManagedMcp } from "./get3w-managed-mcp.mjs";
+import { createPrepareTaskTools } from "./prepare-task-tools.mjs";
 import { createGet3wManagedProvider } from "./get3w-managed-provider.mjs";
 import { createGet3wAuth } from "./get3w-auth.mjs";
-import { GET3W_SERVICES, resolveGet3wOrigins } from "./get3w-services.mjs";
+import { GET3W_SERVICES, resolveGet3wOrigins, isSourceDevelopmentLaunch } from "./get3w-services.mjs";
 import { prepareLocalPackageEnvironment } from "./local-package-profile.mjs";
 import { processBlankSlateProfile, resolveBlankSlateLaunch } from "./blank-slate-profile.mjs";
 import { execFile, execFileSync, spawn } from "node:child_process";
@@ -26,6 +29,7 @@ import {
   rm,
   stat,
   writeFile,
+  appendFile,
 } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -780,9 +784,9 @@ async function focusMainWindowFromNotification() {
 
 /**
  * @param {unknown} input
- * @returns {import("@get3w/types/desktop-ipc").DesktopNotificationResult}
+ * @returns {Promise<import("@get3w/types/desktop-ipc").DesktopNotificationResult>}
  */
-function showDesktopNotification(input) {
+async function showDesktopNotification(input) {
   if (!ElectronNotification.isSupported()) {
     return { ok: false, reason: "notifications unsupported" };
   }
@@ -795,20 +799,17 @@ function showDesktopNotification(input) {
 
   const body = String(Reflect.get(record, "body") ?? "").trim();
   const icon = resolveBrandIconImage() ?? APP_ICON_IMAGE;
-  const options = {
-    title,
-    ...(body ? { body } : {}),
-    ...(Reflect.get(record, "silent") === true ? { silent: true } : {}),
-    ...(icon && !icon.isEmpty() ? { icon } : {}),
-  };
+  const options = desktopNotificationOptions({ title, body, silent: Reflect.get(record, "silent") === true, icon, platform: process.platform });
 
   try {
     const notification = new ElectronNotification(options);
     notification.on("click", () => {
-      runDetachedTask("focus window from notification", focusMainWindowFromNotification);
+      runDetachedTask("focus window from notification", async () => {
+        await openNotificationRun(Reflect.get(record, "href"), focusMainWindowFromNotification,
+          href => mainWindow?.webContents.executeJavaScript(`window.location.hash = ${JSON.stringify(href)}`));
+      });
     });
-    notification.show();
-    return { ok: true };
+    return submitDesktopNotification(notification);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "failed to show notification";
     return { ok: false, reason };
@@ -2100,7 +2101,7 @@ const desktopCommandHandlers = {
       fallbackName: APP_NAME,
       platform: process.platform,
       updateElectronAppName: process.platform === "darwin",
-      updateProcessTitle: !localValidationPackage,
+      updateProcessTitle: process.platform !== "darwin",
       runtimeProcess: process,
       app,
       applicationMenu,
@@ -2490,8 +2491,8 @@ async function createMainWindowInner() {
     },
     onRepeatedCrash: (details) => {
       dialog.showErrorBox(
-        `${APP_NAME} could not recover`,
-        `The app renderer stopped repeatedly (${details.reason ?? "unknown reason"}). Quit and reopen Get3W. Your workspace files were not deleted.`,
+        nativeMessage(`${APP_NAME} could not recover`, `${APP_NAME} 无法恢复`),
+        nativeMessage(`The app renderer stopped repeatedly (${details.reason ?? "unknown reason"}). Quit and reopen Get3W. Your workspace files were not deleted.`, `应用界面多次停止（${details.reason ?? "原因未知"}）。请退出并重新打开 Get3W，工作区文件未被删除。`),
       );
     },
   });
@@ -2622,13 +2623,15 @@ ipcMain.on("get3w:desktop-distribution-sync", (event) => {
 ipcMain.on("get3w:window-fullscreen-sync", (event) => {
   event.returnValue = BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false;
 });
+const sourceDevelopmentLaunch=isSourceDevelopmentLaunch({devMode:isDevMode,appPath:app.getAppPath(),mainDirectory:__dirname,resourcesPath:process.resourcesPath});
 const get3wAuth = createGet3wAuth({
-  ...(!app.isPackaged ? {apiBase: process.env.GET3W_API_ORIGIN?.trim() || "http://127.0.0.1:6600"} : {}),
+  onDiagnostic:isDevMode?record=>{void mkdir(path.join(app.getPath("userData"),"logs"),{recursive:true}).then(()=>appendFile(path.join(app.getPath("userData"),"logs","event-source-requests.log"),JSON.stringify({at:Date.now(),...record})+"\n",{mode:0o600})).catch(()=>{});}:undefined,
+  ...(!app.isPackaged || sourceDevelopmentLaunch ? {apiBase: process.env.GET3W_API_ORIGIN?.trim() || "http://127.0.0.1:6600"} : {}),
   userData: app.getPath("userData"),
   safeStorage: require("electron").safeStorage,
   openExternal: (url) => shell.openExternal(url),
   ...resolveGet3wOrigins({
-    isPackaged: app.isPackaged,
+    isPackaged: app.isPackaged && !sourceDevelopmentLaunch,
     env: process.env,
     packageMetadata: desktopPackageMetadata,
     localValidation: localValidationPackage,
@@ -2644,6 +2647,7 @@ const get3wManagedProvider = createGet3wManagedProvider({
 const get3wManagedMcp = createGet3wManagedMcp({
   auth:get3wAuth,userData:app.getPath("userData"),getServerInfo:()=>runtimeManager.get3wServerInfo(),
 });
+globalThis.__get3wPrepareTaskTools = createPrepareTaskTools({auth:get3wAuth,models:get3wManagedProvider,tools:get3wManagedMcp});
 const personalAutomationRunner = createPersonalAutomationRunner({auth:get3wAuth,log:message=>console.warn("[get3w-automations]",message),receiptJournal:createAutomationReceiptJournal({userData:app.getPath("userData"),safeStorage:require("electron").safeStorage}),getWorkspaceIds:async()=>{
   const server=await runtimeManager.get3wServerInfo();
   if(!server.baseUrl)throw Error("The local workspace service is starting. Retry shortly.");
@@ -2659,6 +2663,10 @@ const personalAutomationRunner = createPersonalAutomationRunner({auth:get3wAuth,
 personalAutomationRunner.start();
 app.on("before-quit",()=>personalAutomationRunner.stop());
 powerMonitor.on("resume",()=>personalAutomationRunner.wake());
+const eventSourceSync=createEventSourceSync({auth:get3wAuth,getServerInfo:()=>runtimeManager.get3wServerInfo()});
+eventSourceSync.start();
+app.on("before-quit",()=>eventSourceSync.stop());
+powerMonitor.on("resume",()=>eventSourceSync.wake());
 const taskPermissions = createTaskPermissionBridge({ getServerInfo: () => runtimeManager.get3wServerInfo() });
 const get3wModelApprovals = createModelApprovalBridge({ getServerInfo: () => runtimeManager.get3wServerInfo() });
 ipcMain.handle("get3w:auth", async (event, operation, input) => {
@@ -2669,7 +2677,7 @@ ipcMain.handle("get3w:auth", async (event, operation, input) => {
   if (operation === "modelApprovals") return get3wModelApprovals(input);
   if (operation === "managedMcp") return get3wManagedMcp.run(input);
   if (operation === "managedModels") return get3wManagedProvider.run(input);
-  if (!["status", "begin", "poll", "cancel", "logout", "settings", "balance", "models", "connectors", "modelUsage", "taskCatalog", "artifacts", "automations"].includes(operation)) throw new Error("Unknown sign-in operation");
+  if (!["status", "begin", "poll", "cancel", "logout", "settings", "balance", "models", "connectors", "modelUsage", "taskCatalog", "artifacts", "automations", "eventSources"].includes(operation)) throw new Error("Unknown sign-in operation");
   const result = await get3wAuth[operation](input);
   if (["status", "poll", "logout"].includes(operation)) {
     const modelSnapshot = result;
@@ -2841,7 +2849,7 @@ or use: pnpm dev:worktree`);
       fallbackName: APP_NAME,
       platform: process.platform,
       updateElectronAppName: true,
-      updateProcessTitle: !localValidationPackage,
+      updateProcessTitle: process.platform !== "darwin",
       runtimeProcess: process,
       app,
       applicationMenu,
@@ -2908,8 +2916,8 @@ or use: pnpm dev:worktree`);
     // would block the main thread, and the quit, until someone dismissed it.
     if (quitInProgress()) return;
     dialog.showErrorBox(
-      `${APP_NAME} could not start`,
-      "Get3W hit an unexpected startup error. Quit and reopen the app. If it continues, switch to a Stable build and share the diagnostics with support.",
+      nativeMessage(`${APP_NAME} could not start`, `${APP_NAME} 无法启动`),
+      nativeMessage("Get3W hit an unexpected startup error. Quit and reopen the app. If it continues, switch to a Stable build and share the diagnostics with support.", "Get3W 启动异常，请退出并重新打开应用。若持续发生，请切换到稳定版本并向支持人员提供诊断信息。"),
     );
     app.quit();
   });

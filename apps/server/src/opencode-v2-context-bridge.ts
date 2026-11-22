@@ -1,4 +1,5 @@
 import { generationPolicyFromMessages } from "./generation-policies.js";
+import { formatAppContextOutput } from "./app-context-output.js";
 import { gateway } from "./connect-mcp-server-catalog.js";
 import { captureCostRun, initializeTaskCostSettings } from "./task-cost-settings.js";
 import { createV2SessionHomes } from "./opencode-v2-session-home.js";
@@ -16,9 +17,10 @@ import { isRecord } from "./workspace-kv-store.js";
 import { createV2BrowserBridge } from "./opencode-v2-browser-bridge.js";
 import { SESSION_GROUP_COMMAND_IDS } from "./opencode-plugins/get3w-session-groups.js";
 import { loopbackFetch } from "./server-fetch.js";
+import { exportWebObservation, readWebObservation, recordWebObservation } from "./web-observations.js";
 
 const requestSchema = z.object({
-  name: z.enum(["get3w_context", "get3w_query", "get3w_execute", "get3w_skills", "get3w_skill_read", "get3w_model_call", "task_log_evidence", "workspace_file", "web_tool"]),
+  name: z.enum(["get3w_context", "get3w_query", "get3w_execute", "get3w_skills", "get3w_skill_read", "get3w_model_call", "task_log_evidence", "workspace_file", "always_on_complete", "always_on_memory_read", "web_tool", "web_observation"]),
   input: z.unknown(),
   sessionId: z.string().max(256).optional(),
   // The calling tool's place in its chat, where a Drive approval is shown.
@@ -242,7 +244,7 @@ export async function createV2ContextBridge(
         signal.throwIfAborted();
         return hostRequest(path, { ...init, signal });
       };
-      if (call.name === "web_tool") {
+      if (call.name === "web_tool" || call.name === "web_observation") {
         if (!permissionConfig || !call.sessionId || !call.caller || !engine?.()) throw Error("Web tool conversation unavailable");
         const connection = engine()!;
         const nativeRead = async (path: string) => {
@@ -254,21 +256,44 @@ export async function createV2ContextBridge(
         const home = await homes.resolve(await nativeRead(`/api/session/${encodeURIComponent(call.sessionId)}`));
         if (!home) throw Error("Conversation unavailable");
         const workspace = permissionConfig.workspaces.find(row => row.path === home)?.id ?? workspaceIdForPath(home);
+        if (call.name === "web_observation") {
+          const { id, file_id } = z.object({ id: z.string(), file_id: z.string().optional() }).strict().parse(call.input);
+          if (file_id) {
+            const info = permissionConfig.workspaces.find(row => row.id === workspace);
+            if (!info) throw Error("Register this workspace before exporting web observations");
+            return Response.json(await exportWebObservation(permissionConfig, info, call.sessionId, id, file_id));
+          }
+          return Response.json(await readWebObservation(permissionConfig, workspace, call.sessionId, id));
+        }
         const target = await gateway(permissionConfig, workspace);
         if (!target) throw Error("Sign in to Get3W to search or fetch pages");
         const args = z.object({ operation: z.enum(["search", "fetch"]), body: z.record(z.string(), z.unknown()) }).strict().parse(call.input);
         const selected=await generationPolicyFromMessages(call.caller.messageId,cursor=>nativeRead(`/api/session/${encodeURIComponent(call.sessionId!)}/message?limit=200&${cursor?`cursor=${encodeURIComponent(cursor)}`:"order=desc"}`));
         const preferred=selected.policy.models[args.operation]?.slug;
         const body={...args.body,...(preferred?{preferred_model:preferred}:{})};
+        const startedAt = Date.now();
         const response = await loopbackFetch(`${target.origin}/web-tools/${args.operation}`, { method: "POST", redirect: "error", headers: { Authorization: target.authorization, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([request.signal, AbortSignal.timeout(310_000)]) });
         const payload: unknown = await response.json();
+        const observation = await recordWebObservation(permissionConfig, {
+          workspaceId: workspace, sessionId: call.sessionId, messageId: call.caller.messageId,
+          callId: call.caller.callId, operation: args.operation, input: args.body,
+          startedAt, observedAt: Date.now(), status: response.status, response: payload,
+        });
         if (!response.ok) throw Error(isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string" ? payload.error.message : "Get3W web service unavailable");
         const latest = await gateway(permissionConfig, workspace);
         if (latest?.authorization !== target.authorization || latest.origin !== target.origin) throw Error("Get3W account changed");
-        return Response.json(payload);
+        return Response.json(isRecord(payload) ? { ...payload, observation } : payload);
       }
       if (call.name === "task_log_evidence") {
         return Response.json(await read("/experimental/task-log-evidence", {method:"POST",body:JSON.stringify(call)}));
+      }
+      if(call.name==="always_on_memory_read"){
+        if(!call.sessionId||!call.caller)throw Error("Conversation context required");
+        return Response.json(await read("/experimental/always-on-memory-read",{method:"POST",body:JSON.stringify(call)}));
+      }
+      if(call.name==="always_on_complete"){
+        if(!call.sessionId||!call.caller)throw Error("Conversation context required");
+        return Response.json(await read("/experimental/always-on-complete",{method:"POST",body:JSON.stringify(call)}));
       }
       if(call.name==="workspace_file"){
         if(!call.sessionId||!call.caller)throw Error("Conversation context required");
@@ -332,7 +357,7 @@ export async function createV2ContextBridge(
         }
         const context: unknown = JSON.parse(await plugin.tool.get3w_context.execute());
         const filtered = bridgeAffordances(context);
-        return JSON.stringify(isRecord(filtered) ? { ...filtered, instructions: {
+        return formatAppContextOutput(isRecord(filtered) ? { ...filtered, instructions: {
           context: "Use get3w_query for the discovered read-only affordances and get3w_execute for session.group commands, session.create, session.send, session.question.answer or automation.propose. An automation proposal only shows a review card; it does not create, activate, or run anything. When Code Mode exposes these tools, discover their exact paths with search and compose them there, preserving exceptions and verifying the resulting groups. For other conversations, use session.search then session.read. Session reads include current activity and background-agent counts."
         } } : filtered);
       });

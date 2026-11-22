@@ -51,15 +51,21 @@ test("managed tools preserve actionable bridge errors",async()=>{
 
 
 test("managed fetch returns the engine output contract for every format",async()=>{
- const server=createServer((_req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({request_id:'req_fetch',provider:'deepseek',url:'https://example.com/',content:'Example <script>alert(1)</script>'}));});
+ const saved={id:'host-observation',sha256:'digest',started_at:10,observed_at:20};
+ const server=createServer((_req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({request_id:'req_fetch',provider:'deepseek',url:'https://example.com/',content:'Example <script>alert(1)</script>',observation:saved}));});
  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
  const address=server.address();assert.ok(address&&typeof address==='object');
  try {
   const execute=managedWebExecute({location:{directory:'/isolated'},options:{url:`http://127.0.0.1:${address.port}`,token:'test'},permission:{async assert(){}}},'fetch');
   for (const format of ['markdown','text','html']) {
+   const before=Date.now();
    const result=await execute({url:'https://example.com/',format},{signal:new AbortController().signal,sessionID:'s',messageID:'m',id:'c'});
    const output=z.object({url:z.string(),contentType:z.string(),format:z.string(),output:z.string()}).parse(result.output);
-   assert.equal(output.format,format);assert.equal(output.output,result.content[0].text);
+   const observation=z.object({call_id:z.string(),started_at:z.number(),observed_at:z.number()}).parse(result.metadata);
+   assert.equal(observation.call_id,'c');assert.ok(observation.started_at>=before);assert.ok(observation.observed_at>=observation.started_at);assert.ok(observation.observed_at<=Date.now());
+   assert.equal(output.format,format);assert.equal(output.output,result.content[1].text);
+   assert.equal(result.content[0]?.text,`Host observation: ${JSON.stringify(saved)}`);
+   assert.deepEqual(result.metadata?.observation,saved);
    assert.equal(output.contentType,format==='html'?'text/html':format==='text'?'text/plain':'text/markdown');
    if(format==='html')assert.ok(!output.output.includes('<script>'));
   }

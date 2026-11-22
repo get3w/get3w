@@ -169,7 +169,7 @@ async function inspectConnectRuntime(
 
   for (const workspace of config.workspaces) {
     options?.signal?.throwIfAborted();
-    if (workspace.workspaceType !== "local") continue;
+    if ((workspace.workspaceType !== "local" && workspace.workspaceType !== "always-on")) continue;
     if (inspectedRows >= maxRuntimeRows) {
       return { cloudMcpPresent: false, complete: false };
     }

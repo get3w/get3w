@@ -298,12 +298,12 @@ export async function renderMermaidSource(
 }
 
 function sourceStatus(reason: Exclude<MermaidRenderResult, { status: "rendered" }>["reason"]) {
-  if (reason === "size") return "Diagram source is too large. Showing source.";
-  if (reason === "complexity") return "Diagram is too complex. Showing source.";
-  if (reason === "unsafe") return "Diagram contains unsafe directives or resources. Showing source.";
-  if (reason === "timeout") return "Diagram rendering timed out. Showing source.";
-  if (reason === "unavailable") return "Diagram rendering is unavailable. Showing source.";
-  return "Diagram could not be rendered. Showing source.";
+  if (reason === "size") return t("desktop.text.2a45351f4d27");
+  if (reason === "complexity") return t("desktop.text.2696a45312fc");
+  if (reason === "unsafe") return t("desktop.text.8ee8681c777b");
+  if (reason === "timeout") return t("desktop.text.286bb25c8f7e");
+  if (reason === "unavailable") return t("desktop.text.f90271c212fe");
+  return t("desktop.text.c2d7549c0226");
 }
 
 type MermaidPublish = (element: HTMLElement, slot: HTMLElement, svg: string | null) => void;

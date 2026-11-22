@@ -141,7 +141,7 @@ export function createExtensionsStore(options: {
   projectDir: () => string;
   selectedWorkspaceId: () => string;
   selectedWorkspaceRoot: () => string;
-  workspaceType: () => "local";
+  workspaceType: () => "local" | "always-on";
   get3wServer: Get3wServerStore;
   get3wServerConnection?: () => {
     get3wServerClient: Get3wServerClient | null;
@@ -271,7 +271,7 @@ export function createExtensionsStore(options: {
   const formatSkillPath = (location: string) => location.replace(/[/\\]SKILL\.md$/i, "");
 
   const deleteWorkspaceSkill = async (name: string) => {
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const root = options.selectedWorkspaceRoot().trim();
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
@@ -347,7 +347,7 @@ export function createExtensionsStore(options: {
 
   async function refreshSkills(optionsOverride?: { force?: boolean }) {
     const root = options.selectedWorkspaceRoot().trim();
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -511,7 +511,7 @@ export function createExtensionsStore(options: {
   }
 
   async function refreshPlugins(scopeOverride?: PluginScope) {
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -691,7 +691,7 @@ export function createExtensionsStore(options: {
     const isManualInput = pluginNameOverride == null;
     const triggerName = stripPluginVersion(pluginName);
 
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -788,7 +788,7 @@ export function createExtensionsStore(options: {
       return;
     }
 
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -863,13 +863,13 @@ export function createExtensionsStore(options: {
 
   async function importLocalSkill() {
     if (extensionMutationDenied()) return;
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     if (!isDesktopRuntime()) {
       options.setError(t("skills.desktop_required"));
       return;
     }
     if (!isLocalWorkspace) {
-      options.setError("Local workers are required to import skills.");
+      options.setError(t("desktop.text.aac5f1a1b7bf"));
       return;
     }
     const targetDir = options.projectDir().trim();
@@ -904,7 +904,7 @@ export function createExtensionsStore(options: {
 
   async function installSkillCreator(): Promise<{ ok: boolean; message: string }> {
     if (extensionMutationDenied()) return { ok: false, message: desktopRestrictionNotice("allowManageExtensions") };
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -1051,7 +1051,7 @@ export function createExtensionsStore(options: {
     const trimmed = name.trim();
     if (!trimmed) return null;
     const root = options.selectedWorkspaceRoot().trim();
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =
@@ -1103,7 +1103,7 @@ export function createExtensionsStore(options: {
     const trimmed = input.name.trim();
     if (!trimmed) return;
     const root = options.selectedWorkspaceRoot().trim();
-    const isLocalWorkspace = options.workspaceType() === "local";
+    const isLocalWorkspace = (options.workspaceType() === "local" || options.workspaceType() === "always-on");
     const { get3wSnapshot, get3wClient, get3wWorkspaceId, hasGet3wTarget } =
       await resolveWorkspaceServerTarget();
     const canUseGet3wServer =

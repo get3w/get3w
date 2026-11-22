@@ -34,3 +34,13 @@ test("resolveGet3wOrigins ignores env in packaged builds and only trusts local v
   assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata }), {});
   assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata, localValidation: true }), { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700" });
 });
+
+test('renamed development Electron may use source origins but bundled apps cannot',async()=>{
+ const {isSourceDevelopmentLaunch,resolveGet3wOrigins}=await import('./get3w-services.mjs');
+ const source={devMode:true,appPath:'/repo/apps/desktop',mainDirectory:'/repo/apps/desktop/electron',resourcesPath:'/repo/apps/desktop/.electron-runtime/Get3W.app/Contents/Resources'};
+ assert.equal(isSourceDevelopmentLaunch(source),true);
+ assert.equal(isSourceDevelopmentLaunch({...source,appPath:source.mainDirectory}),true);
+ assert.equal(isSourceDevelopmentLaunch({...source,devMode:false}),false);
+ assert.equal(isSourceDevelopmentLaunch({...source,appPath:'/App/Resources/app',mainDirectory:'/App/Resources/app/electron',resourcesPath:'/App/Resources'}),false);
+ assert.deepEqual(resolveGet3wOrigins({isPackaged:!isSourceDevelopmentLaunch(source),env:{GET3W_CLOUD_ORIGIN:'http://127.0.0.1:6605'}}).cloudBase,'http://127.0.0.1:6605');
+});

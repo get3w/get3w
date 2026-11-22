@@ -1,3 +1,4 @@
+import type { AlwaysOnSettings } from "@get3w/types/workspace";
 /** @jsxImportSource react */
 import {
   FolderPlus,
@@ -7,6 +8,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AlwaysOnWorkspaceFields } from "./always-on-workspace-fields";
 import { useId } from "react";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import type { WorkspacePreset } from "../../../app/types";
@@ -39,6 +41,10 @@ export type CreateWorkspaceProgressSnapshot = {
 };
 
 export type CreateWorkspaceLocalPanelProps = {
+  workspaceType: "local" | "always-on";
+  alwaysOn: AlwaysOnSettings;
+  onAlwaysOnChange: (value: AlwaysOnSettings) => void;
+  alwaysOnValid: boolean;
   disabled: boolean;
   disabledReason?: string | null;
   selectedFolder: string | null;
@@ -101,11 +107,13 @@ export function CreateWorkspaceLocalPanel(
 ) {
   const progress = props.progress;
   const projectId = useId();
+  const alwaysOn = props.workspaceType === "always-on";
 
   return (
     <>
-      <div className={`${modalBodyClass} space-y-4`}>
-        {props.showProjectLabel ? <div className="space-y-2">
+      <div className={`${modalBodyClass} space-y-4 overflow-x-hidden`}>
+        <div className={alwaysOn ? "grid gap-6 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" : "space-y-4"}>
+        {props.showProjectLabel ? <div className="min-w-0 space-y-2">
           <label htmlFor={projectId} className="block text-sm font-medium">
             {t("ui.25498193b898")} <span className="font-normal text-muted-foreground">{t("ui.0059798b7f70")}</span>
           </label>
@@ -126,9 +134,11 @@ export function CreateWorkspaceLocalPanel(
           </div>
           {props.disabled && props.disabledReason ? <p className="text-xs text-muted-foreground">{props.disabledReason}</p> : null}
         </div>
+        </div>
+        {alwaysOn ? <AlwaysOnWorkspaceFields disabled={props.submitting || props.disabled} value={props.alwaysOn} onChange={props.onAlwaysOnChange} /> : null}
       </div>
 
-    <DialogFooter className="flex-col gap-3 px-6 py-4">
+    <DialogFooter className={alwaysOn ? "flex-col gap-3 border-t border-border pt-4" : "flex-col gap-3 px-6 py-4"}>
         {props.submitting && progress ? (
           <div className={softCardClass}>
             <div className="flex items-start justify-between gap-3">
@@ -267,7 +277,7 @@ export function CreateWorkspaceLocalPanel(
           >
             {t("common.cancel")}
           </DialogClose>
-          {props.onConfirmWorker ? (
+          {props.onConfirmWorker && !alwaysOn ? (
             <Button
               type="button"
               variant="secondary"
@@ -302,7 +312,7 @@ export function CreateWorkspaceLocalPanel(
           <Button
             type="button"
             onClick={() => void props.onSubmit()}
-            disabled={!props.selectedFolder || props.submitting || props.disabled}
+            disabled={(alwaysOn && !props.alwaysOnValid) || !props.selectedFolder || props.submitting || props.disabled}
             title={
               !props.selectedFolder
                 ? t("dashboard.choose_folder_continue")
@@ -315,7 +325,7 @@ export function CreateWorkspaceLocalPanel(
                 {t("ui.c79ed9492e3c")}
               </span>
             ) : (
-              (props.confirmLabel ??
+              (alwaysOn ? t("workspace.create_and_run") : props.confirmLabel ??
                 t("dashboard.create_workspace_confirm"))
             )}
           </Button>

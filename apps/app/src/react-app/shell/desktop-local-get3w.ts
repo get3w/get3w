@@ -117,7 +117,7 @@ export function shouldAttemptDesktopLocalReconnect(input: DesktopLocalReconnectI
   if (!bootSettled) return false;
   if (input.routeLoading) return false;
   if (input.hasClient && !input.connectionPending) return false;
-  return input.workspaceType === "local";
+  return (input.workspaceType === "local" || input.workspaceType === "always-on");
 }
 
 function describeError(error: unknown) {
@@ -131,14 +131,14 @@ export async function ensureDesktopLocalGet3wConnection(
 ) {
   const workspace = options.workspace;
   const workspaceRoot = workspace?.path?.trim() ?? "";
-  if (!workspace || workspace.workspaceType !== "local" || !workspaceRoot) {
+  if (!workspace || (workspace.workspaceType !== "local" && workspace.workspaceType !== "always-on") || !workspaceRoot) {
     return null;
   }
 
   const workspacePaths = Array.from(
     new Set(
       options.allWorkspaces.flatMap((item) => {
-        const path = item.workspaceType === "local" ? item.path?.trim() ?? "" : "";
+        const path = (item.workspaceType === "local" || item.workspaceType === "always-on") ? item.path?.trim() ?? "" : "";
         return path ? [path] : [];
       }),
     ),

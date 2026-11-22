@@ -1,3 +1,4 @@
+import { stageOpencodeV2 } from "./stage-opencode-v2.mjs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -13,6 +14,7 @@ export function opencodeV2ArtifactKey(target) {
 }
 
 export async function prepareOpencodeV2(sidecarDir, target) {
+  if (process.env.GET3W_OPENCODE2_BUILD_MANIFEST) return stageOpencodeV2(process.env.GET3W_OPENCODE2_BUILD_MANIFEST, sidecarDir, target);
   if (artifacts.version !== constants.opencodeV2Version) throw new Error("OpenCode v2 artifact pin does not match constants.json");
   const key = opencodeV2ArtifactKey(target);
   const artifact = artifacts.platforms[key];

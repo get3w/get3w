@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { currentLocale, useLocale } from "@/i18n";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -73,7 +74,7 @@ export function Get3WAutomationProposalTool({ part }: { part: DynamicToolUIPart 
       try {
         const detail = await createPersonalAutomationClient(account.user.id).create({name:proposal.name,instructions:proposal.instructions,schedule:proposal.schedule,model:{providerId:model.providerId,modelId:model.modelId,variant:exact ? proposal.model?.variant ?? null : null},workspaceId:workspace?.workspaceId ?? null});
         setCreated(detail.automation.id);
-      } catch (error) {setError(error instanceof Error ? error.message : "Could not create automation. Try again.");}
+      } catch (error) {setError(error instanceof Error ? error.message : t("desktop.text.b11698e22007"));}
       finally {setBusy(false);}
     }}>{text("创建并启用", "Create and activate")}</Button>}
   </div>;

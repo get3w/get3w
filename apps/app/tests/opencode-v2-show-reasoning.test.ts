@@ -35,6 +35,7 @@ async function sentPromptMetadata(onText?: (text: string) => void): Promise<unkn
           if (typeof text === "string") onText?.(text);
         }
       }
+      if (path.endsWith("/message")) return Response.json({ data: [] });
       if (request.method === "GET") return Response.json({ location: {}, data: { id: "ses_1", agent: "build" } });
       return new Response(null, { status: 204 });
     },
@@ -66,6 +67,60 @@ test("automatic titles follow the current Desktop language without changing visi
     expect(parsed.segments).toEqual([{kind:"text",text:"hello"}]);
     expect(parsed.context).toContain(`Desktop language setting: ${language === "en" ? "English" : "Simplified Chinese (简体中文)"}`);
     expect(parsed.context).toContain("This setting applies only to the conversation title, not the answer.");
+  }
+});
+
+test("title context is sent only on the first successful turn, including after reopening a chat", async () => {
+  const prompts: string[] = [];
+  const stored = new Set<string>(["existing", "forked"]);
+  let historyReads = 0;
+  let failNextPrompt = false;
+  Object.defineProperty(globalThis, "fetch", {
+    configurable: true,
+    value: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      const sessionID = path.split("/session/")[1]?.split("/")[0] ?? "";
+      if (path.endsWith("/message")) {
+        historyReads += 1;
+        return Response.json({ data: stored.has(sessionID) ? [{ id: "prior-message" }] : [] });
+      }
+      if (path.endsWith("/prompt")) {
+        const body: unknown = await request.json();
+        prompts.push(String(Reflect.get(Object(body), "text")));
+        if (failNextPrompt) {
+          failNextPrompt = false;
+          return new Response(null, { status: 500 });
+        }
+        stored.add(sessionID);
+      }
+      if (request.method === "GET") return Response.json({ data: { id: sessionID } });
+      return new Response(null, { status: 204 });
+    },
+  });
+  const client = createClientV2(base, "/tmp/ws", { token: "t" });
+  const send = (sessionID: string, target = client) => target.session.promptAsync({
+    sessionID,
+    model: { providerID: "anthropic", modelID: "claude" },
+    parts: [{ type: "text", text: "continue" }, { type: "text", synthetic: true, text: "Other context" }],
+  });
+  await send("new");
+  setLocale("en");
+  await send("new");
+  expect(historyReads).toBe(1);
+  await send("existing");
+  await send("forked");
+  await send("new", createClientV2(base, "/tmp/ws", { token: "t" }));
+  expect(splitV2Prompt(prompts[0] ?? "").context).toContain("Desktop language setting:");
+  for (const prompt of prompts.slice(1)) {
+    expect(splitV2Prompt(prompt).context).toBe("Other context");
+    expect(splitV2Prompt(prompt).segments).toEqual([{ kind: "text", text: "continue" }]);
+  }
+  failNextPrompt = true;
+  expect((await send("retry")).error).toBeDefined();
+  expect((await send("retry")).error).toBeUndefined();
+  for (const prompt of prompts.slice(-2)) {
+    expect(splitV2Prompt(prompt).context).toContain("Desktop language setting: English");
   }
 });
 

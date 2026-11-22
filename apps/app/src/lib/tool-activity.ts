@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DynamicToolUIPart, ToolUIPart } from "ai"
 import {
   isApplyPatchToolPart,
@@ -42,7 +43,7 @@ function hostnameOf(url: string | undefined): string | undefined {
 export function getToolActivityLabel(part: AnyToolPart): string {
   if (isBashToolPart(part)) {
     const description = part.input?.description?.trim()
-    return description ? truncateText(description, 64) : "Running a command"
+    return description ? truncateText(description, 64) : t("desktop.text.1216a55213e6")
   }
   if (isReadToolPart(part)) {
     return `Reading ${parseFilename(part.input?.filePath)}`
@@ -54,42 +55,42 @@ export function getToolActivityLabel(part: AnyToolPart): string {
     return `Writing ${parseFilename(part.input?.filePath)}`
   }
   if (isApplyPatchToolPart(part)) {
-    return "Applying changes"
+    return t("desktop.text.3a962c2d16de")
   }
   if (isGrepToolPart(part) || isGlobToolPart(part)) {
     const pattern = part.input?.pattern?.trim()
     return pattern
       ? `Searching for ${truncateText(pattern, 44)}`
-      : "Searching files"
+      : t("desktop.text.bc9797766c2d")
   }
   if (isLspToolPart(part)) {
     return `Inspecting ${parseFilename(part.input?.filePath)}`
   }
   if (isSkillToolPart(part)) {
     const name = skillDisplayName(part.input)
-    return name ? `Loading ${name} skill` : "Loading a skill"
+    return name ? `Loading ${name} skill` : t("desktop.text.78f840db49e7")
   }
   if (isTodoWriteToolPart(part)) {
-    return "Updating the plan"
+    return t("desktop.text.ad15b385c3ae")
   }
   if (isWebFetchToolPart(part)) {
     const host = hostnameOf(part.input?.url)
-    return host ? `Reading ${host}` : "Fetching a page"
+    return host ? `Reading ${host}` : t("desktop.text.d5b9daf289f7")
   }
   if (isWebSearchToolPart(part)) {
     const query = part.input?.query?.trim()
     return query
       ? `Searching the web for ${truncateText(query, 44)}`
-      : "Searching the web"
+      : t("desktop.text.87d2f3386f90")
   }
   if (isQuestionToolPart(part)) {
-    return "Asking a question"
+    return t("desktop.text.b4c5bd8146de")
   }
   if (isTaskToolPart(part)) {
     const description = part.input?.description?.trim()
     return description
       ? `Agent: ${truncateText(description, 56)}`
-      : "Running an agent"
+      : t("desktop.text.4615b32bec74")
   }
   if (part.type === "dynamic-tool") {
     return `Running ${part.toolName.replace(/[_-]+/g, " ")}`

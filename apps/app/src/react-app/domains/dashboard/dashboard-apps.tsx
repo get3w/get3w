@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { BuiltAppPicker, BuiltDashboardTiles, useBuiltDashboardApps } from "./built-dashboard-apps";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -53,7 +54,7 @@ export function DashboardApps({ onCreateApp, fallbackEndpoints, headerActionsTar
     if (!canManage) return;
     setCreating(true); setError(null);
     try { await onCreateApp("Create one live app for my dashboard in one shot. Use my request to build and save one app that fetches fresh data with each viewer’s own connections whenever opened or refreshed. Handle the underlying workflow internally; do not ask me workflow questions. My app should "); setChooser(null); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not start a conversation. Try again."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : t("desktop.text.e6d3f3dc6e2e")); }
     finally { setCreating(false); }
   };
   const apps = query.data?.items ?? [];
@@ -61,16 +62,16 @@ export function DashboardApps({ onCreateApp, fallbackEndpoints, headerActionsTar
   const matching = apps.filter((app) => app.view.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   const openAdd = () => { setChooser(built.ready ? "existing" : "add"); setError(null); placement.reset(); };
   const headerControls = (available && canManage) || built.ready ? <div className="flex items-center gap-2">
-    <Button className="shrink-0 rounded-lg" onClick={openAdd}><Plus className="size-4" />Add to dashboard</Button>
+    <Button className="shrink-0 rounded-lg" onClick={openAdd}><Plus className="size-4" />{t("desktop.copy.81c5e9c7bb53")}</Button>
   </div> : null;
   return <>
     {headerControls ? headerActionsTarget ? createPortal(headerControls, headerActionsTarget)
       : headerActionsTarget === undefined ? <div className="mb-6 flex justify-end">{headerControls}</div> : null : null}
-    {query.isError ? <div className="mb-5 flex items-center gap-3"><p role="alert" className="text-sm">Your artifacts could not be loaded.</p><Button variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : null}
+    {query.isError ? <div className="mb-5 flex items-center gap-3"><p role="alert" className="text-sm">{t("desktop.copy.c1caaacc83b6")}</p><Button variant="outline" onClick={() => void query.refetch()}>{t("desktop.copy.d8b8392e2c54")}</Button></div> : null}
     {placement.error && !chooser ? <p role="alert" className="mb-4 text-sm text-destructive">{placement.error.message}</p> : null}
     <BuiltDashboardTiles built={built} fallbackEndpoints={fallbackEndpoints} onAdd={openAdd} />
-    {available && personal.length ? <section className="mb-8" aria-label="Your artifacts">
-      <h2 className="mb-3 text-sm font-medium">Added by you</h2>
+    {available && personal.length ? <section className="mb-8" aria-label={t("desktop.copy.4521eba120ff")}>
+      <h2 className="mb-3 text-sm font-medium">{t("desktop.copy.330ef2d3dbe9")}</h2>
       <DashboardMasonry>{personal.map((app) => <SavedDashboardApp key={JSON.stringify([...scope, app.view.id])} app={app} fallbackEndpoints={fallbackEndpoints} onCreateApp={onCreateApp}
         removing={placement.isPending && placement.variables?.appId === app.view.id}
         onRemove={(geometry) => placement.mutate({ appId: app.view.id, added: false, geometry })} />)}</DashboardMasonry>
@@ -79,28 +80,28 @@ export function DashboardApps({ onCreateApp, fallbackEndpoints, headerActionsTar
         <div className="h-2.5 w-3/5 rounded-full bg-muted" />
         <div className="mt-3 h-6 w-10 rounded-md bg-muted" />
       </div>)}</div>
-      <h2 className="text-xl font-semibold">Pin the artifacts you check every day</h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">Add your saved artifacts to keep their results close at hand.</p>
-      <Button className="mt-6 rounded-lg" onClick={openAdd}><Plus className="size-4" />Add an artifact</Button>
-    </section>) : available ? <p className="mb-8 text-xs text-muted-foreground">This dashboard has no artifacts yet.</p> : null}
+      <h2 className="text-xl font-semibold">{t("desktop.copy.8bb9cf845b46")}</h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">{t("desktop.copy.ca88126bebe0")}</p>
+      <Button className="mt-6 rounded-lg" onClick={openAdd}><Plus className="size-4" />{t("desktop.copy.870812926ec5")}</Button>
+    </section>) : available ? <p className="mb-8 text-xs text-muted-foreground">{t("desktop.copy.e6937cb1477f")}</p> : null}
     <Dialog open={(canManage || built.ready) && chooser !== null} onOpenChange={(open) => { if (!open && !creating && !placement.isPending) setChooser(null); }}>
       <DialogContent className={chooser === "existing" && built.ready ? "flex flex-col gap-0 overflow-hidden p-0 lg:top-[12vh] lg:max-h-[76vh] lg:max-w-xl lg:translate-y-0 lg:rounded-xl" : undefined}>
-        <DialogHeader className={chooser === "existing" && built.ready ? "sr-only" : undefined}><DialogTitle>{chooser === "existing" || chooser === "saved" ? "Choose an existing artifact" : "Add to your dashboard"}</DialogTitle>
-          {chooser === "add" ? <DialogDescription>Create something useful or choose an artifact already available to you.</DialogDescription> : null}</DialogHeader>
-        {chooser === "existing" && built.ready ? <div className="flex min-h-0 flex-1 flex-col"><BuiltAppPicker key={JSON.stringify(scope)} built={built} onAdded={() => setChooser(null)} />{canManage && available ? <div className="flex gap-2 border-t p-2"><Button variant="ghost" size="sm" onClick={() => setChooser("add")}><Sparkles className="size-4" />Create with Get3W</Button>{apps.length ? <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setChooser("saved"); }}>Other saved artifacts</Button> : null}</div> : null}</div> : chooser === "existing" || chooser === "saved" ? <div className="space-y-4">
-          <Button size="sm" variant="ghost" onClick={() => setChooser(built.ready ? "existing" : "add")}><ArrowLeft className="size-4" />Back</Button>
-          <Input aria-label="Search artifacts" placeholder="Search artifacts" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <DialogHeader className={chooser === "existing" && built.ready ? "sr-only" : undefined}><DialogTitle>{chooser === "existing" || chooser === "saved" ? t("desktop.text.db9a880685c3") : t("desktop.text.9746526456f4")}</DialogTitle>
+          {chooser === "add" ? <DialogDescription>{t("desktop.copy.f561be3f0d30")}</DialogDescription> : null}</DialogHeader>
+        {chooser === "existing" && built.ready ? <div className="flex min-h-0 flex-1 flex-col"><BuiltAppPicker key={JSON.stringify(scope)} built={built} onAdded={() => setChooser(null)} />{canManage && available ? <div className="flex gap-2 border-t p-2"><Button variant="ghost" size="sm" onClick={() => setChooser("add")}><Sparkles className="size-4" />{t("desktop.copy.2a29d8c95c2f")}</Button>{apps.length ? <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setChooser("saved"); }}>{t("desktop.copy.f83032b54a54")}</Button> : null}</div> : null}</div> : chooser === "existing" || chooser === "saved" ? <div className="space-y-4">
+          <Button size="sm" variant="ghost" onClick={() => setChooser(built.ready ? "existing" : "add")}><ArrowLeft className="size-4" />{t("desktop.copy.76900f1bfd16")}</Button>
+          <Input aria-label={t("desktop.copy.c71436cce0eb")} placeholder={t("desktop.copy.c71436cce0eb")} value={search} onChange={(event) => setSearch(event.target.value)} />
           <div className="max-h-80 space-y-2 overflow-auto">{matching.map((app) => <div key={app.view.id} className="flex items-center gap-3 rounded-lg border p-3">
             <Blocks className="size-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{app.view.title}</p>{app.view.description ? <p className="line-clamp-2 text-xs text-muted-foreground">{app.view.description}</p> : null}</div>
-            <Button variant="outline" size="sm" aria-label={`Add ${app.view.title}`} disabled={app.onDashboard || placement.isPending} onClick={() => placement.mutate({ appId: app.view.id, added: true })}>{app.onDashboard ? <><Check className="size-3.5" />Added</> : "Add"}</Button>
+            <Button variant="outline" size="sm" aria-label={t("desktop.dynamic.2cc06c85e772", { name: app.view.title })} disabled={app.onDashboard || placement.isPending} onClick={() => placement.mutate({ appId: app.view.id, added: true })}>{app.onDashboard ? <><Check className="size-3.5" />{t("desktop.copy.6b02e0d363a4")}</> : t("desktop.text.9fd728c66c9a")}</Button>
           </div>)}</div>
-          {!matching.length ? <p className="text-sm text-muted-foreground">{apps.length ? "No artifacts match your search." : "There are no saved artifacts to choose from yet. Create one with Get3W to get started."}</p> : null}
+          {!matching.length ? <p className="text-sm text-muted-foreground">{apps.length ? t("desktop.text.585d60ee4d34") : t("desktop.text.164acd5c0598")}</p> : null}
         </div> : <div className="space-y-3 py-2">
-          <button type="button" aria-label="Create with Get3W" className="flex w-full items-start gap-3 rounded-xl border p-4 text-left hover:bg-muted/50 disabled:opacity-50" onClick={() => void create()} disabled={creating}>
-            {creating ? <Loader2 className="mt-0.5 size-5 animate-spin" /> : <Sparkles className="mt-0.5 size-5" />}<span><span className="block text-sm font-medium">{creating ? "Opening conversation…" : "Create with Get3W"}</span><span className="mt-1 block text-sm text-muted-foreground">Describe what you want. Build and refine it with a preview beside your conversation.</span></span>
+          <button type="button" aria-label={t("desktop.copy.2a29d8c95c2f")} className="flex w-full items-start gap-3 rounded-xl border p-4 text-left hover:bg-muted/50 disabled:opacity-50" onClick={() => void create()} disabled={creating}>
+            {creating ? <Loader2 className="mt-0.5 size-5 animate-spin" /> : <Sparkles className="mt-0.5 size-5" />}<span><span className="block text-sm font-medium">{creating ? t("desktop.text.12a7ad1d379e") : t("desktop.text.2a29d8c95c2f")}</span><span className="mt-1 block text-sm text-muted-foreground">{t("desktop.copy.78354f9ce38a")}</span></span>
           </button>
-          <button type="button" aria-label="Choose an existing artifact" className="flex w-full items-start gap-3 rounded-xl border p-4 text-left hover:bg-muted/50" disabled={creating} onClick={() => { setSearch(""); setChooser("existing"); }}>
-            <Blocks className="mt-0.5 size-5" /><span><span className="block text-sm font-medium">Choose an existing artifact</span><span className="mt-1 block text-sm text-muted-foreground">Add a saved artifact you already have access to.</span></span>
+          <button type="button" aria-label={t("desktop.copy.db9a880685c3")} className="flex w-full items-start gap-3 rounded-xl border p-4 text-left hover:bg-muted/50" disabled={creating} onClick={() => { setSearch(""); setChooser("existing"); }}>
+            <Blocks className="mt-0.5 size-5" /><span><span className="block text-sm font-medium">{t("desktop.copy.db9a880685c3")}</span><span className="mt-1 block text-sm text-muted-foreground">{t("desktop.copy.aaae21372640")}</span></span>
           </button>
         </div>}
         {error || placement.error ? <p role="alert" className="text-sm text-destructive">{error ?? placement.error?.message}</p> : null}
@@ -142,16 +143,16 @@ export function SavedDashboardApp({ app, onRemove, removing, onCreateApp, fallba
   return <article className="min-w-0" style={{ minHeight: detail.isPending ? reserved?.outerHeight : undefined }} data-personal-dashboard-app={app.view.id}>
       {live ? <LiveGeneratedApp view={live.view} revision={live.revision} fallbackEndpoints={fallbackEndpoints} renderActions={renderActions} />
         : <DashboardTileShell title={app.view.title} compact={(hasPreview && !detail.isError) || (detail.isPending && Boolean(reserved))} renderActions={renderActions}>
-        {isLiveGeneratedApp(app.view) ? <p role="status" className="py-4 text-sm text-muted-foreground">This artifact has no saved version ready to open.</p>
-        : detail.isPending ? <p role="status" className={`text-sm text-muted-foreground${reserved ? "" : " py-4"}`}>Loading artifact…</p>
-        : detail.isError ? <div className="space-y-3 py-4"><p role="alert" className="text-sm">This artifact could not be loaded.</p><Button variant="outline" size="sm" onClick={() => void detail.refetch()}>Try again</Button></div>
+        {isLiveGeneratedApp(app.view) ? <p role="status" className="py-4 text-sm text-muted-foreground">{t("desktop.copy.6faa401d8337")}</p>
+        : detail.isPending ? <p role="status" className={`text-sm text-muted-foreground${reserved ? "" : " py-4"}`}>{t("desktop.copy.59488fe289fa")}</p>
+        : detail.isError ? <div className="space-y-3 py-4"><p role="alert" className="text-sm">{t("desktop.copy.6acc9f310cd2")}</p><Button variant="outline" size="sm" onClick={() => void detail.refetch()}>{t("desktop.copy.d8b8392e2c54")}</Button></div>
         : detail.data.html && detail.data.payload && detail.data.revision ?
           <GeneratedAppPreview html={detail.data.html} payload={detail.data.payload} title={app.view.title} revision={detail.data.revision} presentation="dashboard" geometry={geometry} />
         : <div className="flex flex-wrap items-center gap-x-3">
           <p className="py-4 text-sm text-muted-foreground">{detail.data.previewNotice}</p>
-          {onUpdate ? <Button variant="outline" size="sm" disabled={removing || update.isPending} onClick={onUpdate}>{update.isPending ? "Opening conversation…" : "Update artifact"}</Button> : null}
+          {onUpdate ? <Button variant="outline" size="sm" disabled={removing || update.isPending} onClick={onUpdate}>{update.isPending ? t("desktop.text.12a7ad1d379e") : t("desktop.text.f71240bab327")}</Button> : null}
         </div>}
         </DashboardTileShell>}
-      {update.isError ? <p role="alert" className="text-sm text-destructive">{update.error instanceof Error ? update.error.message : "Could not start a conversation. Try again."}</p> : null}
+      {update.isError ? <p role="alert" className="text-sm text-destructive">{update.error instanceof Error ? update.error.message : t("desktop.text.e6d3f3dc6e2e")}</p> : null}
   </article>;
 }

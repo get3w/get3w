@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { localServiceEnvironment } from "./dev-local-env.mjs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -15,6 +16,7 @@ if (!existsSync(python) || !existsSync(path.join(web, "package.json"))) {
   throw new Error("Local development requires sibling api/.venv and web projects. Install their dependencies first.");
 }
 
+const localEnv = localServiceEnvironment(api);
 const children = [];
 let stopping = false;
 function stop(code = 0) {
@@ -32,7 +34,7 @@ function stop(code = 0) {
 }
 function run(command, args, cwd, extraEnv = {}) {
   const child = spawn(command, args, {
-    cwd, env: { ...process.env, ...extraEnv }, stdio: "inherit", detached: process.platform !== "win32",
+    cwd, env: { ...localEnv, ...extraEnv }, stdio: "inherit", detached: process.platform !== "win32",
   });
   children.push(child);
   child.once("error", error => { console.error(error.message); stop(1); });
@@ -55,8 +57,16 @@ async function ready(url) {
 }
 
 try {
+  const setup = process.argv.includes('--setup-event-sources');
+  const eventSchema = spawnSync(python, ['-m', 'scripts.check_event_source_setup', ...(setup ? ['--apply'] : [])], {
+    cwd: api, env: localEnv, stdio: 'inherit',
+  });
+  if (eventSchema.error || eventSchema.status !== 0) {
+    throw new Error('Local event sources are not ready. Run pnpm dev:local:setup once; existing incompatible tables or missing original encryption keys require manual repair.');
+  }
+  if (setup) process.exit(0);
   const schema = spawnSync(python, ["-m", "scripts.check_personal_schema"], {
-    cwd: api, env: process.env, stdio: "inherit",
+    cwd: api, env: localEnv, stdio: "inherit",
   });
   if (schema.error || schema.status !== 0) {
     throw new Error("Personal storage preflight failed. Review the report; explicitly initialize missing personal tables with .venv/bin/python -m scripts.check_personal_schema --apply from api/. Shared budget schema requires the existing API schema. No schema changes were made by dev:local.");

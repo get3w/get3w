@@ -1,8 +1,10 @@
+import type { AlwaysOnSettings } from "@get3w/types/workspace";
 /** @jsxImportSource react */
 import {
   useEffect,
   useMemo,
   useReducer,
+  useState,
   type SetStateAction,
 } from "react";
 
@@ -20,9 +22,15 @@ import {
   shouldTickWorkspaceElapsedClock,
   type CreateWorkspaceLocalState,
 } from "./create-workspace-modal-state";
+import { ArrowLeft, Clock, FolderPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { WorkspaceOptionCard } from "./option-card";
 import type { CreateWorkspaceModalProps } from "./types";
 
+const initialAlwaysOnSettings = (): AlwaysOnSettings => ({ goal: "", criteria: "", behavior: "", fullAccess: false, costAuto: false, costLimit: "7.00", intervalMinutes: 60 });
 export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
+  const [alwaysOn, setAlwaysOn] = useState(initialAlwaysOnSettings);
+  const [workspaceType, setWorkspaceType] = useState<"local" | "always-on" | null>(null);
   const [localState, dispatchLocal] = useReducer(
     createWorkspaceLocalReducer,
     undefined,
@@ -71,6 +79,8 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
   useEffect(() => {
     if (!props.open) return;
     dispatchLocal({ type: "reset" });
+    setWorkspaceType(null);
+    setAlwaysOn(initialAlwaysOnSettings());
   }, [props.open]);
 
   // The modal remains mounted when closed. Only publish elapsed-time updates
@@ -107,10 +117,13 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
     }
   };
 
+  const alwaysOnValid = Boolean(alwaysOn.goal.trim()) && Number.isInteger(alwaysOn.intervalMinutes) && alwaysOn.intervalMinutes >= 1 && alwaysOn.intervalMinutes <= 10080 && (!alwaysOn.costAuto || (/^(0|[1-9]\d{0,8})(\.\d{1,2})?$/.test(alwaysOn.costLimit) && Number(alwaysOn.costLimit) > 0));
+
   const handleLocalSubmit = async () => {
-    if (!hasSelectedFolder || submitting || props.localDisabled) return;
+    if (!workspaceType || (workspaceType === "always-on" && !alwaysOnValid) || !hasSelectedFolder || submitting || props.localDisabled) return;
     props.onConfirm(preset, selectedFolder, {
       projectLabel: projectLabel.trim() || null,
+      ...(workspaceType === "always-on" ? { workspaceType, alwaysOn } : {}),
     });
   };
 
@@ -124,13 +137,21 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
       <DialogContent
         showCloseButton={showClose}
         aria-describedby={undefined}
-        className="flex gap-5 max-h-[90vh] min-h-0 w-full max-w-xl flex-col overflow-hidden sm:max-w-xl"
+        className={`flex gap-5 max-h-[90vh] min-h-0 w-full flex-col overflow-hidden ${workspaceType === "always-on" ? "max-w-4xl sm:max-w-4xl lg:max-w-4xl" : "max-w-xl sm:max-w-xl"}`}
       >
-        <DialogHeader>
+        <DialogHeader className="flex-row items-center gap-2 pr-10">
+          {workspaceType ? <Button variant="ghost" size="icon" aria-label={t("workspace.back_types")} disabled={submitting} onClick={() => setWorkspaceType(null)}><ArrowLeft className="size-4" /></Button> : null}
           <DialogTitle>{props.title ?? t("dashboard.create_workspace_title")}</DialogTitle>
         </DialogHeader>
 
-          <CreateWorkspaceLocalPanel
+          {workspaceType === null ? <div className="space-y-3">
+            <WorkspaceOptionCard title={t("workspace.local")} description={t("workspace.local_description")} icon={FolderPlus} onClick={() => setWorkspaceType("local")} />
+            <WorkspaceOptionCard title={t("workspace.always_on")} description={t("workspace.always_on_description")} icon={Clock} onClick={() => setWorkspaceType("always-on")} />
+          </div> : <CreateWorkspaceLocalPanel
+            workspaceType={workspaceType}
+            alwaysOn={alwaysOn}
+            onAlwaysOnChange={setAlwaysOn}
+            alwaysOnValid={alwaysOnValid}
             disabled={Boolean(props.localDisabled)}
             disabledReason={props.localDisabledReason}
             selectedFolder={selectedFolder}
@@ -163,7 +184,7 @@ export function CreateWorkspaceModal(props: CreateWorkspaceModalProps) {
             onToggleProgressDetails={() =>
               setShowProgressDetails((prev) => !prev)
             }
-          />
+          />}
 
       </DialogContent>
     </Dialog>

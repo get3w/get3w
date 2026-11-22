@@ -74,6 +74,7 @@ const messageSchema = z
         id: z.string(),
         role: z.string(),
         parentID: z.string().optional(),
+        finish: z.string().optional(),
         time: timeSchema.optional(),
         error: z.unknown().optional(),
         cost: z.number().nonnegative().optional(),
@@ -179,6 +180,7 @@ export function toThreadMessage(message: MessageWire): HeadlessThreadMessage {
     parentId: message.info.parentID ?? null,
     createdAt: message.info.time?.created ?? null,
     completedAt: message.info.time?.completed ?? null,
+    ...(message.info.finish === undefined ? {} : { finish: message.info.finish }),
     error: toMessageError(message.info.error),
     usage: message.info.role === "assistant" && message.info.tokens ? {
       inputTokens: message.info.tokens?.input ?? 0,

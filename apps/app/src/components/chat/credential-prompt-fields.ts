@@ -31,7 +31,7 @@ export function promptFieldsProblem(target: CredentialPromptTarget, values: Reco
   if (target.type === "gateway_provider_credential" && target.credentialKind === "api_key_map") {
     const entered = fields.filter((field) => values[field.id])
     if (!entered.length) return t("ui.71f48dca1813")
-    return entered.every((field) => isPlainSecret(values[field.id] ?? "")) ? null : "Enter only the keys, without spaces or a prefix."
+    return entered.every((field) => isPlainSecret(values[field.id] ?? "")) ? null : t("desktop.text.fc96d03f9209")
   }
   for (const field of fields) {
     const value = values[field.id] ?? ""
@@ -39,8 +39,8 @@ export function promptFieldsProblem(target: CredentialPromptTarget, values: Reco
       if (field.optional) continue
       return `Enter the ${field.label.toLowerCase()}.`
     }
-    if (field.kind === "json" && !isJsonSecret(value)) return "Paste the whole key file. It starts with { and ends with }."
-    if (field.kind !== "json" && !isPlainSecret(value)) return field.kind === "identifier" ? `Check the ${field.label.toLowerCase()}.` : "Enter only the key, without spaces or a prefix."
+    if (field.kind === "json" && !isJsonSecret(value)) return t("desktop.text.b914a1db58da")
+    if (field.kind !== "json" && !isPlainSecret(value)) return field.kind === "identifier" ? `Check the ${field.label.toLowerCase()}.` : t("desktop.text.e5e33538f689")
   }
   return null
 }

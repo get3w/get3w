@@ -64,6 +64,8 @@ export interface HeadlessThreadMessage {
   createdAt: number | null;
   /** When an assistant message finished, when the engine records it. */
   completedAt?: number | null;
+  /** Native terminal reason; absent in older engines. */
+  finish?: string;
   error: HeadlessThreadMessageError | null;
   usage: HeadlessThreadUsage | null;
   parts: HeadlessThreadMessagePart[];

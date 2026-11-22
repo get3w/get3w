@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useQuery } from "@tanstack/react-query";
 import type { GeneratedArtifactView, GeneratedArtifactViewRevision } from "@get3w/types/workflows";
 import { McpAppTile, type DashboardLaunchEndpoint } from "../dashboard/mcp-app-tile";
@@ -19,7 +20,7 @@ export function AuthoredAppPreview({ view, revision, fallbackEndpoints }: {
       return "get3w-app-host-connect-" + [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("").slice(0, 12);
     },
   });
-  if (!host.data) return <p role="status">{host.isError ? "Preview unavailable." : "Loading preview…"}</p>;
+  if (!host.data) return <p role="status">{host.isError ? t("desktop.text.769469b525dc") : t("desktop.text.c4cf2b2ccb5d")}</p>;
   return <McpAppTile entry={{
     kind: "mcp", id: revision.resourceUri, connectionId: view.id,
     serverName: host.data, projectedToolName: `${host.data}_open_app`,

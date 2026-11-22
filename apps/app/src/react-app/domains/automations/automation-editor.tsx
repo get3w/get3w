@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 /** @jsxImportSource react */
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -149,7 +150,7 @@ function ConnectedAccountLogos({ accounts, files }: { accounts: readonly Automat
   const accountsLabel = names.length > 3 ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more` : names.join(", ")
   const filesLabel = files === "computer" ? "Files on your computer" : files === "cloud-computer" ? "Files on your cloud computer" : null
   const label = [filesLabel, accountsLabel].filter(Boolean).join(", plus ")
-  if (!filesLabel && accounts.length === 0) return <span className="text-xs text-muted-foreground">None connected yet</span>
+  if (!filesLabel && accounts.length === 0) return <span className="text-xs text-muted-foreground">{t("desktop.copy.610758e6674e")}</span>
   return (
     <span className="flex shrink-0 items-center gap-1.5" aria-label={label} title={label} data-automation-connected-accounts={accounts.length}>
       {files ? (
@@ -272,9 +273,9 @@ export function AutomationEditor(props: AutomationEditorProps) {
 
       {pinnedWorkflow ? (
         <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm" data-automation-pinned-workflow={pinnedWorkflow.configObjectVersionId}>
-          <p className="font-medium">Pinned Workflow</p>
+          <p className="font-medium">{t("desktop.copy.b83a339017eb")}</p>
           <p className="mt-1 text-muted-foreground">{pinnedWorkflow.title}</p>
-          <p className="mt-1 break-all font-mono text-xs text-muted-foreground">Version {pinnedWorkflow.configObjectVersionId}</p>
+          <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{t("desktop.copy.dd167905de0d")} {pinnedWorkflow.configObjectVersionId}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -342,7 +343,7 @@ export function AutomationEditor(props: AutomationEditorProps) {
 
       {canChoose ? (
         <div className="space-y-2">
-          <Label id="automation-can-use">What it can use</Label>
+          <Label id="automation-can-use">{t("desktop.copy.b8656f2c71e5")}</Label>
           <RadioGroup
             aria-labelledby="automation-can-use"
             data-automation-runs-on={placement}

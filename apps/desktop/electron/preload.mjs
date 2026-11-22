@@ -164,6 +164,7 @@ contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {
   modelApprovals: (input) => ipcRenderer.invoke("get3w:auth", "modelApprovals", input),
   managedMcp: (input) => ipcRenderer.invoke("get3w:auth", "managedMcp", input),
   managedModels: (input) => ipcRenderer.invoke("get3w:auth", "managedModels", input),
+  eventSources: (input) => ipcRenderer.invoke("get3w:auth", "eventSources", input),
   automations: (input) => ipcRenderer.invoke("get3w:auth", "automations", input),
   artifacts: (input) => ipcRenderer.invoke("get3w:auth", "artifacts", input),
   taskCatalog: (input) => ipcRenderer.invoke("get3w:auth", "taskCatalog", input),

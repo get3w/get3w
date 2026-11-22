@@ -344,6 +344,16 @@
       },
       "development": "./src/browser-demonstration.ts",
       "default": "./dist/browser-demonstration.js"
+    },
+    "./workspace-calendar": {
+      "types": {
+        "get3w-build": "./dist/types/src/workspace-calendar.d.ts",
+        "default": "./src/workspace-calendar.ts"
+      },
+      "development": "./src/workspace-calendar.ts",
+      "bun": "./src/workspace-calendar.ts",
+      "browser": "./src/workspace-calendar.ts",
+      "default": "./dist/workspace-calendar.js"
     }
   },
   "files": [

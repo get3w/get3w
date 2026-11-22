@@ -26,7 +26,7 @@ export function WebfetchTool({ part }: WebfetchToolProps) {
   return (
     <div className="flex gap-2">
       <WebfetchTrigger leftIcon={<Globe className="size-4" />}>
-        {t("ui.b602a9170fa3")}
+        {t("activity.verb.fetch.past")}
       </WebfetchTrigger>
       <Source href={part.input.url}>
         <SourceTrigger showFavicon />

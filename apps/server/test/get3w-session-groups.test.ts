@@ -235,8 +235,10 @@ test("the v2 bridge advertises automation proposals without exposing other app c
       "automation.propose", "session.create", "session.group.create", "session.group.move", "session.group.remove", "session.question.answer", "session.send",
     ]);
     const proposal = context.contributions.find((item: { featureId: string }) => item.featureId === "automations");
-    assert.equal(proposal.affordances[0].id, "automation.propose");
-    assert.deepEqual(proposal.affordances[0].effects, { data: "none", ui: "none", external: false });
+    assert.deepEqual(proposal.affordanceIds, ["automation.propose"]);
+    const descriptor = context.availableAffordances.find((item: { id: string }) => item.id === proposal.affordanceIds[0]);
+    assert.ok(descriptor, "the contribution reference resolves to the complete executable descriptor");
+    assert.deepEqual(descriptor.effects, { data: "none", ui: "none", external: false });
   } finally {
     await bridge.close();
   }

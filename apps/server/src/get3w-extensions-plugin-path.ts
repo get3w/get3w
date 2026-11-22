@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,7 +28,9 @@ export function get3wPluginPath(name: string, here?: string): string {
     return join(electronResourcesPath || resourcesPath, "opencode-plugins", `${name}.js`);
   }
 
-  const extension = basename(here) === "dist" ? "js" : "ts";
+  // Development reloads use isolated compiled directories rather than dist.
+  // Prefer a compiled plugin when present; source execution still uses TS.
+  const extension = basename(here) === "dist" || existsSync(join(here, "opencode-plugins", `${name}.js`)) ? "js" : "ts";
   return join(here, "opencode-plugins", `${name}.${extension}`);
 }
 

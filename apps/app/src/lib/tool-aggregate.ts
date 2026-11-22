@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DynamicToolUIPart, ToolUIPart } from "ai"
 
 import {
@@ -222,8 +223,8 @@ export function getAggregateRowSearch(
   const scope = [path, include].filter(Boolean).join(" · ")
   return {
     verb: grep
-      ? (running ? "Searching code" : "Searched code")
-      : (running ? "Searching files" : "Searched files"),
+      ? (running ? t("desktop.text.883d207a94a6") : t("desktop.text.0f88544b00a1"))
+      : (running ? t("desktop.text.bc9797766c2d") : t("desktop.text.e82a2af2a22f")),
     pattern,
     scope: scope || null,
   }

@@ -98,7 +98,7 @@ export function createConnectionsStore(options: {
   projectDir: () => string;
   selectedWorkspaceId: () => string;
   selectedWorkspaceRoot: () => string;
-  workspaceType: () => "local";
+  workspaceType: () => "local" | "always-on";
   get3wServer: Get3wServerStore;
   runtimeWorkspaceId: () => string | null;
   ensureRuntimeWorkspaceId?: () => Promise<string | null | undefined>;
@@ -182,7 +182,7 @@ export function createConnectionsStore(options: {
     }
     const ensured = (await options.ensureRuntimeWorkspaceId?.())?.trim();
     if (ensured) return ensured;
-    return options.workspaceType() === "local" ? options.selectedWorkspaceId().trim() || null : null;
+    return (options.workspaceType() === "local" || options.workspaceType() === "always-on") ? options.selectedWorkspaceId().trim() || null : null;
   };
 
   const resolveConfigGet3wTarget = async (mode: "read" | "write") => {
@@ -209,7 +209,7 @@ export function createConnectionsStore(options: {
     let get3wWorkspaceId = await resolveGet3wWorkspaceId();
     if ((!get3wClient || !get3wWorkspaceId || get3wSnapshot.get3wServerStatus !== "connected")
       && isDesktopRuntime()
-      && options.workspaceType() === "local") {
+      && (options.workspaceType() === "local" || options.workspaceType() === "always-on")) {
       get3wClient = await withLocalGet3wServerRecoveryTimeout(
         options.get3wServer.ensureLocalGet3wServerClient(),
         options.localGet3wServerRecoveryTimeoutMs ?? LOCAL_GET3W_SERVER_RECOVERY_TIMEOUT_MS,
@@ -255,7 +255,7 @@ export function createConnectionsStore(options: {
       return null;
     }
 
-    if (options.workspaceType() !== "local" || !isDesktopRuntime()) {
+    if ((options.workspaceType() !== "local" && options.workspaceType() !== "always-on") || !isDesktopRuntime()) {
       return null;
     }
 

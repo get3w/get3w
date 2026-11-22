@@ -318,7 +318,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
   const readProjectConfigFile = async () => {
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace =
-      options.selectedWorkspaceDisplay().workspaceType === "local";
+      (options.selectedWorkspaceDisplay().workspaceType === "local" || options.selectedWorkspaceDisplay().workspaceType === "always-on");
     const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
       await resolveGet3wConfigTarget("read");
 
@@ -340,7 +340,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
   const writeProjectConfigFile = async (content: string, isCurrent = () => true) => {
     const root = options.selectedWorkspaceRoot().trim();
     const isLocalWorkspace =
-      options.selectedWorkspaceDisplay().workspaceType === "local";
+      (options.selectedWorkspaceDisplay().workspaceType === "local" || options.selectedWorkspaceDisplay().workspaceType === "always-on");
     const { get3wClient, get3wWorkspaceId, hasGet3wTarget, canUseGet3wServer } =
       await resolveGet3wConfigTarget("write");
     if (!isCurrent()) return false;
@@ -404,7 +404,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
     const get3wSnapshot = options.get3wServer.getSnapshot();
     const workspaceId = options.runtimeWorkspaceId();
     const workspaceType = options.selectedWorkspaceDisplay().workspaceType;
-    const canUseManagedRuntime = Boolean(get3wSnapshot.get3wServerClient && workspaceId?.trim() && workspaceType === "local");
+    const canUseManagedRuntime = Boolean(get3wSnapshot.get3wServerClient && workspaceId?.trim() && (workspaceType === "local" || workspaceType === "always-on"));
     if (!c && !canUseManagedRuntime) {
       throw new Error(t("providers.not_connected"));
     }
@@ -494,7 +494,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       return false;
     }
     const canUseManagedRuntime = Boolean(
-      get3wSnapshot.get3wServerClient && workspaceId?.trim() && workspaceType === "local",
+      get3wSnapshot.get3wServerClient && workspaceId?.trim() && (workspaceType === "local" || workspaceType === "always-on"),
     );
 
     if (canUseManagedRuntime || c) {
@@ -975,7 +975,7 @@ export function createProviderAuthStore(options: CreateProviderAuthStoreOptions)
       const shouldDispose = Boolean(optionsArg?.configChanged)
         || now - lastGlobalProviderDisposeRefreshAt >= 10_000;
       const shouldUseServerReload = !(
-        isDesktopRuntime() && options.selectedWorkspaceDisplay().workspaceType === "local"
+        isDesktopRuntime() && (options.selectedWorkspaceDisplay().workspaceType === "local" || options.selectedWorkspaceDisplay().workspaceType === "always-on")
       );
       // Prefer the Get3W server engine reload: it disposes the engine AND
       // re-registers runtime-DB MCPs, so non-primary workspaces and pending

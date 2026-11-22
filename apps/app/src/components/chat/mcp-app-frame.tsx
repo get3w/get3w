@@ -411,7 +411,7 @@ function AuthorizedAppSandbox({ appId, revisionId, ...props }: McpAppSandboxView
     staleTime: 0,
     retry: false,
   })
-  if (!client || access.isError) return <p role="alert">Artifact access is unavailable. Reopen it after access is restored.</p>
+  if (!client || access.isError) return <p role="alert">{t("desktop.copy.3fd8660f865b")}</p>
   if (!access.isSuccess) return <McpAppLoading />
   return <McpAppSandboxContent {...props} />
 }

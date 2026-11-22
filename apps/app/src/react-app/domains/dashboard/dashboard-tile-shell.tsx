@@ -47,7 +47,7 @@ export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh,
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`Refresh ${title}`}
+              aria-label={t("desktop.dynamic.564fad4c3452", { name: title })}
               title={t("ui.0e9161011702")}
               onClick={onRefresh}
               disabled={refreshing}
@@ -62,7 +62,7 @@ export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh,
       {chromeTarget === undefined && actionsPlacement !== "header" && (renderActions || (compact && onRefresh)) ? (
         <div className={cn("absolute right-1 top-1 z-10", compact && "opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/tile:opacity-100 focus-within:opacity-100")}>
           {renderActions ? renderActions({ onRefresh, refreshing, badge }) : <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 bg-background/90" aria-label={`Artifact options for ${title}`} title={`Artifact options for ${title}`} />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 bg-background/90" aria-label={t("desktop.dynamic.79baf5743cef", { name: title })} title={t("desktop.dynamic.79baf5743cef", { name: title })} />}>
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -71,7 +71,7 @@ export function DashboardTileShell({ title, entryId, subtitle, badge, onRefresh,
                   <span className="block">{title}</span>
                   {badge}
                 </DropdownMenuLabel>
-                <DropdownMenuItem onClick={onRefresh} disabled={refreshing} aria-label={`Refresh ${title}`}>
+                <DropdownMenuItem onClick={onRefresh} disabled={refreshing} aria-label={t("desktop.dynamic.564fad4c3452", { name: title })}>
                   <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} /> {t("ui.0e9161011702")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>

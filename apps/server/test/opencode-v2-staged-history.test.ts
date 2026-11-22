@@ -22,7 +22,7 @@ async function fixture(directory: string, outputBytes = 260 * 1024 ** 2) {
   const source = join(directory, "v1.db");
   const db = await openHistoryDatabase(source);
   try {
-    db.exec(await readFile(new URL("../../../evals/worlds/fixtures/opencode-v1-history/schema.sql", import.meta.url), "utf8"));
+    db.exec(await readFile(new URL("./fixtures/opencode-v1-history-schema.sql", import.meta.url), "utf8"));
     db.prepare("INSERT INTO project (id, worktree, time_created, time_updated, sandboxes) VALUES ('global', '/', 1, 1, '[]')").run();
     db.prepare(`INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
       VALUES (?, 'global', 'history', ?, 'A complete conversation', '1.18.30', 1, 2)`).run(sessionId, directory);

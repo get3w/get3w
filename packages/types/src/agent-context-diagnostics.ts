@@ -474,7 +474,7 @@ export const agentContextDiagnosticsReportSchema = z.object({
   workspace: z.object({
     id: safeTextSchema.min(1).max(160),
     name: safeTextSchema.min(1).max(240),
-    type: z.enum(["local", "remote"]),
+    type: z.enum(["local", "always-on", "remote"]),
     remoteType: z.enum(["opencode", "get3w"]).nullable(),
     engineConfigured: z.boolean(),
   }).strict(),

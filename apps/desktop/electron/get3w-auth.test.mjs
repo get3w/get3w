@@ -436,3 +436,29 @@ test("managed web tools can target the development API without changing producti
     assert.deepEqual(urls,['http://127.0.0.1:6600/v1/tools/search']);
   } finally {await h.cleanup();}
 });
+
+test('GitHub sources use the configured local account origin and preserve HTTP diagnostics',async()=>{
+ const h=await fixture();const original=h.deps.fetchImpl;const urls=[];let status=200;
+ h.deps.cloudBase='http://127.0.0.1:6605';
+ h.deps.fetchImpl=async(url,input)=>{
+  if(url.includes('/event-sources/')){urls.push(url);return status===200?Response.json({configured:false,state:'unconfigured'}):new Response('Not Found',{status});}
+  return original(url,input);
+ };
+ try{
+  h.set({approved:true});const auth=createGet3wAuth(h.deps);await auth.begin();await auth.poll();
+  const result=await auth.eventSources({userId:'u',method:'GET',path:'/github'});
+  assert.equal(result.json.state,'unconfigured');assert.equal(result.serviceOrigin,'http://127.0.0.1:6605');
+  status=404;const missing=await auth.eventSources({userId:'u',method:'GET',path:'/github'});assert.equal(missing.status,404);assert.equal(missing.json,null);
+  assert(urls.every(url=>url==='http://127.0.0.1:6605/v1/personal/event-sources/github'));
+ }finally{await h.cleanup();}
+});
+
+test('source diagnostics redact subscription ids and never include credentials or request bodies',async()=>{
+ const h=await fixture();const records=[];
+ try{
+  h.set({approved:true});const auth=createGet3wAuth({...h.deps,onDiagnostic:r=>records.push(r)});await auth.begin();await auth.poll();
+  await auth.eventSources({userId:'u',method:'POST',path:'/subscriptions/00000000-0000-0000-0000-000000000001/poll',body:{runnerId:'private-runner'}});
+  assert(records.some(r=>r.path==='/v1/personal/event-sources/subscriptions/:id/poll'));
+  assert(!JSON.stringify(records).includes('private-runner'));assert(!JSON.stringify(records).includes('access-secret'));
+ }finally{await h.cleanup();}
+});

@@ -1,3 +1,4 @@
+import { useAlwaysOnNotificationDispatcher } from "../domains/workspace/always-on-dispatcher";
 /** @jsxImportSource react */
 import { useChatEngineClient } from "@/react-app/domains/models/use-chat-engine-client";
 import { openNewSessionDraft } from "@/react-app/domains/session/chat/new-session-destination";
@@ -566,7 +567,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     providerBaseUrl: "",
     selectedWorkspaceId: "",
     selectedWorkspaceRoot: "",
-    selectedWorkspaceType: "local" as const,
+    selectedWorkspaceType: emptyWorkspaceDisplay.workspaceType,
     runtimeWorkspaceId: null as string | null,
     get3wServerClient: null as Get3wServerClient | null,
     selectedWorkspaceGet3wClient: null as Get3wServerClient | null,
@@ -604,6 +605,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
     () => createWorkspaceServerClientResolver({ baseUrl, token }),
     [baseUrl, token],
   );
+  useAlwaysOnNotificationDispatcher(workspaces, workspaceServerClientResolver);
   const workspaceSelectionCommitRef = useRef<(workspaceId: string) => Promise<void>>(async () => undefined);
   workspaceSelectionCommitRef.current = async (workspaceId) => {
     await commitRouteWorkspaceSelection({
@@ -2410,6 +2412,8 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
         onClose={() => providerAuthStore.closeProviderAuthModal()}
       />
       <RenameWorkspaceModal
+      workspace={workspaces.find(workspace => workspace.id === renameWorkspaceId)}
+      client={get3wClient}
         open={renameWorkspaceId !== null}
         title={renameWorkspaceTitle}
         busy={renameWorkspaceBusy}
@@ -2419,7 +2423,7 @@ function SettingsRouteContent(props: SettingsSurfaceProps = {}) {
           setRenameWorkspaceId(null);
           setRenameWorkspaceTitle("");
         }}
-        onSave={() => void handleSaveRenameWorkspace()}
+        onSave={handleSaveRenameWorkspace}
         onTitleChange={setRenameWorkspaceTitle}
       />
       <ConnectionsModals

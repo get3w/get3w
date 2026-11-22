@@ -8,6 +8,7 @@ import { AppBuilderStep } from "./app-builder-step"
 import * as React from "react"
 import {
   Check,
+  ChevronRight,
   Copy,
   Download,
   FileIcon,
@@ -144,6 +145,7 @@ import { useShallow } from "zustand/react/shallow"
 import { useSessionActivityStore, type SessionActivityStatus, type WaitInterval } from "@/react-app/domains/session/status/session-activity-store"
 import { activeDelegatedTasks, hasNoNewActivity, lastTaskProgressAt } from "@/react-app/domains/session/status/session-progress"
 import { revalidateWorkspaceSessionSync } from "@/react-app/domains/session/sync/session-sync"
+import { alwaysOnMessagePreview } from "@/react-app/domains/workspace/always-on-message"
 import { useWorkspaceMaybe } from "@/react-app/shell/workspace-provider"
 import { formatElapsedSeconds, formatToolCallDuration } from "@/lib/tool-call-duration"
 import { collectLatestAssistantToolParts } from "@/lib/latest-assistant-tool-parts"
@@ -1001,6 +1003,8 @@ const UserMessage = React.memo(
       () => message.parts.filter((part) => (part.type === "text" && Boolean(part.text)) || isFileUIPart(part)),
       [message.parts],
     )
+    const workspace = useWorkspaceMaybe()
+    const alwaysOnPreview = alwaysOnMessagePreview(messageText, workspace?.workspaceType)
     const hasContent = inlineParts.length > 0
     // Same actions, in the same order, as the buttons below the bubble.
     const menuActions: MenuAction[] = []
@@ -1035,7 +1039,11 @@ const UserMessage = React.memo(
                     style={{ userSelect: "text" }}
                     onClick={openLink}
                   >
-                    {inlineParts.map((part, index) => {
+                    {alwaysOnPreview ? <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">{alwaysOnPreview.source || t(`workspace.overview.trigger_${alwaysOnPreview.trigger}`)}</p>
+                      <p className="whitespace-pre-wrap break-words">{renderUserText(alwaysOnPreview.content, highlightQuery, references)}</p>
+                      <details className="group text-xs text-muted-foreground"><summary className="flex cursor-pointer list-none items-center gap-1"><ChevronRight className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none" />{t("workspace.run_prompt")}</summary><p className="mt-2 whitespace-pre-wrap break-words">{messageText}</p></details>
+                    </div> : inlineParts.map((part, index) => {
                       const pill = textPartComposerPill(part)
                       if (pill) return <ComposerPillChip key={`pill-${index}`} pill={pill} />
                       if (part.type === "text" && isPastedTextPart(part)) return <PastedTextChip key={`pasted-${index}`} text={part.text} />
@@ -1534,6 +1542,7 @@ function MessageGroup({
   const connectionCardParts = React.useMemo(() => connectionCardPartIds(items, getConnectionDecision), [items, getConnectionDecision])
   const newestAppCalls = React.useMemo(() => new Set(newestAppCallIds.split("\n")), [newestAppCallIds])
   const lastItem = items[items.length - 1]
+  const alwaysOnWorkspace = useWorkspaceMaybe()?.workspaceType === "always-on"
   // Branch/revert must target a real server-side message id. Synthetic
   // client-side messages (e.g. session errors) don't exist on the server and
   // silently corrupt fork/revert boundaries.
@@ -1620,7 +1629,9 @@ function MessageGroup({
   // finished (or started, for older history without a completed timestamp).
   // Server timestamps, so this survives a reload.
   const stepsStartedAt = stepItems.length > 0 ? getMessageCreated(stepItems[0].message) : null
-  const stepsEndedAt = getMessageCompleted(lastItem.message) ?? getMessageCreated(lastItem.message)
+  const unconfirmedDuration = alwaysOnWorkspace && !isLiveGroup && !lastItem.message.parts.some(part =>
+    part.type === "text" && Boolean(part.text.trim()) || part.type === "file" || part.type === "dynamic-tool")
+  const stepsEndedAt = unconfirmedDuration ? null : getMessageCompleted(lastItem.message) ?? getMessageCreated(lastItem.message)
 
   // The answer message's own thinking belongs to the work, not the answer, so
   // a collapsed run shows it and the message below renders text only.
@@ -1647,7 +1658,7 @@ function MessageGroup({
           : 1),
       0
     ) + proseReasoning.length
-  const stepRunLabel =
+  const stepRunLabel = unconfirmedDuration ? t("activity.elapsed_unverified") :
     stepsStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > stepsStartedAt
       ? t("activity.worked", { duration: formatToolCallDuration(stepsEndedAt - stepsStartedAt) })
       : stepRowCount === 1
@@ -1663,7 +1674,7 @@ function MessageGroup({
   const pinnedRemoteIds = pinnedRemoteThreads.length > 0 ? new Set(pinnedRemoteThreads.map(({ part }) => part.toolCallId)) : NO_PINNED_REMOTE_THREADS
   const replyStartedAt = stepsStartedAt ?? (lastRealItem ? getMessageCreated(lastRealItem.message) : null)
   const stepCountLabel = stepRowCount ? t(stepRowCount === 1 ? "activity.step" : "activity.steps", { count: stepRowCount }) : null
-  const replyWorkedLabel = replyStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > replyStartedAt
+  const replyWorkedLabel = unconfirmedDuration ? t("activity.elapsed_unverified") : replyStartedAt !== null && stepsEndedAt !== null && stepsEndedAt > replyStartedAt
     ? t("activity.worked", { duration: formatToolCallDuration(stepsEndedAt - replyStartedAt) })
     : null
   const replySummaryLabel = replyWorkedLabel

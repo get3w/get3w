@@ -113,7 +113,7 @@ export function ArchitectureMismatchGate({ children }: ArchitectureMismatchGateP
                   {t("ui.d329103060a9")}
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
-                  {t("ui.ddddb9117da1")} {info.appArchLabel} {t("ui.b07db796e76d")} {platformLabel(info.platform)} {t("ui.de4a6b970ff2")} {info.systemArchLabel}. This may cause unpredictable issues.
+                  {t("ui.ddddb9117da1")} {info.appArchLabel} {t("ui.b07db796e76d")} {platformLabel(info.platform)} {t("ui.de4a6b970ff2")} {info.systemArchLabel}{t("desktop.copy.4696a847b5fd")}
                 </p>
               </div>
 

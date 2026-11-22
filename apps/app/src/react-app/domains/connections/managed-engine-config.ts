@@ -60,7 +60,7 @@ export async function readManagedDisabledProviders(
   const client = options.opencodeClient;
   const workspaceId = options.workspaceId?.trim() ?? "";
   const get3wClient = options.get3wClient;
-  const managedRuntime = Boolean(get3wClient && workspaceId && options.workspaceType === "local");
+  const managedRuntime = Boolean(get3wClient && workspaceId && (options.workspaceType === "local" || options.workspaceType === "always-on"));
   const readRuntime = async () => get3wClient && managedRuntime
     ? normalizeDisabledProviders((await get3wClient.getRuntimeDisabledProviders(workspaceId)).disabledProviders)
     : [];
@@ -96,7 +96,7 @@ export async function updateManagedDisabledProviders(
   const disabledProviders = normalizeDisabledProviders(options.disabledProviders);
   const workspaceId = options.workspaceId?.trim() ?? "";
 
-  if (options.get3wClient && workspaceId && options.workspaceType === "local") {
+  if (options.get3wClient && workspaceId && (options.workspaceType === "local" || options.workspaceType === "always-on")) {
     const result = await options.get3wClient.setRuntimeDisabledProviders(workspaceId, disabledProviders);
     return { managedRuntime: true, disabledProviders: result.disabledProviders };
   }

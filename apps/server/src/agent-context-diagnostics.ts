@@ -342,7 +342,7 @@ function promptEvidence(configuredAgent: Record<string, unknown> | null) {
 }
 
 async function inspectProjectAgent(workspace: WorkspaceInfo, signal?: AbortSignal): Promise<ProjectAgentInspection> {
-  if (workspace.workspaceType !== "local" || !workspace.path.trim()) {
+  if ((workspace.workspaceType !== "local" && workspace.workspaceType !== "always-on") || !workspace.path.trim()) {
     return {
       available: false,
       defaultAgentOverride: false,
@@ -413,7 +413,7 @@ async function inspectMcpInventory(
   runtime: RuntimeOpencodeConfig,
   signal?: AbortSignal,
 ): Promise<{ inventory: McpInventoryInspection; passiveLocalLayersAvailable: boolean }> {
-  if (workspace.workspaceType !== "local" || !workspace.path.trim()) {
+  if ((workspace.workspaceType !== "local" && workspace.workspaceType !== "always-on") || !workspace.path.trim()) {
     return { inventory: runtimeOnlyMcpInventory(runtime), passiveLocalLayersAvailable: false };
   }
   try {
@@ -1414,7 +1414,7 @@ export async function runAgentContextDiagnostics(input: {
     ? "not-supplied"
     : "not-configured";
   const engineInspectionStarted = now();
-  if (engineConfigured && input.workspace.workspaceType === "local" && input.dependencies?.inspectEffectiveEngine) {
+  if (engineConfigured && (input.workspace.workspaceType === "local" || input.workspace.workspaceType === "always-on") && input.dependencies?.inspectEffectiveEngine) {
     engineApiReadPerformed = true;
     const timeoutSignal = AbortSignal.timeout(10_000);
     const signal = input.dependencies.signal

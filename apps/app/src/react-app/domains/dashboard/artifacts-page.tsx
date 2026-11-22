@@ -74,7 +74,7 @@ export function ArtifactsPage({ onCreateApp, fallbackEndpoints, headerActionsTar
   ) });
   const placement = useMutation({
     mutationFn: async ({ appId, added }: { appId: string; added: boolean }) => {
-      if (!saved.identityVerified || !saved.client) throw new Error("Sign in to pin artifacts.");
+      if (!saved.identityVerified || !saved.client) throw new Error(t("desktop.text.6a059055e58d"));
       await saved.client.setAppOnDashboard(appId, added);
     },
     onSuccess: () => cache.invalidateQueries({ queryKey: ["saved-apps", ...saved.scope] }),
@@ -113,7 +113,7 @@ export function ArtifactsPage({ onCreateApp, fallbackEndpoints, headerActionsTar
         </section> : null)}
         {!loading && !matching ? <div className="py-12 text-center"><p className="text-sm text-muted-foreground">{rows.length ? t("personal.artifacts.no_artifacts_match_your_search") : t("personal.artifacts.no_artifacts_yet")}</p>{!rows.length ? <Button variant="ghost" size="sm" className="mt-3" disabled={create.isPending || !built.identityVerified} onClick={() => create.mutate()}>{t("personal.artifacts.create_an_artifact")}</Button> : null}</div> : null}
       </section>
-      {selected ? <section ref={detailPane} tabIndex={-1} aria-label={`${selected.title} detail`} className={`min-h-0 min-w-0 flex-1 flex-col focus-visible:outline-2 focus-visible:outline-ring ${showDetail ? "flex" : "hidden md:flex"}`}>
+      {selected ? <section ref={detailPane} tabIndex={-1} aria-label={t("desktop.dynamic.ee3b883bdfc8", { name: selected.title })} className={`min-h-0 min-w-0 flex-1 flex-col focus-visible:outline-2 focus-visible:outline-ring ${showDetail ? "flex" : "hidden md:flex"}`}>
         {/* The toolbar stays put; only the artifact below it scrolls. */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-5 py-3">
           <Button variant="ghost" size="sm" className="md:hidden" onClick={() => { setShowDetail(false); requestAnimationFrame(() => searchInput.current?.focus()); }}><ArrowLeft className="size-4" />{t("personal.artifacts.artifacts")}</Button>

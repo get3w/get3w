@@ -729,7 +729,7 @@ function McpAppTileContent({
                 ? t("ui.21f5a40ce56e")
                 : t("ui.90125c6b8fb3")}
             </p>
-            <Button variant="outline" size="sm" onClick={run} aria-label={`Run ${entry.title}`}>
+            <Button variant="outline" size="sm" onClick={run} aria-label={t("desktop.dynamic.7e8d49b80b7d", { name: entry.title })}>
               <Play className="size-4" /> {t("ui.00d60e31a4e6")}
             </Button>
           </div>
@@ -806,7 +806,7 @@ function McpAppTileContent({
         ) : null}
       </DashboardTileShell>
       {loadingDocument ? (
-        <div className="absolute inset-0 z-10 flex flex-col gap-3 rounded-xl bg-background p-3" role="status" aria-label={`Loading ${entry.title}`} data-dashboard-loading>
+        <div className="absolute inset-0 z-10 flex flex-col gap-3 rounded-xl bg-background p-3" role="status" aria-label={t("desktop.dynamic.134f558e5a3e", { name: entry.title })} data-dashboard-loading>
           <span className="text-xs text-muted-foreground">{t("ui.dc380888c4e2")} {entry.title}</span>
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="min-h-24 w-full flex-1" />

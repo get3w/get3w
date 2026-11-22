@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
@@ -124,12 +125,12 @@ export function BuiltAppPicker({
       onValueChange={setSearch}
     >
       <CommandInput
-        aria-label="Search artifacts"
-        placeholder="Search artifacts by name or tool"
+        aria-label={t("desktop.copy.c71436cce0eb")}
+        placeholder={t("desktop.copy.547051149227")}
         className="h-14 border-b! pr-10"
       />
-      <p className="px-4 pt-3 text-xs text-muted-foreground">{search.trim() ? "Matches" : "Artifacts available to you"} <span className="ml-1 tabular-nums">{matching.length}</span></p>
-      <CommandEmpty>No artifacts match your search.</CommandEmpty>
+      <p className="px-4 pt-3 text-xs text-muted-foreground">{search.trim() ? t("desktop.text.98abff28a940") : t("desktop.text.e00c3eb50bc1")} <span className="ml-1 tabular-nums">{matching.length}</span></p>
+      <CommandEmpty>{t("desktop.copy.585d60ee4d34")}</CommandEmpty>
       {/* Long catalogs scroll here so the search field and footer stay in the dialog. */}
       <CommandPanel className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:thin] [&>[data-slot=scroll-area]]:h-auto">
         <CommandList>
@@ -137,11 +138,11 @@ export function BuiltAppPicker({
             <CommandItem
               key={app.connectionId}
               value={app}
-              aria-label={`Add ${app.title}`}
+              aria-label={t("desktop.dynamic.2cc06c85e772", { name: app.title })}
               disabled={built.ids.includes(app.connectionId)}
               onClick={() => {
                 built.setAdded(app.connectionId, true);
-                toast(`Added ${app.title}`, { id: "personal-dashboard-placement", action: { label: "Undo", onClick: () => built.setAdded(app.connectionId, false) } });
+                toast(t("desktop.dynamic.ec0b1e3c1e90", { name: app.title }), { id: "personal-dashboard-placement", action: { label: t("desktop.text.a8283ade3185"), onClick: () => built.setAdded(app.connectionId, false) } });
                 onAdded();
               }}
             >
@@ -149,16 +150,16 @@ export function BuiltAppPicker({
               <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{app.title}</span><span className="block truncate text-xs text-muted-foreground">{app.pluginName}</span></span>
               <span className="text-xs text-muted-foreground">
                 {built.ids.includes(app.connectionId) ? (
-                  <Check className="size-4" aria-label="Added" />
+                  <Check className="size-4" aria-label={t("desktop.copy.6b02e0d363a4")} />
                 ) : (
-                  "Add"
+                  t("desktop.text.9fd728c66c9a")
                 )}
               </span>
             </CommandItem>
           )}
         </CommandList>
       </CommandPanel>
-      <div className="flex justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground"><span>Only artifacts you can open show here.</span><span aria-hidden="true">↑↓ to move · ↵ to add</span></div>
+      <div className="flex justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground"><span>{t("desktop.copy.b2f9774cbb86")}</span><span aria-hidden="true">{t("desktop.copy.d08b0fe234ee")}</span></div>
     </Command>
   );
 }
@@ -181,20 +182,20 @@ export function BuiltDashboardTiles({
     return (
       <div className="mb-4 flex items-center gap-2">
         <p role="alert" className="text-sm">
-          Your artifacts could not be loaded.
+          {t("desktop.copy.c1caaacc83b6")}
         </p>
         <Button
           variant="outline"
           size="sm"
           onClick={() => void built.query.refetch()}
         >
-          Try again
+          {t("desktop.copy.d8b8392e2c54")}
         </Button>
       </div>
     );
   if (!personal.length) return null;
   return (
-    <section className="mb-8" aria-label="Artifacts added by you">
+    <section className="mb-8" aria-label={t("desktop.copy.aa63a3222556")}>
       <DashboardMasonry>
         {personal.map((app) => (
           <McpAppTile
@@ -216,13 +217,13 @@ export function BuiltDashboardTiles({
                 refreshing={refreshing}
                 onRemove={() => {
                   built.setAdded(app.connectionId, false);
-                  toast(`Removed ${app.title}`, { id: "personal-dashboard-placement", action: { label: "Undo", onClick: () => built.setAdded(app.connectionId, true) } });
+                  toast(t("desktop.dynamic.ad6173859d5e", { name: app.title }), { id: "personal-dashboard-placement", action: { label: t("desktop.text.a8283ade3185"), onClick: () => built.setAdded(app.connectionId, true) } });
                 }}
               />
             )}
           />
         ))}
-        {onAdd ? <button type="button" onClick={onAdd} className="flex min-h-64 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed text-sm text-muted-foreground hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-ring"><Plus className="size-5" />Add an artifact{built.apps.length > personal.length ? <span className="text-xs">{built.apps.length - personal.length} more available to you</span> : null}</button> : null}
+        {onAdd ? <button type="button" onClick={onAdd} className="flex min-h-64 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed text-sm text-muted-foreground hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-ring"><Plus className="size-5" />{t("desktop.copy.870812926ec5")}{built.apps.length > personal.length ? <span className="text-xs">{built.apps.length - personal.length} {t("desktop.copy.fb51e548732c")}</span> : null}</button> : null}
       </DashboardMasonry>
     </section>
   );
@@ -245,7 +246,7 @@ function BuiltDashboardTileMenu({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 bg-background/90" aria-label={`Artifact options for ${app.title}`} title={`Artifact options for ${app.title}`} />}>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-7 bg-background/90" aria-label={t("desktop.dynamic.79baf5743cef", { name: app.title })} title={t("desktop.dynamic.79baf5743cef", { name: app.title })} />}>
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -254,8 +255,8 @@ function BuiltDashboardTileMenu({
               <span className="block">{app.title}</span>
               {badge}
             </DropdownMenuLabel>
-            {onRefresh ? <DropdownMenuItem disabled={refreshing} aria-label={`Refresh ${app.title}`} onClick={onRefresh}><RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />Refresh</DropdownMenuItem> : null}
-            <DropdownMenuItem aria-label={`Remove ${app.title} from dashboard`} onClick={onRemove}><Minus className="size-4" />Remove from dashboard</DropdownMenuItem>
+            {onRefresh ? <DropdownMenuItem disabled={refreshing} aria-label={t("desktop.dynamic.564fad4c3452", { name: app.title })} onClick={onRefresh}><RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />{t("desktop.copy.0e9161011702")}</DropdownMenuItem> : null}
+            <DropdownMenuItem aria-label={t("desktop.dynamic.25f2b49f5157", { name: app.title })} onClick={onRemove}><Minus className="size-4" />{t("desktop.copy.6bdaf987088f")}</DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>

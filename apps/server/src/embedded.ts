@@ -75,6 +75,8 @@ export type EmbeddedServerHandle = {
   managedOpencodePool: () => EnginePoolSnapshot | null;
   /** Stop the HTTP server and managed OpenCode (if any). */
   stop: () => Promise<void>;
+  prepareDevReload: () => Promise<boolean>;
+  cancelDevReload: () => void;
 };
 
 export async function startEmbeddedServer(options: EmbeddedServerOptions): Promise<EmbeddedServerHandle> {
@@ -362,6 +364,8 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions): Promi
         }
       : null,
     managedOpencodePool: () => enginePool?.snapshot() ?? null,
+    prepareDevReload: server.prepareDevReload,
+    cancelDevReload: server.cancelDevReload,
     stop,
   };
 }

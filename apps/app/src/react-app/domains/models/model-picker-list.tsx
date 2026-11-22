@@ -237,7 +237,7 @@ function ModelPickerRows({ options, current, query, onQueryChange, onSelect, foc
         {failed && !verified && hasOptions && !query.trim() ? <ModelLoadingRows rows={2} label={t("ui.073a6dd98a24")} still /> : null}
       </CommandPanel>
       {failed ? <PickerNotice tone={verified ? "neutral" : "error"} role="alert" testId="model-catalog-error" action={<Button size="sm" variant="outline" disabled={!catalogState?.onRetry || retryBusy || catalogState.refreshing} onClick={() => void retry()}>{t("ui.942087cc2d41")}</Button>}>
-        {verified ? <>{t("ui.44f29f2e0636")} <time dateTime={verified.toISOString()}>{verified.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time>. Couldn’t refresh just now.</> : hasOptions ? t("ui.04d7f18e131b") : t("ui.398e34bb35fd")}
+        {verified ? <>{t("ui.44f29f2e0636")} <time dateTime={verified.toISOString()}>{verified.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time>{t("desktop.copy.68f2458a0677")}</> : hasOptions ? t("ui.04d7f18e131b") : t("ui.398e34bb35fd")}
       </PickerNotice> : null}
       {retainedCopy && !query.trim() ? <PickerNotice action={<>
         {retained?.reason === "unavailable" && catalogState?.onRetry ? <Button size="sm" variant="outline" disabled={retryBusy || catalogState.refreshing} onClick={() => void retry()}>{t("ui.0e9161011702")}</Button> : null}

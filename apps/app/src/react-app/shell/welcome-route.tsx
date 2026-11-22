@@ -177,11 +177,13 @@ export function WelcomeRoute() {
               folderPath: folder,
               name: workspaceName,
               preset: "starter",
+              ...(options?.workspaceType === "always-on" ? { workspaceType: options.workspaceType, alwaysOn: options.alwaysOn, defaultModel: local.prefs.defaultModel ?? null } : {}),
             });
             sessionBaseUrl = normalizedBaseUrl;
             sessionToken = resolvedToken;
           }
-        } catch {
+        } catch (error) {
+          if (options?.workspaceType === "always-on") throw error;
           list = null;
         }
         if (!list) {
@@ -211,7 +213,7 @@ export function WelcomeRoute() {
             sessionToken = fresh.resolvedToken;
           }
         }
-        if (targetWorkspaceId && sessionBaseUrl && sessionToken) {
+        if (targetWorkspaceId && sessionBaseUrl && sessionToken && options?.workspaceType !== "always-on") {
           try {
             const workspacePath = targetWorkspace?.path?.trim() || folder;
             const session = unwrap(await createClient(

@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DynamicToolUIPart, UIMessage } from "ai"
 import { skillCreatedPayloadSchema, type SkillCreatedPayload } from "@get3w/types/skill-created-app"
 
@@ -300,15 +301,15 @@ function recipientLabel(recipient: SkillRecipient): string {
 
 function recipientsLabel(recipients: SkillRecipient[]): string {
   const [first, second] = recipients
-  if (!first) return "Only you"
+  if (!first) return t("desktop.text.c080649df657")
   if (!second) return recipientLabel(first)
-  if (recipients.length === 2) return `${recipientLabel(first)} and ${recipientLabel(second)}`
-  return `${recipientLabel(first)} and ${recipients.length - 1} others`
+  if (recipients.length === 2) return t("desktop.dynamic.a8c60ace0cf1", { first: recipientLabel(first), second: recipientLabel(second) })
+  return t("desktop.dynamic.f90aaa229945", { name: recipientLabel(first), count: recipients.length - 1 })
 }
 
 function confirmedLabel(access: ConfirmedSkillAccess): string | null {
-  if (access.kind === "private") return "Only you"
-  if (access.kind === "shared") return `Shared with ${recipientsLabel(access.recipients)}`
+  if (access.kind === "private") return t("desktop.text.c080649df657")
+  if (access.kind === "shared") return t("desktop.dynamic.b327fc40358e", { name: recipientsLabel(access.recipients) })
   return null
 }
 
@@ -317,12 +318,12 @@ export function createdSkillAccessLabel(card: Extract<CreatedSkillCard, { kind: 
   const confirmed = confirmedLabel(card.access)
   if (card.pending?.state === "running") {
     const short = shortRecipientName(card.pending.recipient)
-    return short ? `Sharing with ${short}…` : "Sharing…"
+    return short ? t("desktop.dynamic.c71234c4da37", { name: short }) : t("desktop.dynamic.2e913af44d22")
   }
   if (card.pending?.state === "unverified") {
-    return confirmed ? `Last confirmed: ${confirmed.charAt(0).toLowerCase()}${confirmed.slice(1)}` : "Sharing unconfirmed"
+    return confirmed ? t("desktop.dynamic.da5cb175e6b4", { state: confirmed.charAt(0).toLowerCase() + confirmed.slice(1) }) : t("desktop.text.a4cc255c87e7")
   }
-  return confirmed ?? (card.mode === "updated" ? "New version saved" : "Only you")
+  return confirmed ?? (card.mode === "updated" ? t("desktop.text.d56b10673475") : t("desktop.text.c080649df657"))
 }
 
 /** Present/past names for a call that saved a skill, from its input or its validated result. */
@@ -336,8 +337,8 @@ export function savedSkillSentence(call: DynamicToolUIPart): { present: string; 
   const name = payload?.name ?? asked
   const target = name ? `the ${name} skill` : "a skill"
   return updating
-    ? { present: `Updating ${target}`, past: payload ? `Updated ${target}` : "Saved a skill version", failure: `Couldn't update ${target}` }
-    : { present: `Creating ${target}`, past: payload ? `Created ${target}` : "Created a skill", failure: `Couldn't create ${target}` }
+    ? { present: `Updating ${target}`, past: payload ? `Updated ${target}` : t("desktop.text.de9fcae3eff1"), failure: `Couldn't update ${target}` }
+    : { present: `Creating ${target}`, past: payload ? `Created ${target}` : t("desktop.text.05da36245ed8"), failure: `Couldn't create ${target}` }
 }
 
 /** "Shared Update CRM with Sam": the skill and recipient come from this conversation's results. */

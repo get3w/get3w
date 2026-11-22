@@ -1,3 +1,10 @@
+import { AlwaysOnAttentionPage } from "../domains/workspace/always-on-attention-page";
+import { useAlwaysOnNotificationDispatcher } from "../domains/workspace/always-on-dispatcher";
+import { AlwaysOnDeliveryPage } from "../domains/workspace/always-on-delivery-page";
+import { AlwaysOnMemoryPage } from "../domains/workspace/always-on-memory-page";
+import { AlwaysOnTimersPage } from "../domains/workspace/always-on-timers-page";
+import { AlwaysOnInboxPage } from "../domains/workspace/always-on-inbox-page";
+import { AlwaysOnOverviewPage } from "../domains/workspace/always-on-overview-page";
 import { searchWorkspaceMentionFiles } from "../domains/session/surface/composer/workspace-file-search";
 /** @jsxImportSource react */
 import { ensureGet3wTaskTools, requireGet3wSignIn, useGet3wAccount } from "@/react-app/domains/cloud/get3w-account";
@@ -521,6 +528,15 @@ export function SessionRoute() {
     onServerSettingsChanged: () => undefined,
     onHostInfo: setGet3wServerHostInfoState,
   });
+  const [deliveryDismissed, setDeliveryDismissed] = useState<string | null>(null);
+  const alwaysOnDeliveryActive = deliveryDismissed !== location.key && selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-delivery";
+  useAlwaysOnNotificationDispatcher(workspaces, endpointForWorkspace);
+  const alwaysOnAttentionActive = selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-attention";
+  const alwaysOnMemoryActive = selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-memory";
+  const alwaysOnTimersActive = selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-timers";
+  const alwaysOnInboxActive = selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-inbox";
+  const alwaysOnOverviewActive = selectedWorkspace?.workspaceType === "always-on" && new URLSearchParams(location.search).get("view") === "always-on-overview";
+  const closeAlwaysOnOverview = () => { const search = new URLSearchParams(location.search); search.delete("view"); navigate({ pathname: location.pathname, search: search.toString() }); };
   const modelProfileId = useWorkspaceModelProfile();
   const workspaceDefaultScope = workspaceModelScope({ profileId: modelProfileId,
     workspaceId: selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId, opencodeBaseUrl, localRuntime: isDesktopRuntime() });
@@ -726,7 +742,7 @@ export function SessionRoute() {
     [selectedInteractionSessionIds, selectedWorkspaceId, sessionsByWorkspaceId],
   );
   useEffect(() => {
-    if (!isDesktopRuntime() || selectedWorkspace?.workspaceType !== "local") return;
+    if (!isDesktopRuntime() || (selectedWorkspace?.workspaceType !== "local" && selectedWorkspace?.workspaceType !== "always-on")) return;
     let cancelled = false;
     let checking = false;
     // Ports and credentials can survive a restart. Observe the host's actual
@@ -3451,12 +3467,12 @@ export function SessionRoute() {
       let createdOnServer = false;
       if (client) {
         list = await client
-          .createLocalWorkspace({ folderPath: folder, name: workspaceName, preset })
+          .createLocalWorkspace({ folderPath: folder, name: workspaceName, preset, ...(options?.workspaceType === "always-on" ? { workspaceType: options.workspaceType, alwaysOn: options.alwaysOn, defaultModel: local.prefs.defaultModel ? { ...local.prefs.defaultModel, ...(local.prefs.modelVariant ? { variant: local.prefs.modelVariant } : {}) } : null } : {}) })
           .then((serverList) => {
             createdOnServer = true;
             return serverList;
           })
-          .catch(() => null);
+          .catch(error => { if (options?.workspaceType === "always-on") throw error; return null; });
       }
       if (!list) {
         throw new Error(t("ui.e046753ab9f3"));
@@ -3495,7 +3511,7 @@ export function SessionRoute() {
       if (onPrepared) {
         const endpoint = targetWorkspace ? resolveWorkspaceEndpoint(targetWorkspace, { baseUrl: sessionBaseUrl, token: sessionToken }) : null;
         if (!targetWorkspaceId || !endpoint) throw new Error(t("ui.d08360c225b0"));
-        captureAnalyticsEvent("workspace_created", { workspace_type: "local" });
+        captureAnalyticsEvent("workspace_created", { workspace_type: options?.workspaceType ?? "local" });
         onPrepared({ workspaceId: targetWorkspaceId, title: workspaceName, path: targetWorkspace?.path?.trim() || folder, endpoint });
         return;
       }
@@ -3521,7 +3537,7 @@ export function SessionRoute() {
             label: projectLabel,
           });
         }
-        captureAnalyticsEvent("workspace_created", { workspace_type: "local" });
+        captureAnalyticsEvent("workspace_created", { workspace_type: options?.workspaceType ?? "local" });
         if (session?.id) {
           useSessionAgentStore.getState().setAgent(session.id, agent);
           captureAnalyticsEvent("task_created", { source: "workspace_created", workspace_type: "local" });
@@ -3671,6 +3687,7 @@ export function SessionRoute() {
 
   return (
     <WorkspaceProvider
+      workspaceType={selectedWorkspace?.workspaceType}
       client={opencodeClient}
       opencodeBaseUrl={opencodeBaseUrl}
       get3wServerClient={selectedWorkspaceEndpoint?.client ?? null}
@@ -3792,15 +3809,15 @@ export function SessionRoute() {
         />
       }
       // Page titles match their sidebar labels.
-      primaryTitle={activityRouteActive ? t("activity.title") : appsRouteActive ? artifactsLabel : automationsRouteActive ? t("ui.ad1fb9ec0cb3") : dashboardRouteActive ? artifactsLabel : undefined}
+      primaryTitle={alwaysOnAttentionActive ? t("workspace.menu_attention") : alwaysOnDeliveryActive ? t("workspace.menu_delivery") : alwaysOnMemoryActive ? t("workspace.menu_memory") : alwaysOnTimersActive ? t("workspace.menu_timers") : alwaysOnInboxActive ? t("workspace.menu_inbox") : alwaysOnOverviewActive ? t("workspace.menu_overview") : activityRouteActive ? t("activity.title") : appsRouteActive ? artifactsLabel : automationsRouteActive ? t("ui.ad1fb9ec0cb3") : dashboardRouteActive ? artifactsLabel : undefined}
       // Dashboard, Automations and Library share one flat page surface.
-      primarySurface={outputsRouteActive || activityRouteActive || dashboardRouteActive || automationsRouteActive || extensionsMainOpen ? "flat" : undefined}
+      primarySurface={alwaysOnAttentionActive || alwaysOnDeliveryActive || alwaysOnMemoryActive || alwaysOnTimersActive || alwaysOnInboxActive || alwaysOnOverviewActive || outputsRouteActive || activityRouteActive || dashboardRouteActive || automationsRouteActive || extensionsMainOpen ? "flat" : undefined}
       primarySlotIsConversation={!activityRouteActive && !outputsRouteActive && Boolean(pendingConversation || remoteTaskRouteActive)}
       primaryHeader={remoteTaskRouteActive && remoteThreadKey ? <RemoteSessionHeader key={remoteThreadKey} threadKey={remoteThreadKey} navigation={remoteHelperNavigation} /> : undefined}
       onOpenRemoteTask={openRemoteTask}
       retainedArtifactSlot={retainedArtifactsScope ? {
         scope: retainedArtifactsScope,
-        active: dashboardRouteActive && !appsRouteActive,
+        active: !alwaysOnAttentionActive && !alwaysOnDeliveryActive && !alwaysOnMemoryActive && !alwaysOnTimersActive && !alwaysOnInboxActive && !alwaysOnOverviewActive && dashboardRouteActive && !appsRouteActive,
         content: <WorkspaceProvider
           client={opencodeClient}
           opencodeBaseUrl={opencodeBaseUrl}
@@ -3817,7 +3834,7 @@ export function SessionRoute() {
           />
         </WorkspaceProvider>,
       } : undefined}
-      primarySlot={activityRouteActive ? <ActivityPage onTrySkill={trySkillInNewSession} /> : outputsRouteActive ? <OutputsPage client={selectedWorkspaceEndpoint?.client ?? null} workspaceRoot={selectedWorkspaceRoot} workspaceId={selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId} localWorkspace={isDesktopRuntime()} /> : remoteTaskRouteActive && remoteThreadKey ? (
+      primarySlot={alwaysOnAttentionActive ? <AlwaysOnAttentionPage key={selectedWorkspaceId} client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onClose={closeAlwaysOnOverview} onOpenSession={(sessionId, messageId) => navigate(`${workspaceSessionRoute(selectedWorkspaceId, sessionId)}?runMessage=${encodeURIComponent(messageId)}`)} /> : alwaysOnDeliveryActive ? <AlwaysOnDeliveryPage client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onOpenSession={(sessionId, messageId) => { setDeliveryDismissed(location.key); navigate(`${workspaceSessionRoute(selectedWorkspaceId, sessionId)}?runMessage=${encodeURIComponent(messageId)}`); }} key={selectedWorkspaceId} onClose={() => { setDeliveryDismissed(location.key); navigate(workspaceSessionRoute(selectedWorkspaceId)); }} /> : alwaysOnMemoryActive ? <AlwaysOnMemoryPage onOpenSession={(sessionId, messageId) => navigate(`${workspaceSessionRoute(selectedWorkspaceId, sessionId)}?runMessage=${encodeURIComponent(messageId)}`)} key={selectedWorkspaceId} client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onClose={closeAlwaysOnOverview} onOpenSettings={() => handleOpenRenameWorkspace(selectedWorkspaceId)} /> : alwaysOnTimersActive ? <AlwaysOnTimersPage onOpenEvent={id => { const search = new URLSearchParams(location.search); search.set("view", "always-on-inbox"); search.set("eventId", id); navigate({ pathname: location.pathname, search: search.toString() }); }} key={selectedWorkspaceId} client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onClose={closeAlwaysOnOverview} onOpenSettings={() => handleOpenRenameWorkspace(selectedWorkspaceId)} /> : alwaysOnInboxActive ? <AlwaysOnInboxPage eventId={new URLSearchParams(location.search).get("eventId") ?? undefined} key={selectedWorkspaceId} client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onOpenSession={(sessionId, messageId) => navigate(`${workspaceSessionRoute(selectedWorkspaceId, sessionId)}?runMessage=${encodeURIComponent(messageId)}`)} onClose={closeAlwaysOnOverview} onOpenSettings={() => handleOpenRenameWorkspace(selectedWorkspaceId)} /> : alwaysOnOverviewActive ? <AlwaysOnOverviewPage key={selectedWorkspaceId} client={selectedWorkspaceEndpoint?.client ?? null} workspaceId={selectedWorkspaceId} onOpenSession={(sessionId, messageId) => navigate(`${workspaceSessionRoute(selectedWorkspaceId, sessionId)}?runMessage=${encodeURIComponent(messageId)}`)} onOpenSettings={() => handleOpenRenameWorkspace(selectedWorkspaceId)} onClose={closeAlwaysOnOverview} /> : activityRouteActive ? <ActivityPage onTrySkill={trySkillInNewSession} /> : outputsRouteActive ? <OutputsPage client={selectedWorkspaceEndpoint?.client ?? null} workspaceRoot={selectedWorkspaceRoot} workspaceId={selectedWorkspaceEndpoint?.workspaceId ?? selectedWorkspaceId} localWorkspace={isDesktopRuntime()} /> : remoteTaskRouteActive && remoteThreadKey ? (
         <RemoteSessionSurface key={remoteThreadKey} threadKey={remoteThreadKey} navigation={remoteHelperNavigation} />
       ) : pendingConversation ? <PendingConversationView conversation={pendingConversation} composer={newTaskComposerContext} /> : appsRouteActive ? (
         <WorkspaceProvider
@@ -3871,6 +3888,18 @@ export function SessionRoute() {
         newTaskDisabled: !canCreateTask,
         sidebarHydratedFromCache: Object.values(sessionsByWorkspaceId).some((list) => list.length > 0),
         startupPhase: effectiveLoading ? "nativeInit" : "ready",
+        alwaysOnAttentionActive,
+        onOpenAlwaysOnAttention: () => { const search = new URLSearchParams(location.search); search.set("view", "always-on-attention"); search.delete("eventId"); navigate({ pathname: location.pathname, search: search.toString() }); },
+        alwaysOnDeliveryActive,
+        onOpenAlwaysOnDelivery: () => { setDeliveryDismissed(null); const search = new URLSearchParams(location.search); search.set("view", "always-on-delivery"); search.delete("eventId"); navigate({ pathname: location.pathname, search: search.toString() }); },
+        alwaysOnMemoryActive,
+        onOpenAlwaysOnMemory: () => { const search = new URLSearchParams(location.search); search.set("view", "always-on-memory"); search.delete("eventId"); navigate({ pathname: location.pathname, search: search.toString() }); },
+        alwaysOnTimersActive,
+        onOpenAlwaysOnTimers: () => { const search = new URLSearchParams(location.search); search.set("view", "always-on-timers"); search.delete("eventId"); navigate({ pathname: location.pathname, search: search.toString() }); },
+        alwaysOnInboxActive,
+        onOpenAlwaysOnInbox: () => { const search = new URLSearchParams(location.search); search.set("view", "always-on-inbox"); search.delete("eventId"); navigate({ pathname: location.pathname, search: search.toString() }); },
+        alwaysOnOverviewActive,
+        onOpenAlwaysOnOverview: () => { const search = new URLSearchParams(location.search); search.set("view", "always-on-overview"); navigate({ pathname: location.pathname, search: search.toString() }); },
         automationsActive: automationsRouteActive,
         automationsNeedAttention,
         onOpenAutomations: automationsSurfaceAvailable
@@ -4056,6 +4085,8 @@ export function SessionRoute() {
       }
     />
     <RenameWorkspaceModal
+      workspace={workspaces.find(workspace => workspace.id === renameWorkspaceId)}
+      client={client}
       open={renameWorkspaceId !== null}
       title={renameWorkspaceTitle}
       busy={renameWorkspaceBusy}
@@ -4065,7 +4096,7 @@ export function SessionRoute() {
         setRenameWorkspaceId(null);
         setRenameWorkspaceTitle("");
       }}
-      onSave={() => void handleSaveRenameWorkspace()}
+      onSave={handleSaveRenameWorkspace}
       onTitleChange={setRenameWorkspaceTitle}
     />
     <CommandPalette

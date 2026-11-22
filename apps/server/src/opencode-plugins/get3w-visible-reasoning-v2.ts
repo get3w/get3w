@@ -1,3 +1,4 @@
+import { registerTaskContext, type TaskContext } from "./get3w-task-context-v2.js";
 /**
  * Settings › Show model reasoning, applied to the model request.
  *
@@ -151,5 +152,9 @@ export async function registerVisibleReasoning(context: VisibleReasoningContext)
 
 export default {
   id: "get3w.visible-reasoning",
-  setup: (context: VisibleReasoningContext) => registerVisibleReasoning(context),
+  setup: async (context: VisibleReasoningContext & TaskContext) => {
+    const disposeReasoning = await registerVisibleReasoning(context);
+    const disposeTask = await registerTaskContext(context);
+    return async () => { await disposeTask(); await disposeReasoning(); };
+  },
 };

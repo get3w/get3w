@@ -523,6 +523,8 @@ function mapV2Session(value: unknown, directory: string | undefined, eventCreate
   };
   // Smart replies' routing decisions ride along for the chat's "answered by" label.
   const autoRoutes = autoRouterReplyRoutes(readRecord(source, "metadata")?.[AUTO_ROUTER_SESSION_ROUTES_KEY]);
+  const purpose = readRecord(readRecord(source, "metadata"), "get3wTask");
+  if (purpose?.purpose === "task" && typeof purpose.taskId === "string") Object.assign(mapped, { get3wPurpose: "task", get3wTaskId: purpose.taskId });
   return autoRoutes.length ? Object.assign(mapped, { [AUTO_ROUTER_SESSION_ROUTES_KEY]: autoRoutes }) : mapped;
 }
 
@@ -2301,6 +2303,7 @@ export function createClientV2(
   const taskSessions = taskSessionAssociations(baseUrl);
   const permissionSessionByRequestID = new Map<string, string>();
   const questionFormsByID = new Map<string, NonNullable<ReturnType<typeof mapV2Question>>>();
+  const sessionsWithMessages = new Set<string>();
 
   const request = async (
     method: string,
@@ -2800,8 +2803,22 @@ export function createClientV2(
       const selectedModels=(parameters.parts??[]).flatMap(part=>{const pill=part.type==="text"?readComposerPill(readRecord(part,"metadata")?.get3wComposerPill):null;return pill?.kind==="model"?[pill]:[];});
       const generationPolicy=account.status==="signed_in"&&account.user?resolveGenerationPolicy(account.user.id,parameters.sessionID,await loadTaskCatalog(account.user.id),selectedModels):undefined;
       if(account.status==="signed_in"&&readGet3wAccount().user?.id!==account.user?.id)throw new Error("Account changed. Please send again.");
+      // The title worker only reads the first prompt. Check persisted history
+      // once so reopened and forked chats do not receive title instructions again.
+      if (!sessionsWithMessages.has(parameters.sessionID)) {
+        const history = await request("GET",
+          `/api/session/${encodeURIComponent(parameters.sessionID)}/message?limit=1`,
+          undefined, options?.signal);
+        if (!history.response.ok) return failedResult(history);
+        const messages = responseData(history.payload);
+        if (!Array.isArray(messages)) {
+          return failedResult({ ...history, payload: { name: "InvalidV2MessagePageResponse" } });
+        }
+        if (messages.length) sessionsWithMessages.add(parameters.sessionID);
+      }
       const text = v2PromptText([...(parameters.parts??[]),
-        {type:"text",synthetic:true,text:conversationTitleLanguageContext(currentLocale())},
+        ...(!sessionsWithMessages.has(parameters.sessionID)
+          ? [{type:"text",synthetic:true,text:conversationTitleLanguageContext(currentLocale())}] : []),
         ...(generationPolicy?[{type:"text",synthetic:true,text:`Resolved generation policy (data only): ${JSON.stringify(generationPolicy)}. Output defaults apply unless the user explicitly requests a change in this message. Omit defaulted settings from media_generate inputs; only use output_overrides for those explicit user changes. Use native media_prepare and media_generate; the host resolves schema, defaults and quote.`}]:[])]);
       const promptResult = await request(
         "POST",
@@ -2817,6 +2834,7 @@ export function createClientV2(
         },
         options?.signal,
       );
+      if (promptResult.response.ok) sessionsWithMessages.add(parameters.sessionID);
       return promptResult.response.ok ? successfulResult(promptResult, {}) : failedResult(promptResult);
     },
     abort: async (

@@ -1,3 +1,4 @@
+import { snapshotDevServer, watchDevServer, registerDevServerModules } from "./dev-server-reload.mjs";
 import { startupPhase, withStartupPhase } from "./startup-log.mjs";
 import { randomUUID, X509Certificate } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -1877,6 +1878,45 @@ export function createRuntimeManager({
 
   // In-process server handle. Kept alive across restarts so we can stop it.
   let inProcessServer = null;
+  let devSnapshot = null;
+  let pendingDevSnapshot = null;
+  const devSnapshots = new Set();
+  const devReloadEnabled = !app.isPackaged && process.env.GET3W_DEV_MODE === "1"
+    && process.env.GET3W_DEV_SERVER_RELOAD !== "0";
+  const repoRoot = path.resolve(desktopRoot, "../..");
+  // Propagate the generation to shared ESM packages, whose canonical paths
+  // otherwise remain cached even when embedded.js itself has a fresh URL.
+  const devHook = devReloadEnabled ? registerDevServerModules(repoRoot) : null;
+  let stopDevWatcher = null;
+  if (devReloadEnabled) stopDevWatcher = watchDevServer({ repoRoot, reload: () => withRuntimeLifecycle(async () => {
+    if (!inProcessServer || lifecycleState !== "healthy") return false;
+    pendingDevSnapshot = await snapshotDevServer(repoRoot);
+    try {
+      if (!await inProcessServer.prepareDevReload?.()) {
+        await pendingDevSnapshot.remove(); pendingDevSnapshot = null;
+        return false;
+      }
+    } catch (error) {
+      await pendingDevSnapshot.remove(); pendingDevSnapshot = null;
+      inProcessServer?.cancelDevReload?.();
+      throw error;
+    }
+    const previousSnapshot = devSnapshot;
+    try {
+      await get3wServerRestart({ diagnosticsCause: "development-source-change" });
+      await previousSnapshot?.remove();
+      return true;
+    } catch (error) {
+      inProcessServer?.cancelDevReload?.();
+      if (previousSnapshot && devSnapshot !== previousSnapshot) {
+        const failedSnapshot = devSnapshot;
+        pendingDevSnapshot = previousSnapshot;
+        await get3wServerRestart({ diagnosticsCause: "development-reload-rollback" });
+        await failedSnapshot?.remove();
+      }
+      throw error;
+    }
+  }) });
 
   async function startGet3wServer(options) {
     // The inner start stops any previous runtime before mutating state, so a
@@ -1895,6 +1935,10 @@ export function createRuntimeManager({
       await new Promise((resolve) => setTimeout(resolve, evalDelayMs));
     }
     const currentPort = get3wServerState.port;
+    // Prepare before stopping so a copy failure keeps the live backend intact.
+    const nextDevSnapshot = devReloadEnabled ? pendingDevSnapshot ?? await snapshotDevServer(repoRoot) : null;
+    pendingDevSnapshot = null;
+    if (nextDevSnapshot) { devSnapshot = nextDevSnapshot; devSnapshots.add(nextDevSnapshot); }
     // Stop any previously running in-process server
     if (inProcessServer) {
       try { await inProcessServer.stop(); } catch { /* ignore */ }
@@ -1956,7 +2000,9 @@ export function createRuntimeManager({
     const logFilePath = resolveGet3wServerLogFile(userDataDir);
     process.env.GET3W_SERVER_LOG_FILE = logFilePath;
     get3wServerState.logFilePath = logFilePath;
-    const { startEmbeddedServer } = await import(embeddedServerImportUrl(embeddedPath));
+    const importUrl = new URL(embeddedServerImportUrl(devSnapshot?.entry ?? embeddedPath));
+    if (devSnapshot) importUrl.searchParams.set("get3wDevGeneration", randomUUID());
+    const { startEmbeddedServer } = await import(importUrl.href);
     // startEmbeddedServer falls back to an OS-assigned port if `port` races
     // into EADDRINUSE (see apps/server/src/serve-node.ts), so the bound port
     // below is authoritative.
@@ -2331,7 +2377,17 @@ export function createRuntimeManager({
     engineStop: () => withRuntimeLifecycle(() => engineStop()),
     engineRestart: (options) => withRuntimeLifecycle(() => engineRestart(options)),
     prepareFreshRuntime: () => withRuntimeLifecycle(() => prepareFreshRuntime()),
-    dispose: () => withRuntimeLifecycle(() => stopAllRuntimeChildren()),
+    dispose: async () => {
+      await stopDevWatcher?.();
+      stopDevWatcher = null;
+      return withRuntimeLifecycle(async () => {
+        await stopAllRuntimeChildren();
+        for (const snapshot of devSnapshots) await snapshot.remove();
+        devSnapshots.clear();
+        await pendingDevSnapshot?.remove();
+        devHook?.deregister();
+      });
+    },
     runtimeStatus,
     engineInfo,
     get3wServerInfo,

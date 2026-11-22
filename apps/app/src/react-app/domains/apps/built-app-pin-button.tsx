@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { Pin, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBuiltDashboardApps } from "../dashboard/built-dashboard-apps";
@@ -7,13 +8,13 @@ export function BuiltAppPinButton({ appId }: { appId: string }) {
   const pinned = built.ids.includes(appId);
   const available = built.ready && built.apps.some(app => app.connectionId === appId);
   const reason = !built.identityVerified
-    ? "Sign in to pin artifacts."
+    ? t("desktop.text.6a059055e58d")
     : built.query.isError
-      ? "Couldn't verify access. Refresh Artifacts and try again."
+      ? t("desktop.text.74f018beabb7")
       : !built.query.isSuccess
-        ? "Checking artifact access."
+        ? t("desktop.text.7c0e50b7853d")
         : !available
-          ? "This artifact isn't available in your catalog."
+          ? t("desktop.text.62eaefb09ad9")
           : undefined;
   const Icon = pinned ? PinOff : Pin;
   return (

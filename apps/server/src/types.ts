@@ -1,6 +1,6 @@
 import type { WorkspaceWire } from "@get3w/types/workspace";
 
-export type WorkspaceType = "local";
+export type WorkspaceType = "local" | "always-on";
 
 export type ApprovalMode = "manual" | "auto";
 
@@ -119,6 +119,7 @@ export interface ServerConfig {
 }
 
 export interface Capabilities {
+  alwaysOn?: { create: boolean };
   schemaVersion: number;
   serverVersion: string;
   opencodeVersion: string;

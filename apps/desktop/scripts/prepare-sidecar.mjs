@@ -374,7 +374,9 @@ const get3wServerVersion = (() => {
 
 const versions = {
   opencode2: {
-    version: JSON.parse(readFileSync(constantsPath, "utf8")).opencodeV2Version,
+    version: process.env.GET3W_OPENCODE2_BUILD_MANIFEST
+      ? JSON.parse(readFileSync(join(sidecarDir, "opencode2-integrity.json"), "utf8")).version
+      : JSON.parse(readFileSync(constantsPath, "utf8")).opencodeV2Version,
     sha256: sha256File(opencodeV2Path),
     unsignedSha256: unsignedSha256Darwin(opencodeV2Path),
   },

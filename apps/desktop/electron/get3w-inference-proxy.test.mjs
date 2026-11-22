@@ -62,14 +62,14 @@ test("upstream quota status is preserved and transport errors are sanitized",asy
 test("submitted timeout and rate limit are terminal to prevent engine replay",async()=>{
   let status=504,calls=0;
   const proxy=await createGet3wInferenceProxy({userId:'test-user',auth:{inference:async()=>{
-    calls++;return {response:Response.json({error:{message:'private'}},{status}),release:()=>{}};
+    calls++;return {response:Response.json({error:{message:'private'}},{status,headers:{'x-task-id':'failed-task','x-request-id':'failed-request','set-cookie':'private'}}),release:()=>{}};
   }}});
   try {
-    for(status of [504,503,429]){
+    for(status of [504,503,502,429]){
       const response=await fetch(proxy.baseURL+'/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${proxy.apiKey}`},body:JSON.stringify({status})});
-      assert.equal(response.status,400);const message=await response.text();assert.match(message,/Check model usage/);assert.ok(message.includes(`HTTP ${status}`));
+      assert.equal(response.status,400);assert.equal(response.headers.get("x-task-id"),"failed-task");assert.equal(response.headers.get("x-request-id"),"failed-request");assert.equal(response.headers.get("set-cookie"),null);assert.match(response.headers.get("content-type"),/application\/json/);const message=await response.text();assert.match(message,/Check model usage/);assert.ok(message.includes(`HTTP ${status}`));
     }
-    assert.equal(calls,3);
+    assert.equal(calls,4);
   }finally{await proxy.close();}
 });
 
@@ -171,4 +171,15 @@ test("oversized media conversation is rejected before cloud submission", async()
     const response=await fetch(proxy.baseURL+'/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${proxy.apiKey}`},body:'A'.repeat(32*1024*1024+1)});
     assert.equal(response.status,413);assert.equal(calls,0);
   } finally {await proxy.close();}
+});
+
+test("transport categories reach the engine without replay or private error data", async () => {
+ let calls = 0;
+ const proxy = await createGet3wInferenceProxy({ userId: "test-user", auth: { inference: async () => {
+  calls++; throw Error("Get3W inference unavailable: connection failed. Check completed work before retrying.");
+ } } });
+ try {
+  const response = await fetch(proxy.baseURL + "/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${proxy.apiKey}` }, body: "{}" });
+  assert.equal(response.status, 400); assert.match((await response.json()).error.message, /connection failed/); assert.equal(calls, 1);
+ } finally { await proxy.close(); }
 });

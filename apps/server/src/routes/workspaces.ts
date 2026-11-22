@@ -1,4 +1,6 @@
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { workspaceDefaultModelSchema, writeWorkspaceDefaultModel } from "../workspace-default-model.js";
+import { createAlwaysOnWorkspace, alwaysOnSettingsSchema } from "../always-on.js";
+import { readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { recordAudit } from "../audit.js";
 import { ApiError } from "../errors.js";
@@ -126,7 +128,16 @@ export function registerWorkspaceRoutes(options: RegisterWorkspaceRoutesOptions)
       throw new ApiError(400, "invalid_payload", "folderPath is required");
     }
 
-    const workspacePath = resolve(folderPath);
+    const workspaceType = body.workspaceType === "always-on" ? "always-on" : "local";
+    if (body.workspaceType !== undefined && body.workspaceType !== "local" && body.workspaceType !== "always-on") throw new ApiError(400, "invalid_workspace_type", "Unknown workspace type");
+    if (workspaceType === "always-on" && !alwaysOnSettingsSchema.safeParse(body.alwaysOn).success) throw new ApiError(400, "invalid_always_on_settings", "Enter a goal and valid settings");
+    const model = workspaceDefaultModelSchema.nullable().safeParse(body.defaultModel ?? null);
+    if (workspaceType === "always-on" && !model.success) throw new ApiError(400, "invalid_default_model", "Choose a valid default model");
+    const defaultModel = model.success ? model.data : null;
+    const workspacePath = workspaceType === "always-on" ? await realpath(resolve(folderPath)).catch(() => resolve(folderPath)) : resolve(folderPath);
+    const matchingPaths = await Promise.all(config.workspaces.map(async entry => ({ entry, path: workspaceType === "always-on" || entry.workspaceType === "always-on" ? await realpath(entry.path).catch(() => resolve(entry.path)) : resolve(entry.path) })));
+    const registered = matchingPaths.find(entry => entry.path === workspacePath)?.entry;
+    if (registered && (workspaceType === "always-on" || registered.workspaceType === "always-on")) throw new ApiError(409, "workspace_exists", "This folder already belongs to a workspace");
     await ensureDir(workspacePath);
     await ensureWorkspaceFiles(workspacePath, preset);
 
@@ -144,15 +155,27 @@ export function registerWorkspaceRoutes(options: RegisterWorkspaceRoutesOptions)
       name,
       path: workspacePath,
       preset,
-      workspaceType: "local",
+      workspaceType,
       ...inheritWorkspaceOpencodeConnection(config),
     };
 
+    if (workspaceType === "always-on") {
+      await createAlwaysOnWorkspace(config, workspace, body.alwaysOn);
+      if (defaultModel) await writeWorkspaceDefaultModel(config, workspace.id, defaultModel);
+    }
+
+    const previousWorkspaces = config.workspaces;
+    const previousRoots = config.authorizedRoots;
     config.workspaces = [workspace, ...config.workspaces.filter((entry) => entry.id !== workspace.id)];
     if (!config.authorizedRoots.some((root) => resolve(root) === workspacePath)) {
       config.authorizedRoots = [...config.authorizedRoots, workspacePath];
     }
-    const persisted = await persistServerWorkspaceState(config);
+    let persisted: boolean;
+    try { persisted = await persistServerWorkspaceState(config); }
+    catch (error) {
+      if (workspaceType === "always-on") { config.workspaces = previousWorkspaces; config.authorizedRoots = previousRoots; }
+      throw error;
+    }
     onWorkspacesChanged();
 
     await recordAudit(workspace.path, {
@@ -235,7 +258,7 @@ export function registerWorkspaceRoutes(options: RegisterWorkspaceRoutesOptions)
     // The injected engine config file is workspace-independent, so activation
     // never disposes or reloads an engine instance. Fire-and-forget re-attach
     // of the activated workspace's runtime MCPs via the dynamic push.
-    if (!wasActive && workspace.workspaceType === "local" && resolveWorkspaceOpencodeConnection(config, workspace).baseUrl?.trim()) {
+    if (!wasActive && (workspace.workspaceType === "local" || workspace.workspaceType === "always-on") && resolveWorkspaceOpencodeConnection(config, workspace).baseUrl?.trim()) {
       void syncWorkspaceRuntimeMcp(config, workspace).catch(() => undefined);
     }
     return jsonResponse({ activeId: workspace.id, workspace: serializeWorkspace(workspace), persisted });
@@ -250,7 +273,7 @@ export function registerWorkspaceRoutes(options: RegisterWorkspaceRoutesOptions)
     config.workspaces = config.workspaces.filter((entry) => entry.id !== workspace.id);
     const deleted = before !== config.workspaces.length;
 
-    if (deleted && workspace.workspaceType === "local") {
+    if (deleted && (workspace.workspaceType === "local" || workspace.workspaceType === "always-on")) {
       // Only remove exact matches; authorizedRoots can contain broader entries.
       config.authorizedRoots = config.authorizedRoots.filter((root) => resolve(root) !== resolve(workspace.path));
     }

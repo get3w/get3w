@@ -1,3 +1,7 @@
+import { z } from "zod";
+import { readAlwaysOnOutbox, changeAlwaysOnOutbox } from "./always-on-outbox.js";
+import { readAlwaysOnMemory, mutateAlwaysOnMemory, markAlwaysOnReplyViewed } from "./always-on-memory.js";
+import { readAlwaysOnDeliverables, readAlwaysOnOverview, createAlwaysOnRunner, createHeadlessThreadClient, initializeAlwaysOnTaskSettings } from "./always-on.js";
 import { effectiveWorkspaceConfig, saveWorkspaceProjectConfig } from "./get3w-project-config.js";
 import { ensureGet3wProjectConfig, get3wProjectConfig } from "@get3w/paths";
 import { resolveCostRunContext } from "./cost-run-context.js";
@@ -90,6 +94,7 @@ import {
   type ServerLogFileSink,
 } from "./server-log-file.js";
 import { opencodeConfigPath, get3wConfigPath, projectCommandsDir, projectSkillsDir } from "./workspace-files.js";
+import { readWorkspaceCompaction, writeWorkspaceAutoCompaction } from "./workspace-compaction.js";
 import { ensureDir, exists, hashToken, shortId } from "./utils.js";
 import { defaultWorkspaceGet3wConfig, ensureWorkspaceFiles, readRawOpencodeConfig } from "./workspace-init.js";
 import { sanitizeCommandName, validateMcpName, validateUserMcpName, validateUserOpencodeConfigText, validateUserProviderUpdate } from "./validators.js";
@@ -657,7 +662,7 @@ async function assertWorkspaceOwnsProxiedSessionRead(
   }
 
   const sessionDirectory = result.data?.directory?.trim();
-  const [expectedDirectory, actualDirectory] = workspace.workspaceType === "local" && sessionDirectory
+  const [expectedDirectory, actualDirectory] = (workspace.workspaceType === "local" || workspace.workspaceType === "always-on") && sessionDirectory
     ? await Promise.all([
         realpath(directory).catch(() => directory),
         realpath(sessionDirectory).catch(() => sessionDirectory),
@@ -766,9 +771,14 @@ export async function startServer(
   // once its primary is registered; ordinary attached servers stay ready.
   options: { deferManagedEngineStartup?: boolean } = {},
 ): Promise<ServeResult & {
+  prepareDevReload: () => Promise<boolean>;
+  cancelDevReload: () => void;
   completeManagedEngineStartup: () => Promise<void>;
   setEngineForcePolicy: EngineV2Preview["setForcePolicy"];
 }> {
+  let devReloadPending = false;
+  let devWritesBlocked = false;
+  let devMutationsInFlight = 0;
   let managedEngineReady = options.deferManagedEngineStartup !== true;
   let stopped = false;
   let taskRecovery: Awaited<ReturnType<typeof createTaskRecovery>> | undefined;
@@ -866,6 +876,144 @@ export async function startServer(
     engineV2Preview,
     () => managedEngineReady,
   );
+
+  const deferredClient = () => {
+    const client = engineV2Preview.deferred();
+    if (!client) throw new Error("Deferred engine capability is not ready");
+    return client;
+  };
+  const alwaysOn = createAlwaysOnRunner(config, {
+    get deferred(): Parameters<typeof createAlwaysOnRunner>[1]["deferred"] { return process.env.GET3W_DEFERRED_QUESTIONS === "1" && engineV2Preview.deferred() ? {
+      bind: (...args) => deferredClient().bind(...args),
+      setPaused: (...args) => deferredClient().setPaused(...args),
+      list: (...args) => deferredClient().list(...args),
+      cancel: (...args) => deferredClient().cancel(...args),
+      read: (...args) => deferredClient().read(...args),
+      answer: (...args) => deferredClient().answer(...args),
+      commit: (...args) => deferredClient().commit(...args),
+      resume: async (...args) => {
+        const workspace = config.workspaces.find(item => item.id === args[0] && item.workspaceType === "always-on");
+        if (!workspace) throw new Error("Deferred workspace is unavailable");
+        await engineV2Preview.ensureWorkspaceReady(workspace.path);
+        return deferredClient().resume(...args);
+      },
+    } : undefined; },
+    ready: () => managedEngineReady && !devReloadPending,
+    client: (workspace, engine) => createHeadlessThreadClient({
+      baseUrl: `http://127.0.0.1:${config.port}`, workspaceId: workspace.id, token: config.token,
+      ...(engine ? { engine } : {}),
+      fetch: async (input, init) => {
+        const headers = new Headers(init?.headers);
+        headers.set("x-get3w-task-recovery", "off");
+        return serverOptions.fetch(new Request(input, { ...init, headers }));
+      },
+    }),
+  });
+  const inboxWorkspace = (id: string) => {
+    const workspace = config.workspaces.find(item => item.id === id && item.workspaceType === "always-on");
+    if (!workspace) throw new ApiError(404, "not_found", "Always-on workspace not found");
+    return workspace;
+  };
+  addRoute(routes, "POST", "/experimental/always-on-memory-read", "client", async ctx => {
+    if (ctx.request.headers.get("X-Get3W-Host-Token") !== config.hostToken) throw new ApiError(401, "host_only", "Host bridge required");
+    ensureWritable(config);
+    const body: unknown = await ctx.request.json();
+    if (!isRecord(body) || !isRecord(body.caller) || typeof body.sessionId !== "string" || typeof body.caller.directory !== "string" || typeof body.caller.messageId !== "string" || typeof body.caller.callId !== "string") throw new ApiError(400, "invalid_payload", "Conversation required");
+    const caller = body.caller;
+    const workspace = config.workspaces.find(item => item.path === caller.directory && item.workspaceType === "always-on");
+    if (!workspace || !await resolveV2SessionExecutionDirectory(config, engineV2Preview, workspace, body.sessionId)) throw new ApiError(403, "invalid_session", "Always-on conversation required");
+    return jsonResponse(await alwaysOn.memoryRead(workspace, body.sessionId, body.caller.messageId, body.input));
+  });
+  addRoute(routes, "POST", "/experimental/always-on-complete", "client", async ctx => {
+    if (ctx.request.headers.get("X-Get3W-Host-Token") !== config.hostToken) throw new ApiError(401, "host_only", "Host bridge required");
+    ensureWritable(config);
+    const body: unknown = await ctx.request.json();
+    if (!isRecord(body) || !isRecord(body.caller) || typeof body.sessionId !== "string" || typeof body.caller.directory !== "string" || typeof body.caller.messageId !== "string" || typeof body.caller.callId !== "string") throw new ApiError(400, "invalid_payload", "Conversation required");
+    const caller = body.caller;
+    const workspace = config.workspaces.find(item => item.path === caller.directory && item.workspaceType === "always-on");
+    if (!workspace || !await resolveV2SessionExecutionDirectory(config, engineV2Preview, workspace, body.sessionId)) throw new ApiError(403, "invalid_session", "Always-on conversation required");
+    return jsonResponse(await alwaysOn.complete(workspace, body.sessionId, body.caller.messageId, body.input));
+  });
+
+  addRoute(routes, "POST", "/workspaces/:id/always-on/attention/cancel", "host", async ctx => {
+    ensureWritable(config);return jsonResponse(await alwaysOn.cancelQuestion(inboxWorkspace(ctx.params.id),await readJsonBody(ctx.request)));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on/attention/answers", "host", async ctx => {
+    ensureWritable(config);return jsonResponse(await alwaysOn.answerQuestion(inboxWorkspace(ctx.params.id),await readJsonBody(ctx.request)));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/attention", "client", async ctx => jsonResponse(await alwaysOn.attention(inboxWorkspace(ctx.params.id))));
+  addRoute(routes, "GET", "/workspaces/:id/always-on/inbox", "client", async ctx => jsonResponse(await alwaysOn.inbox(inboxWorkspace(ctx.params.id), Number(new URL(ctx.request.url).searchParams.get("offset") ?? 0), new URL(ctx.request.url).searchParams.get("eventId") ?? undefined)));
+  addRoute(routes, "POST", "/workspaces/:id/always-on/results/:eventId", "host", async ctx => {
+    ensureWritable(config); const body = await readJsonBody(ctx.request);
+    if (body.action !== "verify" && body.action !== "repair") throw new ApiError(400, "invalid_action", "Unknown result action");
+    return jsonResponse(await alwaysOn.reviewResult(inboxWorkspace(ctx.params.id), ctx.params.eventId, body.action));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/outbox", "client", async ctx => jsonResponse(await readAlwaysOnOutbox(inboxWorkspace(ctx.params.id))));
+  addRoute(routes, "POST", "/workspaces/:id/always-on/outbox", "host", async ctx => { ensureWritable(config); return jsonResponse(await changeAlwaysOnOutbox(inboxWorkspace(ctx.params.id), await readJsonBody(ctx.request))); });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/deliverables", "client", async ctx => jsonResponse(await readAlwaysOnDeliverables(inboxWorkspace(ctx.params.id), Number(new URL(ctx.request.url).searchParams.get("offset") ?? 0))));
+  addRoute(routes, "POST", "/workspaces/:id/always-on/memory/viewed", "host", async ctx => {
+    ensureWritable(config);
+    const input = z.object({ eventId: z.string().min(1).max(200) }).strict().parse(await readJsonBody(ctx.request));
+    return jsonResponse(await markAlwaysOnReplyViewed(inboxWorkspace(ctx.params.id), input.eventId));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/memory", "client", async ctx => jsonResponse(await readAlwaysOnMemory(inboxWorkspace(ctx.params.id))));
+  addRoute(routes, "POST", "/workspaces/:id/always-on/memory", "host", async ctx => {
+    ensureWritable(config); return jsonResponse(await mutateAlwaysOnMemory(inboxWorkspace(ctx.params.id), await readJsonBody(ctx.request)));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/timers", "client", async ctx => jsonResponse(await alwaysOn.timers(inboxWorkspace(ctx.params.id))));
+  addRoute(routes, "POST", "/workspaces/:id/always-on/followups", "host", async ctx => {
+    ensureWritable(config); return jsonResponse(await alwaysOn.addFollowup(inboxWorkspace(ctx.params.id), await readJsonBody(ctx.request)));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on/followups/:followupId/confirm", "host", async ctx => {
+    ensureWritable(config); return jsonResponse(await alwaysOn.confirmFollowup(inboxWorkspace(ctx.params.id), ctx.params.followupId));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on/followups/:followupId/cancel", "host", async ctx => {
+    ensureWritable(config); return jsonResponse(await alwaysOn.cancelFollowup(inboxWorkspace(ctx.params.id), ctx.params.followupId));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on/sources", "host", async ctx => {
+    ensureWritable(config); const body = await readJsonBody(ctx.request);
+    return jsonResponse(await alwaysOn.saveSource(inboxWorkspace(ctx.params.id), body));
+  });
+  addRoute(routes, "PATCH", "/workspaces/:id/always-on/sources/:sourceId", "host", async ctx => {
+    ensureWritable(config); const body = await readJsonBody(ctx.request); const workspace = inboxWorkspace(ctx.params.id);
+    if (body.action !== undefined) {
+      if (body.action !== "enable" && body.action !== "disable" && body.action !== "delete") throw new ApiError(400, "invalid_action", "Unknown source action");
+      return jsonResponse(await alwaysOn.controlSource(workspace, ctx.params.sourceId, body.action));
+    }
+    return jsonResponse(await alwaysOn.saveSource(workspace, body, ctx.params.sourceId));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on/sources/:sourceId/sync", "host", async ctx => {
+    ensureWritable(config);return jsonResponse(await alwaysOn.recordSourceSync(inboxWorkspace(ctx.params.id),ctx.params.sourceId,await readJsonBody(ctx.request)));
+  });
+  // Workspace client authentication is required; never expose an unauthenticated webhook.
+  addRoute(routes, "POST", "/workspaces/:id/always-on/sources/:sourceId/events", "host", async ctx => {
+    ensureWritable(config); return jsonResponse(await alwaysOn.receive(inboxWorkspace(ctx.params.id), ctx.params.sourceId, await readJsonBody(ctx.request)));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on/overview", "client", async ctx => {
+    const workspace = config.workspaces.find(item => item.id === ctx.params.id && item.workspaceType === "always-on");
+    if (!workspace) throw new ApiError(404, "not_found", "Always-on workspace not found");
+    return jsonResponse(await readAlwaysOnOverview(workspace, Number(new URL(ctx.request.url).searchParams.get("offset") ?? 0)));
+  });
+  addRoute(routes, "GET", "/workspaces/:id/always-on", "client", async ctx => {
+    const workspace = config.workspaces.find(item => item.id === ctx.params.id && item.workspaceType === "always-on");
+    if (!workspace) throw new ApiError(404, "not_found", "Always-on workspace not found");
+    return jsonResponse(await alwaysOn.status(workspace));
+  });
+  addRoute(routes, "PATCH", "/workspaces/:id/always-on", "host", async ctx => {
+    ensureWritable(config);
+    const workspace = config.workspaces.find(item => item.id === ctx.params.id && item.workspaceType === "always-on");
+    if (!workspace) throw new ApiError(404, "not_found", "Always-on workspace not found");
+    const body = await readJsonBody(ctx.request);
+    return jsonResponse(await alwaysOn.updateSettings(workspace, body.settings));
+  });
+  addRoute(routes, "POST", "/workspaces/:id/always-on", "host", async ctx => {
+    ensureWritable(config);
+    const workspace = config.workspaces.find(item => item.id === ctx.params.id && item.workspaceType === "always-on");
+    if (!workspace) throw new ApiError(404, "not_found", "Always-on workspace not found");
+    const body = await readJsonBody(ctx.request);
+    if (body.action !== "pause" && body.action !== "resume" && body.action !== "run") throw new ApiError(400, "invalid_action", "Unknown always-on action");
+    return jsonResponse(await alwaysOn.control(workspace, body.action));
+  });
 
   const serverOptions: {
     hostname: string;
@@ -1195,6 +1343,17 @@ export async function startServer(
     },
   };
 
+  if (process.env.GET3W_DEV_MODE === "1") {
+    const handleRequest = serverOptions.fetch;
+    serverOptions.fetch = async request => {
+      const mutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+      if (mutation && devWritesBlocked) return withCors(jsonResponse({ error: "development_reload", message: "Backend is reloading; retry shortly." }, 503), request, config);
+      if (mutation) devMutationsInFlight++;
+      try { return await handleRequest(request); }
+      finally { if (mutation) devMutationsInFlight--; }
+    };
+  }
+
   let server: ServeResult;
   try {
     if (config.resumeInterruptedTasks && !config.readOnly) {
@@ -1252,6 +1411,7 @@ export async function startServer(
   }
 
   engineInstanceReaper.start();
+  alwaysOn.start();
 
   // A credential the engine did not take at startup is retried in the
   // background, so one refused provider never stops the whole app from
@@ -1278,6 +1438,22 @@ export async function startServer(
 
   return {
     ...server,
+    cancelDevReload: () => { devReloadPending = false; devWritesBlocked = false; },
+    prepareDevReload: async () => {
+      if (process.env.GET3W_DEV_MODE !== "1") return false;
+      devReloadPending = true;
+      try {
+        await alwaysOn.drain();
+        devWritesBlocked = true;
+        if (devMutationsInFlight > 0) { devReloadPending = false; devWritesBlocked = false; return false; }
+        const activity = await describeEngineActivity(config, engineV2Preview);
+        const idle = activity.v1.verdict === "idle" && (!activity.v2 || activity.v2.verdict === "idle")
+          && approvals.list().length === 0
+          && await devV2RequestsIdle(engineV2Preview.connection());
+        if (!idle) { devReloadPending = false; devWritesBlocked = false; }
+        return idle;
+      } catch (error) { devReloadPending = false; devWritesBlocked = false; throw error; }
+    },
     setEngineForcePolicy: (policy) => engineV2Preview.setForcePolicy(policy),
     completeManagedEngineStartup: async () => {
       if (managedEngineReady) return;
@@ -1316,6 +1492,7 @@ export async function startServer(
     },
     stop: async () => {
       stopped = true;
+      await alwaysOn.stop();
       if (startupAuthRetryTimer) clearTimeout(startupAuthRetryTimer);
       let recoveryError: unknown;
       try { await taskRecovery?.stop(); } catch (error) { recoveryError = error; }
@@ -1830,6 +2007,7 @@ async function forwardOpencodeV2Request(input: {
       await homes.created(session.id, expectedHome);
       await initializeTaskPermissionMode(input.config, session.id, typeof session.parentID === "string" ? session.parentID : undefined, forwardedPath.endsWith("/fork"));
       await initializeTaskCostSettings(input.config, session.id, typeof session.parentID === "string" ? session.parentID : undefined, forwardedPath.endsWith("/fork"));
+      if (!session.parentID) await initializeAlwaysOnTaskSettings(input.config, input.workspace, session.id);
     }
     const data = isRecord(payload) && "data" in payload ? payload.data : payload;
     return jsonResponse({ data: await homes.project(data) });
@@ -2542,6 +2720,7 @@ function buildCapabilities(config: ServerConfig): Capabilities {
     serverVersion: SERVER_VERSION,
     opencodeVersion: OPENCODE_VERSION,
     providerSync: true,
+    alwaysOn: { create: writeEnabled },
     skills: { read: true, write: writeEnabled, source: "get3w" },
     plugins: { read: true, write: writeEnabled },
     mcp: { read: true, write: writeEnabled },
@@ -3592,8 +3771,12 @@ function createRoutes(
     if (opencode) {
       const configPath = get3wConfigPath(workspace.path);
       const nextOpencode = ensurePlainObject(opencode);
-      const { permission, provider, ...topLevelUpdates } = nextOpencode;
+      const { permission, provider, compaction, ...topLevelUpdates } = nextOpencode;
       const logicalUpdates: Record<string, unknown> = { ...topLevelUpdates };
+      if (Object.prototype.hasOwnProperty.call(nextOpencode, "compaction")) {
+        const result = await writeWorkspaceAutoCompaction(workspace.path, compaction);
+        runtimeChanged = result.changed || runtimeChanged;
+      }
 
       // Per-provider merge: record values upsert, explicit `null` deletes
       // (mergeRuntimeProviderUpdate) — so clients can remove runtime-managed
@@ -4816,7 +4999,8 @@ async function fetchRuntimeControl(path: string, init?: { method?: string; body?
 
 async function readOpencodeConfig(workspaceRoot: string): Promise<Record<string, unknown>> {
   const { data } = await readJsoncFile(opencodeConfigPath(workspaceRoot), {} as Record<string, unknown>, { allowInvalid: true });
-  return data;
+  const compaction = await readWorkspaceCompaction(workspaceRoot);
+  return { ...data, ...(compaction ? { compaction } : {}) };
 }
 
 async function readGet3wConfigForWorkspace(
@@ -4849,7 +5033,7 @@ async function writeGet3wConfigForWorkspace(
 function resolveOpencodeDirectory(workspace: WorkspaceInfo): string | null {
   const explicit = workspace.directory?.trim() ?? "";
   if (explicit) return normalizeOpencodeDirectory(explicit);
-  if (workspace.workspaceType === "local") return normalizeOpencodeDirectory(workspace.path);
+  if (workspace.workspaceType === "local" || workspace.workspaceType === "always-on") return normalizeOpencodeDirectory(workspace.path);
   return null;
 }
 
@@ -5014,7 +5198,7 @@ export type EngineActivityCount = {
 
 /** Running work on the v1 engine across this server's local workspaces. */
 async function describeV1EngineActivity(config: ServerConfig): Promise<EngineActivityCount> {
-  const local = config.workspaces.filter((workspace) => workspace.workspaceType === "local");
+  const local = config.workspaces.filter((workspace) => workspace.workspaceType === "local" || workspace.workspaceType === "always-on");
   const probes = await Promise.all(local.map((workspace) => probeWorkspaceActivity(config, workspace)));
   const busySessions = probes.reduce((total, probe) => total + probe.busySessions, 0);
   const waitingRequests = probes.reduce((total, probe) => total + probe.waitingRequests, 0);
@@ -5033,7 +5217,7 @@ async function describeV2EngineActivity(
   const authorization = buildEngineAuthProbeHeader(connection.username, connection.password);
   const running = new Set<string>();
   let unknown = false;
-  const local = config.workspaces.filter((workspace) => workspace.workspaceType === "local");
+  const local = config.workspaces.filter((workspace) => workspace.workspaceType === "local" || workspace.workspaceType === "always-on");
   await Promise.all(local.map(async (workspace) => {
     try {
       const url = new URL("/api/session/active", connection.url);
@@ -5061,6 +5245,43 @@ async function describeV2EngineActivity(
     busySessions: running.size,
     waitingRequests: 0,
   };
+}
+
+/** Development restarts also preserve idle sessions waiting on a form/permission. */
+async function devV2RequestsIdle(connection: { url: string; username: string; password: string } | undefined): Promise<boolean> {
+  if (!connection) return true;
+  const headers = { Authorization: buildEngineAuthProbeHeader(connection.username, connection.password) };
+  const read = async (path: string): Promise<unknown> => {
+    const response = await loopbackFetch(new URL(path, connection.url), { headers, signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error("Could not verify pending v2 requests");
+    return response.json();
+  };
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+  try {
+    do {
+      const path = new URL("/api/session", connection.url);
+      path.searchParams.set("limit", "100");
+      if (cursor) path.searchParams.set("cursor", cursor);
+      const page = await read(path.pathname + path.search);
+      if (!isRecord(page) || !Array.isArray(page.data)) return false;
+      for (const session of page.data) {
+        if (!isRecord(session) || typeof session.id !== "string") return false;
+        const sessionId = session.id;
+        const pending = await Promise.all(["permission", "form"].map(kind => read(`/api/session/${encodeURIComponent(sessionId)}/${kind}`)));
+        for (const payload of pending) {
+          const rows = isRecord(payload) ? payload.data : payload;
+          if (!Array.isArray(rows) || rows.length > 0) return false;
+        }
+      }
+      const next = isRecord(page.cursor) ? page.cursor.next : null;
+      if (next !== null && next !== undefined && typeof next !== "string") return false;
+      cursor = typeof next === "string" && next ? next : null;
+      if (cursor && seen.has(cursor)) return false;
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    return true;
+  } catch { return false; }
 }
 
 /**

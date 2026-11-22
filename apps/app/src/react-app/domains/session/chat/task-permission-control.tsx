@@ -1,13 +1,12 @@
 import { TaskCostControl } from "./task-cost-control";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Folder, Globe, ShieldAlert, ShieldCheck, Terminal } from "lucide-react";
+import { ChevronDown, ShieldCheck } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatMoney } from "@/i18n/money";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { FullAccessConfirmation } from "./full-access-confirmation";
 import { t, useLocale } from "@/i18n";
 import type { TaskPermissionMode, TaskPermissionSnapshot } from "../../cloud/get3w-account";
 
@@ -16,7 +15,6 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
   const [snapshot, setSnapshot] = useState<TaskPermissionSnapshot | null>(null);
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const generation = useRef(0);
@@ -27,7 +25,7 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
     const current = ++generation.current;
     saving.current = false;
     revision.current++;
-    setSnapshot(null); setError(false); setConfirm(false); setAccepted(false); setBusy(false);
+    setSnapshot(null); setError(false); setConfirm(false); setBusy(false);
     if (!bridge) return;
     const refresh = async () => {
       const started = revision.current;
@@ -45,8 +43,8 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
     saving.current = true;
     setBusy(true); setError(false);
     try {
-      const result = await bridge({ action: index === undefined ? "set" : "revoke", workspaceId, sessionId, mode, confirmed: mode === "full_access" && accepted, index, ...(index === undefined ? {} : {grant: snapshot?.grants[index]}) });
-      if (current === generation.current) { setSnapshot(result); setConfirm(false); setAccepted(false); }
+      const result = await bridge({ action: index === undefined ? "set" : "revoke", workspaceId, sessionId, mode, confirmed: mode === "full_access", index, ...(index === undefined ? {} : {grant: snapshot?.grants[index]}) });
+      if (current === generation.current) { setSnapshot(result); setConfirm(false); }
     } catch { if (current === generation.current) setError(true); }
     finally { if (current === generation.current) { saving.current = false; setBusy(false); } }
   }
@@ -70,7 +68,7 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
         <section aria-label={t("permissions.section")} className="space-y-3">
         <h3 className="text-sm font-medium">{t("permissions.section")}</h3>
         <label className="flex items-center justify-between gap-4">
-          {t("permissions.enable")}<Switch aria-label={t("permissions.enable")} checked={full} disabled={busy || !snapshot || error} onCheckedChange={value => { if (value) {setAccepted(false);setConfirm(true);setOpen(false);} else void update("default"); }}/>
+          {t("permissions.enable")}<Switch aria-label={t("permissions.enable")} checked={full} disabled={busy || !snapshot || error} onCheckedChange={value => { if (value) {setConfirm(true);setOpen(false);} else void update("default"); }}/>
         </label>
         <p className="text-xs text-muted-foreground">{t(full ? "permissions.full_description" : "permissions.default_description")}</p>
         {sessionId && snapshot?.grants.length ? <details><summary>{t("permissions.grants")}</summary><div className="divide-y divide-border">{snapshot.grants.map((grant, index) => <div key={`${grant.permission}:${index}`} className="flex items-center justify-between gap-2 py-2"><span className="min-w-0 break-all text-xs">{grant.patterns.join(", ")}</span><Button variant="ghost" size="sm" disabled={busy} onClick={() => void update(undefined, index)}>{t("permissions.revoke")}</Button></div>)}</div></details> : null}
@@ -79,18 +77,6 @@ export function TaskPermissionControl({ workspaceId, sessionId }: {workspaceId?:
         <TaskCostControl workspaceId={workspaceId} sessionId={sessionId}/>
       </PopoverContent>
     </Popover>
-    <Dialog open={confirm} onOpenChange={value => { if (!busy) {setConfirm(value);setAccepted(false);} }}>
-      <DialogContent className="lg:max-w-xl" showCloseButton={!busy}>
-        <DialogTitle className="flex items-center gap-3"><ShieldAlert className="text-destructive" size={20}/>{t("permissions.confirm")}</DialogTitle>
-        <DialogDescription>{t("permissions.impact")}</DialogDescription>
-        <div className="space-y-4 rounded-2xl bg-muted p-4">
-          {[{Icon:Folder,key:"files"},{Icon:Terminal,key:"commands"},{Icon:Globe,key:"internet"}].map(({Icon,key}) => <div key={key} className="flex gap-3"><Icon size={18} className="mt-0.5 shrink-0"/><div><p className="font-medium">{t(`permissions.${key}`)}</p><p className="mt-1 text-muted-foreground">{t(`permissions.${key}_detail`)}</p></div></div>)}
-        </div>
-        <p className="text-muted-foreground">{t("permissions.limits")}</p>
-        <label className="flex items-center gap-3"><Checkbox checked={accepted} disabled={busy} onCheckedChange={value => setAccepted(value === true)} aria-label={t("permissions.acknowledge")}/>{t("permissions.acknowledge")}</label>
-        {error ? <p role="alert" className="text-destructive">{t("permissions.error")}</p> : null}
-        <DialogFooter><Button variant="outline" disabled={busy} onClick={() => {setConfirm(false);setAccepted(false);}}>{t("permissions.cancel")}</Button><Button variant="destructive" disabled={!accepted || busy} onClick={() => void update("full_access")}>{t("permissions.enable")}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FullAccessConfirmation open={confirm} onOpenChange={setConfirm} busy={busy} error={error} onConfirm={() => void update("full_access")} />
   </>;
 }

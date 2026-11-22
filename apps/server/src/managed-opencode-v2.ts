@@ -1,3 +1,4 @@
+import { probeDeferredQuestions } from "./engine-deferred-capability.js";
 import { envKey, setEnv } from "@get3w/paths";
 import { startupPhase } from "./startup-phase.js";
 import { agentPermissionEngineV2Rules, type AgentPermissionRule, type EngineV2PermissionRule } from "./agent-permission-engine.js";
@@ -10,6 +11,8 @@ import { get3wBackgroundShellV2PluginPath, taskLogEvidenceV2PluginPath, get3wAge
 import { pathToFileURL } from "node:url";
 // Parallel v2 lane prototype: provider injection is a watched-config write. This module
 // deliberately has no reload/dispose call, unlike managed-opencode.ts and server.ts reloadOpencodeEngine.
+import { createAlwaysOnDeferredClient } from "./always-on-deferred-client.js";
+import { Writable } from "node:stream";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -64,6 +67,7 @@ export interface ManagedOpencodeV2ServerOptions {
   port?: number;
   env?: Record<string, string>;
   bootTimeoutMs?: number;
+  deferred?: boolean;
   contextTools?: { url: string; token: string; browser?: { url: string; token: string } };
   /** Session capability travels once over an inherited pipe, never environment or config. */
   permissions?: () => Promise<EnginePermissionRule[]>;
@@ -110,6 +114,7 @@ export interface OpencodeV2Connection {
 }
 
 export interface ManagedOpencodeV2Server extends OpencodeV2Connection {
+  readonly deferred: ReturnType<typeof createAlwaysOnDeferredClient> | undefined;
   childPid: number | undefined;
   readonly exitCode: number | null;
   readonly stdout: string;
@@ -448,22 +453,37 @@ async function createManagedOpencodeV2ServerInner(
   // skill directory is registered with the native engine.
   await writeConfig();
   const historyLease = await acquireEngineHistoryLease(options.rootDir);
+  const supportsDeferred = options.deferred && await probeDeferredQuestions(options.bin, inherited);
+  const deferredToken = supportsDeferred ? randomBytes(32).toString("base64url") : undefined;
   const child = spawn(options.bin, ["serve", "--hostname", hostname, "--port", String(port)], {
     env: {
       ...inherited,
       ...(options.env?.OPENCODE_DISABLE_MODELS_FETCH ? { OPENCODE_DISABLE_MODELS_FETCH: options.env.OPENCODE_DISABLE_MODELS_FETCH } : {}),
       OPENCODE_PASSWORD: password,
+      ...(deferredToken ? { GET3W_DEFERRED_HOST_PIPE: "3" } : {}),
       OPENCODE_DB: join(options.rootDir, "opencode.db"),
       OPENCODE_CONFIG_DIR: configDir,
       ...(opencodeModelsUrl === undefined ? {} : { OPENCODE_MODELS_URL: opencodeModelsUrl }),
     },
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: deferredToken ? ["ignore", "pipe", "pipe", "pipe"] : ["ignore", "pipe", "pipe"],
   });
+  if (deferredToken) {
+    const pipe = child.stdio[3];
+    if (!(pipe instanceof Writable)) { child.kill(); await historyLease.release(); throw new Error("Deferred capability pipe unavailable"); }
+    pipe.on("error", () => child.kill());
+    pipe.end(deferredToken);
+  }
+  let deferredClient: ReturnType<typeof createAlwaysOnDeferredClient> | undefined;
   let stdout = "";
   let stderr = "";
   let spawnError: Error | undefined;
   let announced: string | undefined;
   const lines = createEngineStartupLineReader((line) => {
+    const privateOrigin = line.match(/^get3w deferred listening on (http:\/\/[^\s]+)$/)?.[1];
+    if (privateOrigin && deferredToken) {
+      try { deferredClient = createAlwaysOnDeferredClient({ baseUrl: privateOrigin, token: deferredToken }); }
+      catch { spawnError = new Error("OpenCode v2 announced an invalid deferred listener"); }
+    }
     announced = line.match(/server listening on (http:\/\/[^\s]+)/)?.[1];
     if (announced) lines.stop();
   });
@@ -585,6 +605,7 @@ async function createManagedOpencodeV2ServerInner(
   }
 
   const managed: ManagedOpencodeV2Server = {
+    get deferred() { return deferredClient; },
     get url() { return url; },
     username,
     password,
@@ -651,7 +672,8 @@ async function createManagedOpencodeV2ServerInner(
     }
     try {
       const state = await health();
-      if (state.healthy) {
+      if (state.healthy && (!deferredToken || deferredClient)) {
+        if (deferredClient) await deferredClient.capabilities();
         ready = true;
         return managed;
       }

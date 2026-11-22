@@ -1,3 +1,6 @@
+import type { AlwaysOnStatus } from "@get3w/types/workspace";
+import { useWorkspaceMaybe } from "../../../shell/workspace-provider";
+import { AlwaysOnWorkspaceControl } from "../../workspace/always-on-workspace-control";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 /** @jsxImportSource react */
 import { DesktopUpdateBanner } from "../../settings/state/desktop-updater-provider";
@@ -17,6 +20,10 @@ import {
   Archive,
   ArchiveRestore,
   Blocks,
+  Target,
+  Inbox,
+  Brain,
+  CircleHelp,
   Files,
   CheckCheck,
   Folder,
@@ -685,7 +692,7 @@ function WorkspaceActionsMenu({ workspace, className }: WorkspaceActionsMenuProp
           <Pencil className="size-4" />
           {t("workspace_list.edit_name")}
         </DropdownMenuItem>
-        {workspace.workspaceType === "local" && platform.capabilities.revealInFileManager ? (
+        {(workspace.workspaceType === "local" || workspace.workspaceType === "always-on") && platform.capabilities.revealInFileManager ? (
           <DropdownMenuItem onClick={() => ctx.onRevealWorkspace(workspace.id)}>
             <FolderOpen className="size-4" />
             {isWindowsPlatform() ? t("workspace_list.reveal_explorer") : t("workspace_list.reveal_finder")}
@@ -724,7 +731,7 @@ export function WorkspaceToolbar({ groups, selectedWorkspaceId, onSelectWorkspac
       {connecting ? <SessionDotMatrixLoader label={t("workspace_list.connecting")} />
         : selected ? <WorkspaceAvatarPicker workspaceId={selected.workspace.id} label={workspaceLabel(selected.workspace)} sizeClass="size-3.5" /> : null}
     </div>
-    <WorkspaceSwitcher workspaces={groups.map(group=>({id:group.workspace.id,label:workspaceLabel(group.workspace)}))} selectedId={selectedWorkspaceId} onSelect={id=>{void onSelectWorkspace(id);}}/>
+    <WorkspaceSwitcher workspaces={groups.map(group=>({id:group.workspace.id,label:workspaceLabel(group.workspace),workspaceType:group.workspace.workspaceType}))} selectedId={selectedWorkspaceId} onSelect={id=>{void onSelectWorkspace(id);}}/>
     {canCreateWorkspaces() ? <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={onOpenCreateWorkspace}
       aria-label={t("workspace_list.add_workspace")} title={t("workspace_list.add_workspace")}><Plus className="size-4" /></Button> : null}
     {selected ? <WorkspaceActionsMenu workspace={selected.workspace} className="size-7 shrink-0 text-muted-foreground" />
@@ -761,6 +768,18 @@ export type AppSidebarProps = {
   onRevealWorkspace: (workspaceId: string) => void;
   onForgetWorkspace: (workspaceId: string) => void;
   onOpenCreateWorkspace: () => void;
+  alwaysOnAttentionActive?: boolean;
+  onOpenAlwaysOnAttention?: () => void;
+  alwaysOnDeliveryActive?: boolean;
+  onOpenAlwaysOnDelivery?: () => void;
+  alwaysOnMemoryActive?: boolean;
+  onOpenAlwaysOnMemory?: () => void;
+  alwaysOnTimersActive?: boolean;
+  onOpenAlwaysOnTimers?: () => void;
+  alwaysOnInboxActive?: boolean;
+  onOpenAlwaysOnInbox?: () => void;
+  alwaysOnOverviewActive?: boolean;
+  onOpenAlwaysOnOverview?: () => void;
   automationsActive?: boolean;
   automationsNeedAttention?: boolean;
   onOpenAutomations?: () => void;
@@ -859,7 +878,15 @@ export function AppSidebar(props: AppSidebarProps) {
     sessionNumberShortcutByTarget,
   };
 
-  const selectedGroup = props.workspaceSessionGroups.find(group => group.workspace.id === props.selectedWorkspaceId);
+  const originalGroup = props.workspaceSessionGroups.find(group => group.workspace.id === props.selectedWorkspaceId);
+  const [tasksExpanded, setTasksExpanded] = React.useState(true);
+  const [taskOwner, setTaskOwner] = React.useState<{ workspaceId: string; sessionId: string | null } | null>(null);
+  const receiveAlwaysOnStatus = React.useCallback((status: AlwaysOnStatus) => {
+    setTaskOwner(previous => previous?.workspaceId === props.selectedWorkspaceId && previous.sessionId === status.sessionId ? previous : { workspaceId: props.selectedWorkspaceId, sessionId: status.sessionId });
+  }, [props.selectedWorkspaceId]);
+  const taskSessions = React.useMemo(() => originalGroup?.workspace.workspaceType === "always-on"
+    ? originalGroup.sessions.filter(session => (session.get3wPurpose === "task" && session.get3wTaskId === originalGroup.workspace.id) || (taskOwner?.workspaceId === originalGroup.workspace.id && session.id === taskOwner.sessionId)) : [], [originalGroup, taskOwner]);
+  const selectedGroup = React.useMemo(() => originalGroup && taskSessions.length ? { ...originalGroup, sessions: originalGroup.sessions.filter(session => !taskSessions.includes(session)) } : originalGroup, [originalGroup, taskSessions]);
   const visibleGroups = React.useMemo(() => selectedGroup ? [selectedGroup] : [], [selectedGroup]);
   const pinnedIds = useSessionManagementStore((state) => state.pinnedIds);
   const pinnedSessions = React.useMemo(
@@ -881,26 +908,28 @@ export function AppSidebar(props: AppSidebarProps) {
         <SidebarHeader className="mb-0 mt-2">
           <WorkspaceToolbar groups={props.workspaceSessionGroups} selectedWorkspaceId={props.selectedWorkspaceId}
             onSelectWorkspace={props.onSelectWorkspace} onOpenCreateWorkspace={props.onOpenCreateWorkspace} />
+          {selectedGroup?.workspace.workspaceType === "always-on" ? <AlwaysOnWorkspaceControl key={props.selectedWorkspaceId} workspaceId={props.selectedWorkspaceId} onOpenAttention={props.onOpenAlwaysOnAttention} onStatus={receiveAlwaysOnStatus} /> : null}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 type="button"
                 data-sidebar-new-chat
                 className="text-sidebar-foreground/70"
-                aria-label={t("session.new_task")}
+                aria-label={t(selectedGroup?.workspace.workspaceType === "always-on" ? "workspace.new_conversation" : "session.new_task")}
                 aria-keyshortcuts={isMacPlatform() ? "Meta+N" : "Control+N"}
-                tooltip={t("session.new_task")}
+                tooltip={t(selectedGroup?.workspace.workspaceType === "always-on" ? "workspace.new_conversation" : "session.new_task")}
                 disabled={props.newTaskDisabled}
                 onClick={() => props.onCreateTaskInWorkspace(props.selectedWorkspaceId)}
               >
                 <SquarePen className="size-4" />
-                <span className="flex-1 truncate">{t("session.new_task")}</span>
+                <span className="flex-1 truncate">{t(selectedGroup?.workspace.workspaceType === "always-on" ? "workspace.new_conversation" : "session.new_task")}</span>
                 <kbd className="ml-auto font-sans text-[11px] text-sidebar-foreground/50 max-lg:hidden pointer-coarse:hidden">
                   {isMacPlatform() ? "⌘N" : "Ctrl+N"}
                 </kbd>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {props.onOpenDashboard ? (
+            {selectedGroup?.workspace.workspaceType === "always-on" ? <AlwaysOnSidebarMenus attentionActive={props.alwaysOnAttentionActive} onOpenAttention={props.onOpenAlwaysOnAttention} deliveryActive={props.alwaysOnDeliveryActive} onOpenDelivery={props.onOpenAlwaysOnDelivery} memoryActive={props.alwaysOnMemoryActive} onOpenMemory={props.onOpenAlwaysOnMemory} timersActive={props.alwaysOnTimersActive} onOpenTimers={props.onOpenAlwaysOnTimers} inboxActive={props.alwaysOnInboxActive} onOpenInbox={props.onOpenAlwaysOnInbox} active={props.alwaysOnOverviewActive} onOpenOverview={props.onOpenAlwaysOnOverview} /> : null}
+            {selectedGroup?.workspace.workspaceType !== "always-on" && props.onOpenDashboard ? (
               <SidebarDestination
                 active={props.dashboardActive === true}
                 icon={Blocks}
@@ -909,7 +938,7 @@ export function AppSidebar(props: AppSidebarProps) {
               />
             ) : null}
             {props.onOpenOutputs ? <SidebarDestination active={props.outputsActive === true} icon={Files} label={t("sidebar.outputs")} onSelect={props.onOpenOutputs} /> : null}
-            {props.onOpenAutomations ? (
+            {selectedGroup?.workspace.workspaceType !== "always-on" && props.onOpenAutomations ? (
               <SidebarDestination
                 active={props.automationsActive === true}
                 icon={Clock3}
@@ -941,6 +970,10 @@ export function AppSidebar(props: AppSidebarProps) {
             className="no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto [overflow-anchor:none] [--radius:var(--radius-md)] group-data-[collapsible=icon]:overflow-hidden"
           >
             <SidebarLayoutAnimationGate />
+            {taskSessions.length > 0 && originalGroup ? <SidebarGroup data-always-on-tasks><SidebarGroupContent><SidebarMenu><SidebarMenuItem><SidebarMenuSub>
+              <SessionGroupSeparator label={t("workspace.ongoing_tasks")} count={taskSessions.length} expanded={tasksExpanded} onToggle={() => setTasksExpanded(value => !value)} />
+              {tasksExpanded && taskSessions.map(session => <SessionMenuItem key={session.id} session={session} workspaceId={originalGroup.workspace.id} isPinned={false} />)}
+            </SidebarMenuSub></SidebarMenuItem></SidebarMenu></SidebarGroupContent></SidebarGroup> : null}
             {pinnedSessions.length > 0 ? (
               <GlobalPinnedSessions entries={pinnedSessions} />
             ) : null}
@@ -1152,7 +1185,7 @@ function WorkspaceSidebarGroup({
           <SidebarMenuItem>
               <SidebarMenuSub className="[&_[data-sidebar=menu-sub-button]]:ps-1!">
                 <Collapsible render={<li />} open={recentExpanded} onOpenChange={setRecentExpanded} data-workspace-recent-sessions={workspace.id}>
-                  <SessionGroupSeparator label={t("session_management.recent_label")} count={activeRootCount}
+                  <SessionGroupSeparator label={t(workspace.workspaceType === "always-on" ? "workspace.conversations" : "session_management.recent_label")} count={activeRootCount}
                     expanded={recentExpanded} onToggle={() => setRecentExpanded(value => !value)} />
                   <CollapsibleContent>
                     <SidebarMenuSub className="ms-0 translate-x-0 border-0 ps-0 rtl:translate-x-0">
@@ -2019,4 +2052,43 @@ export function SessionMenuItem({
       <RemoteTaskSidebarRows sessionId={session.id} sessionTitle={displayTitle} onOpen={(routeId) => ctx.onOpenSession(workspaceId, routeId)} />
     </>
   );
+}
+
+
+function AlwaysOnSidebarMenus({ attentionActive, onOpenAttention, deliveryActive, onOpenDelivery, memoryActive, onOpenMemory, timersActive, onOpenTimers, active, onOpenOverview, inboxActive, onOpenInbox }: { attentionActive?: boolean; onOpenAttention?: () => void; deliveryActive?: boolean; onOpenDelivery?: () => void; memoryActive?: boolean; onOpenMemory?: () => void; timersActive?: boolean; onOpenTimers?: () => void; active?: boolean; onOpenOverview?: () => void; inboxActive?: boolean; onOpenInbox?: () => void }) {
+  const ctx = useSidebarContext();
+  const client = useWorkspaceMaybe()?.get3wServerClient;
+  const [inboxCount, setInboxCount] = React.useState(0);
+  const [attentionCount, setAttentionCount] = React.useState<number | null>(null);
+  const [deliveryCount,setDeliveryCount]=React.useState(0);
+  React.useEffect(() => {
+    let active = true; let fetching = false; setInboxCount(0);setDeliveryCount(0);setAttentionCount(null);
+    async function refresh() {
+      if (!client || fetching) return; fetching = true;
+      try { const inbox = await client.alwaysOnInbox(ctx.selectedWorkspaceId); if (active) setInboxCount(inbox.pending.length + inbox.processing.length); }
+      catch { if (active) setInboxCount(0); }
+      finally { fetching = false; }
+    }
+    async function deliveries(){try{const records=await client?.alwaysOnOutbox(ctx.selectedWorkspaceId);if(active&&records)setDeliveryCount(records.filter(item=>item.status==="failed"||item.status==="unconfirmed").length);}catch{/* Keep the last confirmed badge. */}}
+    async function attention() {
+      try { const result = await client?.alwaysOnAttention(ctx.selectedWorkspaceId); if (active && result) setAttentionCount(result.items.length + (result.resultReview ? 1 : 0)); }
+      catch { if (active) setAttentionCount(null); }
+    }
+    void attention();void deliveries();void refresh(); const timer = setInterval(() => {void attention();void refresh();void deliveries();}, 5000);
+    return () => { active = false; clearInterval(timer); };
+  }, [client, ctx.selectedWorkspaceId]);
+  const items = [
+    { key: "overview", icon: Target },
+    { key: "inbox", icon: Inbox },
+    { key: "timers", icon: Clock3 },
+    { key: "memory", icon: Brain },
+    { key: "attention", icon: CircleHelp },
+    { key: "delivery", icon: Files },
+    { key: "settings", icon: Settings },
+  ];
+  return <>{items.map(({ key, icon: Icon }) => <SidebarMenuItem key={key} data-always-on-menu={key}>
+    <SidebarMenuButton type="button" isActive={key === "attention" && attentionActive || key === "delivery" && deliveryActive || key === "memory" && memoryActive || key === "timers" && timersActive || key === "overview" && active || key === "inbox" && inboxActive} disabled={!(key === "attention" && onOpenAttention) && key !== "settings" && !(key === "delivery" && onOpenDelivery) && !(key === "memory" && onOpenMemory) && !(key === "overview" && onOpenOverview) && !(key === "inbox" && onOpenInbox) && !(key === "timers" && onOpenTimers)} onClick={key === "attention" ? onOpenAttention : key === "delivery" ? onOpenDelivery : key === "settings" ? () => ctx.onOpenRenameWorkspace(ctx.selectedWorkspaceId) : key === "overview" ? onOpenOverview : key === "inbox" ? onOpenInbox : key === "timers" ? onOpenTimers : key === "memory" ? onOpenMemory : undefined} aria-label={t(`workspace.menu_${key}`)} title={key !== "settings" && key !== "overview" && key !== "inbox" && key !== "timers" && key !== "memory" && key !== "delivery" && key !== "attention" ? t("workspace.menu_unavailable") : undefined} className="text-sidebar-foreground/70 disabled:opacity-70">
+      <Icon className="size-4" /><span>{t(`workspace.menu_${key}`)}</span>{key === "attention" && attentionCount !== null && attentionCount > 0 ? <span className="ml-auto rounded bg-muted px-1.5 text-xs tabular-nums">{attentionCount}</span> : null}{key === "delivery" && deliveryCount > 0 ? <span className="ml-auto rounded bg-muted px-1.5 text-xs tabular-nums">{deliveryCount}</span> : null}{key === "inbox" && inboxCount > 0 ? <span className="ml-auto rounded bg-muted px-1.5 text-xs tabular-nums">{inboxCount}</span> : null}
+    </SidebarMenuButton>
+  </SidebarMenuItem>)}</>;
 }

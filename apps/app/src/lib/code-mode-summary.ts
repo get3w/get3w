@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DynamicToolUIPart } from "ai";
 import { getCapabilityCallSentence, type CapabilityCallSentence } from "./capability-call";
 
@@ -18,7 +19,7 @@ export function codeModeSummary(
     options.sentence?.(call) ?? getCapabilityCallSentence(call, { connectionName: options.serviceName(call), includeQuery });
   const blocked = calls.filter((call) => call.state === "output-error" && options.isBlocked?.(call) === true);
   if (blocked.length > 0 && blocked.length === calls.filter((call) => call.state === "output-error").length) {
-    return blocked.length === 1 ? "Sharing is blocked by your organization" : `${blocked.length} actions are blocked by your organization`;
+    return blocked.length === 1 ? t("desktop.text.a1559c0ec844") : `${blocked.length} actions are blocked by your organization`;
   }
   const failedCalls = calls.filter((call) => call.state === "output-error");
   // A finished script whose every call failed did not "look up" anything,
@@ -30,7 +31,7 @@ export function codeModeSummary(
     const failure = only ? sentenceOf(only).failure : undefined;
     return failure ?? "Script failed";
   }
-  if (calls.length === 0) return options.running ? "Running a script" : "Ran a script";
+  if (calls.length === 0) return options.running ? t("desktop.text.dd9212ff1907") : t("desktop.text.d57195c8273f");
 
   const changes = calls.filter((call) => {
     const name = call.toolName.endsWith("_execute_capability") && typeof call.input === "object" && call.input !== null && "name" in call.input

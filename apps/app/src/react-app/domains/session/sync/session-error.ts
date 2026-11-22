@@ -153,84 +153,84 @@ function sessionErrorKind(
 }
 
 function errorTitle(kind: OpencodeSessionErrorKind, fallback: string) {
-  if (kind === "session-group-assignment") return "Couldn’t assign this conversation to its group";
-  if (kind === "config-invalid") return "OpenCode can’t use a config file";
-  if (kind === "disk-full") return "Storage error reported";
-  if (kind === "database-error") return "Get3W couldn’t access its saved data";
-  if (kind === "aborted") return "Task interrupted";
-  if (kind === "provider-timeout") return "Provider did not respond in time";
-  if (kind === "provider-incomplete") return "The model response was interrupted";
-  if (kind === "provider-unavailable") return "The model couldn’t respond";
-  if (kind === "provider-access-denied") return "You don’t have access to this model";
-  if (kind === "workspace-unavailable") return "Can’t reach this workspace";
-  if (kind === "provider-credentials") return "Check your model connection";
-  if (kind === "rate-limited") return "This model is receiving too many requests";
-  if (kind === "conversation-too-long") return "This conversation is too long for the model";
-  if (kind === "output-invalid") return "The model couldn’t finish a usable response";
-  if (kind === "output-limit") return "The response reached the model’s length limit";
-  if (kind === "attachment-unsupported") return "This model can’t read an attached file";
-  if (kind === "network-unavailable") return "Can’t reach the model service";
-  if (kind === "provider-unreachable") return "Couldn’t reach the model provider";
-  if (kind === "provider-connection-dropped") return "Connection to the model dropped";
-  if (kind === "get3w-balance") return "Get3W balance is insufficient";
-  if (kind === "get3w-quota") return "Get3W monthly request limit reached";
-  if (kind === "get3w-request-failed") return "Get3W request could not finish";
-  if (kind === "model-quote-expired") return "The model quote expired";
-  if (kind === "model-insufficient-balance") return "Get3W balance is insufficient for this task";
-  if (kind === "model-schema-invalid") return "The model inputs are no longer valid";
-  if (kind === "model-session-mismatch") return "This model task belongs to another chat session";
-  if (kind === "model-upstream-failed") return "The model task could not start";
-  if (kind === "model-unavailable") return "This model isn’t available";
-  if (kind === "free-model-limit") return "The free starter model is busy right now";
-  if (kind === "gateway-auth-required") return GATEWAY_AUTH_REQUIRED_TITLE;
-  if (kind === "gateway-provider-authentication-failed") return "The provider rejected its credential";
-  if (kind === "gateway-provider-permission-denied") return "The provider denied access";
-  if (kind === "gateway-selection-required") return "Choose a Gateway model group and credential set";
+  if (kind === "session-group-assignment") return t("session.error.865ba6b148b6");
+  if (kind === "config-invalid") return t("session.error.bac582aaafc3");
+  if (kind === "disk-full") return t("session.error.7e4675fe6282");
+  if (kind === "database-error") return t("session.error.344cb880c462");
+  if (kind === "aborted") return t("session.error.37221ea7cd50");
+  if (kind === "provider-timeout") return t("session.error.22b7fb1a1202");
+  if (kind === "provider-incomplete") return t("session.error.d06f33b1ad21");
+  if (kind === "provider-unavailable") return t("session.error.32b8dd885457");
+  if (kind === "provider-access-denied") return t("session.error.caeef3e307dd");
+  if (kind === "workspace-unavailable") return t("session.error.d1157ab61183");
+  if (kind === "provider-credentials") return t("session.error.34a8862c4e64");
+  if (kind === "rate-limited") return t("session.error.6a190e2ad115");
+  if (kind === "conversation-too-long") return t("session.error.e0050cfd449b");
+  if (kind === "output-invalid") return t("session.error.8977adb23231");
+  if (kind === "output-limit") return t("session.error.44e6e5b76b9b");
+  if (kind === "attachment-unsupported") return t("session.error.214b89fce4ca");
+  if (kind === "network-unavailable") return t("session.error.fc30733502d6");
+  if (kind === "provider-unreachable") return t("session.error.a97fcf9a0742");
+  if (kind === "provider-connection-dropped") return t("session.error.52088eaed7d6");
+  if (kind === "get3w-balance") return t("session.error.1e7608ef8916");
+  if (kind === "get3w-quota") return t("session.error.61996fb7bdeb");
+  if (kind === "get3w-request-failed") return t("session.error.91a1c9c77d91");
+  if (kind === "model-quote-expired") return t("session.error.475ba3503e2d");
+  if (kind === "model-insufficient-balance") return t("session.error.989af12e89ce");
+  if (kind === "model-schema-invalid") return t("session.error.3d3d084e3e29");
+  if (kind === "model-session-mismatch") return t("session.error.9846f2ce955f");
+  if (kind === "model-upstream-failed") return t("session.error.9d5e217af124");
+  if (kind === "model-unavailable") return t("session.error.68b174cc748d");
+  if (kind === "free-model-limit") return t("session.error.932589391f8a");
+  if (kind === "gateway-auth-required") return t("session.error.0ab75f92963d");
+  if (kind === "gateway-provider-authentication-failed") return t("session.error.805e6349069a");
+  if (kind === "gateway-provider-permission-denied") return t("session.error.597a69408b20");
+  if (kind === "gateway-selection-required") return t("session.error.d2eac28d4779");
   return fallback;
 }
 
 function errorDescription(kind: OpencodeSessionErrorKind, gatewayAuth: GatewayAuthRequired | null) {
-  if (kind === "get3w-balance") return "Add funds to your Get3W account, then retry. This request was not submitted to a model.";
-  if (kind === "get3w-quota") return "Ask your organization administrator to adjust the monthly request limit.";
-  if (kind === "get3w-request-failed") return "Check model usage and any completed work before retrying. This request was not automatically replayed.";
-  if (kind === "model-quote-expired") return "Request a fresh quote, then review the task again. No new task was submitted.";
-  if (kind === "model-insufficient-balance") return "Add funds to your Get3W account before submitting this task.";
-  if (kind === "model-schema-invalid") return "Refresh the model schema and review the inputs before trying again.";
-  if (kind === "model-session-mismatch") return "Return to the chat that created this task and retry there. The request was rejected before billing.";
-  if (kind === "model-upstream-failed") return "Check the task status before retrying. Reuse the same idempotency key if submission was uncertain.";
-  if (kind === "session-group-assignment") return "Message not sent. Retry sending to finish assigning the group.";
-  if (kind === "gateway-selection-required") return "More than one access rule can apply. Open the model picker and select the model with the group and credential set you want, then retry. No credential is selected automatically.";
+  if (kind === "get3w-balance") return t("session.error.a2c7c5cd1e43");
+  if (kind === "get3w-quota") return t("session.error.51d9e8c15d59");
+  if (kind === "get3w-request-failed") return t("session.error.f60420a8d3f4");
+  if (kind === "model-quote-expired") return t("session.error.55fe50f1bb41");
+  if (kind === "model-insufficient-balance") return t("session.error.6d94523608a2");
+  if (kind === "model-schema-invalid") return t("session.error.19e44454276c");
+  if (kind === "model-session-mismatch") return t("session.error.0a80f797d1da");
+  if (kind === "model-upstream-failed") return t("session.error.cb90dab58e2d");
+  if (kind === "session-group-assignment") return t("session.error.350c783cab76");
+  if (kind === "gateway-selection-required") return t("session.error.1260f2793cba");
   if (kind === "disk-full") {
-    return "A storage limit was reported by the task runtime or a connected service. This does not necessarily mean your computer is full. Check the affected service or workspace before freeing local disk space.";
+    return t("session.error.73fbdbeb637f");
   }
   if (kind === "database-error") {
-    return "Try again. If this keeps happening, check the available disk space on the device running this task and restart Get3W. For a cloud workspace, contact its administrator.";
+    return t("session.error.8c3277b38243");
   }
   if (kind === "aborted") {
-    return "OpenCode stopped before the task finished. Output and files already produced are kept.";
+    return t("session.error.bced9e7c858f");
   }
   if (kind === "provider-timeout") {
-    return "The provider connection timed out before a response began. Output and files already produced are kept.";
+    return t("session.error.32e734e5faea");
   }
-  if (kind === "provider-incomplete") return "Some steps may have finished. Check before continuing.";
-  if (kind === "provider-unavailable") return "Try again, or choose another model.";
-  if (kind === "provider-access-denied") return "Choose another model or ask your admin for access.";
-  if (kind === "workspace-unavailable") return "Check the connection, then try again.";
-  if (kind === "provider-credentials") return "Update your connection in model settings.";
-  if (kind === "rate-limited") return "Wait a moment, then try again or choose another model.";
-  if (kind === "conversation-too-long") return "Start a new conversation with a shorter summary, or choose another model.";
-  if (kind === "output-invalid") return "Try again. Check any completed steps before continuing.";
-  if (kind === "output-limit") return "Ask for a shorter response or continue from the last completed section.";
-  if (kind === "attachment-unsupported") return "Remove the attachment or choose a model that supports this file.";
-  if (kind === "network-unavailable") return "Check your connection, then try again.";
-  if (kind === "provider-unreachable") return "Try again, or choose another model.";
-  if (kind === "provider-connection-dropped") return "Try again. Check any completed steps before continuing.";
-  if (kind === "model-unavailable") return "Choose another model to continue.";
+  if (kind === "provider-incomplete") return t("session.error.e47d34b3db90");
+  if (kind === "provider-unavailable") return t("session.error.794c46eb154d");
+  if (kind === "provider-access-denied") return t("session.error.d0985d6e27c2");
+  if (kind === "workspace-unavailable") return t("session.error.ebb4b987190f");
+  if (kind === "provider-credentials") return t("session.error.c9082627bc96");
+  if (kind === "rate-limited") return t("session.error.2ad6f6295380");
+  if (kind === "conversation-too-long") return t("session.error.d3070635574d");
+  if (kind === "output-invalid") return t("session.error.cdb76e29c113");
+  if (kind === "output-limit") return t("session.error.fed7504357a0");
+  if (kind === "attachment-unsupported") return t("session.error.1102034bd889");
+  if (kind === "network-unavailable") return t("session.error.f8744edbb537");
+  if (kind === "provider-unreachable") return t("session.error.794c46eb154d");
+  if (kind === "provider-connection-dropped") return t("session.error.cdb76e29c113");
+  if (kind === "model-unavailable") return t("session.error.33832d1d0d80");
   if (kind === "free-model-limit") {
-    return "Too many people are using the free model at once. Wait a few minutes and try again, or connect your own model provider in Settings → AI Providers to keep working.";
+    return t("session.error.452f33acc37d");
   }
   if (kind === "gateway-auth-required") {
-    return gatewayAuth?.message ?? "Your sign-in for this provider is missing or was revoked. Connect it again, then retry.";
+    return gatewayAuth?.message ?? t("session.error.0d9755d959d5");
   }
   return null;
 }
@@ -464,7 +464,7 @@ export function presentOpencodeSessionError(error: unknown, fallback = "Session 
   const credentialCopy = kind === "provider-credentials" ? providerCredentialCopy(fields) : null;
   return {
     kind,
-    title: get3wModelsLimit ? "Your workspace used its Get3W Models allowance" : credentialCopy?.title ?? errorTitle(kind, fallbackTitle),
+    title: get3wModelsLimit ? t("desktop.text.078ea4dd08c9") : credentialCopy?.title ?? errorTitle(kind, fallbackTitle),
     description: gatewayProviderAuth?.message ?? credentialCopy?.description
       ?? (kind === "config-invalid" ? describeOpencodeConfigError(error) ?? fields.message : null)
       ?? errorDescription(kind, gatewayAuth),

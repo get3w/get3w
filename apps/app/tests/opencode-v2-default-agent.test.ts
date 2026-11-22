@@ -23,6 +23,7 @@ function engine(initialAgent: string) {
     value: async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       const path = new URL(request.url).pathname;
+      if (path.endsWith("/message")) return Response.json({ data: [] });
       if (path.endsWith("/api/agent")) return Response.json({ location: {}, data: agents });
       if (path.endsWith("/agent") && request.method === "POST") {
         const body: unknown = await request.json();

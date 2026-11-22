@@ -1,3 +1,8 @@
+import { beforeEach as beforeLocaleTest, afterEach as afterLocaleTest } from "bun:test";
+import { currentLocale as savedTestLocale, setLocale as setTestLocale } from "../src/i18n";
+let previousTestLocale = savedTestLocale();
+beforeLocaleTest(() => { previousTestLocale = savedTestLocale(); setTestLocale("en"); });
+afterLocaleTest(() => setTestLocale(previousTestLocale));
 /** @jsxImportSource react */
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test";

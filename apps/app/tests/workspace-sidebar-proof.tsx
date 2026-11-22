@@ -6,6 +6,7 @@ import {setLocale} from '../src/i18n';
 import '../src/app/index.css';
 setLocale('zh');
 const params=new URLSearchParams(location.search);
+const groups=params.has("always-on")?fixtureGroups.map((group,index)=>index===0?{...group,workspace:{...group.workspace,workspaceType:"always-on"},sessions:group.sessions.map(session=>session.id==="a-active"?{...session,get3wPurpose:"task" as const,get3wTaskId:"a"}:session)}:group):fixtureGroups;
 document.documentElement.dataset.theme=params.has('dark')?'dark':'light';
 useSessionManagementStore.setState({sidebarView:'feed',pinnedIds:['a-pinned','b-pinned'],autoSettleDays:1});
-createRoot(document.getElementById('root')!).render(<WorkspaceSidebarFixture initialWorkspace={params.get('workspace')??'a'} groups={params.has('empty')?[]:params.has('error')?fixtureGroups.map(group=>({...group,status:'error',error:'Failed to load sessions',sessions:[]})):fixtureGroups} onAction={action=>{document.body.dataset.action=action;}}/>);
+createRoot(document.getElementById('root')!).render(<WorkspaceSidebarFixture settingsPreview initialWorkspace={params.get('workspace')??'a'} groups={params.has('empty')?[]:params.has('error')?fixtureGroups.map(group=>({...group,status:'error',error:'Failed to load sessions',sessions:[]})):groups} onAction={action=>{document.body.dataset.action=action;}}/>);

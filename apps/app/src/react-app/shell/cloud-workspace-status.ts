@@ -175,8 +175,8 @@ export function shouldAutoUpdateCloudWorkspace(input: {
 
 export function cloudWorkspaceUpdateDeferredLine(deferral: DenCloudInstanceUpdateDeferral): string {
   return deferral === "busy"
-    ? "Update ready · it applies when your current work finishes"
-    : "Update ready · we couldn’t confirm your workspace is idle yet and will try again";
+    ? t("desktop.text.08412aec4ee2")
+    : t("desktop.text.35bd7f4b21dc");
 }
 
 export function cloudWorkspaceStatusHasReadyContent(variant: CloudWorkspacePillVariant): boolean {

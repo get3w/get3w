@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { DynamicToolUIPart, FileUIPart, UIMessage } from "ai"
 
 export function isComputerToolName(name: string): boolean {
@@ -28,14 +29,14 @@ export function computerActionLabel(part: DynamicToolUIPart): string {
     const intent = part.input.intent
     if (typeof intent === "string" && intent.trim()) return intent.trim().slice(0, 120)
   }
-  if (/(?:^|_)computer_open(?:_session)?$/.test(part.toolName)) return "Opened an app"
-  if (/(?:^|_)computer_close(?:_session)?$/.test(part.toolName)) return "Closed the computer session"
-  if (/(?:^|_)computer_observe$/.test(part.toolName)) return "Checked the screen"
-  if (/(?:^|_)computer_zoom$/.test(part.toolName)) return "Looked closer"
-  if (/(?:^|_)computer_(?:discover|apps)$/.test(part.toolName)) return "Found available apps"
-  if (/(?:^|_)computer_launch$/.test(part.toolName)) return "Opened an app"
-  if (/(?:^|_)computer_(?:status|session_status)$/.test(part.toolName)) return "Checked the computer"
-  return "Worked on the computer"
+  if (/(?:^|_)computer_open(?:_session)?$/.test(part.toolName)) return t("desktop.text.7feb8ee0a3a7")
+  if (/(?:^|_)computer_close(?:_session)?$/.test(part.toolName)) return t("desktop.text.eec96150ca6d")
+  if (/(?:^|_)computer_observe$/.test(part.toolName)) return t("desktop.text.e9dcfb8472ea")
+  if (/(?:^|_)computer_zoom$/.test(part.toolName)) return t("desktop.text.614a7434325b")
+  if (/(?:^|_)computer_(?:discover|apps)$/.test(part.toolName)) return t("desktop.text.d5b191e43c9f")
+  if (/(?:^|_)computer_launch$/.test(part.toolName)) return t("desktop.text.7feb8ee0a3a7")
+  if (/(?:^|_)computer_(?:status|session_status)$/.test(part.toolName)) return t("desktop.text.24d063b77836")
+  return t("desktop.text.04e4c1b892d1")
 }
 
 export type ComputerHistoryFrame = {

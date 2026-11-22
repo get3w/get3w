@@ -23,7 +23,7 @@ export function buildWorkspaceInfos(
   return workspaces
     // Remote workspaces were removed; configs persisted by older builds can
     // still carry them, so drop any entry that is not a local workspace.
-    .filter((workspace) => (workspace.workspaceType ?? "local") === "local")
+    .filter((workspace) => ["local", "always-on"].includes(workspace.workspaceType ?? "local"))
     .map((workspace) => {
       const rawPath = workspace.path?.trim() ?? "";
       const resolvedPath = rawPath ? resolve(cwd, rawPath) : "";
@@ -36,7 +36,7 @@ export function buildWorkspaceInfos(
         name,
         path: resolvedPath,
         preset: workspace.preset?.trim() || "starter",
-        workspaceType: "local",
+        workspaceType: workspace.workspaceType === "always-on" ? "always-on" : "local",
         baseUrl: workspace.baseUrl,
         directory: workspace.directory,
         displayName: workspace.displayName,

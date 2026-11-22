@@ -93,6 +93,9 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
       // The engine retries 429/5xx with new request IDs. Require an explicit
       // retry for submitted completions, whose billing outcome may be unknown.
       if (route === "chat/completions" && (upstream.status === 429 || upstream.status >= 500)) {
+        // Preserve the allowlisted correlation headers on the non-retryable
+        // response so native engine evidence can locate the failed paid call.
+        response.writeHead(400, {...headers, "Content-Type":"application/json"});
         return fail(400, `Get3W request failed (HTTP ${upstream.status}). This message was not automatically retried. Check model usage before sending again.`);
       }
       eventStream = String(upstream.headers.get("content-type") || "").includes("text/event-stream");
@@ -138,7 +141,8 @@ export async function createGet3wInferenceProxy({ auth, userId }) {
             response.end('data: {"error":{"message":"Get3W stream interrupted. Check model usage before trying again.","type":"upstream_error"}}\n\ndata: [DONE]\n\n');
           } else response.destroy();
         }
-        else fail(400, "Get3W inference unavailable. Check model usage before trying again.");
+        else fail(400, error?.message?.startsWith("Get3W inference unavailable:")
+          ? error.message : "Get3W inference unavailable. Check model usage before trying again.");
       }
     } finally {
       if(!evidenceComplete&&evidenceParts.length)await evidence("model.output",{text:evidenceParts.join("")+evidenceDecoder.decode(),complete:false});

@@ -8,6 +8,7 @@ type WorkspaceContextValue = {
   opencodeBaseUrl: string;
   get3wServerClient: Get3wServerClient | null;
   workspaceId: string;
+  workspaceType?: string;
   selectedWorkspaceRoot: string;
 };
 
@@ -18,6 +19,7 @@ type WorkspaceProviderProps = {
   opencodeBaseUrl?: string;
   get3wServerClient?: Get3wServerClient | null;
   workspaceId?: string;
+  workspaceType?: string;
   selectedWorkspaceRoot: string;
   children: React.ReactNode;
 };
@@ -28,11 +30,12 @@ export function WorkspaceProvider({
   get3wServerClient = null,
   workspaceId = "",
   selectedWorkspaceRoot,
+  workspaceType,
   children,
 }: WorkspaceProviderProps) {
   const value = React.useMemo(
-    () => ({ client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot }),
-    [client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot],
+    () => ({ client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot, workspaceType }),
+    [client, opencodeBaseUrl, get3wServerClient, workspaceId, selectedWorkspaceRoot, workspaceType],
   );
 
   return React.createElement(WorkspaceContext.Provider, { value }, children);

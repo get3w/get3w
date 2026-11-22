@@ -5,7 +5,9 @@ import {z} from "zod";
 import {createWorkspaceKvStore} from "./workspace-kv-store.js";
 import {runtimeDbPath} from "./runtime-db.js";
 import type {ServerConfig,WorkspaceInfo} from "./types.js";
-import {get3wspaceFileForReading,get3wspaceFileForWriting,proveHandleInPlace} from "./workspace-file-identity.js";
+import {get3wspaceFileForReading,get3wspaceFileForWriting,proveHandleInPlace,WorkspaceFileError} from "./workspace-file-identity.js";
+
+import {ApiError} from "./errors.js";
 
 const entrySchema=z.object({id:z.string(),key:z.string(),path:z.string(),aliases:z.array(z.string()),sessionId:z.string().optional(),state:z.enum(["planned","saved","deleted"]),identity:z.object({dev:z.number(),ino:z.number()}).optional()});
 type Entry=z.infer<typeof entrySchema>;
@@ -76,7 +78,11 @@ export async function resolveDeliverable(config:ServerConfig,workspace:Workspace
 export async function registerDeliverable(config:ServerConfig,workspace:WorkspaceInfo,fileId:string){
  return serial(config,workspace,async entries=>{
   const entry=entries.find(item=>item.id===fileId);if(!entry||entry.state==="deleted")throw Error("Workspace result is no longer available");
-  const {root,target}=await safeDeliverablePath(workspace.path,entry.path);const opened=await get3wspaceFileForReading(root,target,entry.path);
+  const {root,target}=await safeDeliverablePath(workspace.path,entry.path);
+  const opened=await get3wspaceFileForReading(root,target,entry.path).catch((error:unknown)=>{
+   if(error instanceof WorkspaceFileError && error.code==="missing")throw new ApiError(422,"deliverable_not_written",`Planned file does not exist: ${entry.path}. Write to the exact path returned by workspace_file plan before registering this file_id. Planning alone does not save a file.`);
+   throw error;
+  });
   const sizeBytes=opened.info.size;await opened.handle.close();entry.state="saved";await store.set(config,workspace.id,entries);return {...view(workspace,entry),sizeBytes};
  });
 }

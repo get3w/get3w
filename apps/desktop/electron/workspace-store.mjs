@@ -573,7 +573,7 @@ export function createWorkspaceStore({
           : path.basename(normalizedPath) || "Workspace",
         displayName: typeof entry.displayName === "string" ? entry.displayName : undefined,
         preset: typeof entry.preset === "string" && entry.preset.trim() ? entry.preset.trim() : "starter",
-        workspaceType: "local",
+        workspaceType: entry.workspaceType === "always-on" ? "always-on" : "local",
       }));
     }
     return workspaces;
@@ -603,7 +603,7 @@ export function createWorkspaceStore({
       name: String(input.name ?? "Workspace"),
       path: String(input.path ?? ""),
       preset: String(input.preset ?? "starter"),
-      workspaceType: "local",
+      workspaceType: input.workspaceType === "always-on" ? "always-on" : "local",
       baseUrl: input.baseUrl ?? null,
       directory: input.directory ?? null,
       displayName: input.displayName ?? null,

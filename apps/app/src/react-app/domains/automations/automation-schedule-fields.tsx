@@ -2,6 +2,7 @@
 import { currentLocale } from "@/i18n"
 import type { AutomationSchedule } from "@get3w/types/automations"
 
+import { DateTimePicker, TimePicker, localDateTime } from "@/components/ui/date-time-picker"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -25,12 +26,6 @@ function tomorrowAtNine() {
   return date.getTime()
 }
 
-function toLocalDateTime(value: number) {
-  const date = new Date(value)
-  const component = (part: number) => String(part).padStart(2, "0")
-  return `${date.getFullYear()}-${component(date.getMonth() + 1)}-${component(date.getDate())}T${component(date.getHours())}:${component(date.getMinutes())}`
-}
-
 function timeForSchedule(schedule: AutomationSchedule) {
   if (schedule.kind === "once" || schedule.kind === "calendar") return { hour: 9, minute: 0 }
   if (schedule.kind === "interval") return { hour: schedule.startHour, minute: 0 }
@@ -43,7 +38,6 @@ const meetingMinutesLabel = (minutes: number, edge: "start" | "end") => minutes 
   : currentLocale() === "zh" ? `会议${edge === "start" ? "开始前" : "结束后"} ${minutes} 分钟` : `${minutes} min ${edge === "start" ? "before it starts" : "after it ends"}`
 
 const INTERVAL_HOURS = [1, 2, 3, 4, 6, 8, 12] as const
-const hourLabel = (hour: number) => `${String(hour).padStart(2, "0")}:00`
 
 /** One schedule choice on the shared Select, labelled by the field's <Label htmlFor>. */
 function ScheduleSelect<T extends string | number>(props: {
@@ -165,12 +159,11 @@ export function AutomationScheduleFields(props: {
         ) : schedule.kind === "once" ? (
           <div className="space-y-2">
             <Label htmlFor={id("once-at")}>{currentLocale() === "zh" ? "运行时间" : "Run at"}</Label>
-            <Input
+            <DateTimePicker
               id={id("once-at")}
-              type="datetime-local"
-              value={toLocalDateTime(schedule.at)}
-              onChange={(event) => {
-                const at = new Date(event.currentTarget.value).getTime()
+              value={localDateTime(new Date(schedule.at))}
+              onChange={(value) => {
+                const at = new Date(value).getTime()
                 if (Number.isFinite(at)) props.onChange({ kind: "once", timezone: schedule.timezone, at })
               }}
             />
@@ -178,11 +171,10 @@ export function AutomationScheduleFields(props: {
         ) : (
           <div className="space-y-2">
             <Label htmlFor={id("time")}>{currentLocale() === "zh" ? "时间" : "Time"}</Label>
-            <Input
+            <TimePicker
               id={id("time")}
-              type="time"
               value={`${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`}
-              onChange={(event) => changeTime(event.currentTarget.value)}
+              onChange={changeTime}
             />
           </div>
         )}
@@ -192,21 +184,23 @@ export function AutomationScheduleFields(props: {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor={id("window-start")}>{currentLocale() === "zh" ? "开始" : "From"}</Label>
-            <ScheduleSelect
+            <TimePicker
               id={id("window-start")}
-              value={schedule.startHour}
-              items={Array.from({ length: 24 }, (_, hour) => ({ value: hour, label: hourLabel(hour) }))}
-              onChange={(startHour) => props.onChange({ ...schedule, startHour, endHour: Math.max(schedule.endHour, startHour + 1) })}
+              hourOnly
+              value={`${String(schedule.startHour).padStart(2, "0")}:00`}
+              onChange={(value) => { const startHour = Number(value.split(":")[0]); props.onChange({ ...schedule, startHour, endHour: Math.max(schedule.endHour, startHour + 1) }) }}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor={id("window-end")}>{currentLocale() === "zh" ? "结束" : "Until"}</Label>
-            <ScheduleSelect
+            <TimePicker
               id={id("window-end")}
-              value={schedule.endHour}
-              items={Array.from({ length: 24 - schedule.startHour }, (_, index) => schedule.startHour + index + 1)
-                .map((hour) => ({ value: hour, label: hour === 24 ? currentLocale() === "zh" ? "当天结束" : "End of day" : hourLabel(hour) }))}
-              onChange={(endHour) => props.onChange({ ...schedule, endHour })}
+              hourOnly
+              minHour={schedule.startHour + 1}
+              maxHour={24}
+              endOfDayLabel={currentLocale() === "zh" ? "当天结束" : "End of day"}
+              value={`${String(schedule.endHour).padStart(2, "0")}:00`}
+              onChange={(value) => props.onChange({ ...schedule, endHour: Number(value.split(":")[0]) })}
             />
           </div>
         </div>

@@ -194,6 +194,18 @@ export type SessionPageSidebarProps = {
   onRetryWorkspace: (workspaceId: string) => Promise<unknown> | void;
   onForgetWorkspace: (workspaceId: string) => void;
   onOpenCreateWorkspace: () => void;
+  alwaysOnAttentionActive?: boolean;
+  onOpenAlwaysOnAttention?: () => void;
+  alwaysOnDeliveryActive?: boolean;
+  onOpenAlwaysOnDelivery?: () => void;
+  alwaysOnMemoryActive?: boolean;
+  onOpenAlwaysOnMemory?: () => void;
+  alwaysOnTimersActive?: boolean;
+  onOpenAlwaysOnTimers?: () => void;
+  alwaysOnInboxActive?: boolean;
+  onOpenAlwaysOnInbox?: () => void;
+  alwaysOnOverviewActive?: boolean;
+  onOpenAlwaysOnOverview?: () => void;
   automationsActive?: boolean;
   automationsNeedAttention?: boolean;
   onOpenAutomations?: () => void;
@@ -720,28 +732,17 @@ export function SessionPage(props: SessionPageProps) {
   const {
     leftSidebarResizing,
     leftSidebarWidth,
-    rightSidebarExpandedWidth: browserPanelWidth,
-    setRightSidebarExpandedWidth: setBrowserPanelWidth,
     startLeftSidebarResize,
   } = useWorkspaceShellLayout({
     expandedRightWidth: 520,
     minRightWidth: 320,
   });
-  const [browserPanelDefaultWidth, setBrowserPanelDefaultWidth] = useState(browserPanelWidth);
   const sidebarProviderStyle: CSSProperties & Record<"--sidebar-width", string> = {
     "--sidebar-width": `${leftSidebarWidth}px`,
   };
   useEffect(() => {
-    if (sidePanelOpen) return;
-    setBrowserPanelDefaultWidth(browserPanelWidth);
-  }, [sidePanelOpen, browserPanelWidth]);
-  useEffect(() => {
     props.onAccessibleTargetsChange?.(accessibleTargets);
   }, [accessibleTargets, props.onAccessibleTargetsChange]);
-  const commitBrowserPanelWidth = useCallback(() => {
-    const size = browserPanelRef.current?.getSize();
-    if (size?.inPixels) setBrowserPanelWidth(Math.round(size.inPixels));
-  }, [browserPanelRef, setBrowserPanelWidth]);
   const browserUrlForTarget = useCallback((target: OpenTarget) => {
     if (/^wss?:\/\//i.test(target.value)) return target.value.replace(/^ws:/i, "http:").replace(/^wss:/i, "https:");
     return target.value;
@@ -1503,6 +1504,18 @@ export function SessionPage(props: SessionPageProps) {
           onForgetWorkspace={props.sidebar.onForgetWorkspace}
           onOpenCreateWorkspace={props.sidebar.onOpenCreateWorkspace}
           onOpenSessionSearch={props.sidebar.onOpenSessionSearch}
+          alwaysOnAttentionActive={props.sidebar.alwaysOnAttentionActive}
+          onOpenAlwaysOnAttention={props.sidebar.onOpenAlwaysOnAttention}
+          alwaysOnDeliveryActive={props.sidebar.alwaysOnDeliveryActive}
+          onOpenAlwaysOnDelivery={props.sidebar.onOpenAlwaysOnDelivery}
+          alwaysOnMemoryActive={props.sidebar.alwaysOnMemoryActive}
+          onOpenAlwaysOnMemory={props.sidebar.onOpenAlwaysOnMemory}
+          alwaysOnTimersActive={props.sidebar.alwaysOnTimersActive}
+          onOpenAlwaysOnTimers={props.sidebar.onOpenAlwaysOnTimers}
+          alwaysOnInboxActive={props.sidebar.alwaysOnInboxActive}
+          onOpenAlwaysOnInbox={props.sidebar.onOpenAlwaysOnInbox}
+          alwaysOnOverviewActive={props.sidebar.alwaysOnOverviewActive}
+          onOpenAlwaysOnOverview={props.sidebar.onOpenAlwaysOnOverview}
           automationsActive={props.sidebar.automationsActive}
           automationsNeedAttention={props.sidebar.automationsNeedAttention}
           onOpenAutomations={props.sidebar.onOpenAutomations}
@@ -1766,10 +1779,9 @@ export function SessionPage(props: SessionPageProps) {
           <div className={cn("flex min-h-0 flex-1 max-lg:p-0", props.primarySurface !== "flat" && "lg:pb-2 lg:pl-2")}>
           <ResizablePanelGroup
             orientation="horizontal"
-            onLayoutChanged={sidePanelOpen ? commitBrowserPanelWidth : undefined}
             className={cn("min-h-0 flex-1 max-lg:rounded-none", props.primarySurface !== "flat" && "lg:rounded-[14px]")}
           >
-            <ResizablePanel minSize={isMobile ? "0px" : "360px"} className="min-w-0">
+            <ResizablePanel defaultSize={sidePanelOpen && !isMobile ? "50%" : "100%"} minSize={isMobile ? "0px" : "360px"} className="min-w-0">
               <main data-session-pane className={cn("flex h-full min-w-0 flex-col overflow-hidden bg-dls-surface", props.primarySurface !== "flat" && "max-lg:rounded-none max-lg:border-0 max-lg:shadow-none lg:rounded-[14px] lg:border lg:border-border lg:shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:lg:shadow-[0_10px_30px_rgba(0,0,0,0.45)] mac:bg-dls-surface/85 mac:backdrop-blur-2xl mac:backdrop-saturate-150")}>
           {showNarrowPaneSwitcher ? (
             <NarrowPaneSwitcher
@@ -2119,7 +2131,7 @@ export function SessionPage(props: SessionPageProps) {
                 <ResizableHandle className="hidden bg-transparent lg:flex" />
                 <ResizablePanel
                   panelRef={browserPanelRef}
-                  defaultSize={`${activeSidePanel === "extensions" ? Math.max(browserPanelDefaultWidth, 480) : browserPanelDefaultWidth}px`}
+                  defaultSize="50%"
                   minSize={activeSidePanel === "extensions" ? "420px" : "320px"}
                   maxSize="70%"
                   className="min-h-0 overflow-hidden pl-2 lg:flex lg:flex-col"

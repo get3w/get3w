@@ -84,3 +84,6 @@ evals/results/
 **/.build/
 apps/desktop/resources/helpers/
 /artifacts/
+
+# Isolated development backend generations
+apps/server/.dev-runtime-*/

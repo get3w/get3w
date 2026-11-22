@@ -100,6 +100,7 @@ const v2MessageSchema = z
     id: z.string(),
     type: z.string().optional(),
     role: z.string().optional(),
+    finish: z.string().optional(),
     time: z.object({ created: z.number().optional(), completed: z.number().optional() }).passthrough().optional(),
     text: z.string().optional(),
     content: z.array(v2ContentSchema).optional(),
@@ -256,6 +257,7 @@ export function fromV2Messages(messages: V2Message[]): MessageWire[] {
       info: {
         id: message.id,
         role,
+        ...(message.finish === undefined ? {} : { finish: message.finish }),
         ...(role === "assistant" && parentId !== null ? { parentID: parentId } : {}),
         ...(message.time?.created === undefined ? {} : {
           time: {

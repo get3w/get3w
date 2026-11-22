@@ -242,6 +242,8 @@ export function getCapabilityCallSentence(
   options?: { includeQuery?: boolean; connectionName?: string | null },
 ): CapabilityCallSentence {
   const toolName = part.toolName
+  if (toolName === "always_on_memory_read") return { service: null, present: t("activity.memory_read.present"), past: t("activity.memory_read.past"), failure: t("activity.memory_read.failure") };
+  if (toolName === "always_on_complete") return { service: null, present: t("activity.completion.present"), past: t("activity.completion.past"), failure: t("activity.completion.failure") };
   if (toolName === "workspace_file") {
     const action = parseRecord(part.input)?.action
     const operation = action === "register" || action === "resolve" ? action : "plan"

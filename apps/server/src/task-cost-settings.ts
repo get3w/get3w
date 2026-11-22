@@ -61,3 +61,12 @@ export async function approveCostReservation(config:ServerConfig,input:{key:stri
  return (await reserve(true)).allowed;
 }
 export function reconcileCostReservation(config:ServerConfig,key:string,value:{released?:boolean;chargedUsd?:string;quoteId?:string}){return serial(config,async state=>{const row=state.reservations[key];if(!row||(value.quoteId!==undefined&&value.quoteId!==row.quoteId))return;if(value.released){row.status="released";}else if(value.chargedUsd!==undefined){usdMicros(value.chargedUsd);row.amountUsd=value.chargedUsd;row.status="settled";}await store.set(config,"__local__",state);});}
+
+/** Preserve global new-task defaults when applying an always-on workspace policy. */
+export function setSessionCostSettings(config: ServerConfig, value: unknown, sessionId: string) {
+ const policy = costPolicySchema.parse(value);
+ return serial(config, async state => {
+  state.sessions[sessionId] = policy;
+  await store.set(config, "__local__", state);
+ });
+}

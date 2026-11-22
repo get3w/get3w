@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { cellInputFromText, openXlsxWorkbook, sheetGridRows, writeXlsxWorkbook } from "@get3w/workbook";
 
 import type { Data } from "./open-target";
@@ -86,8 +87,8 @@ function serializeDelimited(rows: SpreadsheetRows, delimiter: string) {
 }
 
 function unsupportedWorkbookMessage(ext: string) {
-  if (ext === "xls") return "Legacy .xls workbooks can't be edited here. Save the file as .xlsx and open it again.";
-  if (ext === "ods") return "OpenDocument spreadsheets can't be edited here. Export the file as .xlsx and open it again.";
+  if (ext === "xls") return t("desktop.text.68fa2f2db92e");
+  if (ext === "ods") return t("desktop.text.a9ff5e37bb37");
   return null;
 }
 

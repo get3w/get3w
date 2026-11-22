@@ -29,7 +29,7 @@ export function setWebNotificationHandler(handler: WebNotificationHandler | null
   webNotificationHandler = handler;
 }
 
-function readDesktopNotificationPreference(): DesktopNotificationPreference {
+export function readDesktopNotificationPreference(): DesktopNotificationPreference {
   if (typeof window === "undefined") return DEFAULT_DESKTOP_NOTIFICATION_PREFERENCE;
   try {
     const raw = window.localStorage.getItem(LOCAL_PREFERENCES_KEY);

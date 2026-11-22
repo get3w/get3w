@@ -124,7 +124,7 @@ importers:
     dependencies:
       '@base-ui/react':
         specifier: ^1.4.1
-        version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 1.4.1(@date-fns/tz@1.5.0)(@types/react@19.2.14)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@codemirror/commands':
         specifier: ^6.8.0
         version: 6.10.2
@@ -146,21 +146,6 @@ importers:
       '@fontsource-variable/ibm-plex-sans':
         specifier: ^5.2.8
         version: 5.2.8
-      '@heroicons/react':
-        specifier: ^2.2.0
-        version: 2.2.0(react@19.2.8)
-      '@lexical/react':
-        specifier: ^0.35.0
-        version: 0.35.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(yjs@13.6.30)
-      '@modelcontextprotocol/ext-apps':
-        specifier: ^1.7.5
-        version: 1.7.5(@modelcontextprotocol/sdk@1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.6.6)
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.32.1
-        version: 1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6)
-      '@opencode-ai/sdk':
-        specifier: ^1.18.15
-        version: 1.18.18
       '@get3w/browser-tabs':
         specifier: workspace:*
         version: link:../../packages/browser-tabs
@@ -176,6 +161,21 @@ importers:
       '@get3w/workbook':
         specifier: workspace:*
         version: link:../../packages/workbook
+      '@heroicons/react':
+        specifier: ^2.2.0
+        version: 2.2.0(react@19.2.8)
+      '@lexical/react':
+        specifier: ^0.35.0
+        version: 0.35.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(yjs@13.6.30)
+      '@modelcontextprotocol/ext-apps':
+        specifier: ^1.7.5
+        version: 1.7.5(@modelcontextprotocol/sdk@1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.6.6)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.1
+        version: 1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6)
+      '@opencode-ai/sdk':
+        specifier: ^1.18.15
+        version: 1.18.18
       '@paper-design/shaders-react':
         specifier: 0.0.72
         version: 0.0.72(@types/react@19.2.14)(react@19.2.8)
@@ -251,6 +251,9 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.2.8
+      react-day-picker:
+        specifier: 9.11.1
+        version: 9.11.1(react@19.2.8)
       react-dom:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
@@ -318,15 +321,6 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@modelcontextprotocol/client':
-        specifier: ^2.3.1
-        version: 2.3.1(patch_hash=276c86ab47f7056638d00fa9f29759a9d3a60ac21635ceebe41f513414797476)
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.32.1
-        version: 1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6)
-      '@opencode-ai/sdk':
-        specifier: ^1.18.15
-        version: 1.18.18
       '@get3w/browser-tabs':
         specifier: workspace:*
         version: link:../../packages/browser-tabs
@@ -357,6 +351,15 @@ importers:
       '@get3w/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@modelcontextprotocol/client':
+        specifier: ^2.3.1
+        version: 2.3.1(patch_hash=276c86ab47f7056638d00fa9f29759a9d3a60ac21635ceebe41f513414797476)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.1
+        version: 1.32.1(patch_hash=9b32612a84a84cbc1bfe77dde0164b4a76bf6d36b589254aec8128c7d6e91745)(zod@4.6.6)
+      '@opencode-ai/sdk':
+        specifier: ^1.18.15
+        version: 1.18.18
       '@sentry/electron':
         specifier: ^7.16.0
         version: 7.16.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.220.0(@opentelemetry/api@1.9.1))
@@ -415,6 +418,18 @@ importers:
       '@ai-sdk/provider':
         specifier: 3.0.12
         version: 3.0.12
+      '@get3w/computer-use':
+        specifier: workspace:*
+        version: link:../../packages/computer-use
+      '@get3w/enterprise-mcp-client':
+        specifier: workspace:*
+        version: link:../../packages/enterprise-mcp-client
+      '@get3w/headless-threads':
+        specifier: workspace:*
+        version: link:../../packages/headless-threads
+      '@get3w/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@modelcontextprotocol/client':
         specifier: ^2.3.1
         version: 2.3.1(patch_hash=276c86ab47f7056638d00fa9f29759a9d3a60ac21635ceebe41f513414797476)
@@ -424,15 +439,6 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.15
         version: 1.18.18
-      '@get3w/computer-use':
-        specifier: workspace:*
-        version: link:../../packages/computer-use
-      '@get3w/enterprise-mcp-client':
-        specifier: workspace:*
-        version: link:../../packages/enterprise-mcp-client
-      '@get3w/types':
-        specifier: workspace:*
-        version: link:../../packages/types
       '@sveltejs/acorn-typescript':
         specifier: 1.0.13
         version: 1.0.13(acorn@8.16.0)
@@ -464,15 +470,15 @@ importers:
         specifier: ^4.6.6
         version: 4.6.6
     devDependencies:
-      '@hyzyla/pdfium':
-        specifier: 2.1.13
-        version: 2.1.13
       '@get3w/paths':
         specifier: workspace:*
         version: link:../../packages/paths
       '@get3w/workbook':
         specifier: workspace:*
         version: link:../../packages/workbook
+      '@hyzyla/pdfium':
+        specifier: 2.1.13
+        version: 2.1.13
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -1156,6 +1162,9 @@ packages:
   '@codemirror/view@6.43.6':
     resolution: {integrity: sha512-EVunGSYN1wz1p75WY1s3Xg7t3i8Yol0kGZGizNdX9BUFgMFILYVe8/u6EVpo7Ff5PwbZuILb4QAq7IZoKzIEQA==}
 
+  '@date-fns/tz@1.5.0':
+    resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
+
   '@daytona/analytics-api-client@0.201.0':
     resolution: {integrity: sha512-dO6rNFoL24l0NsumnDqvWJH560tuaukYHXUJI1JIBH94P/4m3Ha4k87q61cwrwumWHtKWqlkJXvVk8a6iSlpnQ==}
 
@@ -1167,7 +1176,7 @@ packages:
 
   '@daytonaio/sdk@0.201.0':
     resolution: {integrity: sha512-j4kCkxyfGf9vd5SH/lQxXDr3LsatI9pm6Cr3eMnh1JZQxB4e3fbag7G2StjyUwXV7/90MOfja7xe8ntLIsoO1w==}
-    deprecated: 'Moved to @daytona/sdk, same API, no breaking changes. Please update: npm uninstall @daytonaio/sdk && npm i @daytona/sdk'
+    deprecated: 'Moved to @daytona/sdk, same API, no breaking changes. Please update: npm uninstall @daytonaio/sdk && npm i @daytona/sdk@0'
 
   '@dotenvx/dotenvx@1.64.0':
     resolution: {integrity: sha512-6+xRpZaWuHXEqnhBjae+VmQI9Uaqw5Uzu/ScpO+W7ww9Zp3lHSNBoNjFcUxhrCyc7pRGQzyDjhKzloqrPHERiQ==}
@@ -2500,7 +2509,9 @@ packages:
   '@smithy/smithy-client@4.12.5':
     resolution: {integrity: sha512-UqwYawyqSr/aog8mnLnfbPurS0gi4G7IYDcD28cUIBhsvWs1+rQcL2IwkUQ+QZ7dibaoRzhNF99fAQ9AUcO00w==}
     engines: {node: '>=18.0.0'}
-    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
+    deprecated: |-
+      Deprecated due to a bug in custom logger data redaction. Upgrade to the latest version. If you used a custom logger with
+        this version, review your logs and rotate any credentials or other secrets. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/types@4.13.1':
     resolution: {integrity: sha512-787F3yzE2UiJIQ+wYW1CVg2odHjmaWLGksnKQHUrK/lYZSEcy1msuLVvxaR/sI2/aDe9U+TBuLsXnr3vod1g0g==}
@@ -3728,6 +3739,12 @@ packages:
   data-view-byte-offset@1.0.1:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
+
+  date-fns-jalali@4.1.0-0:
+    resolution: {integrity: sha512-hTIP/z+t+qKwBDcmmsnmjWTduxCg+5KfdqWQvb2X/8C9+knYY6epN/pfxdDuyVlSVeFz0sM5eEfwIUQ70U4ckg==}
+
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
   dayjs@1.11.23:
     resolution: {integrity: sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==}
@@ -5650,6 +5667,12 @@ packages:
     resolution: {integrity: sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==}
     engines: {node: '>= 0.10'}
 
+  react-day-picker@9.11.1:
+    resolution: {integrity: sha512-l3ub6o8NlchqIjPKrRFUCkTUEq6KwemQlfv3XZzzwpUeGwmDJ+0u0Upmt38hJyd7D/vn2dQoOoLV/qAp0o3uUw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      react: '>=16.8.0'
+
   react-dom@19.2.8:
     resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
     peerDependencies:
@@ -7338,7 +7361,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@base-ui/react@1.4.1(@types/react@19.2.14)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@base-ui/react@1.4.1(@date-fns/tz@1.5.0)(@types/react@19.2.14)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@base-ui/utils': 0.2.8(@types/react@19.2.14)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -7348,7 +7371,9 @@ snapshots:
       react-dom: 19.2.8(react@19.2.8)
       use-sync-external-store: 1.6.0(react@19.2.8)
     optionalDependencies:
+      '@date-fns/tz': 1.5.0
       '@types/react': 19.2.14
+      date-fns: 4.4.0
 
   '@base-ui/utils@0.2.8(@types/react@19.2.14)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -7455,6 +7480,8 @@ snapshots:
       crelt: 1.0.7
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
+
+  '@date-fns/tz@1.5.0': {}
 
   '@daytona/analytics-api-client@0.201.0':
     dependencies:
@@ -10464,6 +10491,10 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
+  date-fns-jalali@4.1.0-0: {}
+
+  date-fns@4.4.0: {}
+
   dayjs@1.11.23: {}
 
   debug@4.4.3:
@@ -12451,6 +12482,13 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       unpipe: 1.0.0
+
+  react-day-picker@9.11.1(react@19.2.8):
+    dependencies:
+      '@date-fns/tz': 1.5.0
+      date-fns: 4.4.0
+      date-fns-jalali: 4.1.0-0
+      react: 19.2.8
 
   react-dom@19.2.8(react@19.2.8):
     dependencies:

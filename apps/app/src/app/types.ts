@@ -15,6 +15,8 @@ export type Client = ReturnType<typeof createClient>;
 export type ProviderListItem = ProviderListResponse["all"][number];
 
 export type SidebarSessionItem = {
+  get3wPurpose?: "task" | "conversation";
+  get3wTaskId?: string;
   id: string;
   title: string;
   slug?: string | null;

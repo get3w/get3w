@@ -18,6 +18,27 @@ test("balance discards previous account responses and clears stale values on fai
     expect(requests).toEqual(["a","b"]);expect(node.querySelector("[aria-busy=true]")).not.toBeNull();expect(node.textContent).not.toContain("12.123456");
     await act(async()=>{finish({balance:{amount:"0.000000",currency:"CNY"}});});
     expect(node.textContent).toContain(formatAccountBalance("0.000000","CNY"));
+    const count=requests.length;
+    await act(async()=>{window.dispatchEvent(new Event("focus"));});
+    expect(requests.length).toBe(count+1);
+    await act(async()=>{finish({balance:{amount:"70.000000",currency:"CNY"}});});
+    expect(node.textContent).toContain(formatAccountBalance("70.000000","CNY"));
     fail=true;await click();expect(node.textContent).toContain("Service unavailable. Check your connection and try again.");expect(node.textContent).not.toContain(formatAccountBalance("0.000000","CNY"));
   }finally{await act(async()=>{root.unmount();});node.remove();delete window.__GET3W_ACCOUNT__;}
+});
+
+test("top up follows refresh balance and opens the Web recharge page", async () => {
+ const { Get3wBalance } = await import("../src/react-app/domains/cloud/get3w-balance");
+ const originalOpen = window.open;
+ const opened: string[] = [];
+ window.open = (url) => { opened.push(String(url)); return null; };
+ const node = document.createElement("div"); document.body.append(node); const root = createRoot(node);
+ try {
+  await act(async () => root.render(<Get3wBalance userId="top-up-test" />));
+  const buttons = [...node.querySelectorAll("button")];
+  expect(buttons.map(button => button.textContent)).toEqual(["Refresh balance", "Top up"]);
+  expect(buttons[1]?.disabled).toBe(false);
+  await act(async () => buttons[1]?.click());
+  expect(opened).toEqual(["https://get3w.com/top-up"]);
+ } finally { await act(() => root.unmount()); node.remove(); window.open = originalOpen; }
 });

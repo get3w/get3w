@@ -1,6 +1,9 @@
+import type { AlwaysOnSettings } from "@get3w/types/workspace";
 import type { ComposerAttachment, WorkspacePreset } from "../../../app/types";
 
 export type CreateWorkspaceOptions = {
+  workspaceType?: "local" | "always-on";
+  alwaysOn?: AlwaysOnSettings;
   projectLabel?: string | null;
   /** Saved as the first session's composer draft after the workspace is created. */
   firstTaskPrompt?: string | null;

@@ -13,10 +13,10 @@ const {setLocale}=await import('../src/i18n');
 let cleanup=()=>{};
 afterEach(()=>{cleanup();document.body.innerHTML='';});
 afterAll(async()=>{if(ownsDom)await GlobalRegistrator.unregister();});
-async function mount(groups=fixtureGroups,initialWorkspace='a'){
+async function mount(groups=fixtureGroups,initialWorkspace='a',memoryPreview=false){
  setLocale('zh');useSessionManagementStore.setState({sidebarView:'feed',pinnedIds:['a-pinned','b-pinned'],autoSettleDays:1,groupsByWorkspace:{a:{groups:[{id:'design',label:'设计组'}],assignments:{'a-active':'design'}},b:{groups:[],assignments:{}}}});useUiStateStore.setState({expandedWorkspaceIds:[]});
  const actions:string[]=[];const host=document.createElement('div');document.body.append(host);const root=createRoot(host);cleanup=()=>act(()=>root.unmount());
- await act(async()=>root.render(<WorkspaceSidebarFixture groups={groups} initialWorkspace={initialWorkspace} onAction={value=>actions.push(value)}/>));return {host,actions};
+ await act(async()=>root.render(<WorkspaceSidebarFixture groups={groups} initialWorkspace={initialWorkspace} memoryPreview={memoryPreview} onAction={value=>actions.push(value)}/>));return {host,actions};
 }
 async function click(selector:string){const button=document.querySelector(selector);expect(button).not.toBeNull();await act(async()=>{button?.dispatchEvent(new MouseEvent('click',{bubbles:true}));});}
 test('current workspace remains visible with legacy feed preference and collapsed workspace state',async()=>{
@@ -30,7 +30,7 @@ test('toolbar switches workspace and dispatches create and workspace menu action
  const targets=readVisibleSessionNumberShortcutTargets(document);
  expect(targets.length).toBeGreaterThan(0);expect(targets.every(target=>target.workspaceId==='b')).toBe(true);
  await click('[aria-label="添加工作区"]');expect(actions).toContain('create');
- for(const [label,action] of [['编辑名称','rename:b'],['在Finder中显示','reveal:b'],['新建组','group:b'],['移除工作区','remove:b']]){await click('[aria-label="工作区设置"]');const item=[...document.querySelectorAll('[role="menuitem"]')].find(node=>node.textContent?.replaceAll(' ','').includes(label));expect(item).toBeDefined();await act(async()=>item?.dispatchEvent(new MouseEvent('click',{bubbles:true})));expect(actions).toContain(action);}
+ for(const [label,action] of [['修改设置','rename:b'],['在Finder中显示','reveal:b'],['新建组','group:b'],['移除工作区','remove:b']]){await click('[aria-label="工作区设置"]');const item=[...document.querySelectorAll('[role="menuitem"]')].find(node=>node.textContent?.replaceAll(' ','').includes(label));expect(item).toBeDefined();await act(async()=>item?.dispatchEvent(new MouseEvent('click',{bubbles:true})));expect(actions).toContain(action);}
 });
 test('no workspace keeps create available and disables workspace settings',async()=>{const {actions}=await mount([],'');expect(document.querySelector<HTMLButtonElement>('[aria-label="工作区设置"]')?.disabled).toBe(true);expect(document.querySelector<HTMLButtonElement>('[aria-label="切换工作区"]')?.disabled).toBe(true);await click('[aria-label="添加工作区"]');expect(actions).toContain('create');});
 
@@ -126,3 +126,63 @@ test('workspace search filters results, retains selection and reports an empty r
  expect(toggle?.getAttribute('aria-expanded')).toBe('true');
  expect(pinned?.textContent).toContain('a 置顶任务');
  });
+
+
+test('always-on exposes its own menus and type without changing local navigation',async()=>{
+ const groups=fixtureGroups.map((group,index)=>index===0?{...group,workspace:{...group.workspace,workspaceType:'always-on'}}:group);
+ const {host,actions}=await mount(groups);
+ const menus=[...host.querySelectorAll<HTMLButtonElement>('[data-always-on-menu] button')];
+ expect(menus.map(button=>button.textContent)).toEqual(['目标与概览','事件收件箱','定时与跟进','工作区记忆','待你处理','成果与交付','持续运行设置']);
+ expect(host.querySelectorAll('[aria-label="成果与交付"]')).toHaveLength(1);
+ expect(menus.slice(0,-1).filter(button=>button.textContent!=="成果与交付").every(button=>button.disabled)).toBe(true);
+ await click('[data-always-on-menu="delivery"] button');expect(actions).toContain("delivery");
+ expect(menus.at(-1)?.disabled).toBe(false);
+ await click('[data-always-on-menu="settings"] button');expect(actions).toContain("rename:a");
+ expect(host.querySelector('[aria-label="切换工作区"] [aria-label="持续运行"]')).not.toBeNull();
+ expect(host.querySelector('[aria-label="自动化"]')).toBeNull();
+ expect(host.querySelector('[data-sidebar-new-chat]')).not.toBeNull();
+ expect(host.querySelector('[aria-label="工作区文件"]')).not.toBeNull();
+ expect(host.querySelector('[aria-label="持续运行"] [role="status"]')?.textContent).toBe('状态未确认');
+ await click('[aria-label="切换工作区"]');
+ expect(document.querySelector('[data-workspace-option="a"]')?.textContent).toContain('持续运行');
+ expect(document.querySelector('[data-workspace-option="b"]')?.textContent).not.toContain('持续运行');
+ await click('[data-workspace-option="b"]');
+ expect(actions).toContain('select:b');
+ expect(host.querySelector('[data-always-on-menu]')).toBeNull();
+ expect(host.querySelector('[aria-label="成果与交付"]')).toBeNull();
+ expect(host.querySelector('[aria-label="工作区文件"]')).not.toBeNull();
+ expect(host.querySelector('[aria-label="切换工作区"] [aria-label="持续运行"]')).toBeNull();
+ expect(host.querySelector('[aria-label="自动化"]')).not.toBeNull();
+ expect(host.querySelector('[aria-label="持续运行"]')).toBeNull();
+});
+
+test('always-on tasks appear once outside ordinary pins and conversations; local keeps existing layout',async()=>{
+ const groups=fixtureGroups.map((group,index)=>index===0?{...group,workspace:{...group.workspace,workspaceType:'always-on'},sessions:group.sessions.map(session=>session.id==='a-pinned'?{...session,get3wPurpose:'task' as const,get3wTaskId:'a'}:session)}:group);
+ const {host,actions}=await mount(groups);
+ expect(host.querySelectorAll('[data-sidebar-session-id="a-pinned"]')).toHaveLength(1);
+ expect(host.querySelector('[data-always-on-tasks]')?.textContent).toContain('a 置顶任务');
+ expect(host.querySelector('[data-workspace-recent-sessions="a"]')?.textContent).not.toContain('a 置顶任务');
+ expect(host.querySelector('[data-workspace-recent-sessions="a"]')?.textContent).toContain('对话');
+ expect(host.querySelector('[data-sidebar-new-chat]')?.textContent).toContain('新建对话');
+ await click('[data-always-on-tasks] [data-session-tab-id="a-pinned"]');expect(actions).toContain('session:a:a-pinned');
+ cleanup();cleanup=()=>{};
+ const local=await mount(fixtureGroups);expect(local.host.querySelector('[data-always-on-tasks]')).toBeNull();expect(local.host.querySelector('[data-sidebar-new-chat]')?.textContent).toContain('新建任务');
+});
+
+test('memory navigation is enabled only for an always-on workspace with an available route',async()=>{
+ const groups=fixtureGroups.map((group,index)=>index===0?{...group,workspace:{...group.workspace,workspaceType:'always-on'}}:group);
+ const {host,actions}=await mount(groups,'a',true);
+ const memory=host.querySelector<HTMLButtonElement>('[data-always-on-menu="memory"] button');
+ expect(memory?.disabled).toBe(false);await click('[data-always-on-menu="memory"] button');expect(actions).toContain('memory');
+ await click('[aria-label="切换工作区"]');await click('[data-workspace-option="b"]');expect(host.querySelector('[data-always-on-menu="memory"]')).toBeNull();
+});
+
+
+test('attention route is available only in always-on navigation',async()=>{
+ const groups=fixtureGroups.map((group,index)=>index===0?{...group,workspace:{...group.workspace,workspaceType:'always-on'}}:group);
+ const {host,actions}=await mount(groups,'a',true);
+ const button=host.querySelector<HTMLButtonElement>('[data-always-on-menu="attention"] button');
+ expect(button?.disabled).toBe(false);expect(button?.title).not.toBe('尚未开放');
+ await click('[data-always-on-menu="attention"] button');expect(actions).toContain('attention');
+ await click('[aria-label="切换工作区"]');await click('[data-workspace-option="b"]');expect(host.querySelector('[data-always-on-menu="attention"]')).toBeNull();
+});

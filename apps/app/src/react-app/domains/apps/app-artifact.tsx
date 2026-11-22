@@ -36,7 +36,7 @@ export function AppArtifact({ appId, revisionId, receiptId, onClose, onAsk, fall
     if (!onAsk || asking) return;
     setAsking(true); setAskError(null);
     try { await onAsk(prompt); }
-    catch (cause) { setAskError(cause instanceof Error ? cause.message : "Could not open a conversation. Try again."); }
+    catch (cause) { setAskError(cause instanceof Error ? cause.message : t("desktop.text.6fcac61e18fe")); }
     finally { setAsking(false); }
   };
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function AppArtifact({ appId, revisionId, receiptId, onClose, onAsk, fall
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-sm font-medium" title={app.view.title}>{app.view.title}</h2>
         <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
-          {saved ? <><Check className="size-3 shrink-0" />{t("personal.artifacts.saved_artifact")}</> : app.view.activeRevisionId ? "Unsaved changes" : "Artifact draft"}
+          {saved ? <><Check className="size-3 shrink-0" />{t("personal.artifacts.saved_artifact")}</> : app.view.activeRevisionId ? t("desktop.text.a710c2b90913") : t("desktop.text.0609f90fa277")}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -95,17 +95,17 @@ export function AppArtifact({ appId, revisionId, receiptId, onClose, onAsk, fall
           busy={asking} onUpdate={onUpdate} onDeleted={onClose ?? (() => navigate("/dashboard"))}
           onRun={onAsk && saved ? () => void ask(`Run my saved app “${app.view.title}” with fresh data and show the new results in the saved app.`) : undefined}
           onEdit={onAsk ? () => void ask(`Help me improve my saved app “${app.view.title}”. Read its existing app source, ask what I want to change, and show a draft preview for me to save.`) : undefined} />
-        {onClose ? <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={onClose} aria-label="Close artifact"><X className="size-4" /></Button> : null}
+        {onClose ? <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={onClose} aria-label={t("desktop.copy.0a7ca3dd4c3f")}><X className="size-4" /></Button> : null}
       </div>
     </header>
     <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
       {askError ? <p role="alert" className="text-sm text-destructive">{askError}</p> : null}
       {confirmation ? <p role="status" className="rounded-lg bg-muted p-3 text-sm">{confirmation}</p> : null}
-      <p className="text-xs text-muted-foreground">{saved && isLiveGeneratedApp(app.view) ? "Live results · Refresh to fetch the latest data." : `${saved ? "Results" : "Preview"} · Changes inside this view stay in the preview.`}</p>
+      <p className="text-xs text-muted-foreground">{saved && isLiveGeneratedApp(app.view) ? t("desktop.text.daffe47b0a43") : `${saved ? "Results" : "Preview"} · Changes inside this view stay in the preview.`}</p>
       {revision && parseMcpAppResourceUri(revision.resourceUri)?.appId === appId ? <AuthoredAppPreview view={app.view} revision={revision} fallbackEndpoints={fallbackEndpoints} /> : connection ? <DashboardConnectionCard toolName={toolName} toolCallId={`preview-${appId}-${revisionId ?? "active"}`} output={connectionOutput}
         onConnected={() => { void query.refetch(); }} /> : app.runError ? <div className="space-y-3"><p role="alert" className="text-sm">{app.previewNotice || "This preview could not be run. Try again."}</p><Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>{t("personal.artifacts.try_again")}</Button></div> : saved && isLiveGeneratedApp(app.view) && revision ? <LiveGeneratedApp view={app.view} revision={revision} fallbackEndpoints={fallbackEndpoints} /> : app.html && app.payload && revision ? <GeneratedAppPreview html={app.html} payload={app.payload} title={app.view.title} revision={revision} /> : <div className="flex flex-wrap items-center gap-3">
         <p role="status" className="text-sm text-muted-foreground">{app.previewNotice}</p>
-        {onUpdate ? <Button variant="outline" size="sm" disabled={asking} onClick={onUpdate}>{asking ? "Opening conversation…" : t("personal.artifacts.update_artifact")}</Button> : null}
+        {onUpdate ? <Button variant="outline" size="sm" disabled={asking} onClick={onUpdate}>{asking ? t("desktop.text.12a7ad1d379e") : t("personal.artifacts.update_artifact")}</Button> : null}
       </div>}
       {canManage && app.canManage && !saved ? <p className="text-xs text-muted-foreground">{t("personal.artifacts.your_draft_is_kept_ask_for_changes_in_the_conversation_then_save_the_artifact_to_use_it_ag")}</p> : null}
     </div>

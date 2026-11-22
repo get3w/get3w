@@ -1,3 +1,4 @@
+import path from "node:path";
 import { assertGet3wServiceTarget } from "./get3w-egress.mjs";
 export const GET3W_SERVICES = Object.freeze({
   // Every native Desktop request (auth, inference, personal, MCP gateway).
@@ -39,4 +40,10 @@ export function resolveGet3wOrigins({ isPackaged, env = {}, packageMetadata = {}
     if (typeof value === "string" && value.trim()) origins[key] = value.trim();
   }
   return origins;
+}
+
+/** A renamed Electron development binary can report isPackaged=true. Only a
+ * source checkout outside bundle resources may use development origin overrides. */
+export function isSourceDevelopmentLaunch({devMode,appPath,mainDirectory,resourcesPath}){
+ return devMode===true && [path.resolve(mainDirectory),path.resolve(mainDirectory,"..")].includes(path.resolve(appPath)) && path.relative(path.resolve(resourcesPath),path.resolve(mainDirectory)).split(path.sep)[0]==="..";
 }

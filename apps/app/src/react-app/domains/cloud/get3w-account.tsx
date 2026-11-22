@@ -61,6 +61,7 @@ export type TaskPermissionMode = "default" | "full_access";
 export type TaskPermissionSnapshot = { mode: TaskPermissionMode; defaultMode: TaskPermissionMode; grants: {permission: string; patterns: string[]}[]; cost?:{policy:CostPolicy}; costRun?:{messageId:string;committedUsd:string;policy:CostPolicy}|null };
 type AccountBridge = {
   taskPermissions?: (input: { action: "read" | "set" | "revoke" | "cost-set"; workspaceId?: string; sessionId?: string; mode?: TaskPermissionMode; confirmed?: boolean; index?: number; policy?:CostPolicy; grant?: {permission: string; patterns: string[]} }) => Promise<TaskPermissionSnapshot>;
+  eventSources?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown;serviceOrigin?:string}>;
   automations?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   artifacts?: (input: {userId:string;path:string;method:string;body?:unknown}) => Promise<{ok:boolean;status:number;json:unknown}>;
   modelTasks?: (input: {userId:string;workspaceId:string;sessionId?:string;action:"list"|"listAll"|"detach"|"retrieve"|"retryDownload"|"refreshResult";key?:string})=>Promise<{items:ModelTask[]}>;

@@ -146,6 +146,7 @@ export interface RuntimeProviderRecordLike {
 }
 
 export interface EngineV2Preview {
+  deferred(): ManagedOpencodeV2Server["deferred"];
   start(): void;
   setForcePolicy(policy: { upgrade: boolean }): EngineV2PreviewStatus;
   status(): EngineV2PreviewStatus;
@@ -1128,6 +1129,7 @@ export function createEngineV2Preview(options: {
     const managed = await createManagedOpencodeV2Server({
       contextTools: contextBridge,
       bin: resolved.bin,
+      deferred: process.env.GET3W_DEFERRED_QUESTIONS === "1",
       rootDir,
       instanceId: engineInstanceId(),
       env: { OPENCODE_MODELS_URL: opencodeModelsUrl },
@@ -1591,5 +1593,6 @@ export function createEngineV2Preview(options: {
     } else if (enabled && !automaticHistoryCopy && engineOrigin !== "reverted" && !(autoUpgradeEnabled && !chatRouting && !chosenV1Manually())) void start().catch(recordStartError);
   }
   if (!options.deferStart) startWhenReady();
-  return { start: startWhenReady, setForcePolicy, migrateHistory, status, setEnabled, setChatRouting, requireV1HistoryCopied, describeUncopiedChat, connection, ensureWorkspaceReady, refreshProviders, syncWorkspaceMcp, settleWorkspaceMcp, warmWorkspace, settleWorkspaceSkills, stop };
+  const deferred = () => running ? sidecar?.deferred : undefined;
+  return { deferred, start: startWhenReady, setForcePolicy, migrateHistory, status, setEnabled, setChatRouting, requireV1HistoryCopied, describeUncopiedChat, connection, ensureWorkspaceReady, refreshProviders, syncWorkspaceMcp, settleWorkspaceMcp, warmWorkspace, settleWorkspaceSkills, stop };
 }

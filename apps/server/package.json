@@ -51,6 +51,7 @@
     "@opencode-ai/sdk": "^1.18.15",
     "@get3w/enterprise-mcp-client": "workspace:*",
     "@get3w/types": "workspace:*",
+    "@get3w/headless-threads": "workspace:*",
     "@sveltejs/acorn-typescript": "1.0.13",
     "acorn": "8.16.0",
     "better-sqlite3": "^13.0.2",

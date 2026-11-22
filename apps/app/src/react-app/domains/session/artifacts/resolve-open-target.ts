@@ -149,8 +149,8 @@ export function filePathForCopy(target: OpenTarget, context: { origin: FileOrigi
 
 export function unavailableFileMessage(origin: FileOrigin): string {
   return origin === "local"
-    ? "This file is no longer available on this computer."
-    : "This file is on another machine or is no longer available.";
+    ? t("desktop.text.8d100c58be8c")
+    : t("desktop.text.3bbbe474cfb4");
 }
 
 export type FileOpenContext = {

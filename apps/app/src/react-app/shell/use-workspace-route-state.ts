@@ -1393,10 +1393,10 @@ export function useWorkspaceRouteState(input: UseWorkspaceRouteStateInput) {
   const routeNotFoundMessage = (() => {
     if (loading) return null;
     if (routeWorkspaceId && !selectedWorkspace) {
-      return "Workspace was not found. Select a new workspace from the sidebar.";
+      return t("desktop.text.93d213fd053a");
     }
     if (selectedSessionId && !selectedSessionKnown && activeModernRouteSessionResolution?.status === "not-found") {
-      return "Session was not found. Select a new session from the sidebar.";
+      return t("desktop.text.a92035a1b9c6");
     }
     if (selectedSessionId && !selectedSessionKnown && activeModernRouteSessionResolution?.status === "error") {
       return `Session could not be loaded. ${activeModernRouteSessionResolution.message}`;

@@ -685,7 +685,7 @@ export function CommandPalette(props: CommandPaletteProps) {
               />
             </CommandHeader>
             <CommandPanel>
-              <CommandEmpty>{mode === "root" ? "No matches. Try a different word, or type > for actions only." : mode === "accessible-items" ? t("ui.946d7e4156a8") : mode === "groups" ? t("ui.0af1572f8020") : t("session.palette_no_matches")}</CommandEmpty>
+              <CommandEmpty>{mode === "root" ? t("desktop.text.632292c8966c") : mode === "accessible-items" ? t("ui.946d7e4156a8") : mode === "groups" ? t("ui.0af1572f8020") : t("session.palette_no_matches")}</CommandEmpty>
               <CommandList>
                 {mode === "root"
                   ? (group: PaletteResultGroup) => (

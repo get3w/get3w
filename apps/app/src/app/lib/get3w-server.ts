@@ -1,3 +1,4 @@
+import type { AlwaysOnQuestionAnswer, AlwaysOnAttention, AlwaysOnDelivery, AlwaysOnDeliveryChange, AlwaysOnDeliverables, AlwaysOnMemory, AlwaysOnMemoryChange, AlwaysOnTimers, AlwaysOnFollowup, AlwaysOnInbox, AlwaysOnSource, AlwaysOnOverview, AlwaysOnSettings, AlwaysOnStatus } from "@get3w/types/workspace";
 import { t } from "@/i18n";
 import { z } from "zod";
 import type { McpStatusMap } from "../types";
@@ -25,6 +26,7 @@ import { claudeImportItemsSchema, claudeImportResultsSchema } from "./claude-imp
 
 
 export type Get3wServerCapabilities = {
+  alwaysOn?: { create: boolean };
   skills: { read: boolean; write: boolean; source: "get3w" | "opencode" };
   plugins: { read: boolean; write: boolean };
   mcp: { read: boolean; write: boolean };
@@ -1786,14 +1788,46 @@ export function createGet3wServerClient(options: { baseUrl: string; token?: stri
         timeoutMs: timeouts.binary,
       }),
     listWorkspaces: () => requestJson<Get3wWorkspaceList>(baseUrl, "/workspaces", { token, hostToken, timeoutMs: timeouts.listWorkspaces }),
-    createLocalWorkspace: (payload: { folderPath: string; name: string; preset: string }) =>
-      requestJson<WorkspaceList>(baseUrl, "/workspaces/local", {
+    createLocalWorkspace: async (payload: { folderPath: string; name: string; preset: string; workspaceType?: "local" | "always-on"; alwaysOn?: AlwaysOnSettings; defaultModel?: WorkspaceDefaultModelRef | null }) => {
+      if (payload.workspaceType === "always-on") {
+        const capabilities = await requestJson<Get3wServerCapabilities>(baseUrl, "/capabilities", { token, hostToken, timeoutMs: timeouts.capabilities });
+        if (capabilities.alwaysOn?.create !== true) throw new Error(t("workspace.restart_for_always_on"));
+      }
+      const list = await requestJson<WorkspaceList>(baseUrl, "/workspaces/local", {
         token,
         hostToken,
         method: "POST",
         body: payload,
         timeoutMs: timeouts.activateWorkspace,
-      }),
+      });
+      if (payload.workspaceType === "always-on") {
+        const created = list.workspaces.find(workspace => workspace.id === list.activeId);
+        if (created?.workspaceType !== "always-on") throw new Error(t("workspace.always_on_not_created"));
+      }
+      return list;
+    },
+    answerAlwaysOnQuestion: (workspaceId:string, input:AlwaysOnQuestionAnswer) => requestJson<{status:"queued"|"sending"|"answered"|"stale"|"unconfirmed"}>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/attention/answers`, {token,hostToken,method:"POST",body:input}),
+    cancelAlwaysOnQuestion: (workspaceId:string,input:{eventId:string;sessionId:string;requestId:string}) => requestJson<{status:"cancelled"}>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/attention/cancel`, {token,hostToken,method:"POST",body:input}),
+    alwaysOnAttention: (workspaceId: string) => requestJson<AlwaysOnAttention>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/attention`, { token, hostToken }),
+    alwaysOnInbox: (workspaceId: string, offset = 0, eventId?: string) => requestJson<AlwaysOnInbox>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/inbox?offset=${offset}${eventId ? `&eventId=${encodeURIComponent(eventId)}` : ""}`, { token, hostToken }),
+    saveAlwaysOnSource: (workspaceId: string, input: Pick<AlwaysOnSource, "name" | "kind" | "scope"> & Partial<Pick<AlwaysOnSource,"id"|"subscriptionId"|"ownerUserId"|"repositoryId"|"provider"|"mergeWindowSeconds">>, id?: string) => requestJson<AlwaysOnSource[]>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/sources${id ? `/${encodeURIComponent(id)}` : ""}`, { token, hostToken, method: id ? "PATCH" : "POST", body: input }),
+    controlAlwaysOnSource: (workspaceId: string, id: string, action: "enable" | "disable" | "delete") => requestJson<AlwaysOnSource[]>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/sources/${encodeURIComponent(id)}`, { token, hostToken, method: "PATCH", body: { action } }),
+    receiveAlwaysOnEvent: (workspaceId: string, id: string, text: string, key: string, taskKey?:string) => requestJson<{ duplicate: boolean;eventId?:string;batchId?:string;merged?:boolean }>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/sources/${encodeURIComponent(id)}/events`, { token, hostToken, method: "POST", body: { text, key,taskKey } }),
+    reviewAlwaysOnResult: (workspaceId: string, eventId: string, action: "verify" | "repair") => requestJson<AlwaysOnStatus>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/results/${encodeURIComponent(eventId)}`, { token, hostToken, method: "POST", body: { action } }),
+    alwaysOnOutbox: (workspaceId: string) => requestJson<AlwaysOnDelivery[]>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/outbox`, { token, hostToken }),
+    changeAlwaysOnOutbox: (workspaceId: string, change: AlwaysOnDeliveryChange) => requestJson<(AlwaysOnDelivery & {claim?:string}) | null>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/outbox`, { token, hostToken, method:"POST", body:change }),
+    alwaysOnDeliverables: (workspaceId: string, offset = 0) => requestJson<AlwaysOnDeliverables>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/deliverables?offset=${offset}`, { token, hostToken }),
+    alwaysOnOverview: (workspaceId: string, offset = 0) => requestJson<AlwaysOnOverview>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/overview?offset=${offset}`, { token, hostToken }),
+    markAlwaysOnReplyViewed: (workspaceId: string, eventId: string) => requestJson<AlwaysOnMemory>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/memory/viewed`, { token, hostToken, method: "POST", body: { eventId } }),
+    alwaysOnMemory: (workspaceId: string) => requestJson<AlwaysOnMemory>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/memory`, { token, hostToken }),
+    changeAlwaysOnMemory: (workspaceId: string, input: AlwaysOnMemoryChange) => requestJson<AlwaysOnMemory>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/memory`, { token, hostToken, method: "POST", body: input }),
+    alwaysOnTimers: (workspaceId: string) => requestJson<AlwaysOnTimers>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/timers`, { token, hostToken }),
+    addAlwaysOnFollowup: (workspaceId: string, input: Pick<AlwaysOnFollowup, "id" | "text" | "dueAt" | "taskId" | "repeatMinutes" | "calendar" | "missedPolicy">) => requestJson<AlwaysOnFollowup>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/followups`, { token, hostToken, method: "POST", body: input }),
+    confirmAlwaysOnFollowup: (workspaceId: string, id: string) => requestJson<AlwaysOnFollowup>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/followups/${encodeURIComponent(id)}/confirm`, { token, hostToken, method: "POST" }),
+    cancelAlwaysOnFollowup: (workspaceId: string, id: string) => requestJson<AlwaysOnFollowup>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on/followups/${encodeURIComponent(id)}/cancel`, { token, hostToken, method: "POST" }),
+    alwaysOnStatus: (workspaceId: string) => requestJson<AlwaysOnStatus>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on`, { token, hostToken }),
+    updateAlwaysOnSettings: (workspaceId: string, settings: AlwaysOnSettings) => requestJson<AlwaysOnStatus>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on`, { token, hostToken, method: "PATCH", body: { settings } }),
+    controlAlwaysOn: (workspaceId: string, action: "pause" | "resume" | "run") => requestJson<AlwaysOnStatus>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/always-on`, { token, hostToken, method: "POST", body: { action } }),
     updateWorkspaceDisplayName: (workspaceId: string, displayName: string | null) =>
       requestJson<WorkspaceList>(baseUrl, `/workspaces/${encodeURIComponent(workspaceId)}/display-name`, {
         token,

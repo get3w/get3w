@@ -1,3 +1,4 @@
+import { eventSourceRoute } from "./get3w-event-sources.mjs";
 import { automationRoute } from "./get3w-automation-route.mjs";
 import { artifactRoute } from "./get3w-artifact-route.mjs";
 import { createTaskCatalogCache } from "./get3w-task-catalog.mjs";
@@ -7,7 +8,7 @@ import { randomUUID, createHash } from "node:crypto";
 import path from "node:path";
 
 /** @param {{userData:string,safeStorage:object,openExternal:Function,cloudBase?:string,apiBase?:string,webBase?:string,fetchImpl?:typeof fetch,now?:()=>number}} options */
-export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase = GET3W_SERVICES.cloudBase, apiBase = GET3W_SERVICES.denBase, webBase = GET3W_SERVICES.webBase, fetchImpl = fetch, now = Date.now }) {
+export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase = GET3W_SERVICES.cloudBase, apiBase = GET3W_SERVICES.denBase, webBase = GET3W_SERVICES.webBase, fetchImpl = fetch, now = Date.now, onDiagnostic = () => {} }) {
   cloudBase = validateGet3wOrigin(cloudBase);
   apiBase = validateGet3wOrigin(apiBase);
   webBase = validateGet3wOrigin(webBase);
@@ -30,6 +31,9 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
         signal:AbortSignal.any([controller.signal,AbortSignal.timeout(150_000),...(signal?[signal]:[])]),
         ...(body!==undefined?{body:JSON.stringify(body)}:{}),
       });
+      if(route==="capabilities"||route.startsWith("event-sources/")){
+        try{onDiagnostic({serviceOrigin:cloudBase,path:"/v1/personal/"+(route.startsWith("event-sources/")?route.replace(/[a-f0-9-]{36}/g,":id"):route),method,status:response.status,requestId:response.headers.get("x-request-id")?.match(/^req_[a-f0-9]{32}$/)?.[0]??null});}catch{}
+      }
       if(response.status===404 && route==="capabilities") { cancelMcp(); throw Error("Personal account API is unavailable. Update the Get3W server."); }
       return response;
     } finally {mcpRequests.delete(controller);}
@@ -278,11 +282,25 @@ export function createGet3wAuth({ userData, safeStorage, openExternal, cloudBase
           serverTiming: response.headers.get("server-timing"), status: response.status,
         }));
         return { response, release: () => { inferenceRequests.delete(controller); controller.abort(); } };
-      } catch {
+      } catch (error) {
         inferenceRequests.delete(controller);
-        throw new Error("Get3W inference is unavailable. Check the session before retrying.");
+        const code = error?.cause?.code ?? error?.code;
+        const kind = combined.aborted ? "timeout_or_cancelled" : "transport_failed";
+        console.error("[get3w-inference-transport]", JSON.stringify({ kind,
+          code: typeof code === "string" && /^[A-Z_0-9]+$/.test(code) ? code : null,
+          elapsedMs: Math.round(performance.now() - startedAt) }));
+        throw new Error(kind === "timeout_or_cancelled"
+          ? "Get3W inference unavailable: timeout or cancellation. Check completed work before retrying."
+          : "Get3W inference unavailable: connection failed. Check completed work before retrying.", { cause: error });
       }
     },
+    eventSources: input => serial(async () => {
+      const route=eventSourceRoute(input); await requirePersonal(input.userId);
+      const response=await personal(route,{method:input.method,signal:AbortSignal.timeout(20000),...(input.body===undefined?{}:{body:input.body})});
+      if(account.user?.id!==input.userId || account.status!=="signed_in")throw Error("Account changed");
+      const text=await response.text();if(text.length>2000000)throw Error("Source response too large");
+      return {ok:response.ok,status:response.status,serviceOrigin:cloudBase,json:(()=>{try{return JSON.parse(text);}catch{return null;}})()};
+    }),
     automationWork: (userId, runnerId, workspaceIds) => serial(async () => {
       await requirePersonal(userId);
       const response = await personal("automation-runner/work", {method:"POST",signal:AbortSignal.timeout(30000),body:{runnerId,...(workspaceIds ? {workspaceIds} : {})}});

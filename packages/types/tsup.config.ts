@@ -4,6 +4,7 @@ export default defineConfig({
   // Source-only exports get declarations from tsc. Emit JavaScript only for
   // exports whose production runtime target lives in dist.
   entry: {
+    "workspace-calendar": "src/workspace-calendar.ts",
     "browser-demonstration": "src/browser-demonstration.ts",
     "google-drive-upload": "src/google-drive-upload.ts",
     "opencode-config-error": "src/opencode-config-error.ts",

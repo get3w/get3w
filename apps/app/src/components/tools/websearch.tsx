@@ -36,7 +36,7 @@ export function WebsearchTool({ part }: WebsearchToolProps) {
     <ChainOfThought>
       <ChainOfThoughtStep>
         <ChainOfThoughtTrigger leftIcon={<Search className="size-4" />}>
-          {results.length > 0 ? `Searching for "${part.input.query}"` : t("ui.7a2bac9c1bf4")}
+          {results.length > 0 ? `${t("activity.verb.search.past")} “${part.input.query}”` : t("ui.7a2bac9c1bf4")}
         </ChainOfThoughtTrigger>
         <ChainOfThoughtContent>
           <div className="flex flex-wrap items-center gap-2">

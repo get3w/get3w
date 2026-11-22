@@ -47,3 +47,11 @@ export function initializeTaskPermissionMode(config: ServerConfig, sessionId: st
     await store.set(config, "__local__", { ...state, sessions: { ...state.sessions, [sessionId]: mode } });
   });
 }
+
+/** Workspace startup sets only this session, never another workspace's defaults. */
+export function setSessionPermissionMode(config: ServerConfig, mode: TaskPermissionMode, sessionId: string) {
+  return serial(config, async () => {
+    const state = await read(config);
+    await store.set(config, "__local__", { ...state, sessions: { ...state.sessions, [sessionId]: mode } });
+  });
+}
