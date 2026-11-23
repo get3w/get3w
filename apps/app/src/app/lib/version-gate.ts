@@ -1,3 +1,4 @@
+import { desktopWebOrigin, DESKTOP_RELEASE_BASE } from "./desktop-market";
 // Version comparator + update gating helpers.
 //
 // Ported from dev's Solid system-state.ts (#1476 + #1512). Pure functions
@@ -229,14 +230,14 @@ export async function readFreshDenAppVersionMetadata(): Promise<DenAppVersionMet
   }
   // Read the public electron-builder manifest without routing through the
   // updater bridge (the bridge itself uses this gate for policy checks).
-  const response = await fetch("https://get3w.com/desktop/releases/latest/download/latest-mac.yml", {
+  const response = await fetch(`${DESKTOP_RELEASE_BASE}/latest/download/latest-mac.yml`, {
     headers: { Accept: "text/yaml, text/plain, */*" },
   });
   if (!response.ok) throw new DenApiError(response.status, "app_version_unavailable", "Desktop version metadata is unavailable.");
   const body = await response.text();
   const version = normalizeStableDesktopVersion(body.match(/^version:\s*([^\s]+)$/m)?.[1] ?? "");
   if (!version) throw new DenApiError(503, "app_version_unavailable", "Desktop version metadata is invalid.");
-  return { webUrl: "https://get3w.com", minAppVersion: "0.0.0", latestAppVersion: version, publishedDesktopVersions: [version] };
+  return { webUrl: desktopWebOrigin(), minAppVersion: "0.0.0", latestAppVersion: version, publishedDesktopVersions: [version] };
 }
 
 export type StableDesktopUpdateSelection =

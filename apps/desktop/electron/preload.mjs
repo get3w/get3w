@@ -155,6 +155,7 @@ try {
   desktopDistribution = null;
 }
 
+contextBridge.exposeInMainWorld("__GET3W_MARKET__", ipcRenderer.sendSync("get3w:market-sync"));
 contextBridge.exposeInMainWorld("__GET3W_I18N__", { setLanguage: language => ipcRenderer.invoke("get3w:set-language", language) });
 
 contextBridge.exposeInMainWorld("__GET3W_ACCOUNT__", {

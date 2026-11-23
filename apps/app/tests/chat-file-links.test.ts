@@ -1,4 +1,8 @@
+import { setLocale } from "../src/i18n";
 import { describe, expect, test } from "bun:test";
+
+// Assertions below intentionally exercise the English messages.
+setLocale("en");
 
 import { getSafeFileRevealPath } from "../src/components/chat/utils";
 import { inlineCodeArtifactPath, renderMarkdownHtml } from "../src/components/markdown/markdown-primitive";

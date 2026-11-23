@@ -1,3 +1,4 @@
+import { resolveDesktopMarket, marketUpdateFeed } from "./market.mjs";
 import { readFile, mkdir, writeFile, rm } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { execFile } from "node:child_process";
@@ -17,6 +18,9 @@ import {
   stableVersion,
   verifyCachedRecoveryArtifact,
 } from "./recovery.mjs";
+
+const appMarkets = new WeakMap();
+const appMarket = app => appMarkets.get(app) ?? undefined;
 
 const ELECTRON_UPDATER_CHANNEL_FILENAME = "electron-updater-channel.v1.json";
 
@@ -43,12 +47,20 @@ export function resolveAppVersion(app) {
   }
   return _cachedAppVersion;
 }
-const ELECTRON_UPDATER_FEEDS = Object.freeze({
-  // Mainland-friendly origin first. The GitHub URLs remain as a controlled
-  // fallback for users outside China or while the mirror is propagating.
-  stable: "https://get3w.com/desktop/releases/latest/download",
-  alpha: "https://get3w.com/desktop/releases/download/alpha-macos-latest",
-});
+export function assertMarketUpdateInfo(info, market) {
+  if (market === undefined || !info?.version) return;
+  const config = resolveDesktopMarket(market);
+  if (!Array.isArray(info.files) || info.files.length === 0) throw new Error("Market update manifest has no files.");
+  for (const file of info.files) {
+    const url = new URL(file.url, `${config.releaseBase}/latest/download/`);
+    if (url.origin !== config.webOrigin || url.username || url.password ||
+        !url.pathname.startsWith("/desktop/releases/") ||
+        !decodeURIComponent(url.pathname.split("/").pop()).startsWith(config.artifactPrefix)) {
+      throw new Error("Update manifest contains an installer from another market.");
+    }
+  }
+}
+
 const ELECTRON_UPDATER_FALLBACK_FEEDS = Object.freeze({
   stable: "https://github.com/get3w/get3w/releases/latest/download",
   alpha: "https://github.com/get3w/get3w/releases/download/alpha-macos-latest",
@@ -109,8 +121,8 @@ export function evalUpdaterFeedUrl(env = process.env) {
   return url.href.replace(/\/+$/, "");
 }
 
-function electronUpdaterFeedUrl(channel, manifestChannel = "latest") {
-  return evalUpdaterFeedUrl() ?? ELECTRON_UPDATER_FEEDS[normalizeElectronUpdaterChannel(channel, manifestChannel)];
+function electronUpdaterFeedUrl(channel, manifestChannel = "latest", market) {
+  return evalUpdaterFeedUrl() ?? marketUpdateFeed(market, normalizeElectronUpdaterChannel(channel, manifestChannel));
 }
 
 function normalizeStableTargetVersion(value) {
@@ -191,7 +203,7 @@ function isVersionNewer(candidate, current) {
   return comparison === null ? candidate !== current : comparison > 0;
 }
 
-export function targetedStableUpdaterFeed(currentVersion, targetVersion, allowOlder = false) {
+export function targetedStableUpdaterFeed(currentVersion, targetVersion, allowOlder = false, market) {
   const normalizedTarget = normalizeStableTargetVersion(targetVersion);
   if (!normalizedTarget) {
     throw new Error("Target update version must use the stable x.y.z format.");
@@ -205,7 +217,7 @@ export function targetedStableUpdaterFeed(currentVersion, targetVersion, allowOl
       ? "Recovery target version must differ from the installed version."
       : "Target update version must be newer than the installed version.");
   }
-  return `https://get3w.com/desktop/releases/download/v${normalizedTarget}`;
+  return `${resolveDesktopMarket(market).releaseBase}/download/v${normalizedTarget}`;
 }
 
 function updaterChannelState(app, channel, targetVersion = null, manifestChannel = "latest") {
@@ -214,8 +226,8 @@ function updaterChannelState(app, channel, targetVersion = null, manifestChannel
   return {
     channel: normalized,
     feedUrl: targetVersion
-      ? targetedStableUpdaterFeed(currentVersion, targetVersion)
-      : electronUpdaterFeedUrl(normalized, manifestChannel),
+      ? targetedStableUpdaterFeed(currentVersion, targetVersion, false, appMarket(app))
+      : electronUpdaterFeedUrl(normalized, manifestChannel, appMarket(app)),
     currentVersion,
   };
 }
@@ -238,7 +250,7 @@ async function applyElectronUpdaterFeed(
   const state = targetVersion
     ? {
         channel,
-        feedUrl: targetedStableUpdaterFeed(currentVersion, targetVersion, allowOlder),
+        feedUrl: targetedStableUpdaterFeed(currentVersion, targetVersion, allowOlder, appMarket(app)),
         currentVersion,
       }
     : updaterChannelState(app, channel, null, manifestChannel);
@@ -332,6 +344,7 @@ export function registerUpdaterIpc({
   electronNet = null,
   shell = null,
   distribution = "public",
+  market,
   platform = process.platform,
   arch = process.arch,
   env = process.env,
@@ -344,6 +357,9 @@ export function registerUpdaterIpc({
   // verifies package integrity and Squirrel verifies the macOS signature.
   assertReleaseReady = () => {},
 }) {
+  resolveDesktopMarket(market);
+  appMarkets.set(app, market);
+
   const assertUpdatesAvailable = () => {
     if (localValidationPackage) throw new Error("Updates are unavailable in this local validation build.");
     assertReleaseReady();
@@ -407,8 +423,15 @@ export function registerUpdaterIpc({
           const mod = await loadAutoUpdater();
           autoUpdaterInstance = mod.autoUpdater ?? mod.default?.autoUpdater ?? null;
           if (autoUpdaterInstance) {
+            // Keep electron-updater's pending installers separate across overwrite installs.
+            // The app identity and userData remain shared; only download caches differ.
+            if (market !== undefined && autoUpdaterInstance.configOnDisk) {
+              const config = await autoUpdaterInstance.configOnDisk.value;
+              autoUpdaterInstance.configOnDisk = { value: Promise.resolve({ ...config,
+                updaterCacheDirName: `get3w-${market}-updater` }) };
+            }
             autoUpdaterInstance.autoDownload = false;
-            autoUpdaterInstance.autoInstallOnAppQuit = !sessionEnding;
+            autoUpdaterInstance.autoInstallOnAppQuit = false;
             // Differential (blockmap) downloads reconstruct the update zip from the
             // installed app + a diff. On macOS that reconstructed bundle is what
             // feeds Squirrel's fragile move-based install, and is a common trigger
@@ -506,7 +529,7 @@ export function registerUpdaterIpc({
   async function resolveRecoveryArtifact(version) {
     if (!electronNet?.fetch) return null;
     try {
-      const manifestUrl = `https://get3w.com/desktop/releases/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
+      const manifestUrl = `${resolveDesktopMarket(market).releaseBase}/download/v${version}/${recoveryManifestName(platform, arch, distribution)}`;
       const response = await electronNet.fetch(manifestUrl, { headers: { Accept: "text/yaml, text/plain, */*" } });
       if (!response.ok) return null;
       return selectRecoveryArtifact(parseRecoveryManifest(await response.text()), {
@@ -514,6 +537,7 @@ export function registerUpdaterIpc({
         platform,
         arch,
         distribution,
+        market,
       });
     } catch {
       return null;
@@ -524,9 +548,9 @@ export function registerUpdaterIpc({
     if (!electronNet?.fetch) return null;
     const currentVersion = stableVersion(resolveAppVersion(app));
     if (!currentVersion) return null;
-    const state = await readRecoveryState(app, distribution);
+    const state = await readRecoveryState(app, market === "global" ? `${distribution}:global` : distribution);
     if (state.currentVersion !== currentVersion) return null;
-    const existing = await readCachedRecoveryArtifact(app, { platform, arch, distribution });
+    const existing = await readCachedRecoveryArtifact(app, { platform, arch, distribution, market });
     if (existing?.artifact.version === currentVersion) return existing;
     const artifact = await resolveRecoveryArtifact(currentVersion);
     if (!artifact) return null;
@@ -589,7 +613,7 @@ export function registerUpdaterIpc({
   }
 
   ipcMain.handle("get3w:recovery:recordHealthy", async () => {
-    return recordHealthyVersion(app, distribution, resolveAppVersion(app));
+    return recordHealthyVersion(app, market === "global" ? `${distribution}:global` : distribution, resolveAppVersion(app));
   });
 
   ipcMain.handle("get3w:recovery:list", async (_event, policy = {}) => {
@@ -602,10 +626,10 @@ export function registerUpdaterIpc({
         releases: recoveryReleases.map(({ id, version, marking }) => ({ id, version, marking })),
       };
     }
-    const state = await readRecoveryState(app, distribution);
+    const state = await readRecoveryState(app, market === "global" ? `${distribution}:global` : distribution);
     const installedVersion = resolveAppVersion(app);
     const markers = recoveryVersionMarkers(installedVersion, state);
-    const cached = await readCachedRecoveryArtifact(app, { platform, arch, distribution });
+    const cached = await readCachedRecoveryArtifact(app, { platform, arch, distribution, market });
     const catalogVersions = Array.isArray(policy?.versions) ? policy.versions : [];
     const localOnly = catalogVersions.length === 0;
     recoveryReleases = await compatibleRecoveryReleases({
@@ -670,6 +694,7 @@ export function registerUpdaterIpc({
       try {
         await applyElectronUpdaterFeed(app, updater, release.version, manifestChannel, true);
         const result = await updater.checkForUpdates();
+        assertMarketUpdateInfo(result?.updateInfo, market);
         if (compareVersions(result?.updateInfo?.version ?? "", release.version) !== 0) {
           throw new Error("Recovery manifest resolved to a different version.");
         }
@@ -742,12 +767,14 @@ export function registerUpdaterIpc({
   }));
 
   async function retryOnFallbackFeed(updater, channel, targetVersion, manifestChannel, allowOlder = false) {
+    if (market !== undefined) return null; // No shared manifest may replace a market-specific package.
     const fallback = ELECTRON_UPDATER_FALLBACK_FEEDS[normalizeElectronUpdaterChannel(channel, manifestChannel)];
-    const primary = electronUpdaterFeedUrl(channel, manifestChannel);
+    const primary = electronUpdaterFeedUrl(channel, manifestChannel, market);
     if (!fallback || fallback === primary || targetVersion) return null;
     updater.setFeedURL({ provider: "generic", url: fallback });
     try {
       const result = await updater.checkForUpdates();
+        assertMarketUpdateInfo(result?.updateInfo, market);
       return { result, feedUrl: fallback };
     } catch (error) {
       // Restore the domestic origin for the next attempt and preserve the
@@ -802,6 +829,7 @@ export function registerUpdaterIpc({
         feedUrl = fallbackResult.feedUrl;
       }
       const info = result?.updateInfo ?? null;
+      assertMarketUpdateInfo(info, market);
       const currentVersion = resolveAppVersion(app);
       if (targetVersion && compareVersions(info?.version ?? "", targetVersion) !== 0) {
         throw new Error(`Target update manifest did not resolve to v${targetVersion}.`);
@@ -866,7 +894,9 @@ export function registerUpdaterIpc({
       const currentVersion = resolveAppVersion(app);
       if (!checkedUpdateVersion || !isVersionNewer(checkedUpdateVersion, currentVersion)) {
         const result = await updater.checkForUpdates();
+        assertMarketUpdateInfo(result?.updateInfo, market);
         const info = result?.updateInfo ?? null;
+      assertMarketUpdateInfo(info, market);
         if (
           checkedUpdateTargetVersion &&
           compareVersions(info?.version ?? "", checkedUpdateTargetVersion) !== 0

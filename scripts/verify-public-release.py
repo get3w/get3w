@@ -32,8 +32,10 @@ for guard in ['workspace', 'personal-boundary', 'brand', 'licenses']:
     run(guard, ['python3', 'scripts/check-public-' + guard + '.py'])
 run('typecheck', ['pnpm', 'typecheck'])
 run('native-regressions', ['node', '--test', *['apps/desktop/electron/' + n + '.test.mjs' for n in [
-    'get3w-auth', 'get3w-managed-provider', 'get3w-managed-mcp', 'get3w-egress', 'updater', 'workspace-file-access', 'local-package-profile']]])
+    'market', 'get3w-auth', 'get3w-managed-provider', 'get3w-managed-mcp', 'get3w-egress', 'updater', 'workspace-file-access', 'local-package-profile']]])
 # The automation runner imports this workspace package's built ESM, which is not committed.
+run('market-language', ['bun', 'test', 'apps/app/tests/i18n-language-policy.test.ts'])
+run('release-assembly', ['python3', 'scripts/release/assemble_test.py'])
 run('headless-threads-build', ['pnpm', '--filter', '@get3w/headless-threads', 'build'])
 run('automation-native', ['node', '--test', *[str(path.relative_to(root)) for path in sorted((root / 'apps/desktop/electron').glob('get3w-automation-*.test.mjs'))]])
 run('automation-ui', ['bun', 'test', 'apps/app/tests/personal-automations.test.tsx', 'apps/app/tests/personal-automation-client.test.ts', 'apps/app/tests/automation-proposal-model.test.ts', 'apps/app/tests/automation-desktop-runtime-models.test.ts'])

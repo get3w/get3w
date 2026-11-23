@@ -31,7 +31,7 @@ test("resolveGet3wOrigins ignores env in packaged builds and only trusts local v
   const { resolveGet3wOrigins } = await import("./get3w-services.mjs");
   const env = { GET3W_CLOUD_ORIGIN: "http://127.0.0.1:6605" };
   const packageMetadata = { get3wAuthOrigins: { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700", apiBase: "x" } };
-  assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata }), {});
+  assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata }), { webBase: "https://get3w.com" });
   assert.deepEqual(resolveGet3wOrigins({ isPackaged: true, env, packageMetadata, localValidation: true }), { cloudBase: "http://127.0.0.1:6605", webBase: "http://127.0.0.1:7700" });
 });
 

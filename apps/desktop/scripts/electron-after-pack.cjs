@@ -181,7 +181,17 @@ function canonicalizeSidecars(context) {
   }
 }
 
+function verifyPackageMarket(context) {
+  const archive = resolveAppAsarPath(context);
+  const metadata = JSON.parse(asar.extractFile(archive, "package.json").toString("utf8"));
+  const expected = context.packager.config.extraMetadata?.market;
+  if (expected !== undefined && (metadata.market !== expected || !["cn", "global"].includes(expected))) {
+    throw new Error("Packaged Desktop market does not match the requested release.");
+  }
+}
+
 async function afterPack(context) {
+  verifyPackageMarket(context);
   verifyRuntimeDependencies(context);
   canonicalizeSidecars(context);
   signComputerUseHelper(context);

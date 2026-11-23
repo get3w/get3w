@@ -5,12 +5,13 @@ spec = importlib.util.spec_from_file_location('assemble', Path(__file__).with_na
 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 
 class ReleaseTest(unittest.TestCase):
-    def fixtures(self, root):
+    def fixtures(self, root, market=None):
         for (platform, arch), extensions in module.MATRIX.items():
             folder = root / f'{platform}-{arch}'; folder.mkdir()
             files = []
             for ext in extensions:
-                name = f'get3w-{platform}-{arch}-0.1.0.{ext}'; raw = name.encode(); (folder / name).write_bytes(raw)
+                prefix = f'get3w-{market}' if market else 'get3w'
+                name = f'{prefix}-{platform}-{arch}-0.1.0.{ext}'; raw = name.encode(); (folder / name).write_bytes(raw)
                 files.append({'url': name, 'size': len(raw), 'sha512': base64.b64encode(hashlib.sha512(raw).digest()).decode()})
             manifest = 'latest-mac.yml' if platform == 'mac' else 'latest.yml'
             (folder / manifest).write_text(yaml.safe_dump({'version': '0.1.0', 'files': files, 'path': files[0]['url'], 'sha512': files[0]['sha512']}))
@@ -29,6 +30,30 @@ class ReleaseTest(unittest.TestCase):
                 if tamper: asset.write_bytes(b'tampered')
                 else: asset.unlink()
                 with self.assertRaises(ValueError): module.assemble(source,root/'output','0.1.0')
+    def test_market_identity_and_wrong_market(self):
+        for market in ('cn', 'global'):
+            with tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp); source=root/'input'; source.mkdir(); self.fixtures(source, market)
+                module.assemble(source,root/'output','0.1.0',market)
+                with self.assertRaises(ValueError):
+                    module.assemble(source,root/'wrong','0.1.0','global' if market == 'cn' else 'cn')
+
+    def test_staging_verifies_markets_and_preserves_legacy_bytes(self):
+        stage_spec=importlib.util.spec_from_file_location('stage', Path(__file__).with_name('stage-markets.py'))
+        stage_module=importlib.util.module_from_spec(stage_spec);stage_spec.loader.exec_module(stage_module)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); flat=root/'flat';flat.mkdir()
+            for market in ('cn','global'):
+                source=root/market;source.mkdir();self.fixtures(source,market)
+                output=root/f'output-{market}';module.assemble(source,output,'0.1.0',market)
+                for path in output.iterdir():
+                    name=path.name if path.name.startswith('get3w-') else f'{market}-{path.name}'
+                    (flat/name).write_bytes(path.read_bytes())
+            stage_module.stage(flat,root/'staged','0.1.0')
+            self.assertEqual((root/'staged/cn/get3w-cn-win-arm64-0.1.0.exe').read_bytes(),(root/'staged/legacy/get3w-win-arm64-0.1.0.exe').read_bytes())
+            (flat/'get3w-global-win-arm64-0.1.0.exe').write_bytes(b'tampered')
+            with self.assertRaises(ValueError):stage_module.stage(flat,root/'tampered','0.1.0')
+
     def test_release_has_no_linux_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); source=root/'input'; source.mkdir(); self.fixtures(source)

@@ -1,3 +1,4 @@
+import { resolveDesktopMarket } from "./market.mjs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -103,9 +104,10 @@ function validRecoveryArtifactIdentity(artifact) {
   } catch {
     return false;
   }
+  const config = resolveDesktopMarket(artifact.market);
   const prefixes = [
-    { hostname: "get3w.com", prefix: `/desktop/releases/download/v${version}/` },
-    { hostname: "github.com", prefix: `/get3w/get3w/releases/download/v${version}/` },
+    { hostname: new URL(config.webOrigin).hostname, prefix: `${new URL(config.releaseBase).pathname}/download/v${version}/` },
+    ...(artifact.market === undefined ? [{ hostname: "github.com", prefix: `/get3w/get3w/releases/download/v${version}/` }] : []),
   ];
   const source = prefixes.find((candidate) => url.protocol === "https:" && url.hostname === candidate.hostname && url.pathname.startsWith(candidate.prefix));
   if (!source) return false;
@@ -113,10 +115,10 @@ function validRecoveryArtifactIdentity(artifact) {
   const platformSlug = artifact.platform === "darwin" ? "mac" : artifact.platform === "win32" ? "win" : "linux";
   const fileName = path.basename(url.pathname);
   const distributionSlug = artifact.distribution === "public" ? "" : `${artifact.distribution}-`;
-  return fileName === `get3w-${distributionSlug}${platformSlug}-${assetArch}-${version}${installerExtension(artifact.platform)}`;
+  return fileName === `get3w-${artifact.market === undefined ? "" : `${artifact.market}-`}${distributionSlug}${platformSlug}-${assetArch}-${version}${installerExtension(artifact.platform)}`;
 }
 
-export function selectRecoveryArtifact(files, { version, platform, arch, distribution }) {
+export function selectRecoveryArtifact(files, { version, platform, arch, distribution, market }) {
   const normalizedVersion = stableVersion(version);
   if (!normalizedVersion || !["public", "cloud", "enterprise"].includes(distribution)) return null;
   const assetArch = platform === "linux" && arch === "x64" ? "x86_64" : arch;
@@ -128,17 +130,18 @@ export function selectRecoveryArtifact(files, { version, platform, arch, distrib
     && typeof file.sha512 === "string"
     && file.sha512.trim(),
   );
-  const baseUrl = `https://get3w.com/desktop/releases/download/v${normalizedVersion}/`;
+  const baseUrl = `${resolveDesktopMarket(market).releaseBase}/download/v${normalizedVersion}/`;
   for (const selected of matching) {
     const url = new URL(selected.url, baseUrl);
-    const domestic = url.origin === "https://get3w.com" && url.pathname.startsWith(`/desktop/releases/download/v${normalizedVersion}/`);
-    const github = url.origin === "https://github.com" && url.pathname.startsWith(`/get3w/get3w/releases/download/v${normalizedVersion}/`);
+    const domestic = url.origin === resolveDesktopMarket(market).webOrigin && url.pathname.startsWith(`${new URL(resolveDesktopMarket(market).releaseBase).pathname}/download/v${normalizedVersion}/`);
+    const github = market === undefined && url.origin === "https://github.com" && url.pathname.startsWith(`/get3w/get3w/releases/download/v${normalizedVersion}/`);
     if (!domestic && !github) continue;
     const artifact = {
       version: normalizedVersion,
       platform,
       arch,
       distribution,
+      ...(market === undefined ? {} : { market }),
       url: url.toString(),
       sha512: selected.sha512.trim(),
     };
@@ -240,6 +243,7 @@ export async function verifyCachedRecoveryArtifact(filePath, artifact) {
       && metadata.platform === artifact.platform
       && metadata.arch === artifact.arch
       && metadata.distribution === artifact.distribution
+      && metadata.market === artifact.market
       && metadata.url === artifact.url
       && metadata.sha512 === artifact.sha512
       && metadata.fileName === path.basename(filePath)
@@ -260,6 +264,7 @@ export async function readCachedRecoveryArtifact(app, expected) {
       const metadata = JSON.parse(await readFile(path.join(directory, "metadata.json"), "utf8"));
       const artifact = {
         version: stableVersion(metadata.version),
+        ...(metadata.market === undefined ? {} : { market: metadata.market }),
         platform: typeof metadata.platform === "string" ? metadata.platform : null,
         arch: typeof metadata.arch === "string" ? metadata.arch : null,
         distribution: typeof metadata.distribution === "string" ? metadata.distribution : null,
@@ -273,6 +278,7 @@ export async function readCachedRecoveryArtifact(app, expected) {
         || artifact.platform !== expected.platform
         || artifact.arch !== expected.arch
         || artifact.distribution !== expected.distribution
+        || artifact.market !== expected.market
         || !validRecoveryArtifactIdentity(artifact)
       ) continue;
       const fileName = typeof metadata.fileName === "string" ? metadata.fileName : "";

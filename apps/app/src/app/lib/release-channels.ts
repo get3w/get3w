@@ -1,3 +1,4 @@
+import { DESKTOP_RELEASE_BASE } from "./desktop-market";
 /**
  * Release-channel concept for Get3W desktop builds.
  *
@@ -20,11 +21,11 @@ import type { ReleaseChannel } from "../types";
 
 /** Stable channel's Tauri updater manifest URL. */
 export const STABLE_UPDATER_ENDPOINT =
-  "https://get3w.com/desktop/releases/latest/download/latest.json";
+  `${DESKTOP_RELEASE_BASE}/latest/download/latest.json`;
 
 /** Alpha channel's Tauri updater manifest URL (macOS-only, rolling). */
 export const ALPHA_UPDATER_ENDPOINT =
-  "https://get3w.com/desktop/releases/download/alpha-macos-latest/latest.json";
+  `${DESKTOP_RELEASE_BASE}/download/alpha-macos-latest/latest.json`;
 
 export type PlatformKind = "darwin" | "linux" | "windows" | "web" | "unknown";
 
