@@ -13,11 +13,11 @@
     },
     {
       "path": ".github/workflows/public-desktop.yml",
-      "sha256": "c6f3e928ec846ba43788e9a4fc3bff6c724ea4ccf40dc699aa82b0b64ba31654"
+      "sha256": "d9b5bbd109802956b7c7b916fe2769a35eb43dddf8cffaff777af11ed9c89b3b"
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "ae9a6d37a2045a22569fdaf10193f348ef8efb6d8c8a03e254f38e78e1fc8979"
+      "sha256": "bdec6a1109992d00afb253a1234cd28412801c50fa9de07faea8e1a18a2ebc49"
     },
     {
       "path": ".gitignore",

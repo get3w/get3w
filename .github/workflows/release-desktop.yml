@@ -66,6 +66,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Install release validation dependencies
+        run: python3 -m pip install PyYAML==6.0.3
       - uses: pnpm/action-setup@v5
         with:
           version: 11.4.0
