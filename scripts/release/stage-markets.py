@@ -46,6 +46,7 @@ def stage(source, output, version):
     for name in ('latest-mac.yml', 'latest.yml', 'release.json'):
         (legacy / name).write_text((china / name).read_text().replace('get3w-cn-', 'get3w-'))
     checksums = [sha256(p) + '  ' + p.name for p in sorted(legacy.iterdir())]
+    checksums += [sha256(p) + '  ' + p.name for p in sorted(china.iterdir()) if p.name.startswith('get3w-cn-')]
     (legacy / 'SHA256SUMS').write_text('\n'.join(checksums) + '\n')
 
 if __name__ == '__main__':

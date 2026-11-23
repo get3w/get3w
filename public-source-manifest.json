@@ -4649,7 +4649,7 @@
     },
     {
       "path": "apps/desktop/electron/market.test.mjs",
-      "sha256": "0ca8f038c51c097bcba866385d60362d349c2642916bfa7362a846447f511fe8"
+      "sha256": "460407959decc24dc39105b342e5c2c5541aff7c314da54de7060f54689a0b3d"
     },
     {
       "path": "apps/desktop/electron/media-permissions.mjs",
@@ -7473,7 +7473,7 @@
     },
     {
       "path": "scripts/release/stage-markets.py",
-      "sha256": "1dcd00784445e10086b68e0b93dcae555145944532a89bc0256cc14272f43706"
+      "sha256": "48c72fb107bc6bd37a575fbd0da6139843af3f913e243a3d87f51d7b176fd2d9"
     },
     {
       "path": "scripts/release/windows-signatures.ps1",

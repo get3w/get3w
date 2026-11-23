@@ -33,10 +33,12 @@ for (const market of ["cn", "global"]) {
   test(`${market}: updater never falls back to the other market`, async () => {
     const handlers=new Map(), feeds=[];
     const app={isPackaged:true,getVersion:()=> "1.0.0",getPath:()=>os.tmpdir()};
-    const updater={on(){},setFeedURL:feed=>feeds.push(feed.url),checkForUpdates:async()=>{throw Error("offline")}};
+    const updater={configOnDisk:{value:Promise.resolve({updaterCacheDirName:"old-shared-cache"})},on(){},setFeedURL:feed=>feeds.push(feed.url),checkForUpdates:async()=>{throw Error("offline")}};
     registerUpdaterIpc({app,market,ipcMain:{handle:(key,fn)=>handlers.set(key,fn)},getMainWindow:()=>null,loadAutoUpdater:async()=>({autoUpdater:updater})});
     await handlers.get("get3w:updater:check")({});
     assert.ok(feeds.length>0);
+    assert.equal((await updater.configOnDisk.value).updaterCacheDirName,`get3w-${market}-updater`);
+    assert.equal(updater.autoInstallOnAppQuit,false);
     assert.ok(feeds.every(url=>url.startsWith(config.webOrigin)));
   });
   test(`${market}: recovery rejects opposite packages and cached installers`, async () => {
