@@ -6288,6 +6288,10 @@
       "sha256": "d954179cbbd492552e51dbdd29967bdae7aaac09a06a2d4aa564a9f1d3c43450"
     },
     {
+      "path": "docs/desktop-markets.md",
+      "sha256": "44694f22bffc67903fbd69bbd12f418a56ba3e244e902ee5ea9f7704b3c35327"
+    },
+    {
       "path": "docs/release-notes.md",
       "sha256": "11ffa75e155d352cd96811accce4a6cd1e05ca87ce34101aba8851b8c7375232"
     },
