@@ -13,11 +13,11 @@
     },
     {
       "path": ".github/workflows/public-desktop.yml",
-      "sha256": "c6f3e928ec846ba43788e9a4fc3bff6c724ea4ccf40dc699aa82b0b64ba31654"
+      "sha256": "d9b5bbd109802956b7c7b916fe2769a35eb43dddf8cffaff777af11ed9c89b3b"
     },
     {
       "path": ".github/workflows/release-desktop.yml",
-      "sha256": "671b2ebe9b92a874b10e4eb60380c4130613a86cbcd475cca8d624d859f03ec9"
+      "sha256": "bdec6a1109992d00afb253a1234cd28412801c50fa9de07faea8e1a18a2ebc49"
     },
     {
       "path": ".gitignore",
@@ -384,6 +384,10 @@
       "sha256": "bf1a5d8701fb87987295acb3ab0c1775d51ef5084df0219092910b5d2e378a4d"
     },
     {
+      "path": "apps/app/src/app/lib/desktop-market.ts",
+      "sha256": "29e8818f0c830eaef9baba88685b6d49461cd23e69d7b75d5141373f01ce06f0"
+    },
+    {
       "path": "apps/app/src/app/lib/desktop-types.ts",
       "sha256": "e905d346a9d3fafbaf5d71ceb7c9cdb537e011b8806dba1b349ef38f6eaccb5d"
     },
@@ -409,7 +413,7 @@
     },
     {
       "path": "apps/app/src/app/lib/electron-alpha.ts",
-      "sha256": "eb52569b26b260c34be3e2dc00d093a4901adad21c112774fa85adcf1107815a"
+      "sha256": "02a8ea1e277f9f8dab001936465ca2ae7fe999a51f8650af36ee0ad4dfc00998"
     },
     {
       "path": "apps/app/src/app/lib/engine-migration-analytics.ts",
@@ -529,7 +533,7 @@
     },
     {
       "path": "apps/app/src/app/lib/release-channels.ts",
-      "sha256": "20145b907ddbe3550f75df83cfd2466ef2a4161f60998f7f5e589d07565964b6"
+      "sha256": "4b09a1b117da0a4d51b77a1c1aeb98e60e1ec311b90e04be081859b056b8163c"
     },
     {
       "path": "apps/app/src/app/lib/runtime-env.ts",
@@ -565,7 +569,7 @@
     },
     {
       "path": "apps/app/src/app/lib/version-gate.ts",
-      "sha256": "0e417cf5681bf27f67aa687218aefe1271394f1779a239566f1c3b35a9dd882e"
+      "sha256": "5685a0979ba77ca8ee98028b25e6791625afa9052c185e32633f4e9e681ff511"
     },
     {
       "path": "apps/app/src/app/lib/workflow-run-access.ts",
@@ -1129,7 +1133,7 @@
     },
     {
       "path": "apps/app/src/i18n/index.ts",
-      "sha256": "4b5b44b6cfe129b04cc2086efd8aafcb0f0404ff672bd9b8a2366d15727d1039"
+      "sha256": "e0f1decd32507e46a3f7d64864a80e428d0c596797d5dbb159d078b2f14078fe"
     },
     {
       "path": "apps/app/src/i18n/locales/en.ts",
@@ -3525,7 +3529,7 @@
     },
     {
       "path": "apps/app/tests/chat-file-links.test.ts",
-      "sha256": "e1a86e6231c76326819a65e6dba303b0769ff23e278b10b2a92cb796ea217604"
+      "sha256": "3a9b3b65795001b8c523810584e44df0d3f513a195a2080ec7461d7c6d8584c3"
     },
     {
       "path": "apps/app/tests/claude-history-import-settings.test.ts",
@@ -3765,7 +3769,7 @@
     },
     {
       "path": "apps/app/tests/i18n-language-policy.test.ts",
-      "sha256": "1a5c163b5f7bca85a27f188533069599cd33b5716275fb5126a941ebe892e630"
+      "sha256": "9c87bd4491ed0d0d0937a0e60990d4ecbd9e26d9d3d290a383265b483afadc90"
     },
     {
       "path": "apps/app/tests/i18n-placeholders.test.ts",
@@ -4581,11 +4585,11 @@
     },
     {
       "path": "apps/desktop/electron/get3w-service-defaults.test.mjs",
-      "sha256": "72a16c8ac49a7bbf142cb801de7115837f26ae5804c2b27f6a31abb5441affc9"
+      "sha256": "84ebaa77749665db47d81aebcb6239ab6693851087c6bbe081fd64dd2d8359ae"
     },
     {
       "path": "apps/desktop/electron/get3w-services.mjs",
-      "sha256": "40d67bbbd3c94bb777460151ab3684fa941bc08d754cc97e7107dee4034e82e4"
+      "sha256": "0a640be7b37a390beaa3e49a48ab7f8550ae467246bd064c1b32980f16e5d317"
     },
     {
       "path": "apps/desktop/electron/get3w-session.mjs",
@@ -4637,7 +4641,15 @@
     },
     {
       "path": "apps/desktop/electron/main.mjs",
-      "sha256": "93bafd15264bdf3dd1b3b0d208dbc34ab47462f9b7a327cc379e6ce9c8fcf042"
+      "sha256": "258ae0885e89c14f520a2865e5595ac3e030c8e2fd2cd445605cf8a72a74d7cd"
+    },
+    {
+      "path": "apps/desktop/electron/market.mjs",
+      "sha256": "0dd5a53175245a19a1a570b2b5a338af05ea80beb0eb9ccc8c117dcc9eaf44fa"
+    },
+    {
+      "path": "apps/desktop/electron/market.test.mjs",
+      "sha256": "460407959decc24dc39105b342e5c2c5541aff7c314da54de7060f54689a0b3d"
     },
     {
       "path": "apps/desktop/electron/media-permissions.mjs",
@@ -4697,7 +4709,7 @@
     },
     {
       "path": "apps/desktop/electron/preload.mjs",
-      "sha256": "662998c57386f62d34dd2399fb1003f8d7583a39befabd4665b299da2c7adecc"
+      "sha256": "dd9efd5cb6d784d828cfc9dd5d98d3405ec38bd37976f6aa86b9dfc0e3c7f51b"
     },
     {
       "path": "apps/desktop/electron/prepare-task-tools.mjs",
@@ -4717,7 +4729,7 @@
     },
     {
       "path": "apps/desktop/electron/recovery.mjs",
-      "sha256": "6cbc77852dcccc76b395a8946d2141d9dcdb4dd1c2d1833d536856de2e937082"
+      "sha256": "380bc32261b22bec4824f5fd4174d67b0ad550ce6dd12ecd3d1e5dac16d9ed7f"
     },
     {
       "path": "apps/desktop/electron/runtime.mjs",
@@ -4797,7 +4809,7 @@
     },
     {
       "path": "apps/desktop/electron/updater.mjs",
-      "sha256": "ea39fc0d30cd4c8278b3b4b55f3f6ef271b21014e5cc215def5ed713388c8aee"
+      "sha256": "d156d91832b13091d01af8d9e87c834ffcec89176c116ee52e0f0678043b7d25"
     },
     {
       "path": "apps/desktop/electron/updater.test.mjs",
@@ -4849,7 +4861,7 @@
     },
     {
       "path": "apps/desktop/package.json",
-      "sha256": "6c01b9777ac5754164438185270da84ef5f61b143568efc44063c8c8b05ad37e"
+      "sha256": "b80eba20dea84cd5820e500a8ee06ab869755a7f1d75d85027f2dd7f244525a9"
     },
     {
       "path": "apps/desktop/resources/helpers/.gitignore",
@@ -4925,7 +4937,7 @@
     },
     {
       "path": "apps/desktop/scripts/electron-after-pack.cjs",
-      "sha256": "6a795bea351d09abf9d47483bbe907dbacac93569f2aadbd37caa3b6531f17cf"
+      "sha256": "4def222dc810c010aca4bac0bfe78f82df4148a72b4feab1ff0f473d6c0c5091"
     },
     {
       "path": "apps/desktop/scripts/electron-after-sign.cjs",
@@ -4958,6 +4970,10 @@
     {
       "path": "apps/desktop/scripts/get3w-mcp-live.mjs",
       "sha256": "83e27d2daeb5ba6e3131074077da45a3c949cfe636485b405d19509d0a72b127"
+    },
+    {
+      "path": "apps/desktop/scripts/package-market.mjs",
+      "sha256": "bab33833c39ec22769c9d49d708a96993d7f4b90b16d738427e7ed404f8b2069"
     },
     {
       "path": "apps/desktop/scripts/packaged-smoke-runner.mjs",
@@ -6272,6 +6288,10 @@
       "sha256": "d954179cbbd492552e51dbdd29967bdae7aaac09a06a2d4aa564a9f1d3c43450"
     },
     {
+      "path": "docs/desktop-markets.md",
+      "sha256": "44694f22bffc67903fbd69bbd12f418a56ba3e244e902ee5ea9f7704b3c35327"
+    },
+    {
       "path": "docs/release-notes.md",
       "sha256": "11ffa75e155d352cd96811accce4a6cd1e05ca87ce34101aba8851b8c7375232"
     },
@@ -7445,15 +7465,19 @@
     },
     {
       "path": "scripts/release/assemble.py",
-      "sha256": "8e3cccdd46b1fdb00a3c3fb7d6a9ce5925824740177ae09648f9b0767d9a897c"
+      "sha256": "4f5859007d98a51499ddecf973278124421c9615174adc3523951bea60c8c013"
     },
     {
       "path": "scripts/release/assemble_test.py",
-      "sha256": "7da275feea3b2c161f78c7d9b5b0f0f37d8dc1fe8f7ea6140cd09a5d783eef92"
+      "sha256": "293d1c829dea0d8123b8c35ec17d3f1f4b23bfb3e853411e6a5b01a43051d633"
     },
     {
       "path": "scripts/release/mirror-cos.sh",
-      "sha256": "ea9486a18c81b8fa9b347b27e2528f9bea1fabfdb20f8ba36b563dcec21ebd52"
+      "sha256": "3ae735ff2a682efb50151b6276c94fc642ee52cf8acba3b1d20361240c129704"
+    },
+    {
+      "path": "scripts/release/stage-markets.py",
+      "sha256": "48c72fb107bc6bd37a575fbd0da6139843af3f913e243a3d87f51d7b176fd2d9"
     },
     {
       "path": "scripts/release/windows-signatures.ps1",
@@ -7469,7 +7493,7 @@
     },
     {
       "path": "scripts/verify-public-release.py",
-      "sha256": "11b98d55035f0b95400020da7445884441c1e6d6598c6aae6a21c4b825e33290"
+      "sha256": "0b9c7052c28204a9932df496ddeb91dd789421fab2ece065e987e41ab5805e73"
     },
     {
       "path": "scripts/verify-public-source.py",

@@ -10,7 +10,17 @@ MATRIX = {('mac', 'x64'): ['dmg', 'zip'], ('mac', 'arm64'): ['dmg', 'zip'],
           ('win', 'x64'): ['exe'], ('win', 'arm64'): ['exe']}
 MANIFESTS = {'latest-mac.yml', 'latest.yml'}
 
-def assemble(source, output, version):
+class UpdaterDumper(yaml.SafeDumper):
+    # Match electron-builder's sequence indentation; Desktop recovery reads it.
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(flow, False)
+
+def dump_manifest(data):
+    return yaml.dump(data, Dumper=UpdaterDumper, sort_keys=False)
+
+def assemble(source, output, version, market=None):
+    if market not in (None, "cn", "global"): raise ValueError("Invalid market")
+    prefix = f"get3w-{market}-" if market else "get3w-"
     if not re.fullmatch(r'\d+\.\d+\.\d+', version): raise ValueError('Expected stable version')
     assets = {}
     manifests = {}
@@ -23,11 +33,12 @@ def assemble(source, output, version):
                 if data['version'] != version: raise ValueError('Manifest version mismatch')
                 manifests.setdefault(path.name, []).append(data)
             elif path.is_file() and path.name.startswith('get3w-'):
+                if not path.name.startswith(prefix): raise ValueError('Wrong market artifact: ' + path.name)
                 if path.name in assets: raise ValueError('Duplicate asset: ' + path.name)
                 assets[path.name] = path
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
-            name = f'get3w-{platform}-{arch}-{version}.{ext}'
+            name = f'{prefix}{platform}-{arch}-{version}.{ext}'
             if name not in assets or assets[name].stat().st_size == 0: raise ValueError('Missing installer: ' + name)
     if set(manifests) != MANIFESTS: raise ValueError('Unexpected updater manifests: ' + ', '.join(sorted(manifests)))
     output.mkdir(parents=True, exist_ok=False)
@@ -42,11 +53,11 @@ def assemble(source, output, version):
                 if file['sha512'] != base64.b64encode(hashlib.sha512(raw).digest()).decode(): raise ValueError('SHA512 mismatch')
                 if file.get('size') != len(raw): raise ValueError('Size mismatch')
                 if file['url'] in covered: raise ValueError('Duplicate manifest asset')
-                covered.add(file['url']); merged['files'].append(file)
-        (output / name).write_text(yaml.safe_dump(merged, sort_keys=False))
+                covered.add(file['url']); merged['files'].append({'url': file['url'], **{key: value for key, value in file.items() if key != 'url'}})
+        (output / name).write_text(dump_manifest(merged))
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
-            if f'get3w-{platform}-{arch}-{version}.{ext}' not in covered:
+            if f'{prefix}{platform}-{arch}-{version}.{ext}' not in covered:
                 raise ValueError('Installer absent from updater manifest')
     checksums = []
     for name, path in sorted(assets.items()):
@@ -55,8 +66,8 @@ def assemble(source, output, version):
         with path.open('rb') as stream:
             checksums.append(hashlib.file_digest(stream, 'sha256').hexdigest() + '  ' + path.name)
     (output / 'SHA256SUMS').write_text('\n'.join(checksums) + '\n')
-    (output / 'release.json').write_text(json.dumps({'version': version, 'signed': False, 'platforms': len(MATRIX), 'assets': sorted(assets)}, indent=2) + '\n')
+    (output / 'release.json').write_text(json.dumps({'version': version, 'signed': False, 'market': market, 'platforms': len(MATRIX), 'assets': sorted(assets)}, indent=2) + '\n')
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(); p.add_argument('source', type=Path); p.add_argument('output', type=Path); p.add_argument('version')
-    a = p.parse_args(); assemble(a.source, a.output, a.version)
+    p = argparse.ArgumentParser(); p.add_argument('source', type=Path); p.add_argument('output', type=Path); p.add_argument('version'); p.add_argument('--market', choices=['cn','global'])
+    a = p.parse_args(); assemble(a.source, a.output, a.version, a.market)

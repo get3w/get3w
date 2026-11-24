@@ -1,3 +1,4 @@
+import { desktopWebOrigin, DESKTOP_RELEASE_BASE } from "./desktop-market";
 
 export type ElectronAlphaArtifact = {
   arch: "arm64" | "x64";
@@ -10,10 +11,10 @@ export type ElectronAlphaArtifact = {
 };
 
 const ELECTRON_ALPHA_RELEASE_BASE_URL =
-  "https://get3w.com/desktop/releases/download/alpha-macos-latest";
+  `${DESKTOP_RELEASE_BASE}/download/alpha-macos-latest`;
 
 export const ELECTRON_ALPHA_RELEASE_PAGE_URL =
-  "https://get3w.com/desktop/releases/tag/alpha-macos-latest";
+  `${DESKTOP_RELEASE_BASE}/tag/alpha-macos-latest`;
 
 export const ELECTRON_ALPHA_LATEST_MAC_YML_URL = `${ELECTRON_ALPHA_RELEASE_BASE_URL}/latest-mac.yml`;
 
@@ -32,7 +33,7 @@ function parseFirstFileUrl(raw: string): string | null {
 
 function resolveArtifactUrl(pathOrUrl: string): string {
   const url = new URL(pathOrUrl, `${ELECTRON_ALPHA_RELEASE_BASE_URL}/`);
-  if (url.origin !== "https://get3w.com" || url.username || url.password
+  if (url.origin !== desktopWebOrigin() || url.username || url.password
     || !url.pathname.startsWith("/desktop/releases/")) {
     throw new Error("The update artifact must use the Get3W release service.");
   }

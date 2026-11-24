@@ -35,3 +35,14 @@ test("existing English choice is preserved", () => {
   storage("en");
   expect(initLocale()).toBe("en");
 });
+
+test("market defaults apply only when no valid preference was saved", () => {
+  for (const defaultLanguage of ["zh", "en"] as const) {
+    storage(null);
+    expect(initLocale(defaultLanguage)).toBe(defaultLanguage);
+    for (const saved of ["zh", "en"] as const) {
+      storage(saved);
+      expect(initLocale(defaultLanguage)).toBe(saved);
+    }
+  }
+});

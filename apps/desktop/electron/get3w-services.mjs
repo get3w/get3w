@@ -1,3 +1,4 @@
+import { resolveDesktopMarket } from "./market.mjs";
 import path from "node:path";
 import { assertGet3wServiceTarget } from "./get3w-egress.mjs";
 export const GET3W_SERVICES = Object.freeze({
@@ -32,9 +33,10 @@ export function resolveGet3wOrigins({ isPackaged, env = {}, packageMetadata = {}
       webBase: env.GET3W_AUTH_WEB_ORIGIN?.trim() || GET3W_SERVICES.webBase,
     };
   }
+  const defaults = { webBase: resolveDesktopMarket(Reflect.get(packageMetadata, "market")).webOrigin };
   const shipped = localValidation ? Reflect.get(packageMetadata ?? {}, "get3wAuthOrigins") : null;
-  if (!shipped || typeof shipped !== "object") return {};
-  const origins = {};
+  if (!shipped || typeof shipped !== "object") return defaults;
+  const origins = { ...defaults };
   for (const key of ["cloudBase", "webBase"]) {
     const value = Reflect.get(shipped, key);
     if (typeof value === "string" && value.trim()) origins[key] = value.trim();

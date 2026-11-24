@@ -7,7 +7,7 @@ export const LANGUAGE_PREF_KEY = "get3w.language";
  * Supported languages
  */
 export type Language = "zh" | "en";
-export const DEFAULT_LANGUAGE: Language = "zh";
+export const DEFAULT_LANGUAGE: Language = typeof window !== "undefined" && window.__GET3W_MARKET__?.market === "global" ? "en" : "zh";
 export type Locale = Language;
 
 /**
@@ -172,8 +172,8 @@ export const t = (
  * Initialize locale from localStorage
  * Call this during app initialization
  */
-export const initLocale = (): Language => {
-  let selected: Language = DEFAULT_LANGUAGE;
+export const initLocale = (defaultLanguage: Language = DEFAULT_LANGUAGE): Language => {
+  let selected: Language = defaultLanguage;
   if (typeof window !== "undefined") {
     try {
       const stored = window.localStorage.getItem(LANGUAGE_PREF_KEY);
@@ -188,5 +188,5 @@ export const initLocale = (): Language => {
 };
 
 declare global {
-  interface Window { __GET3W_I18N__?: { setLanguage: (language: Language) => Promise<void> }; }
+  interface Window { __GET3W_MARKET__?: { market: "cn" | "global"; defaultLanguage: "zh" | "en"; webOrigin: string; releaseBase: string }; __GET3W_I18N__?: { setLanguage: (language: Language) => Promise<void> }; }
 }

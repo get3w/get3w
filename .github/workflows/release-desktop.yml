@@ -17,15 +17,35 @@ jobs:
         include:
           - runner: macos-15-intel
             platform: mac
+            market: cn
             arch: x64
           - runner: macos-15
             platform: mac
+            market: cn
             arch: arm64
           - runner: windows-2025
             platform: win
+            market: cn
             arch: x64
           - runner: windows-11-arm
             platform: win
+            market: cn
+            arch: arm64
+          - runner: macos-15-intel
+            platform: mac
+            market: global
+            arch: x64
+          - runner: macos-15
+            platform: mac
+            market: global
+            arch: arm64
+          - runner: windows-2025
+            platform: win
+            market: global
+            arch: x64
+          - runner: windows-11-arm
+            platform: win
+            market: global
             arch: arm64
           # Linux is not released (decided 2026-11-10).
     runs-on: ${{ matrix.runner }}
@@ -46,6 +66,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Install release validation dependencies
+        run: python3 -m pip install PyYAML==6.0.3
       - uses: pnpm/action-setup@v5
         with:
           version: 11.4.0
@@ -108,12 +130,16 @@ jobs:
       - name: Verify release regressions
         if: matrix.platform == 'mac'
         run: python3 scripts/verify-public-release.py
+      - name: Configure package market
+        env:
+          GET3W_PACKAGE_MARKET: ${{ matrix.market }}
+        run: node --input-type=module -e 'import fs from "node:fs"; const p="apps/desktop/package.json";const pkg=JSON.parse(fs.readFileSync(p));pkg.market=process.env.GET3W_PACKAGE_MARKET;fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");'
       - name: Rebuild native modules and build Desktop
         run: |
           pnpm --dir apps/desktop exec electron-rebuild --force --which-module better-sqlite3
           pnpm build
       - name: Package installers and updater manifests
-        run: pnpm --dir apps/desktop exec electron-builder --config electron-builder.yml --${{ matrix.platform }} --${{ matrix.arch }} --publish never --config.publish.provider=generic --config.publish.url=https://get3w.com/desktop/releases/latest/download
+        run: node apps/desktop/scripts/package-market.mjs ${{ matrix.market }} --${{ matrix.platform }} --${{ matrix.arch }} --publish never
       - name: Verify macOS packaged engine
         if: matrix.platform == 'mac'
         run: |
@@ -129,7 +155,7 @@ jobs:
           rm -f "$RUNNER_TEMP"/AuthKey_*.p8
       - uses: actions/upload-artifact@v6
         with:
-          name: release-${{ matrix.platform }}-${{ matrix.arch }}
+          name: release-${{ matrix.market }}-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: error
           path: |
             apps/desktop/dist-electron/get3w-*
@@ -151,12 +177,20 @@ jobs:
       - name: Validate all four platforms and merge updater metadata
         run: |
           python3 -m pip install PyYAML==6.0.3
-          python3 scripts/release/assemble.py artifacts/release-input artifacts/release-public "${GITHUB_REF_NAME#v}"
+          for market in cn global; do
+            mkdir -p "artifacts/input-$market"
+            cp -R artifacts/release-input/release-$market-* "artifacts/input-$market/"
+            python3 scripts/release/assemble.py "artifacts/input-$market" "artifacts/release-$market" "${GITHUB_REF_NAME#v}" --market "$market"
+            mv "artifacts/release-$market/latest-mac.yml" "artifacts/release-$market/$market-latest-mac.yml"
+            mv "artifacts/release-$market/latest.yml" "artifacts/release-$market/$market-latest.yml"
+            mv "artifacts/release-$market/SHA256SUMS" "artifacts/release-$market/$market-SHA256SUMS"
+            mv "artifacts/release-$market/release.json" "artifacts/release-$market/$market-release.json"
+          done
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Get3W $GITHUB_REF_NAME" --notes-file docs/release-notes.md
-          gh release upload "$GITHUB_REF_NAME" artifacts/release-public/*
+          gh release upload "$GITHUB_REF_NAME" artifacts/release-cn/* artifacts/release-global/*
       # The release stays a draft. Mirror it to COS from a mainland-reachable
       # machine with scripts/release/mirror-cos.sh, which marks it Latest.

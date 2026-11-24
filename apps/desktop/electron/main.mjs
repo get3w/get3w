@@ -1,3 +1,4 @@
+import { resolveDesktopMarket } from "./market.mjs";
 import { createEventSourceSync } from "./get3w-event-sources.mjs";
 import { submitDesktopNotification, openNotificationRun, desktopNotificationOptions } from "./notification-delivery.mjs";
 import { createTaskPermissionBridge } from "./task-permissions.mjs";
@@ -6,7 +7,7 @@ import { createTaskLogs } from "./task-logs.mjs";
 import { loadStartupUrl } from "./startup-navigation.mjs";
 import { createAutomationReceiptJournal } from "./get3w-automation-receipts.mjs";
 import { createPersonalAutomationRunner } from "./get3w-automation-runner.mjs";
-import { nativeText, nativeMessage } from "./native-i18n.mjs";
+import { nativeText, nativeMessage, setNativeLanguage } from "./native-i18n.mjs";
 import { createModelApprovalBridge } from "./get3w-model-approvals.mjs";
 import { createGet3wManagedMcp } from "./get3w-managed-mcp.mjs";
 import { createPrepareTaskTools } from "./prepare-task-tools.mjs";
@@ -126,6 +127,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(__dirname, "../../..");
 const require = createRequire(import.meta.url);
 const desktopPackageMetadata = require("../package.json");
+const desktopMarket = resolveDesktopMarket(desktopPackageMetadata.market);
 // Electron 35 eagerly resolves every export in a named ESM import, including
 // safeStorage. Loading through CommonJS keeps safeStorage lazy so isolated demo
 // profiles do not show macOS's native keychain dialog before our switches run.
@@ -206,7 +208,9 @@ if (BLANK_SLATE_LAUNCH.enabled || process.env.GET3W_ELECTRON_USE_MOCK_KEYCHAIN =
   // system keychain normally.
   app.commandLine.appendSwitch("use-mock-keychain");
 }
-const DOCS_PAGE_URL = "https://get3w.com/docs/desktop-app/";
+setNativeLanguage(desktopMarket.defaultLanguage);
+ipcMain.on("get3w:market-sync", event => { event.returnValue = desktopMarket; });
+const DOCS_PAGE_URL = `${desktopMarket.webOrigin}/docs/desktop-app/`;
 const applicationMenu = createApplicationMenu({
   appName: APP_NAME,
   docsUrl: DOCS_PAGE_URL,
@@ -217,6 +221,7 @@ const applicationMenu = createApplicationMenu({
 ipcMain.handle("get3w:set-language", (event, language) => {
   if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Main window required");
   applicationMenu.setLanguage(language);
+  void writeFile(path.join(app.getPath("userData"), "language.json"), JSON.stringify({ language }), "utf8").catch(() => {});
 });
 
 let browserPanel = null;
@@ -2785,6 +2790,7 @@ const { ensureAutoUpdater, holdInstallForSessionEnd } = registerUpdaterIpc({
   electronNet,
   shell,
   distribution: DESKTOP_DISTRIBUTION.flavor,
+  market: desktopMarket.market,
   platform: process.platform,
   arch: process.arch,
   localValidationPackage,
@@ -2861,6 +2867,10 @@ or use: pnpm dev:worktree`);
     if (process.platform !== "linux" && !BLANK_SLATE_LAUNCH.enabled) {
       await applyDesktopBootstrapBrandIcon(bootstrapConfig, applyBrandIconUrl);
     }
+    try {
+      const savedLanguage = JSON.parse(await readFile(path.join(app.getPath("userData"), "language.json"), "utf8")).language;
+      if (savedLanguage === "zh" || savedLanguage === "en") setNativeLanguage(savedLanguage);
+    } catch {}
     applicationMenu.install();
     await runtimeManager.prepareFreshRuntime().catch(() => undefined);
 
