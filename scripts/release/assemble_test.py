@@ -1,4 +1,4 @@
-import base64, hashlib, importlib.util, tempfile, unittest
+import base64, hashlib, importlib.util, tempfile, unittest, subprocess, json
 from pathlib import Path
 import yaml
 spec = importlib.util.spec_from_file_location('assemble', Path(__file__).with_name('assemble.py'))
@@ -22,6 +22,12 @@ class ReleaseTest(unittest.TestCase):
             for name in ['latest-mac.yml','latest.yml']:
                 data=yaml.safe_load((root/'output'/name).read_text()); self.assertTrue(any('-arm64-' in x['url'] for x in data['files'])); self.assertTrue(any('-x64-' in x['url'] for x in data['files']))
             self.assertTrue((root/'output/SHA256SUMS').is_file())
+            recovery = Path(__file__).resolve().parents[2] / 'apps/desktop/electron/recovery.mjs'
+            script = "import {parseRecoveryManifest} from " + json.dumps(recovery.as_uri()) + ";import{readFileSync}from'node:fs';console.log(JSON.stringify(parseRecoveryManifest(readFileSync(process.argv[1],'utf8'))));"
+            for name in ['latest-mac.yml','latest.yml']:
+                manifest = root/'output'/name
+                parsed=json.loads(subprocess.check_output(['node','--input-type=module','-e',script,str(manifest)],text=True))
+                self.assertEqual(parsed, [{key: str(value) for key, value in item.items()} for item in yaml.safe_load(manifest.read_text())['files']])
     def test_missing_platform_and_tampering_fail(self):
         for tamper in [False,True]:
             with tempfile.TemporaryDirectory() as tmp:

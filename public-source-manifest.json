@@ -7465,11 +7465,11 @@
     },
     {
       "path": "scripts/release/assemble.py",
-      "sha256": "f23e369e7faf68f6309e8447797578512d6b312f1449d884bd857fa656a5510e"
+      "sha256": "4f5859007d98a51499ddecf973278124421c9615174adc3523951bea60c8c013"
     },
     {
       "path": "scripts/release/assemble_test.py",
-      "sha256": "27d46567be231a5054a1578a1432f106d3d3cedfd0eda6ae7871bdf9e75911ec"
+      "sha256": "293d1c829dea0d8123b8c35ec17d3f1f4b23bfb3e853411e6a5b01a43051d633"
     },
     {
       "path": "scripts/release/mirror-cos.sh",

@@ -10,6 +10,14 @@ MATRIX = {('mac', 'x64'): ['dmg', 'zip'], ('mac', 'arm64'): ['dmg', 'zip'],
           ('win', 'x64'): ['exe'], ('win', 'arm64'): ['exe']}
 MANIFESTS = {'latest-mac.yml', 'latest.yml'}
 
+class UpdaterDumper(yaml.SafeDumper):
+    # Match electron-builder's sequence indentation; Desktop recovery reads it.
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(flow, False)
+
+def dump_manifest(data):
+    return yaml.dump(data, Dumper=UpdaterDumper, sort_keys=False)
+
 def assemble(source, output, version, market=None):
     if market not in (None, "cn", "global"): raise ValueError("Invalid market")
     prefix = f"get3w-{market}-" if market else "get3w-"
@@ -45,8 +53,8 @@ def assemble(source, output, version, market=None):
                 if file['sha512'] != base64.b64encode(hashlib.sha512(raw).digest()).decode(): raise ValueError('SHA512 mismatch')
                 if file.get('size') != len(raw): raise ValueError('Size mismatch')
                 if file['url'] in covered: raise ValueError('Duplicate manifest asset')
-                covered.add(file['url']); merged['files'].append(file)
-        (output / name).write_text(yaml.safe_dump(merged, sort_keys=False))
+                covered.add(file['url']); merged['files'].append({'url': file['url'], **{key: value for key, value in file.items() if key != 'url'}})
+        (output / name).write_text(dump_manifest(merged))
     for (platform, arch), extensions in MATRIX.items():
         for ext in extensions:
             if f'{prefix}{platform}-{arch}-{version}.{ext}' not in covered:
