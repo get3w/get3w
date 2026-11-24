@@ -25,7 +25,9 @@ gh release download "$TAG" -R "$REPO" --dir "$SRC" \
 python3 "$(dirname "$0")/stage-markets.py" "$SRC" "$WORK/staged" "$VERSION"
 
 upload() {
-  (cd "$WORK" && coscli sync "$1/" "cos://$2/$3/" -r --routines "$ROUTINES" \
+  local endpoint=cos.ap-guangzhou.myqcloud.com
+  [[ "$2" == get3w-web-global-1252164560 ]] && endpoint=cos.ap-singapore.tencentcos.cn
+  (cd "$WORK" && coscli sync "$1/" "cos://$2/$3/" -e "$endpoint" -r --routines "$ROUTINES" \
     --fail-output-path "$WORK/coscli-fail")
 }
 # Stage both sets completely before changing either public feed.

@@ -7473,7 +7473,7 @@
     },
     {
       "path": "scripts/release/mirror-cos.sh",
-      "sha256": "cebbe1a9ee3c918434ffc75ee67c6977bb391a6a4709c90da8d00cbf6326cc7a"
+      "sha256": "3ae735ff2a682efb50151b6276c94fc642ee52cf8acba3b1d20361240c129704"
     },
     {
       "path": "scripts/release/stage-markets.py",
